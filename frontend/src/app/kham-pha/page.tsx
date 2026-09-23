@@ -23,7 +23,7 @@ export default function ExplorePage() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState('updated');
+  const [sortBy, setSortBy] = useState('relevance');
   const [currentPage, setCurrentPage] = useState(1);
 
   const [categories, setCategories] = useState<TagCategoryItem[]>([]);
@@ -224,6 +224,7 @@ export default function ExplorePage() {
                   }}
                   className="h-8 px-2.5 rounded-lg bg-[#141420] border border-white/10 text-xs text-white focus:outline-none focus:border-brand-500"
                 >
+                  <option value="relevance">Liên quan / Mới cập nhật</option>
                   <option value="updated">Mới cập nhật</option>
                   <option value="views">Lượt xem nhiều nhất</option>
                   <option value="rating">Đánh giá cao nhất</option>

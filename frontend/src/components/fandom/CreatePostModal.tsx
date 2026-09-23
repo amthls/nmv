@@ -6,6 +6,8 @@ import { X, Send, Sparkles, FileEdit, Save, Check, AlertCircle } from 'lucide-re
 import SmartStorySearch from './SmartStorySearch';
 import ImageUploadDropzone from '@/components/common/ImageUploadDropzone';
 import { useAuth } from '@/context/AuthContext';
+import RichTextEditor from '@/components/common/RichTextEditor';
+import { hasRichContent } from '@/lib/richText';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -72,7 +74,7 @@ export default function CreatePostModal({
       return;
     }
 
-    if (!title.trim() || !content.trim() || isSubmitting) return;
+    if (!title.trim() || !hasRichContent(content) || isSubmitting) return;
 
     setIsSubmitting(true);
     setErrorMsg(null);
@@ -176,17 +178,28 @@ export default function CreatePostModal({
           <SmartStorySearch
             selectedStoryId={selectedStoryId}
             onSelectStory={(story) => setSelectedStoryId(story ? story.id : '')}
+            initialStory={
+              editPostData && editPostData.story_id && editPostData.story_title
+                ? {
+                    id: editPostData.story_id,
+                    title: editPostData.story_title,
+                    slug: editPostData.story_slug,
+                    cover_image_url: editPostData.story_cover,
+                    story_type: editPostData.story_type,
+                    author_name: editPostData.story_author,
+                    total_chapters: 0,
+                  }
+                : null
+            }
           />
 
           {/* Content */}
           <div>
-            <textarea
-              rows={5}
-              placeholder="Bạn đang suy nghĩ gì? Hãy chia sẻ cùng cộng đồng NovelHub..."
+            <RichTextEditor
               value={content}
-              onChange={(e) => setContent(e.target.value)}
-              className="w-full p-4 rounded-2xl bg-white/5 border border-white/10 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-500 resize-none transition leading-relaxed"
-              required
+              onChange={setContent}
+              placeholder="Bạn đang suy nghĩ gì? Hãy chia sẻ cùng cộng đồng NovelHub..."
+              minHeight={180}
             />
           </div>
 
@@ -209,7 +222,7 @@ export default function CreatePostModal({
               <button
                 type="button"
                 onClick={() => handleSaveOrPublish(true)}
-                disabled={!title.trim() || !content.trim() || isSubmitting}
+                disabled={!title.trim() || !hasRichContent(content) || isSubmitting}
                 className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 disabled:opacity-40 text-gray-200 hover:text-white font-bold text-xs border border-white/15 flex items-center gap-1.5 transition"
               >
                 <Save className="w-3.5 h-3.5" />
@@ -220,7 +233,7 @@ export default function CreatePostModal({
               <button
                 type="button"
                 onClick={() => handleSaveOrPublish(false)}
-                disabled={!title.trim() || !content.trim() || isSubmitting}
+                disabled={!title.trim() || !hasRichContent(content) || isSubmitting}
                 className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 disabled:opacity-40 text-white font-bold text-xs shadow-lg shadow-brand-500/25 flex items-center gap-2 transition hover:scale-105"
               >
                 <Send className="w-3.5 h-3.5" />

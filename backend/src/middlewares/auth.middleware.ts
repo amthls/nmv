@@ -2,7 +2,7 @@
 import jwt from 'jsonwebtoken';
 import { pool } from '../config/db';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_novelhub_key_2026_x89a@!secure';
+import { JWT_SECRET } from '../config/env';
 
 export interface AuthenticatedUser {
   id: string;

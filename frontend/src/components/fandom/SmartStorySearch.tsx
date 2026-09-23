@@ -19,18 +19,28 @@ interface StorySuggestion {
 interface SmartStorySearchProps {
   selectedStoryId: string;
   onSelectStory: (story: StorySuggestion | null) => void;
+  initialStory?: StorySuggestion | null;
 }
 
 export default function SmartStorySearch({
   selectedStoryId,
   onSelectStory,
+  initialStory = null,
 }: SmartStorySearchProps) {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<StorySuggestion[]>([]);
-  const [selectedStory, setSelectedStory] = useState<StorySuggestion | null>(null);
+  const [selectedStory, setSelectedStory] = useState<StorySuggestion | null>(initialStory);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (initialStory && initialStory.id === selectedStoryId) {
+      setSelectedStory(initialStory);
+    } else if (!selectedStoryId) {
+      setSelectedStory(null);
+    }
+  }, [initialStory, selectedStoryId]);
 
   // Debounced live search
   useEffect(() => {

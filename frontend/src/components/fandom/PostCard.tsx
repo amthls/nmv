@@ -20,6 +20,7 @@ import {
 import SmartImage from '@/components/common/SmartImage';
 import SmartPostGallery from './SmartPostGallery';
 import { useAuth } from '@/context/AuthContext';
+import { stripHtml } from '@/lib/richText';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -363,7 +364,7 @@ export default function PostCard({
           </h2>
         </Link>
         <p className="text-xs sm:text-sm text-gray-300 leading-relaxed whitespace-pre-line font-normal">
-          {post.content}
+          {stripHtml(post.content)}
         </p>
       </div>
 

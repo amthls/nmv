@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import { pool } from '../config/db';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_jwt_novelhub_key_2026_x89a@!secure';
+import { JWT_SECRET, ENABLE_DEMO_ACCOUNTS } from '../config/env';
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000; // 30 days = 1 month
 
 export const login = async (req: Request, res: Response) => {
@@ -270,6 +270,10 @@ export const logout = async (_req: Request, res: Response) => {
 
 export const getDemoAccounts = async (_req: Request, res: Response) => {
   try {
+    // Listing real usernames publicly is an account-enumeration gift; opt-in only (ENABLE_DEMO_ACCOUNTS=true)
+    if (!ENABLE_DEMO_ACCOUNTS) {
+      return res.json({ success: true, data: [], disabled: true });
+    }
     const result = await pool.query(`
       SELECT 
         u.id, u.username, u.display_name, u.avatar_url,

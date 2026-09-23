@@ -2,6 +2,8 @@ import { UserReadingLog } from '../models/readingHistory.model';
 ﻿import { Request, Response } from 'express';
 import { pool } from '../config/db';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
+import { searchStoryIds, indexStory, removeStoryFromIndex } from '../services/search.service';
+import { sanitizeRichText } from '../utils/richText';
 
 function slugify(text: string) {
   return text
@@ -44,6 +46,41 @@ export async function canUserManageStory(userId: string, storyId: string, userRo
 
   return false;
 }
+
+/**
+ * List stories the current logged-in user is allowed to manage (upload chapters,
+ * edit info, add collaborators): stories they uploaded, stories owned by a
+ * translation group they belong to, stories they were added as a collaborator on,
+ * or every story if they are admin/mod.
+ */
+export const getManageableStories = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ success: false, message: 'Bạn chưa đăng nhập.' });
+    }
+
+    const userId = req.user.id;
+    const userRoles = req.user.roles || [];
+    const isAdminOrMod = userRoles.includes('admin') || userRoles.includes('mod');
+
+    const result = await pool.query(`
+      SELECT DISTINCT
+        s.id, s.title, s.slug, s.story_type, s.status, s.total_chapters,
+        s.uploader_id, s.group_id, g.name as group_name
+      FROM stories s
+      LEFT JOIN translation_groups g ON s.group_id = g.id
+      LEFT JOIN group_members gm ON gm.group_id = s.group_id AND gm.user_id = $1
+      LEFT JOIN story_collaborators sc ON sc.story_id = s.id AND sc.user_id = $1
+      WHERE s.approval_status = 'approved'
+        AND ($2 OR s.uploader_id = $1 OR gm.user_id IS NOT NULL OR sc.user_id IS NOT NULL)
+      ORDER BY s.title ASC;
+    `, [userId, isAdminOrMod]);
+
+    res.json({ success: true, data: result.rows });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
 
 export const getTrendingStories = async (req: Request, res: Response) => {
   try {
@@ -191,14 +228,18 @@ export const exploreStories = async (req: Request, res: Response) => {
       exclude_tags,
       language,
       min_chapters,
-      sort = 'updated',
+      sort: sortParam,
       page = '1',
       limit = '24',
     } = req.query;
 
-    const pageNum = Math.max(1, parseInt(page as string) || 1);
+    // Bound what one request can ask for: deep OFFSETs and huge search strings are cheap DoS vectors
+    const pageNum = Math.min(1000, Math.max(1, parseInt(page as string) || 1));
     const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 24));
     const offset = (pageNum - 1) * limitNum;
+    if (typeof q === 'string' && q.length > 120) {
+      return res.status(400).json({ success: false, message: 'Từ khóa tìm kiếm quá dài (tối đa 120 ký tự).' });
+    }
 
     let baseQuery = `
       FROM stories s
@@ -212,15 +253,27 @@ export const exploreStories = async (req: Request, res: Response) => {
     const params: any[] = [];
     let conditions = '';
 
+    // Ranked story ids from Elasticsearch; null means "not available" -> SQL ILIKE fallback.
+    let rankedIds: string[] | null = null;
     if (q && typeof q === 'string' && q.trim()) {
-      params.push(`%${q.trim()}%`);
-      conditions += ` AND (
-        s.title ILIKE $${params.length} OR 
-        s.original_title ILIKE $${params.length} OR 
-        s.author_name ILIKE $${params.length} OR 
-        s.artist_name ILIKE $${params.length}
-      )`;
+      rankedIds = await searchStoryIds(q.trim());
+      if (rankedIds !== null) {
+        params.push(rankedIds);
+        conditions += ` AND s.id = ANY($${params.length}::uuid[])`;
+      } else {
+        params.push(`%${q.trim()}%`);
+        conditions += ` AND (
+          s.title ILIKE $${params.length} OR 
+          s.original_title ILIKE $${params.length} OR 
+          s.author_name ILIKE $${params.length} OR 
+          s.artist_name ILIKE $${params.length}
+        )`;
+      }
     }
+    const rankedIdsParam = rankedIds !== null ? params.length : 0;
+
+    // Relevance order is the default when searching; otherwise newest-updated first.
+    const sort = sortParam || (rankedIds !== null ? 'relevance' : 'updated');
 
     if (type && type !== 'all') {
       params.push(type);
@@ -272,6 +325,11 @@ export const exploreStories = async (req: Request, res: Response) => {
 
     let orderBy = 's.last_chapter_at DESC NULLS LAST, s.created_at DESC';
     switch (sort) {
+      case 'relevance':
+        orderBy = rankedIdsParam
+          ? `array_position($${rankedIdsParam}::uuid[], s.id)`
+          : 's.last_chapter_at DESC NULLS LAST, s.created_at DESC';
+        break;
       case 'views':
         orderBy = 's.total_views DESC, s.rating_avg DESC';
         break;
@@ -422,6 +480,15 @@ export const getStoryBySlug = async (req: Request, res: Response) => {
 
     story.volumes = volumesRes.rows;
 
+    // Published chapters that belong to no volume (posted without one, or their volume was deleted)
+    const looseRes = await pool.query(`
+      SELECT id, title, chapter_number, slug, word_count, published_at, total_views, total_comments
+      FROM chapters
+      WHERE story_id = $1 AND is_published = true AND volume_id IS NULL
+      ORDER BY chapter_number ASC;
+    `, [story.id]);
+    story.unassigned_chapters = looseRes.rows;
+
     const firstChapterRes = await pool.query(`
       SELECT id, slug, title, chapter_number 
       FROM chapters 
@@ -448,6 +515,7 @@ export const getStoryBySlug = async (req: Request, res: Response) => {
     story.latest_chapter = latestChapterRes.rows[0] || null;
 
     const currentUserId = (req as any).user?.id;
+    const currentUserRoles = (req as any).user?.roles || [];
     if (currentUserId) {
       const favCheck = await pool.query(
         'SELECT id, category FROM user_favorites WHERE user_id = $1::uuid AND story_id = $2::uuid',
@@ -455,9 +523,11 @@ export const getStoryBySlug = async (req: Request, res: Response) => {
       );
       story.is_favorite = favCheck.rows.length > 0;
       story.favorite_category = favCheck.rows[0]?.category || null;
+      story.can_manage = await canUserManageStory(currentUserId, story.id, currentUserRoles);
     } else {
       story.is_favorite = false;
       story.favorite_category = null;
+      story.can_manage = false;
     }
 
     res.json({
@@ -671,7 +741,7 @@ export const updateStory = async (req: AuthenticatedRequest, res: Response) => {
     `, [
       title?.trim() || null,
       original_title?.trim() || null,
-      synopsis?.trim() || null,
+      sanitizeRichText(synopsis) || null,
       cover_image_url || null,
       banner_image_url || null,
       story_type || null,
@@ -695,6 +765,8 @@ export const updateStory = async (req: AuthenticatedRequest, res: Response) => {
         await pool.query(`INSERT INTO story_tags (story_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [id, tagId]);
       }
     }
+
+    await indexStory(id);
 
     res.json({
       success: true,
@@ -754,6 +826,7 @@ export const deleteStory = async (req: AuthenticatedRequest, res: Response) => {
         DELETE FROM chapter_pages WHERE chapter_id IN (SELECT id FROM chapters WHERE story_id = $1)
       `, [id]);
       await client.query(`DELETE FROM chapter_submissions WHERE story_id = $1`, [id]);
+      await client.query(`DELETE FROM comments WHERE target_type = 'chapter' AND target_id IN (SELECT id FROM chapters WHERE story_id = $1)`, [id]);
       await client.query(`DELETE FROM chapters WHERE story_id = $1`, [id]);
 
       // 3. Delete volumes
@@ -762,7 +835,8 @@ export const deleteStory = async (req: AuthenticatedRequest, res: Response) => {
       // 4. Unlink posts related to this story
       await client.query(`UPDATE posts SET story_id = NULL WHERE story_id = $1`, [id]);
 
-      // 5. Delete story record
+      // 5. Delete comments left directly on the story, then the story record
+      await client.query(`DELETE FROM comments WHERE target_type = 'story' AND target_id = $1`, [id]);
       await client.query(`DELETE FROM stories WHERE id = $1`, [id]);
 
       await client.query('COMMIT');
@@ -772,6 +846,8 @@ export const deleteStory = async (req: AuthenticatedRequest, res: Response) => {
     } finally {
       client.release();
     }
+
+    await removeStoryFromIndex(id);
 
     res.json({
       success: true,

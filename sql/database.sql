@@ -34,7 +34,7 @@ CREATE TYPE story_status AS ENUM ('ongoing', 'completed', 'hiatus', 'dropped');
 CREATE TYPE approval_status AS ENUM ('pending', 'approved', 'rejected');
 
 -- Vai trò trong nhóm dịch
-CREATE TYPE group_role AS ENUM ('leader', 'member');
+CREATE TYPE group_role AS ENUM ('leader', 'member', 'mod', 'translator', 'editor', 'raw_provider', 'proofreader');
 
 -- Loại thông báo
 CREATE TYPE notification_type AS ENUM (
@@ -54,7 +54,7 @@ CREATE TYPE notification_type AS ENUM (
 CREATE TYPE reaction_type AS ENUM ('like', 'love', 'haha', 'wow', 'sad', 'angry');
 
 -- Loại nội dung cho comment
-CREATE TYPE comment_target_type AS ENUM ('chapter', 'post');
+CREATE TYPE comment_target_type AS ENUM ('chapter', 'post', 'story');
 
 -- ============================================================================
 -- 1. BẢNG NGƯỜI DÙNG (ACCOUNTS)
@@ -67,6 +67,7 @@ CREATE TABLE users (
     password_hash   VARCHAR(255) NOT NULL,
     display_name    VARCHAR(100),
     avatar_url      TEXT,
+    banner_url      TEXT,
     bio             TEXT,
     is_banned       BOOLEAN DEFAULT FALSE,
     ban_reason      TEXT,
@@ -168,7 +169,9 @@ CREATE TABLE translation_groups (
     banner_url      TEXT,
     website_url     TEXT,
     discord_url     TEXT,
+    rules           TEXT,
     is_active       BOOLEAN DEFAULT TRUE,
+    approval_status VARCHAR(20) DEFAULT 'approved',
     created_by      UUID NOT NULL REFERENCES users(id),
     created_at      TIMESTAMPTZ DEFAULT NOW(),
     updated_at      TIMESTAMPTZ DEFAULT NOW()
@@ -188,6 +191,17 @@ CREATE TABLE group_members (
 
 CREATE INDEX idx_group_members_group ON group_members(group_id);
 CREATE INDEX idx_group_members_user ON group_members(user_id);
+
+CREATE TABLE group_messages (
+    id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    group_id    UUID NOT NULL REFERENCES translation_groups(id) ON DELETE CASCADE,
+    user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    message     TEXT NOT NULL,
+    attachments JSONB DEFAULT '[]'::jsonb,
+    created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_group_messages_group ON group_messages(group_id);
 
 -- ============================================================================
 -- 6. TRUYỆN (STORIES)
@@ -249,6 +263,16 @@ CREATE TABLE story_tags (
 CREATE INDEX idx_story_tags_story ON story_tags(story_id);
 CREATE INDEX idx_story_tags_tag ON story_tags(tag_id);
 
+CREATE TABLE story_collaborators (
+    story_id    UUID NOT NULL REFERENCES stories(id) ON DELETE CASCADE,
+    user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role        VARCHAR(30) DEFAULT 'collaborator',
+    created_at  TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (story_id, user_id)
+);
+
+CREATE INDEX idx_story_collaborators_user ON story_collaborators(user_id);
+
 -- ============================================================================
 -- 7. VOLUMES (Tập truyện)
 -- ============================================================================
@@ -280,6 +304,7 @@ CREATE TABLE chapters (
     chapter_number      DECIMAL(10,2) NOT NULL,
     slug                VARCHAR(500) NOT NULL,
     content             TEXT,
+    content_blocks      JSONB,
     word_count          INTEGER DEFAULT 0,
     is_published        BOOLEAN DEFAULT TRUE,
     approval_status     approval_status DEFAULT 'pending',
@@ -317,6 +342,31 @@ CREATE TABLE chapter_pages (
 );
 
 CREATE INDEX idx_chapter_pages_chapter ON chapter_pages(chapter_id);
+
+-- Hàng đợi nộp bản dịch chương (trước khi được duyệt & đồng bộ vào bảng chapters)
+CREATE TABLE chapter_submissions (
+    id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    story_id        UUID NOT NULL REFERENCES stories(id) ON DELETE CASCADE,
+    volume_id       UUID REFERENCES volumes(id) ON DELETE SET NULL,
+    chapter_number  DECIMAL(10,2) NOT NULL,
+    title           VARCHAR(500) NOT NULL,
+    slug            VARCHAR(500) NOT NULL,
+    content_blocks  JSONB,
+    raw_content     TEXT,
+    word_count      INTEGER DEFAULT 0,
+    uploader_id     UUID NOT NULL REFERENCES users(id),
+    group_id        UUID REFERENCES translation_groups(id) ON DELETE SET NULL,
+    approval_status VARCHAR(20) DEFAULT 'pending',
+    approved_by     UUID REFERENCES users(id),
+    approved_at     TIMESTAMPTZ,
+    rejection_reason TEXT,
+    is_active       BOOLEAN DEFAULT FALSE,
+    created_at      TIMESTAMPTZ DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_chapter_submissions_story ON chapter_submissions(story_id);
+CREATE INDEX idx_chapter_submissions_status ON chapter_submissions(approval_status);
 
 -- ============================================================================
 -- 10. LƯỢT XEM (VIEW TRACKING)
@@ -394,10 +444,9 @@ CREATE TABLE reading_history (
     scroll_position DECIMAL(5,2) DEFAULT 0,
     page_number     INTEGER,
     read_at         TIMESTAMPTZ DEFAULT NOW(),
-    time_spent_seconds INTEGER DEFAULT 0
+    time_spent_seconds INTEGER DEFAULT 0,
+    CONSTRAINT reading_history_user_chapter_key UNIQUE (user_id, chapter_id)
 );
-
-CREATE INDEX idx_reading_history_chapter ON reading_history(user_id, chapter_id);
 CREATE INDEX idx_reading_history_user ON reading_history(user_id, read_at DESC);
 CREATE INDEX idx_reading_history_story ON reading_history(story_id);
 
@@ -492,11 +541,14 @@ CREATE TABLE notifications (
     sender_id       UUID REFERENCES users(id) ON DELETE SET NULL,
     is_read         BOOLEAN DEFAULT FALSE,
     read_at         TIMESTAMPTZ,
-    created_at      TIMESTAMPTZ DEFAULT NOW()
+    created_at      TIMESTAMPTZ DEFAULT NOW(),
+    dedupe_key      VARCHAR(160)   -- makes queue re-deliveries idempotent
 );
 
 CREATE INDEX idx_notifications_user ON notifications(user_id, is_read, created_at DESC);
 CREATE INDEX idx_notifications_type ON notifications(type);
+CREATE UNIQUE INDEX uq_notifications_dedupe ON notifications(dedupe_key) WHERE dedupe_key IS NOT NULL;
+CREATE INDEX idx_notifications_sender ON notifications(sender_id) WHERE sender_id IS NOT NULL;  -- fast user deletion (FK SET NULL)
 
 CREATE TABLE broadcast_notifications (
     id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -518,9 +570,14 @@ CREATE TABLE posts (
     slug            VARCHAR(500) NOT NULL UNIQUE,
     content         TEXT NOT NULL,
     cover_image_url TEXT,
+    images          JSONB DEFAULT '[]'::jsonb,
     story_id        UUID REFERENCES stories(id) ON DELETE SET NULL,
     is_published    BOOLEAN DEFAULT TRUE,
+    is_draft        BOOLEAN DEFAULT FALSE,
     is_deleted      BOOLEAN DEFAULT FALSE,
+    approval_status VARCHAR(20) DEFAULT 'approved',
+    approved_by     UUID REFERENCES users(id),
+    approved_at     TIMESTAMPTZ,
     view_count      BIGINT DEFAULT 0,
     comment_count   INTEGER DEFAULT 0,
     reaction_count  INTEGER DEFAULT 0,
@@ -687,6 +744,8 @@ BEGIN
             UPDATE chapters SET total_comments = total_comments + 1 WHERE id = NEW.target_id;
             UPDATE stories SET total_comments = total_comments + 1
             WHERE id = (SELECT story_id FROM chapters WHERE id = NEW.target_id);
+        ELSIF NEW.target_type = 'story' THEN
+            UPDATE stories SET total_comments = total_comments + 1 WHERE id = NEW.target_id;
         ELSIF NEW.target_type = 'post' THEN
             UPDATE posts SET comment_count = comment_count + 1 WHERE id = NEW.target_id;
         END IF;

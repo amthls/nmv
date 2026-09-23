@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import SmartImage from '@/components/common/SmartImage';
 import CreateGroupModal from '@/components/groups/CreateGroupModal';
+import { stripHtml } from '@/lib/richText';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -214,7 +215,7 @@ export default function GroupsPage() {
                     </Link>
 
                     <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed">
-                      {group.description || 'Chưa có mô tả nhóm dịch.'}
+                      {stripHtml(group.description) || 'Chưa có mô tả nhóm dịch.'}
                     </p>
 
                     {/* Stats pills */}

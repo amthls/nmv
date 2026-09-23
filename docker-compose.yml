@@ -11,7 +11,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-novel_platform}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      # Loopback only: the database must never be reachable from the LAN/Internet
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./sql/database.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -20,6 +21,76 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - novel_network
+
+  # ============================================================================
+  # 1b. Search Service: novelsearch, a small in-house Go full-text search
+  #     engine that replaces Elasticsearch (story search, optional). It speaks
+  #     the same narrow REST surface the backend used to call on ES, so the
+  #     Node.js integration code (search.service.ts) is unchanged.
+  #     Published on localhost only.
+  # ============================================================================
+  search:
+    build:
+      context: ./search-service
+      dockerfile: Dockerfile
+    container_name: novel_search
+    restart: unless-stopped
+    environment:
+      PORT: 8091
+      SNAPSHOT_PATH: /data/snapshot.json
+    ports:
+      - "127.0.0.1:${SEARCH_PORT:-9201}:8091"
+    volumes:
+      - search_data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8091/_meta/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks:
+      - novel_network
+
+  # ============================================================================
+  # 0. Gateway: nginx, the ONLY public entry point (port 3000 on the host).
+  #    Real client IP, rate limits, connection caps, slow-client timeouts, image cache.
+  # ============================================================================
+  gateway:
+    image: nginx:1.27-alpine
+    container_name: novel_gateway
+    restart: unless-stopped
+    ports:
+      - "${GATEWAY_PORT:-3000}:8080"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - gateway_cache:/var/cache/nginx
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - novel_network
+
+  # ============================================================================
+  # 1c. Message broker: RabbitMQ (notification queue). Management UI on localhost only.
+  # ============================================================================
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: novel_rabbitmq
+    restart: unless-stopped
+    hostname: novel-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-novel}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:${RABBITMQ_MANAGEMENT_PORT:-15673}:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
     networks:
       - novel_network
 
@@ -33,18 +104,53 @@ services:
     container_name: novel_backend
     restart: unless-stopped
     ports:
-      - "${PORT:-5000}:5000"
+      # Loopback only (debugging). The site reaches the API through the frontend proxy on the Docker network.
+      - "127.0.0.1:${PORT:-5000}:5000"
     environment:
       NODE_ENV: production
       PORT: 5000
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-novel_platform}?schema=public
       CORS_ORIGIN: http://localhost:3000
-      JWT_SECRET: ${JWT_SECRET:-super_secret_jwt_novelhub_key_2026_x89a@!secure}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (openssl rand -hex 32)}
+      ENABLE_DEMO_ACCOUNTS: ${ENABLE_DEMO_ACCOUNTS:-false}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      SEARCH_URL: http://search:8091
+      SEARCH_INDEX: ${SEARCH_INDEX:-novel_stories}
     volumes:
       - ./uploads:/app/uploads
+      - image_cache:/app/.cache # resized copies of uploaded images (safe to delete)
     depends_on:
       postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started # the API still works (inline fallback) if the broker is down
+      search:
+        condition: service_started # search falls back to SQL ILIKE if this isn't ready yet
+    networks:
+      - novel_network
+
+  # ============================================================================
+  # 2b. Queue worker: same image as the API, consumes notification jobs from RabbitMQ
+  #     and writes them to PostgreSQL. Scale with `docker compose up -d --scale worker=3`
+  #     (remove container_name first).
+  # ============================================================================
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: novel_worker
+    command: ["node", "dist/worker.js"]
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-novel_platform}?schema=public
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (openssl rand -hex 32)}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     networks:
       - novel_network
@@ -56,14 +162,16 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: /api/v1
     container_name: novel_frontend
     restart: unless-stopped
-    ports:
-      - "3000:3000"
+    # Not published: visitors reach it through the gateway (nginx) only
+    expose:
+      - "3000"
     environment:
       NODE_ENV: production
       PORT: 3000
-      NEXT_PUBLIC_API_URL: http://localhost:5000/api/v1
       API_URL: http://backend:5000/api/v1
     volumes:
       - ./uploads:/app/public/uploads
@@ -93,6 +201,14 @@ services:
 
 volumes:
   postgres_data:
+    driver: local
+  search_data:
+    driver: local
+  image_cache:
+    driver: local
+  rabbitmq_data:
+    driver: local
+  gateway_cache:
     driver: local
 
 networks:

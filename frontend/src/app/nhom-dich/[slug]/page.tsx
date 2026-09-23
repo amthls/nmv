@@ -17,18 +17,25 @@ import {
   CheckCircle2, 
   Eye, 
   Star, 
-  Trash2, 
-  Edit3, 
+  Trash2,
+  Edit3,
   AlertCircle,
-  FileText
+  FileText,
+  XCircle,
+  Lock,
+  LogIn
 } from 'lucide-react';
 import SmartImage from '@/components/common/SmartImage';
+import { useAuth } from '@/context/AuthContext';
+import RichContent from '@/components/common/RichContent';
+import { stripHtml } from '@/lib/richText';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
 export default function GroupDetailPage() {
   const params = useParams();
   const slug = params?.slug as string;
+  const { user, isAuthenticated, hasRole, authFetch, openAuthModal } = useAuth();
 
   const [group, setGroup] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'stories' | 'chat' | 'submissions' | 'members' | 'info'>('stories');
@@ -38,6 +45,7 @@ export default function GroupDetailPage() {
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isSendingMsg, setIsSendingMsg] = useState(false);
+  const [chatFeedback, setChatFeedback] = useState<string | null>(null);
 
   // Submissions State
   const [submissions, setSubmissions] = useState<any[]>([]);
@@ -48,6 +56,11 @@ export default function GroupDetailPage() {
   const [newMemberRole, setNewMemberRole] = useState('translator');
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [memberFeedback, setMemberFeedback] = useState<string | null>(null);
+  const [submissionFeedback, setSubmissionFeedback] = useState<string | null>(null);
+
+  const currentMembership = group?.members?.find((m: any) => m.user_id === user?.id);
+  const isLeaderOrMod = hasRole('admin', 'mod') || ['leader', 'mod'].includes(currentMembership?.role);
+  const isMember = isAuthenticated && (isLeaderOrMod || Boolean(currentMembership));
 
   const fetchGroup = async () => {
     if (!slug) return;
@@ -106,22 +119,40 @@ export default function GroupDetailPage() {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAuthenticated) {
+      openAuthModal('login');
+      return;
+    }
     if (!newMessage.trim() || isSendingMsg || !group?.id) return;
 
     setIsSendingMsg(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/groups/${group.id}/messages`, {
+      const res = await authFetch(`${API_BASE_URL}/groups/${group.id}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: newMessage.trim() }),
       });
-      if (res.ok) {
+      const json = await res.json();
+      if (res.ok && json.success) {
         setNewMessage('');
+        setChatFeedback(null);
         fetchMessages();
+      } else {
+        setChatFeedback(json.message || 'Không thể gửi tin nhắn.');
       }
     } catch (e) {} finally {
       setIsSendingMsg(false);
     }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!group?.id || !confirm('Xóa tin nhắn này?')) return;
+    try {
+      await authFetch(`${API_BASE_URL}/groups/${group.id}/messages/${messageId}`, {
+        method: 'DELETE',
+      });
+      fetchMessages();
+    } catch (e) {}
   };
 
   const handleAddMember = async (e: React.FormEvent) => {
@@ -130,7 +161,7 @@ export default function GroupDetailPage() {
 
     setIsAddingMember(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/groups/${group.id}/members`, {
+      const res = await authFetch(`${API_BASE_URL}/groups/${group.id}/members`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -152,11 +183,17 @@ export default function GroupDetailPage() {
   const handleUpdateRole = async (memberUserId: string, newRole: string) => {
     if (!group?.id) return;
     try {
-      await fetch(`${API_BASE_URL}/groups/${group.id}/members/${memberUserId}`, {
+      const res = await authFetch(`${API_BASE_URL}/groups/${group.id}/members/${memberUserId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ role: newRole }),
       });
+      const json = await res.json();
+      if (!res.ok) {
+        setMemberFeedback(json.message || 'Không thể đổi vai trò thành viên.');
+        return;
+      }
+      setMemberFeedback(null);
       fetchGroup();
     } catch (e) {}
   };
@@ -165,21 +202,60 @@ export default function GroupDetailPage() {
     if (!confirm('Bạn có chắc chắn muốn xóa thành viên này khỏi nhóm?')) return;
     if (!group?.id) return;
     try {
-      await fetch(`${API_BASE_URL}/groups/${group.id}/members/${memberUserId}`, {
+      const res = await authFetch(`${API_BASE_URL}/groups/${group.id}/members/${memberUserId}`, {
         method: 'DELETE',
       });
+      const json = await res.json();
+      if (!res.ok) {
+        setMemberFeedback(json.message || 'Không thể xóa thành viên.');
+        return;
+      }
+      setMemberFeedback(null);
       fetchGroup();
     } catch (e) {}
   };
 
   const handleApproveSubmission = async (submissionId: string) => {
+    if (!isAuthenticated) {
+      openAuthModal('login');
+      return;
+    }
     setIsApproving(submissionId);
     try {
-      const res = await fetch(`${API_BASE_URL}/chapters/submissions/${submissionId}/approve-active`, {
+      const res = await authFetch(`${API_BASE_URL}/chapters/submissions/${submissionId}/approve-active`, {
         method: 'POST',
       });
-      if (res.ok) {
+      const json = await res.json();
+      if (res.ok && json.success) {
+        setSubmissionFeedback(null);
         fetchSubmissions();
+      } else {
+        setSubmissionFeedback(json.message || 'Không thể duyệt bản dịch này.');
+      }
+    } catch (e) {} finally {
+      setIsApproving(null);
+    }
+  };
+
+  const handleRejectSubmission = async (submissionId: string) => {
+    if (!isAuthenticated) {
+      openAuthModal('login');
+      return;
+    }
+    const reason = prompt('Lý do từ chối bản dịch này (không bắt buộc):') || '';
+    setIsApproving(submissionId);
+    try {
+      const res = await authFetch(`${API_BASE_URL}/chapters/submissions/${submissionId}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason }),
+      });
+      const json = await res.json();
+      if (res.ok && json.success) {
+        setSubmissionFeedback(null);
+        fetchSubmissions();
+      } else {
+        setSubmissionFeedback(json.message || 'Không thể từ chối bản dịch này.');
       }
     } catch (e) {} finally {
       setIsApproving(null);
@@ -244,9 +320,11 @@ export default function GroupDetailPage() {
               </span>
             </div>
 
-            <p className="text-xs sm:text-sm text-gray-300 max-w-2xl leading-relaxed">
-              {group.description || 'Chưa có mô tả nhóm.'}
-            </p>
+            <div className="text-xs sm:text-sm text-gray-300 max-w-2xl leading-relaxed">
+              {stripHtml(group.description)
+                ? <RichContent content={group.description} />
+                : 'Chưa có mô tả nhóm.'}
+            </div>
 
             {/* Social links */}
             <div className="flex flex-wrap items-center gap-4 text-xs text-gray-400 pt-1">
@@ -418,11 +496,11 @@ export default function GroupDetailPage() {
               </div>
             ) : (
               messages.map((m) => (
-                <div key={m.id} className="flex items-start gap-3">
+                <div key={m.id} className="flex items-start gap-3 group">
                   <div className="w-8 h-8 rounded-full overflow-hidden bg-brand-600/30 border border-brand-500/30 shrink-0">
                     <SmartImage src={m.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'} alt={m.display_name} className="w-full h-full object-cover" />
                   </div>
-                  <div className="space-y-1 max-w-xl">
+                  <div className="space-y-1 max-w-xl flex-1">
                     <div className="flex items-center gap-2 text-[11px]">
                       <span className="font-bold text-white">{m.display_name || m.username}</span>
                       {m.member_role && (
@@ -431,6 +509,15 @@ export default function GroupDetailPage() {
                         </span>
                       )}
                       <span className="text-gray-500 text-[10px]">{new Date(m.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
+                      {(m.user_id === user?.id || isLeaderOrMod) && (
+                        <button
+                          onClick={() => handleDeleteMessage(m.id)}
+                          className="opacity-0 group-hover:opacity-100 text-rose-400 hover:text-rose-300 transition ml-auto"
+                          title="Xóa tin nhắn"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
                     </div>
                     <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-xs text-gray-200 leading-relaxed">
                       {m.message}
@@ -442,23 +529,44 @@ export default function GroupDetailPage() {
           </div>
 
           {/* Send Box */}
-          <form onSubmit={handleSendMessage} className="p-3 border-t border-white/10 bg-black/30 flex items-center gap-2">
-            <input
-              type="text"
-              placeholder="Nhập tin nhắn trao đổi công việc dịch..."
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              className="flex-1 h-10 px-4 rounded-xl bg-white/5 border border-white/10 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-500 transition"
-            />
-            <button
-              type="submit"
-              disabled={!newMessage.trim() || isSendingMsg}
-              className="px-5 h-10 rounded-xl bg-brand-600 hover:bg-brand-500 disabled:opacity-40 text-white font-bold text-xs flex items-center gap-1.5 transition"
-            >
-              <Send className="w-3.5 h-3.5" />
-              <span>Gửi</span>
-            </button>
-          </form>
+          {chatFeedback && (
+            <div className="px-4 py-2 bg-rose-500/10 border-t border-rose-500/30 text-rose-300 text-[11px] font-semibold">
+              {chatFeedback}
+            </div>
+          )}
+          {isMember ? (
+            <form onSubmit={handleSendMessage} className="p-3 border-t border-white/10 bg-black/30 flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="Nhập tin nhắn trao đổi công việc dịch..."
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                className="flex-1 h-10 px-4 rounded-xl bg-white/5 border border-white/10 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-500 transition"
+              />
+              <button
+                type="submit"
+                disabled={!newMessage.trim() || isSendingMsg}
+                className="px-5 h-10 rounded-xl bg-brand-600 hover:bg-brand-500 disabled:opacity-40 text-white font-bold text-xs flex items-center gap-1.5 transition"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>Gửi</span>
+              </button>
+            </form>
+          ) : (
+            <div className="p-4 border-t border-white/10 bg-black/30 text-center text-xs text-gray-400 flex items-center justify-center gap-2">
+              <Lock className="w-3.5 h-3.5" />
+              <span>
+                {isAuthenticated
+                  ? 'Chỉ thành viên nhóm mới có thể tham gia thảo luận tại đây.'
+                  : 'Đăng nhập và là thành viên nhóm để tham gia thảo luận.'}
+              </span>
+              {!isAuthenticated && (
+                <button onClick={() => openAuthModal('login')} className="text-brand-400 hover:underline font-bold flex items-center gap-1">
+                  <LogIn className="w-3.5 h-3.5" /> Đăng nhập
+                </button>
+              )}
+            </div>
+          )}
 
         </div>
       )}
@@ -479,6 +587,12 @@ export default function GroupDetailPage() {
             </Link>
           </div>
 
+          {submissionFeedback && (
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-semibold">
+              {submissionFeedback}
+            </div>
+          )}
+
           {submissions.length === 0 ? (
             <div className="p-12 text-center rounded-3xl glass-panel border border-white/10 space-y-3">
               <ShieldCheck className="w-12 h-12 text-brand-400 mx-auto opacity-60" />
@@ -490,12 +604,17 @@ export default function GroupDetailPage() {
               {submissions.map((sub) => (
                 <div key={sub.id} className="p-4 rounded-2xl glass-panel border border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#131322]/85">
                   <div className="space-y-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs font-bold text-brand-400">[{sub.story_title}]</span>
                       <span className="text-xs font-bold text-white">Chương {sub.chapter_number}: {sub.title}</span>
                       {sub.is_active && (
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
                           <CheckCircle2 className="w-3 h-3" /> Đang hiển thị chính thức
+                        </span>
+                      )}
+                      {sub.approval_status === 'rejected' && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 flex items-center gap-1">
+                          <XCircle className="w-3 h-3" /> Đã từ chối
                         </span>
                       )}
                     </div>
@@ -506,22 +625,48 @@ export default function GroupDetailPage() {
                       <span>•</span>
                       <span>{new Date(sub.created_at).toLocaleDateString('vi-VN')}</span>
                     </div>
+                    {sub.approval_status === 'rejected' && sub.rejection_reason && (
+                      <div className="text-[11px] text-rose-300 italic">Lý do từ chối: {sub.rejection_reason}</div>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    {!sub.is_active ? (
+                    {sub.is_active ? (
+                      <span className="text-xs text-emerald-400 font-bold px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                        Bản Chính Thức
+                      </span>
+                    ) : !isLeaderOrMod ? (
+                      <span className="text-xs text-gray-400 font-semibold px-3 py-1.5">
+                        {sub.approval_status === 'rejected' ? 'Đã từ chối' : 'Đang chờ Trưởng nhóm duyệt'}
+                      </span>
+                    ) : sub.approval_status === 'rejected' ? (
                       <button
                         onClick={() => handleApproveSubmission(sub.id)}
                         disabled={isApproving === sub.id}
                         className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-500/20 transition flex items-center gap-1.5"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>{isApproving === sub.id ? 'Đang duyệt...' : 'Duyệt Bản Này'}</span>
+                        <span>{isApproving === sub.id ? 'Đang duyệt...' : 'Duyệt Lại Bản Này'}</span>
                       </button>
                     ) : (
-                      <span className="text-xs text-emerald-400 font-bold px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                        Bản Chính Thức
-                      </span>
+                      <>
+                        <button
+                          onClick={() => handleApproveSubmission(sub.id)}
+                          disabled={isApproving === sub.id}
+                          className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-500/20 transition flex items-center gap-1.5"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>{isApproving === sub.id ? 'Đang duyệt...' : 'Duyệt Bản Này'}</span>
+                        </button>
+                        <button
+                          onClick={() => handleRejectSubmission(sub.id)}
+                          disabled={isApproving === sub.id}
+                          className="px-4 py-2 rounded-xl bg-white/5 hover:bg-rose-500/20 border border-white/10 hover:border-rose-500/40 text-gray-300 hover:text-rose-300 text-xs font-bold transition flex items-center gap-1.5"
+                        >
+                          <XCircle className="w-3.5 h-3.5" />
+                          <span>Từ Chối</span>
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
@@ -535,51 +680,53 @@ export default function GroupDetailPage() {
       {activeTab === 'members' && (
         <div className="space-y-6">
           
-          {/* Add Member Card */}
-          <div className="p-5 rounded-3xl glass-panel border border-white/10 bg-[#131322]/90 space-y-3">
-            <h3 className="text-xs font-bold text-brand-400 uppercase tracking-wider flex items-center gap-1.5">
-              <UserPlus className="w-4 h-4" /> Thêm Thành Viên Mới Vào Nhóm
-            </h3>
+          {/* Add Member Card (leader/mod only) */}
+          {isLeaderOrMod && (
+            <div className="p-5 rounded-3xl glass-panel border border-white/10 bg-[#131322]/90 space-y-3">
+              <h3 className="text-xs font-bold text-brand-400 uppercase tracking-wider flex items-center gap-1.5">
+                <UserPlus className="w-4 h-4" /> Thêm Thành Viên Mới Vào Nhóm
+              </h3>
 
-            {memberFeedback && (
-              <div className="p-2.5 rounded-xl bg-brand-500/20 text-brand-300 text-xs font-semibold">
-                {memberFeedback}
-              </div>
-            )}
+              {memberFeedback && (
+                <div className="p-2.5 rounded-xl bg-brand-500/20 text-brand-300 text-xs font-semibold">
+                  {memberFeedback}
+                </div>
+              )}
 
-            <form onSubmit={handleAddMember} className="flex flex-col sm:flex-row items-center gap-2">
-              <input
-                type="text"
-                placeholder="Nhập Username hoặc Email của thành viên..."
-                value={newMemberInput}
-                onChange={(e) => setNewMemberInput(e.target.value)}
-                className="flex-1 h-10 px-4 rounded-xl bg-white/5 border border-white/10 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-500 transition w-full"
-                required
-              />
+              <form onSubmit={handleAddMember} className="flex flex-col sm:flex-row items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="Nhập Username hoặc Email của thành viên..."
+                  value={newMemberInput}
+                  onChange={(e) => setNewMemberInput(e.target.value)}
+                  className="flex-1 h-10 px-4 rounded-xl bg-white/5 border border-white/10 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-500 transition w-full"
+                  required
+                />
 
-              <select
-                value={newMemberRole}
-                onChange={(e) => setNewMemberRole(e.target.value)}
-                className="h-10 px-3 rounded-xl bg-[#0f0f18] border border-white/10 text-xs text-white focus:outline-none focus:border-brand-500 w-full sm:w-auto"
-              >
-                <option value="translator">Dịch Giả (Translator)</option>
-                <option value="editor">Biên Tập (Editor)</option>
-                <option value="proofreader">Hiệu Đính (Proofreader)</option>
-                <option value="raw_provider">Raw Provider</option>
-                <option value="mod">Quản Lý Nhóm (Mod)</option>
-                <option value="member">Thành Viên</option>
-              </select>
+                <select
+                  value={newMemberRole}
+                  onChange={(e) => setNewMemberRole(e.target.value)}
+                  className="h-10 px-3 rounded-xl bg-[#0f0f18] border border-white/10 text-xs text-white focus:outline-none focus:border-brand-500 w-full sm:w-auto"
+                >
+                  <option value="translator">Dịch Giả (Translator)</option>
+                  <option value="editor">Biên Tập (Editor)</option>
+                  <option value="proofreader">Hiệu Đính (Proofreader)</option>
+                  <option value="raw_provider">Raw Provider</option>
+                  <option value="mod">Quản Lý Nhóm (Mod)</option>
+                  <option value="member">Thành Viên</option>
+                </select>
 
-              <button
-                type="submit"
-                disabled={!newMemberInput.trim() || isAddingMember}
-                className="px-5 h-10 rounded-xl bg-brand-600 hover:bg-brand-500 disabled:opacity-40 text-white font-bold text-xs flex items-center gap-1.5 transition w-full sm:w-auto justify-center"
-              >
-                <UserPlus className="w-3.5 h-3.5" />
-                <span>Thêm</span>
-              </button>
-            </form>
-          </div>
+                <button
+                  type="submit"
+                  disabled={!newMemberInput.trim() || isAddingMember}
+                  className="px-5 h-10 rounded-xl bg-brand-600 hover:bg-brand-500 disabled:opacity-40 text-white font-bold text-xs flex items-center gap-1.5 transition w-full sm:w-auto justify-center"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>Thêm</span>
+                </button>
+              </form>
+            </div>
+          )}
 
           {/* Members List */}
           <div className="space-y-3">
@@ -598,7 +745,7 @@ export default function GroupDetailPage() {
                     </div>
                   </div>
 
-                  {m.role !== 'leader' && (
+                  {isLeaderOrMod && m.role !== 'leader' && (
                     <div className="flex items-center gap-1 shrink-0">
                       <select
                         value={m.role}
@@ -632,8 +779,10 @@ export default function GroupDetailPage() {
       {activeTab === 'info' && (
         <div className="p-6 rounded-3xl glass-panel border border-white/10 bg-[#12121e]/90 space-y-4 max-w-3xl">
           <h2 className="text-base font-bold text-white">Nội Quy & Tiêu Chuẩn Dịch Thuật Của Nhóm</h2>
-          <div className="text-xs text-gray-300 leading-relaxed whitespace-pre-line">
-            {group.rules || 'Nhóm chưa thiết lập nội quy riêng. Vui lòng tuân thủ quy chuẩn chung của NovelHub.'}
+          <div className="text-xs text-gray-300 leading-relaxed">
+            {stripHtml(group.rules)
+              ? <RichContent content={group.rules} />
+              : 'Nhóm chưa thiết lập nội quy riêng. Vui lòng tuân thủ quy chuẩn chung của NovelHub.'}
           </div>
         </div>
       )}

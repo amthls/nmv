@@ -18,14 +18,18 @@ import {
   User,
   Clock,
   Trash2,
+  Pencil,
   CheckCircle2
 } from 'lucide-react';
 import ReaderSettingsModal, { ReaderSettings } from '@/components/reader/ReaderSettingsModal';
 import ChapterSelectorModal from '@/components/reader/ChapterSelectorModal';
 import FloatingReaderBar from '@/components/reader/FloatingReaderBar';
 import CommentSection from '@/components/comments/CommentSection';
+import ReportButton from '@/components/common/ReportButton';
 import SmartImage from '@/components/common/SmartImage';
 import { useAuth } from '@/context/AuthContext';
+import { useReadingSession } from '@/context/ReadingSessionContext';
+import { logChapterRead } from '@/lib/readingHistory';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -33,6 +37,7 @@ export default function ChapterReaderPage() {
   const params = useParams();
   const router = useRouter();
   const { user, hasRole, authFetch, isAuthenticated, openAuthModal } = useAuth();
+  const { setSession: setReadingSession, updateScrollPercent } = useReadingSession();
 
   const storySlug = params?.slug as string;
   const chapterSlug = params?.chapterSlug as string;
@@ -106,46 +111,58 @@ export default function ChapterReaderPage() {
     const chapterId = chapterData.id;
     if (!storyId || !chapterId) return;
 
-    // 1. Instant local persistence for guest and offline
-    if (typeof window !== 'undefined') {
-      try {
-        const raw = localStorage.getItem('novelhub_guest_history') || '[]';
-        let list: any[] = JSON.parse(raw);
-        const newItem = {
-          id: `hist-${Date.now()}`,
-          story_id: storyId,
-          story_title: chapterData.story?.title || 'Tiểu Thuyết',
-          story_slug: chapterData.story?.slug || storySlug,
-          story_cover: chapterData.story?.cover_image_url || '',
-          story_author: chapterData.story?.author_name || 'Chưa rõ',
-          story_type: chapterData.story?.story_type || 'novel',
-          chapter_id: chapterId,
-          chapter_title: chapterData.title,
-          chapter_slug: chapterData.slug || chapterSlug,
-          chapter_number: chapterData.chapter_number,
-          read_at: new Date().toISOString(),
-          group_name: chapterData.story?.group_name || '',
-        };
-        list = [newItem, ...list.filter((h: any) => h.story_id !== storyId)];
-        localStorage.setItem('novelhub_guest_history', JSON.stringify(list));
-      } catch (e) {}
-    }
+    logChapterRead({
+      storyId,
+      storySlug: chapterData.story?.slug || storySlug,
+      storyTitle: chapterData.story?.title,
+      storyCover: chapterData.story?.cover_image_url,
+      storyAuthor: chapterData.story?.author_name,
+      storyType: chapterData.story?.story_type,
+      groupName: chapterData.story?.group_name,
+      chapterId,
+      chapterSlug: chapterData.slug || chapterSlug,
+      chapterTitle: chapterData.title,
+      chapterNumber: chapterData.chapter_number,
+      isAuthenticated,
+      authFetch,
+      apiBaseUrl: API_BASE_URL,
+    });
 
-    // 2. Persist in database if authenticated
-    if (isAuthenticated) {
-      authFetch(`${API_BASE_URL}/history`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          story_id: storyId,
-          chapter_id: chapterId,
-          scroll_position: 0,
-          page_number: 1,
-        }),
-      }).catch((err: any) => console.error('Failed to log reading history:', err));
-    }
+    // Feed the global "continue reading" miniplayer so it can follow the user off this page.
+    // Content is included so expanding the miniplayer into its reading tier needs no extra fetch.
+    setReadingSession({
+      storyId,
+      storySlug: chapterData.story?.slug || storySlug,
+      storyTitle: chapterData.story?.title || 'Tiểu Thuyết',
+      storyCover: chapterData.story?.cover_image_url || '',
+      storyType: chapterData.story?.story_type,
+      chapterId,
+      chapterSlug: chapterData.slug || chapterSlug,
+      chapterTitle: chapterData.title,
+      chapterNumber: chapterData.chapter_number,
+      prevChapterSlug: chapterData.prev_chapter?.slug ?? null,
+      nextChapterSlug: chapterData.next_chapter?.slug ?? null,
+      content: chapterData.content,
+      contentBlocks: chapterData.content_blocks,
+      pages: chapterData.pages,
+    });
   }, [chapterData?.id, isAuthenticated]);
 
+  // Keep the miniplayer's progress bar in sync while the user scrolls this chapter
+  useEffect(() => {
+    if (!chapterData?.id) return;
+    const chapterId = chapterData.id;
+
+    const handleScroll = () => {
+      const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const percent = totalHeight > 0 ? Math.min(100, Math.max(0, Math.round((window.scrollY / totalHeight) * 100))) : 0;
+      updateScrollPercent(chapterId, percent);
+    };
+
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [chapterData?.id, updateScrollPercent]);
 
   // Check for line hash or search param to auto-scroll
   useEffect(() => {
@@ -456,7 +473,25 @@ export default function ChapterReaderPage() {
               <Settings className="w-4 h-4" />
             </button>
 
-            {/* Delete Chapter Button for Admin / Mod / Owner */}
+            {/* Report violation (icon only in the header) */}
+            {chapterData?.id && (
+              <ReportButton
+                targetType="chapter"
+                targetId={chapterData.id}
+                className="p-2 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 transition ml-1 flex items-center [&>span]:hidden"
+              />
+            )}
+
+            {/* Edit / Delete Chapter for Admin / Mod / Owner */}
+            {canManage && (
+              <Link
+                href={`/dang-chuong?edit=${chapterData.id}`}
+                className="p-2 rounded-lg bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-400 border border-cyan-500/30 transition ml-1"
+                title="Sửa chương này (Chủ thầu / Admin / Mod)"
+              >
+                <Pencil className="w-4 h-4" />
+              </Link>
+            )}
             {canManage && (
               <button
                 onClick={handleDeleteCurrentChapter}
@@ -518,6 +553,7 @@ export default function ChapterReaderPage() {
               <div key={page.page_number} className="w-full max-w-3xl rounded-xl overflow-hidden shadow-2xl bg-black/40">
                 <SmartImage
                   src={page.image_url}
+                  adaptive
                   alt={`Trang ${page.page_number}`}
                   className="w-full h-auto"
                 />
@@ -567,6 +603,7 @@ export default function ChapterReaderPage() {
                       <div className="rounded-3xl overflow-hidden shadow-2xl border border-white/15 max-w-xl bg-black/40">
                         <SmartImage
                           src={block.image_url}
+                          adaptive
                           alt={`Minh họa đoạn ${idx + 1}`}
                           className="w-full h-auto max-h-[85vh] object-contain"
                         />
@@ -606,6 +643,7 @@ export default function ChapterReaderPage() {
                       <div className="rounded-3xl overflow-hidden shadow-2xl border border-white/15 max-w-xl bg-black/40">
                         <SmartImage
                           src={imgUrl}
+                          adaptive
                           alt={`Minh họa ${chapterData.title}`}
                           className="w-full h-auto max-h-[85vh] object-contain"
                         />

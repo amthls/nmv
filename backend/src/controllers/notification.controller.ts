@@ -32,10 +32,13 @@ export const getNotifications = async (req: AuthenticatedRequest, res: Response)
         s.id as story_id,
         s.title as story_title,
         s.slug as story_slug,
-        s.cover_image_url as story_cover
+        s.cover_image_url as story_cover,
+        p.slug as post_slug,
+        p.title as post_title
       FROM notifications n
       LEFT JOIN chapters c ON n.reference_id = c.id AND n.reference_type = 'chapter'
-      LEFT JOIN stories s ON c.story_id = s.id
+      LEFT JOIN stories s ON s.id = COALESCE(c.story_id, CASE WHEN n.reference_type = 'story' THEN n.reference_id END)
+      LEFT JOIN posts p ON n.reference_id = p.id AND n.reference_type = 'post'
       WHERE n.user_id = $1::uuid
       ORDER BY n.created_at DESC
       LIMIT 50;
@@ -124,41 +127,3 @@ export const deleteNotification = async (req: AuthenticatedRequest, res: Respons
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
-/**
- * Hàm helper tự động phát thông báo tới tất cả độc giả đang theo dõi truyện khi có chương mới
- */
-export async function createChapterUpdateNotifications(
-  storyId: string,
-  chapterId: string,
-  chapterTitle: string,
-  uploaderId?: string
-) {
-  try {
-    const res = await pool.query(`
-      INSERT INTO notifications (
-        user_id, type, title, message, reference_type, reference_id, sender_id, is_read, created_at
-      )
-      SELECT 
-        uf.user_id,
-        'chapter_update'::notification_type,
-        'Chương mới: ' || s.title,
-        'Bộ truyện "' || s.title || '" vừa có chương mới: ' || $1,
-        'chapter',
-        $2::uuid,
-        $3::uuid,
-        false,
-        NOW()
-      FROM user_favorites uf
-      JOIN stories s ON uf.story_id = s.id
-      WHERE uf.story_id = $4::uuid AND (uf.notify_updates = true OR uf.notify_updates IS NULL)
-      RETURNING id;
-    `, [chapterTitle, chapterId, uploaderId || null, storyId]);
-
-    console.log(`[Notification] Created ${res.rowCount} notifications for followers of story ${storyId}`);
-    return res.rowCount;
-  } catch (err) {
-    console.error('[Notification] Failed to create chapter update notifications:', err);
-    return 0;
-  }
-}

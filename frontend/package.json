@@ -9,6 +9,8 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@ckeditor/ckeditor5-react": "^11.2.0",
+    "ckeditor5": "^48.5.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.460.0",
     "next": "^14.2.18",

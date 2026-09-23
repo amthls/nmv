@@ -49,6 +49,8 @@ export default function AuthModal() {
   const [demoAccounts, setDemoAccounts] = useState<any[]>([]);
   const [demoRoleFilter, setDemoRoleFilter] = useState<string>('all');
   const [isDemoLoading, setIsDemoLoading] = useState(false);
+  // The demo tab and the "default password" hint only exist when the server has demo accounts enabled
+  const [demoEnabled, setDemoEnabled] = useState(false);
 
   // Form states
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -72,6 +74,7 @@ export default function AuthModal() {
         const json = await res.json();
         if (json.success) {
           setDemoAccounts(json.data || []);
+          setDemoEnabled(!json.disabled && (json.data || []).length > 0);
         }
       }
     } catch (e) {
@@ -218,6 +221,7 @@ export default function AuthModal() {
             <UserPlus className="w-4 h-4" />
             Đăng ký
           </button>
+          {demoEnabled && (
           <button
             onClick={() => { setActiveTab('demo'); setErrorMsg(null); }}
             className={`flex-1 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
@@ -229,6 +233,7 @@ export default function AuthModal() {
             <Sparkles className="w-4 h-4" />
             Chọn Vai Trò (Demo)
           </button>
+          )}
         </div>
 
         {/* Error / Success Feedback */}
@@ -271,9 +276,11 @@ export default function AuthModal() {
                 <label className="text-xs font-semibold text-gray-300">
                   Mật khẩu
                 </label>
-                <span className="text-[11px] text-brand-400 hover:underline cursor-pointer" onClick={() => setActiveTab('demo')}>
-                  Mật khẩu mặc định: password123
-                </span>
+                {demoEnabled && (
+                  <span className="text-[11px] text-brand-400 hover:underline cursor-pointer" onClick={() => setActiveTab('demo')}>
+                    Mật khẩu mặc định: password123
+                  </span>
+                )}
               </div>
               <div className="relative">
                 <input

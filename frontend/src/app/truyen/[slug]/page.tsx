@@ -19,11 +19,17 @@ import {
   PlusCircle,
   Shield,
   Clock,
-  CheckCircle2
+  CheckCircle2,
+  Pencil,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import SmartImage from '@/components/common/SmartImage';
 import CommentSection from '@/components/comments/CommentSection';
+import ReportButton from '@/components/common/ReportButton';
 import { useAuth } from '@/context/AuthContext';
+import RichContent from '@/components/common/RichContent';
+import { stripHtml } from '@/lib/richText';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -173,14 +179,17 @@ export default function StoryDetailPage() {
     }
   };
 
-  // Check if current user is owner ("chủ thầu"), collaborator, or Admin/Mod
+  // Check if current user is owner ("chủ thầu"), collaborator, translation-group
+  // member, or Admin/Mod. Resolved server-side (story.can_manage) so group
+  // members see the same management controls the backend actually authorizes;
+  // the local check below is only a fallback for stale/unauthenticated data.
   const isOwner = Boolean(
     user && story && (
       user.id === story.uploader_id ||
       (story.collaborators && story.collaborators.some((c: any) => c.user_id === user.id))
     )
   );
-  const canManage = hasRole('admin', 'mod') || isOwner;
+  const canManage = story?.can_manage ?? (hasRole('admin', 'mod') || isOwner);
 
   const handleDeleteStory = async () => {
     if (!story || isDeleting) return;
@@ -223,6 +232,115 @@ export default function StoryDetailPage() {
       } else {
         alert(json.message || 'Xóa chương thất bại.');
       }
+    } catch (err: any) {
+      alert('Lỗi: ' + err.message);
+    }
+  };
+
+  const renderChapterRow = (ch: any) => (
+      <div
+        key={ch.id}
+        className="p-3.5 flex items-center justify-between hover:bg-white/5 transition group px-5"
+      >
+        <Link
+          href={`/truyen/${story.slug}/${ch.slug}`}
+          className="flex items-center gap-3 truncate flex-1"
+        >
+          <BookOpen className="w-4 h-4 text-gray-500 group-hover:text-brand-400 transition-colors shrink-0" />
+          <span className="text-xs font-semibold text-gray-200 group-hover:text-brand-400 transition-colors truncate">
+            {ch.title}
+          </span>
+        </Link>
+
+        <div className="flex items-center gap-4 text-[11px] text-gray-400 shrink-0 ml-3">
+          {ch.word_count > 0 && (
+            <span className="hidden sm:inline">{ch.word_count.toLocaleString()} chữ</span>
+          )}
+          <span className="flex items-center gap-1">
+            <Eye className="w-3 h-3 text-cyan-400" />
+            {typeof ch.total_views === 'number' ? ch.total_views.toLocaleString() : ch.total_views || 0}
+          </span>
+          
+          <Link
+            href={`/truyen/${story.slug}/${ch.slug}`}
+            className="text-brand-400 font-medium group-hover:translate-x-1 transition-transform"
+          >
+            Đọc ngay
+          </Link>
+
+          {/* Edit / Delete Chapter for Owner / Admin / Mod */}
+          {canManage && (
+            <Link
+              href={`/dang-chuong?edit=${ch.id}`}
+              onClick={(e) => e.stopPropagation()}
+              className="p-1 rounded-lg text-gray-500 hover:text-cyan-400 hover:bg-cyan-500/10 transition"
+              title="Sửa chương này"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+            </Link>
+          )}
+          {canManage && (
+            <button
+              type="button"
+              onClick={(e) => handleDeleteChapter(ch.id, ch.title, e)}
+              className="p-1 rounded-lg text-gray-500 hover:text-rose-400 hover:bg-rose-500/10 transition"
+              title="Xóa chương này"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+  );
+
+  const handleRenameVolume = async (volume: any) => {
+    const title = window.prompt('Tên mới của tập:', volume.title);
+    if (title === null || !title.trim() || title.trim() === volume.title) return;
+    try {
+      const res = await authFetch(`${API_BASE_URL}/volumes/${volume.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: title.trim() }),
+      });
+      const json = await res.json();
+      if (res.ok && json.success) fetchStory();
+      else alert(json.message || 'Đổi tên tập thất bại.');
+    } catch (err: any) {
+      alert('Lỗi: ' + err.message);
+    }
+  };
+
+  const handleDeleteVolume = async (volume: any) => {
+    const count = volume.chapters?.length || 0;
+    const note = count > 0
+      ? `${count} chương trong tập sẽ được giữ lại và chuyển sang mục "Chưa phân tập".`
+      : 'Tập này chưa có chương nào.';
+    if (!confirm(`Xóa tập "${volume.title}"?\n${note}`)) return;
+    try {
+      const res = await authFetch(`${API_BASE_URL}/volumes/${volume.id}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (res.ok && json.success) fetchStory();
+      else alert(json.message || 'Xóa tập thất bại.');
+    } catch (err: any) {
+      alert('Lỗi: ' + err.message);
+    }
+  };
+
+  const handleMoveVolume = async (index: number, direction: -1 | 1) => {
+    const list = story?.volumes || [];
+    const target = index + direction;
+    if (target < 0 || target >= list.length) return;
+    const order = list.map((v: any) => v.id);
+    [order[index], order[target]] = [order[target], order[index]];
+    try {
+      const res = await authFetch(`${API_BASE_URL}/stories/${story.id}/volumes/reorder`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order }),
+      });
+      const json = await res.json();
+      if (res.ok && json.success) fetchStory();
+      else alert(json.message || 'Sắp xếp tập thất bại.');
     } catch (err: any) {
       alert('Lỗi: ' + err.message);
     }
@@ -462,6 +580,8 @@ export default function StoryDetailPage() {
                   <span>Đánh giá</span>
                 </button>
 
+                <ReportButton targetType="story" targetId={story.id} />
+
                 {/* Manage Actions for Owner / Admin / Mod */}
                 {canManage && (
                   <>
@@ -471,6 +591,14 @@ export default function StoryDetailPage() {
                     >
                       <PlusCircle className="w-3.5 h-3.5" />
                       <span>Thêm chương</span>
+                    </Link>
+
+                    <Link
+                      href={`/dang-truyen/sua/${story.slug}`}
+                      className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-200 border border-white/15 text-xs font-bold flex items-center gap-1.5 transition"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                      <span>Sửa truyện</span>
                     </Link>
 
                     <button
@@ -501,8 +629,10 @@ export default function StoryDetailPage() {
             <Sparkles className="w-4 h-4 text-brand-400" />
             <span>Tóm Tắt Nội Dung</span>
           </h3>
-          <div className="text-sm text-gray-300 leading-relaxed whitespace-pre-line font-normal">
-            {story.synopsis || 'Chưa có tóm tắt chi tiết cho bộ truyện này.'}
+          <div className="text-sm text-gray-300 leading-relaxed font-normal">
+            {stripHtml(story.synopsis)
+              ? <RichContent content={story.synopsis} />
+              : 'Chưa có tóm tắt chi tiết cho bộ truyện này.'}
           </div>
         </section>
 
@@ -531,7 +661,7 @@ export default function StoryDetailPage() {
 
           {/* Volume Accordion List */}
           {story.volumes && story.volumes.length > 0 ? (
-            story.volumes.map((volume: any) => (
+            story.volumes.map((volume: any, volumeIndex: number) => (
               <div key={volume.id} className="rounded-2xl glass-panel border border-white/10 overflow-hidden space-y-0">
                 {/* Volume Header */}
                 <div className="p-4 bg-white/5 border-b border-white/5 flex items-center justify-between">
@@ -546,57 +676,53 @@ export default function StoryDetailPage() {
                       )}
                     </div>
                   </div>
-                  <span className="text-xs text-gray-400">{volume.chapters?.length || 0} chương</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-400">{volume.chapters?.length || 0} chương</span>
+                    {canManage && (
+                      <div className="flex items-center gap-0.5 ml-1">
+                        <button
+                          type="button"
+                          onClick={() => handleMoveVolume(volumeIndex, -1)}
+                          disabled={volumeIndex === 0}
+                          className="p-1 rounded-lg text-gray-500 hover:text-white hover:bg-white/10 disabled:opacity-25 disabled:hover:bg-transparent transition"
+                          title="Chuyển tập lên"
+                        >
+                          <ArrowUp className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleMoveVolume(volumeIndex, 1)}
+                          disabled={volumeIndex === story.volumes.length - 1}
+                          className="p-1 rounded-lg text-gray-500 hover:text-white hover:bg-white/10 disabled:opacity-25 disabled:hover:bg-transparent transition"
+                          title="Chuyển tập xuống"
+                        >
+                          <ArrowDown className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRenameVolume(volume)}
+                          className="p-1 rounded-lg text-gray-500 hover:text-cyan-400 hover:bg-cyan-500/10 transition"
+                          title="Đổi tên tập"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteVolume(volume)}
+                          className="p-1 rounded-lg text-gray-500 hover:text-rose-400 hover:bg-rose-500/10 transition"
+                          title="Xóa tập (giữ lại các chương)"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Chapters list inside volume */}
                 <div className="divide-y divide-white/5">
                   {volume.chapters && volume.chapters.length > 0 ? (
-                    volume.chapters.map((ch: any) => (
-                      <div
-                        key={ch.id}
-                        className="p-3.5 flex items-center justify-between hover:bg-white/5 transition group px-5"
-                      >
-                        <Link
-                          href={`/truyen/${story.slug}/${ch.slug}`}
-                          className="flex items-center gap-3 truncate flex-1"
-                        >
-                          <BookOpen className="w-4 h-4 text-gray-500 group-hover:text-brand-400 transition-colors shrink-0" />
-                          <span className="text-xs font-semibold text-gray-200 group-hover:text-brand-400 transition-colors truncate">
-                            {ch.title}
-                          </span>
-                        </Link>
-
-                        <div className="flex items-center gap-4 text-[11px] text-gray-400 shrink-0 ml-3">
-                          {ch.word_count > 0 && (
-                            <span className="hidden sm:inline">{ch.word_count.toLocaleString()} chữ</span>
-                          )}
-                          <span className="flex items-center gap-1">
-                            <Eye className="w-3 h-3 text-cyan-400" />
-                            {typeof ch.total_views === 'number' ? ch.total_views.toLocaleString() : ch.total_views || 0}
-                          </span>
-                          
-                          <Link
-                            href={`/truyen/${story.slug}/${ch.slug}`}
-                            className="text-brand-400 font-medium group-hover:translate-x-1 transition-transform"
-                          >
-                            Đọc ngay
-                          </Link>
-
-                          {/* Delete Chapter for Owner / Admin / Mod */}
-                          {canManage && (
-                            <button
-                              type="button"
-                              onClick={(e) => handleDeleteChapter(ch.id, ch.title, e)}
-                              className="p-1 rounded-lg text-gray-500 hover:text-rose-400 hover:bg-rose-500/10 transition"
-                              title="Xóa chương này"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))
+                    volume.chapters.map((ch: any) => renderChapterRow(ch))
                   ) : (
                     <div className="p-4 text-xs text-gray-500 italic text-center">
                       Tập này chưa có chương nào được đăng tải.
@@ -606,8 +732,23 @@ export default function StoryDetailPage() {
               </div>
             ))
           ) : (
-            <div className="p-8 text-center glass-panel rounded-2xl text-xs text-gray-400">
-              Truyện chưa được phân tập hoặc chưa có chương nào.
+            !(story.unassigned_chapters && story.unassigned_chapters.length > 0) && (
+              <div className="p-8 text-center glass-panel rounded-2xl text-xs text-gray-400">
+                Truyện chưa được phân tập hoặc chưa có chương nào.
+              </div>
+            )
+          )}
+
+          {/* Chapters that belong to no volume */}
+          {story.unassigned_chapters && story.unassigned_chapters.length > 0 && (
+            <div className="rounded-2xl glass-panel border border-white/10 overflow-hidden">
+              <div className="p-4 bg-white/5 border-b border-white/5 flex items-center justify-between">
+                <h4 className="font-bold text-sm text-white">Chưa phân tập</h4>
+                <span className="text-xs text-gray-400">{story.unassigned_chapters.length} chương</span>
+              </div>
+              <div className="divide-y divide-white/5">
+                {story.unassigned_chapters.map((ch: any) => renderChapterRow(ch))}
+              </div>
             </div>
           )}
         </section>

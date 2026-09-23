@@ -16,7 +16,8 @@ import {
   CheckCircle2,
   XCircle,
   CheckSquare,
-  Square
+  Square,
+  User
 } from 'lucide-react';
 import PostCard, { PostItem } from '@/components/fandom/PostCard';
 import CreatePostModal from '@/components/fandom/CreatePostModal';
@@ -37,7 +38,10 @@ export default function FandomPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOption, setSortOption] = useState<'newest' | 'popular' | 'views'>('newest');
   const [selectedStoryId, setSelectedStoryId] = useState<string | null>(null);
-  const [filterTab, setFilterTab] = useState<'all' | 'popular' | 'newest' | 'drafts' | 'pending'>('all');
+  const [filterTab, setFilterTab] = useState<'all' | 'popular' | 'newest' | 'drafts' | 'pending' | 'mine'>('all');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   // Multi-select state for Bulk Approve / Bulk Reject
   const [selectedPostIds, setSelectedPostIds] = useState<string[]>([]);
@@ -46,30 +50,60 @@ export default function FandomPage() {
 
   const isAdminOrMod = hasRole('admin', 'mod');
 
+  const buildPostsUrl = (targetPage: number) => {
+    let url = `${API_BASE_URL}/posts?sort=${sortOption}&page=${targetPage}&limit=10`;
+
+    if (filterTab === 'drafts') {
+      url += `&filter_status=drafts`;
+    } else if (filterTab === 'pending') {
+      url += `&filter_status=pending`;
+    } else if (filterTab === 'mine') {
+      url += `&filter_status=mine`;
+    }
+
+    if (searchQuery.trim()) url += `&q=${encodeURIComponent(searchQuery.trim())}`;
+    if (selectedStoryId) url += `&story_id=${selectedStoryId}`;
+    return url;
+  };
+
   const fetchPosts = async () => {
     setIsLoading(true);
     setSelectedPostIds([]); // Reset selection on fetch
+    setPage(1);
     try {
-      let url = `${API_BASE_URL}/posts?sort=${sortOption}`;
-      
-      if (filterTab === 'drafts') {
-        url += `&filter_status=drafts`;
-      } else if (filterTab === 'pending') {
-        url += `&filter_status=pending`;
-      }
-
-      if (searchQuery.trim()) url += `&q=${encodeURIComponent(searchQuery.trim())}`;
-      if (selectedStoryId) url += `&story_id=${selectedStoryId}`;
-
-      const res = await authFetch(url);
+      const res = await authFetch(buildPostsUrl(1));
       if (res.ok) {
         const json = await res.json();
-        if (json.success) setPosts(json.data || []);
+        if (json.success) {
+          setPosts(json.data || []);
+          setTotalPages(json.pagination?.totalPages || 1);
+        }
       }
     } catch (e) {
       console.error('Failed to load fandom posts:', e);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchMorePosts = async () => {
+    if (isLoadingMore || page >= totalPages) return;
+    setIsLoadingMore(true);
+    try {
+      const nextPage = page + 1;
+      const res = await authFetch(buildPostsUrl(nextPage));
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success) {
+          setPosts((prev) => [...prev, ...(json.data || [])]);
+          setPage(nextPage);
+          setTotalPages(json.pagination?.totalPages || 1);
+        }
+      }
+    } catch (e) {
+      console.error('Failed to load more fandom posts:', e);
+    } finally {
+      setIsLoadingMore(false);
     }
   };
 
@@ -245,6 +279,21 @@ export default function FandomPage() {
                 }`}
               >
                 Sôi nổi nhất
+              </button>
+
+              <button
+                onClick={() => {
+                  if (!isAuthenticated) {
+                    openAuthModal('login');
+                    return;
+                  }
+                  setFilterTab('mine');
+                }}
+                className={`w-full text-left px-3 py-2 rounded-xl font-semibold transition flex items-center justify-between ${
+                  filterTab === 'mine' ? 'bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 font-bold' : 'text-gray-300 hover:bg-white/5'
+                }`}
+              >
+                <span className="flex items-center gap-1.5"><User className="w-3.5 h-3.5 text-cyan-400" /> Bài Viết Của Tôi</span>
               </button>
 
               <button
@@ -459,10 +508,10 @@ export default function FandomPage() {
           ) : (
             <div className="space-y-4">
               {posts.map((post) => (
-                <PostCard 
-                  key={post.id} 
-                  post={post} 
-                  onRefresh={fetchPosts} 
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  onRefresh={fetchPosts}
                   onEdit={handleEditPost}
                   isAdminView={filterTab === 'pending'}
                   isSelectable={filterTab === 'pending' && isAdminOrMod}
@@ -470,6 +519,18 @@ export default function FandomPage() {
                   onSelectToggle={toggleSelectPost}
                 />
               ))}
+
+              {page < totalPages && (
+                <div className="flex justify-center pt-2">
+                  <button
+                    onClick={fetchMorePosts}
+                    disabled={isLoadingMore}
+                    className="px-6 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-50 border border-white/10 text-xs font-bold text-gray-200 transition"
+                  >
+                    {isLoadingMore ? 'Đang tải...' : 'Xem thêm bài viết'}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

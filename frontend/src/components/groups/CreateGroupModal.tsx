@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { X, Users, Sparkles, Shield, Send, Check } from 'lucide-react';
 import ImageUploadDropzone from '@/components/common/ImageUploadDropzone';
+import RichTextEditor from '@/components/common/RichTextEditor';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -115,12 +116,11 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess }: CreateG
           {/* Description */}
           <div>
             <label className="text-xs font-bold text-gray-300 mb-1 block">Giới Thiệu Nhóm</label>
-            <textarea
-              rows={3}
-              placeholder="Giới thiệu về tôn chỉ hoạt động, thể loại dịch chính..."
+            <RichTextEditor
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full p-3 rounded-xl bg-white/5 border border-white/10 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-500 resize-none transition leading-relaxed"
+              onChange={setDescription}
+              placeholder="Giới thiệu về tôn chỉ hoạt động, thể loại dịch chính..."
+              minHeight={110}
             />
           </div>
 
@@ -151,12 +151,11 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess }: CreateG
           {/* Group Rules */}
           <div>
             <label className="text-xs font-bold text-gray-300 mb-1 block">Nội Quy & Tiêu Chuẩn Dịch</label>
-            <textarea
-              rows={2}
-              placeholder="Nội quy dành cho các thành viên trong nhóm..."
+            <RichTextEditor
               value={rules}
-              onChange={(e) => setRules(e.target.value)}
-              className="w-full p-3 rounded-xl bg-white/5 border border-white/10 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-500 resize-none transition leading-relaxed"
+              onChange={setRules}
+              placeholder="Nội quy dành cho các thành viên trong nhóm..."
+              minHeight={110}
             />
           </div>
 

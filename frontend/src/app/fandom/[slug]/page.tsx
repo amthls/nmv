@@ -20,7 +20,11 @@ import {
 import SmartImage from '@/components/common/SmartImage';
 import SmartPostGallery from '@/components/fandom/SmartPostGallery';
 import CommentSection from '@/components/comments/CommentSection';
+import ReportButton from '@/components/common/ReportButton';
 import { useAuth } from '@/context/AuthContext';
+import RichTextEditor from '@/components/common/RichTextEditor';
+import RichContent from '@/components/common/RichContent';
+import { hasRichContent } from '@/lib/richText';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -115,7 +119,7 @@ export default function PostDetailPage() {
   };
 
   const handleSaveEdit = async () => {
-    if (!editTitle.trim() || !editContent.trim()) {
+    if (!editTitle.trim() || !hasRichContent(editContent)) {
       alert('Vui lòng nhập đầy đủ tiêu đề và nội dung bài viết.');
       return;
     }
@@ -257,6 +261,14 @@ export default function PostDetailPage() {
               )}
             </button>
 
+            {!isAuthor && post?.id && (
+              <ReportButton
+                targetType="post"
+                targetId={post.id}
+                className="p-2 rounded-xl text-gray-400 hover:text-amber-400 hover:bg-white/5 transition flex items-center gap-1.5 text-xs font-semibold"
+              />
+            )}
+
             {/* Menu Actions (Only for Author or Admin/Mod) */}
             {canModify && (
               <div className="relative">
@@ -310,12 +322,7 @@ export default function PostDetailPage() {
             </div>
             <div>
               <label className="text-xs font-semibold text-gray-300 block mb-1">Nội dung bài viết:</label>
-              <textarea
-                rows={6}
-                value={editContent}
-                onChange={(e) => setEditContent(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm focus:outline-none focus:border-brand-500"
-              />
+              <RichTextEditor value={editContent} onChange={setEditContent} minHeight={200} />
             </div>
             <div className="flex items-center gap-2 justify-end">
               <button
@@ -365,9 +372,7 @@ export default function PostDetailPage() {
             )}
 
             {/* Body Content */}
-            <div className="text-sm sm:text-base text-gray-200 leading-relaxed whitespace-pre-line space-y-4">
-              {post.content}
-            </div>
+            <RichContent content={post.content} className="text-sm sm:text-base text-gray-200" />
 
             {/* Smart Multi-Image Gallery Grid */}
             {allImages.length > 0 && (

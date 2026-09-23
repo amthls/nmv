@@ -12,8 +12,12 @@ import {
   Smile, 
   X,
   User,
-  Clock
+  Clock,
+  Pencil,
+  Trash2
 } from 'lucide-react';
+import ReportButton from '@/components/common/ReportButton';
+import { useAuth } from '@/context/AuthContext';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -28,6 +32,7 @@ export interface CommentItem {
   like_count: number;
   reply_count: number;
   created_at: string;
+  is_edited?: boolean;
   replies?: CommentItem[];
 }
 
@@ -42,7 +47,11 @@ export default function CommentSection({
   targetId,
   title = 'Bình Luận & Thảo Luận',
 }: CommentSectionProps) {
+  const { user, hasRole, authFetch } = useAuth();
   const [comments, setComments] = useState<CommentItem[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
+  const [actionError, setActionError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [newComment, setNewComment] = useState('');
   const [replyTarget, setReplyTarget] = useState<{ id: string; name: string } | null>(null);
@@ -78,7 +87,7 @@ export default function CommentSection({
 
     setIsSubmitting(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/comments`, {
+      const res = await authFetch(`${API_BASE_URL}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -107,7 +116,7 @@ export default function CommentSection({
 
   const handleToggleLike = async (commentId: string) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/comments/${commentId}/like`, {
+      const res = await authFetch(`${API_BASE_URL}/comments/${commentId}/like`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -119,6 +128,50 @@ export default function CommentSection({
         }
       }
     } catch (err) {}
+  };
+
+  const startEdit = (comment: CommentItem) => {
+    setActionError(null);
+    setEditingId(comment.id);
+    setEditText(comment.content);
+  };
+
+  const handleSaveEdit = async (commentId: string) => {
+    if (!editText.trim()) return;
+    setActionError(null);
+    try {
+      const res = await authFetch(`${API_BASE_URL}/comments/${commentId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: editText.trim() }),
+      });
+      const json = await res.json();
+      if (res.ok && json.success) {
+        setEditingId(null);
+        await fetchComments();
+      } else {
+        setActionError(json.message || 'Sửa bình luận thất bại.');
+      }
+    } catch (err: any) {
+      setActionError('Lỗi kết nối: ' + err.message);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string, hasReplies: boolean) => {
+    const warn = hasReplies ? 'Bình luận này có trả lời, các trả lời cũng sẽ bị xóa. ' : '';
+    if (!confirm(`${warn}Bạn có chắc muốn xóa bình luận này?`)) return;
+    setActionError(null);
+    try {
+      const res = await authFetch(`${API_BASE_URL}/comments/${commentId}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (res.ok && json.success) {
+        await fetchComments();
+      } else {
+        setActionError(json.message || 'Xóa bình luận thất bại.');
+      }
+    } catch (err: any) {
+      setActionError('Lỗi kết nối: ' + err.message);
+    }
   };
 
   const updateCommentLikes = (list: CommentItem[], id: string, newCount: number): CommentItem[] => {
@@ -162,6 +215,9 @@ export default function CommentSection({
 
   const renderCommentItem = (comment: CommentItem, isReply = false) => {
     const isLiked = likedMap[comment.id];
+    const isMine = Boolean(user && user.id === comment.user_id);
+    const canDelete = isMine || hasRole('admin', 'mod');
+    const isEditing = editingId === comment.id;
 
     return (
       <div key={comment.id} className={`space-y-3 ${isReply ? 'ml-6 sm:ml-10 pt-3 border-l-2 border-brand-500/20 pl-4' : 'pt-4 border-t border-white/5'}`}>
@@ -185,13 +241,41 @@ export default function CommentSection({
               <span className="text-[10px] text-gray-500 flex items-center gap-1">
                 <Clock className="w-3 h-3" />
                 {formatTimeAgo(comment.created_at)}
+                {comment.is_edited && <span className="italic">(đã chỉnh sửa)</span>}
               </span>
             </div>
 
             {/* Content text */}
-            <p className="text-xs text-gray-200 leading-relaxed whitespace-pre-line break-words pt-0.5">
-              {comment.content}
-            </p>
+            {isEditing ? (
+              <div className="pt-1 space-y-2">
+                <textarea
+                  rows={3}
+                  maxLength={1000}
+                  value={editText}
+                  onChange={(e) => setEditText(e.target.value)}
+                  className="w-full p-3 rounded-xl bg-[#141422] border border-white/10 text-xs text-white focus:outline-none focus:border-brand-500 resize-none"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleSaveEdit(comment.id)}
+                    disabled={!editText.trim()}
+                    className="px-3.5 h-8 rounded-lg bg-brand-600 hover:bg-brand-500 disabled:opacity-40 text-white text-[11px] font-bold transition"
+                  >
+                    Lưu
+                  </button>
+                  <button
+                    onClick={() => setEditingId(null)}
+                    className="px-3.5 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 text-[11px] font-bold transition"
+                  >
+                    Hủy
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-gray-200 leading-relaxed whitespace-pre-line break-words pt-0.5">
+                {comment.content}
+              </p>
+            )}
 
             {/* Actions (Like, Reply) */}
             <div className="flex items-center gap-4 pt-1.5 text-[11px] text-gray-400">
@@ -212,6 +296,25 @@ export default function CommentSection({
                 <Reply className="w-3.5 h-3.5" />
                 <span>Trả lời</span>
               </button>
+
+              {isMine && !isEditing && (
+                <button onClick={() => startEdit(comment)} className="flex items-center gap-1 hover:text-cyan-400 transition">
+                  <Pencil className="w-3.5 h-3.5" />
+                  <span>Sửa</span>
+                </button>
+              )}
+
+              {canDelete && (
+                <button
+                  onClick={() => handleDeleteComment(comment.id, Boolean(comment.replies && comment.replies.length))}
+                  className="flex items-center gap-1 hover:text-rose-400 transition"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Xóa</span>
+                </button>
+              )}
+
+              {!isMine && <ReportButton targetType="comment" targetId={comment.id} variant="icon" />}
             </div>
 
             {/* Inline Reply Input */}
@@ -309,6 +412,12 @@ export default function CommentSection({
           </button>
         </div>
       </div>
+
+      {actionError && (
+        <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-semibold">
+          {actionError}
+        </div>
+      )}
 
       {/* Comments List */}
       <div className="space-y-4 pt-2">

@@ -1,6 +1,9 @@
 ﻿import { Request, Response } from 'express';
 import { pool } from '../config/db';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
+import { sanitizeRichText, hasRichContent } from '../utils/richText';
+import { enqueueNotificationJob } from '../services/queue.service';
+import { postReactionNotification, postReviewNotifications } from '../services/notification.service';
 
 function slugify(text: string) {
   return text
@@ -53,6 +56,18 @@ export const getPosts = async (req: AuthenticatedRequest, res: Response) => {
       values.push(currentUser.id);
       paramIdx++;
       conditions.push("p.is_draft = true");
+    } else if (filter_status === 'mine') {
+      if (!currentUser) {
+        return res.json({
+          success: true,
+          data: [],
+          pagination: { page: Number(page), limit: Number(limit), total: 0, totalPages: 0 }
+        });
+      }
+      conditions.push(`p.user_id = $${paramIdx}`);
+      values.push(currentUser.id);
+      paramIdx++;
+      conditions.push("p.is_draft = false");
     } else {
       conditions.push("p.is_published = true");
       conditions.push("p.approval_status = 'approved'");
@@ -137,7 +152,7 @@ export const getPosts = async (req: AuthenticatedRequest, res: Response) => {
   }
 };
 
-export const getPostBySlug = async (req: Request, res: Response) => {
+export const getPostBySlug = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { slug } = req.params;
 
@@ -181,6 +196,16 @@ export const getPostBySlug = async (req: Request, res: Response) => {
 
     const post = result.rows[0];
 
+    const currentUser = req.user;
+    const userRoles = currentUser?.roles || [];
+    const isAdminOrMod = userRoles.includes('admin') || userRoles.includes('mod');
+    const isAuthor = !!currentUser && currentUser.id === post.user_id;
+    const isVisibleToPublic = post.approval_status === 'approved' && post.is_published;
+
+    if (!isVisibleToPublic && !isAuthor && !isAdminOrMod) {
+      return res.status(404).json({ success: false, message: 'Bài viết không tồn tại hoặc đã bị xóa.' });
+    }
+
     // Increment view count asynchronously
     pool.query('UPDATE posts SET view_count = view_count + 1 WHERE id = $1', [post.id]).catch(console.error);
 
@@ -215,7 +240,7 @@ export const createPost = async (req: AuthenticatedRequest, res: Response) => {
       images = [] 
     } = req.body;
 
-    if (!title || !title.trim() || !content || !content.trim()) {
+    if (!title || !title.trim() || !content || !hasRichContent(sanitizeRichText(content))) {
       return res.status(400).json({
         success: false,
         message: 'Ti\u00eau \u0111\u1ec1 v\u00e0 n\u1ed9i dung b\u00e0i vi\u1ebft kh\u00f4ng \u0111\u01b0\u1ee3c \u0111\u1ec3 tr\u1ed1ng.',
@@ -254,7 +279,7 @@ export const createPost = async (req: AuthenticatedRequest, res: Response) => {
         story_id || null,
         title.trim(),
         uniqueSlug,
-        content.trim(),
+        sanitizeRichText(content),
         finalCover,
         JSON.stringify(images || []),
         Boolean(is_draft),
@@ -322,6 +347,10 @@ export const updatePost = async (req: AuthenticatedRequest, res: Response) => {
       images = [] 
     } = req.body;
 
+    if (content !== undefined && content !== null && content !== '' && !hasRichContent(sanitizeRichText(content))) {
+      return res.status(400).json({ success: false, message: 'Nội dung bài viết không được để trống.' });
+    }
+
     let approvalStatus = post.approval_status;
     let isPublished = post.is_published;
 
@@ -331,7 +360,7 @@ export const updatePost = async (req: AuthenticatedRequest, res: Response) => {
     } else if (isAdminOrMod) {
       approvalStatus = 'approved';
       isPublished = true;
-    } else if (post.approval_status === 'approved') {
+    } else if (post.approval_status === 'approved' || post.approval_status === 'rejected') {
       approvalStatus = 'pending';
       isPublished = false;
     }
@@ -353,7 +382,7 @@ export const updatePost = async (req: AuthenticatedRequest, res: Response) => {
        RETURNING *`,
       [
         title ? title.trim() : null,
-        content ? content.trim() : null,
+        content ? sanitizeRichText(content) : null,
         finalCover,
         story_id || null,
         JSON.stringify(images || []),
@@ -449,6 +478,9 @@ export const approvePost = async (req: AuthenticatedRequest, res: Response) => {
       return res.status(404).json({ success: false, message: 'B\u00e0i vi\u1ebft kh\u00f4ng t\u1ed3n t\u1ea1i.' });
     }
 
+    enqueueNotificationJob({ kind: 'notify', items: postReviewNotifications(updateRes.rows, true, adminId) })
+      .catch((err: any) => console.error('[Notification] enqueue failed:', err.message));
+
     return res.json({
       success: true,
       message: '\u0110\u00e3 duy\u1ec7t b\u00e0i vi\u1ebft th\u00e0nh c\u00f4ng!',
@@ -475,14 +507,18 @@ export const rejectPost = async (req: AuthenticatedRequest, res: Response) => {
 
     const { id } = req.params;
 
-    await pool.query(
+    const rejectRes = await pool.query(
       `UPDATE posts SET 
         approval_status = 'rejected',
         is_published = false,
         updated_at = NOW()
-       WHERE id = $1 AND is_deleted = false`,
+       WHERE id = $1 AND is_deleted = false
+       RETURNING id, user_id, title`,
       [id]
     );
+
+    enqueueNotificationJob({ kind: 'notify', items: postReviewNotifications(rejectRes.rows, false, req.user.id) })
+      .catch((err: any) => console.error('[Notification] enqueue failed:', err.message));
 
     return res.json({
       success: true,
@@ -529,9 +565,12 @@ export const bulkApprovePosts = async (req: AuthenticatedRequest, res: Response)
         published_at = COALESCE(published_at, NOW()),
         updated_at = NOW()
        WHERE id = ANY($2::uuid[]) AND is_deleted = false
-       RETURNING id`,
+       RETURNING id, user_id, title`,
       [adminId, targetIds]
     );
+
+    enqueueNotificationJob({ kind: 'notify', items: postReviewNotifications(updateRes.rows, true, adminId) })
+      .catch((err: any) => console.error('[Notification] enqueue failed:', err.message));
 
     return res.json({
       success: true,
@@ -575,9 +614,12 @@ export const bulkRejectPosts = async (req: AuthenticatedRequest, res: Response) 
         is_published = false,
         updated_at = NOW()
        WHERE id = ANY($1::uuid[]) AND is_deleted = false
-       RETURNING id`,
+       RETURNING id, user_id, title`,
       [targetIds]
     );
+
+    enqueueNotificationJob({ kind: 'notify', items: postReviewNotifications(updateRes.rows, false, req.user.id) })
+      .catch((err: any) => console.error('[Notification] enqueue failed:', err.message));
 
     return res.json({
       success: true,
@@ -605,6 +647,21 @@ export const reactToPost = async (req: AuthenticatedRequest, res: Response) => {
       return res.status(400).json({ success: false, message: 'C\u1ea3m x\u00fac kh\u00f4ng h\u1ee3p l\u1ec7' });
     }
 
+    const postRes = await pool.query(
+      `SELECT user_id, title, approval_status, is_published FROM posts WHERE id = $1 AND is_deleted = false`,
+      [id]
+    );
+    if (postRes.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'B\u00e0i vi\u1ebft kh\u00f4ng t\u1ed3n t\u1ea1i ho\u1eb7c \u0111\u00e3 b\u1ecb x\u00f3a.' });
+    }
+    const targetPost = postRes.rows[0];
+    const userRoles = req.user.roles || [];
+    const isAdminOrMod = userRoles.includes('admin') || userRoles.includes('mod');
+    const isPostVisible = targetPost.approval_status === 'approved' && targetPost.is_published;
+    if (!isPostVisible && targetPost.user_id !== authorId && !isAdminOrMod) {
+      return res.status(404).json({ success: false, message: 'B\u00e0i vi\u1ebft kh\u00f4ng t\u1ed3n t\u1ea1i ho\u1eb7c \u0111\u00e3 b\u1ecb x\u00f3a.' });
+    }
+
     const existing = await pool.query(
       `SELECT * FROM post_reactions WHERE post_id = $1 AND user_id = $2`,
       [id, authorId]
@@ -629,6 +686,20 @@ export const reactToPost = async (req: AuthenticatedRequest, res: Response) => {
       SET reaction_count = (SELECT count(*) FROM post_reactions WHERE post_id = $1)
       WHERE id = $1
     `, [id]);
+
+    if (action !== 'removed') {
+      enqueueNotificationJob({
+        kind: 'notify',
+        items: postReactionNotification({
+          postId: id,
+          postTitle: targetPost.title,
+          postOwnerId: targetPost.user_id,
+          actorId: authorId,
+          actorName: req.user.display_name || req.user.username,
+          reaction,
+        }),
+      }).catch((err: any) => console.error('[Notification] enqueue failed:', err.message));
+    }
 
     const summaryRes = await pool.query(`
       SELECT 

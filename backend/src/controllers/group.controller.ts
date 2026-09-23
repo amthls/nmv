@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import { pool } from '../config/db';
+import { AuthenticatedRequest } from '../middlewares/auth.middleware';
+import { sanitizeRichText } from '../utils/richText';
 
 function slugify(text: string) {
   return text
@@ -172,12 +174,12 @@ export const createGroup = async (req: Request, res: Response) => {
     `, [
       name.trim(),
       uniqueSlug,
-      description?.trim() || null,
+      sanitizeRichText(description) || null,
       avatar_url || null,
       banner_url || null,
       website_url?.trim() || null,
       discord_url?.trim() || null,
-      rules?.trim() || null,
+      sanitizeRichText(rules) || null,
       creatorId,
       approvalStatus
     ]);
@@ -235,7 +237,7 @@ export const updateGroup = async (req: Request, res: Response) => {
         updated_at = NOW()
       WHERE id = $8
       RETURNING *;
-    `, [name, description, avatar_url, banner_url, website_url, discord_url, rules, id]);
+    `, [name, sanitizeRichText(description), avatar_url, banner_url, website_url, discord_url, sanitizeRichText(rules), id]);
 
     res.json({
       success: true,
@@ -247,12 +249,22 @@ export const updateGroup = async (req: Request, res: Response) => {
   }
 };
 
-export const approveGroup = async (req: Request, res: Response) => {
+export const approveGroup = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { id } = req.params;
-    const { admin_id } = req.body;
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ success: false, message: 'Bạn chưa đăng nhập.' });
+    }
 
-    const adminId = (req as any).user?.id || admin_id || 'a0000000-0000-0000-0000-000000000001';
+    const userRoles = req.user.roles || [];
+    if (!userRoles.includes('admin') && !userRoles.includes('mod')) {
+      return res.status(403).json({
+        success: false,
+        message: 'Chỉ Quản trị viên (Admin) hoặc Kiểm duyệt viên (Mod) mới có quyền duyệt nhóm dịch.',
+      });
+    }
+
+    const { id } = req.params;
+    const adminId = req.user.id;
 
     const updateRes = await pool.query(`
       UPDATE translation_groups SET
@@ -322,14 +334,57 @@ export const addGroupMember = async (req: Request, res: Response) => {
   }
 };
 
-export const updateGroupMemberRole = async (req: Request, res: Response) => {
+async function requireGroupLeaderOrAdmin(req: AuthenticatedRequest, groupId: string): Promise<{ ok: true } | { ok: false; status: number; message: string }> {
+  if (!req.user || !req.user.id) {
+    return { ok: false, status: 401, message: 'Bạn chưa đăng nhập.' };
+  }
+
+  const userRoles = req.user.roles || [];
+  if (userRoles.includes('admin')) return { ok: true };
+
+  const leaderCheck = await pool.query(`
+    SELECT role FROM group_members WHERE group_id = $1 AND user_id = $2
+  `, [groupId, req.user.id]);
+
+  if (leaderCheck.rows.length === 0 || !['leader', 'mod'].includes(leaderCheck.rows[0].role)) {
+    return { ok: false, status: 403, message: 'Chỉ Trưởng nhóm hoặc Quản lý mới có quyền thực hiện thao tác này' };
+  }
+
+  return { ok: true };
+}
+
+export const updateGroupMemberRole = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id, memberUserId } = req.params;
     const { role } = req.body;
 
+    const permCheck = await requireGroupLeaderOrAdmin(req, id);
+    if (!permCheck.ok) {
+      return res.status(permCheck.status).json({ success: false, message: permCheck.message });
+    }
+
     const validRoles = ['leader', 'mod', 'translator', 'editor', 'raw_provider', 'proofreader', 'member'];
     if (!validRoles.includes(role)) {
       return res.status(400).json({ success: false, message: 'Vai trò không hợp lệ' });
+    }
+
+    const targetRes = await pool.query(`
+      SELECT role FROM group_members WHERE group_id = $1 AND user_id = $2
+    `, [id, memberUserId]);
+    if (targetRes.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Thành viên không tồn tại trong nhóm' });
+    }
+
+    if (targetRes.rows[0].role === 'leader' && role !== 'leader') {
+      const leaderCountRes = await pool.query(`
+        SELECT COUNT(*)::int as count FROM group_members WHERE group_id = $1 AND role = 'leader'
+      `, [id]);
+      if (leaderCountRes.rows[0].count <= 1) {
+        return res.status(400).json({
+          success: false,
+          message: 'Không thể hạ cấp Trưởng nhóm duy nhất. Hãy chỉ định một Trưởng nhóm khác trước.',
+        });
+      }
     }
 
     await pool.query(`
@@ -345,9 +400,33 @@ export const updateGroupMemberRole = async (req: Request, res: Response) => {
   }
 };
 
-export const removeGroupMember = async (req: Request, res: Response) => {
+export const removeGroupMember = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id, memberUserId } = req.params;
+
+    const permCheck = await requireGroupLeaderOrAdmin(req, id);
+    if (!permCheck.ok) {
+      return res.status(permCheck.status).json({ success: false, message: permCheck.message });
+    }
+
+    const targetRes = await pool.query(`
+      SELECT role FROM group_members WHERE group_id = $1 AND user_id = $2
+    `, [id, memberUserId]);
+    if (targetRes.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Thành viên không tồn tại trong nhóm' });
+    }
+
+    if (targetRes.rows[0].role === 'leader') {
+      const leaderCountRes = await pool.query(`
+        SELECT COUNT(*)::int as count FROM group_members WHERE group_id = $1 AND role = 'leader'
+      `, [id]);
+      if (leaderCountRes.rows[0].count <= 1) {
+        return res.status(400).json({
+          success: false,
+          message: 'Không thể xóa Trưởng nhóm duy nhất khỏi nhóm. Hãy chỉ định một Trưởng nhóm khác trước.',
+        });
+      }
+    }
 
     await pool.query(`
       DELETE FROM group_members WHERE group_id = $1 AND user_id = $2;
@@ -388,16 +467,33 @@ export const getGroupMessages = async (req: Request, res: Response) => {
   }
 };
 
-export const sendGroupMessage = async (req: Request, res: Response) => {
+export const sendGroupMessage = async (req: AuthenticatedRequest, res: Response) => {
   try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ success: false, message: 'Bạn chưa đăng nhập.' });
+    }
+
     const { id } = req.params;
-    const { message, attachments = [], user_id } = req.body;
+    const { message, attachments = [] } = req.body;
 
     if (!message || !message.trim()) {
       return res.status(400).json({ success: false, message: 'Nội dung tin nhắn không được để trống' });
     }
 
-    const senderId = (req as any).user?.id || user_id || 'a0000000-0000-0000-0000-000000000009';
+    const senderId = req.user.id;
+    const userRoles = req.user.roles || [];
+
+    if (!userRoles.includes('admin')) {
+      const memCheck = await pool.query(`
+        SELECT 1 FROM group_members WHERE group_id = $1 AND user_id = $2
+      `, [id, senderId]);
+      if (memCheck.rows.length === 0) {
+        return res.status(403).json({
+          success: false,
+          message: 'Chỉ thành viên trong nhóm mới có quyền gửi tin nhắn trong chatroom nội bộ.',
+        });
+      }
+    }
 
     const insertRes = await pool.query(`
       INSERT INTO group_messages (group_id, user_id, message, attachments)
@@ -416,6 +512,44 @@ export const sendGroupMessage = async (req: Request, res: Response) => {
       success: true,
       data: msg,
     });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const deleteGroupMessage = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ success: false, message: 'Bạn chưa đăng nhập.' });
+    }
+
+    const { id, messageId } = req.params;
+    const userRoles = req.user.roles || [];
+
+    const msgRes = await pool.query(`SELECT user_id FROM group_messages WHERE id = $1 AND group_id = $2`, [messageId, id]);
+    if (msgRes.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Tin nhắn không tồn tại' });
+    }
+
+    const isOwner = msgRes.rows[0].user_id === req.user.id;
+    let isLeaderOrMod = false;
+    if (!isOwner && !userRoles.includes('admin')) {
+      const leaderCheck = await pool.query(`
+        SELECT role FROM group_members WHERE group_id = $1 AND user_id = $2
+      `, [id, req.user.id]);
+      isLeaderOrMod = leaderCheck.rows.length > 0 && ['leader', 'mod'].includes(leaderCheck.rows[0].role);
+    }
+
+    if (!isOwner && !isLeaderOrMod && !userRoles.includes('admin')) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bạn chỉ có thể xóa tin nhắn của chính mình.',
+      });
+    }
+
+    await pool.query(`DELETE FROM group_messages WHERE id = $1`, [messageId]);
+
+    res.json({ success: true, message: 'Đã xóa tin nhắn' });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

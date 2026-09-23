@@ -3,6 +3,9 @@ import './globals.css';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { AuthProvider } from '@/context/AuthContext';
+import { ReadingSessionProvider } from '@/context/ReadingSessionContext';
+import NavigationProgress from '@/components/common/NavigationProgress';
+import ContinueReadingMiniplayer from '@/components/reader/ContinueReadingMiniplayer';
 
 export const metadata: Metadata = {
   title: 'NovelHub - N\u1ec1n T\u1ea3ng \u0110\u1ecdc Light Novel & Manga Tr\u1ef1c Tuy\u1ebfn',
@@ -18,11 +21,15 @@ export default function RootLayout({
     <html lang="vi" className="dark">
       <body className="min-h-screen flex flex-col bg-[#0d0d15] text-[#f3f4f6]">
         <AuthProvider>
-          <Navbar />
-          <main className="flex-1">
-            {children}
-          </main>
-          <Footer />
+          <ReadingSessionProvider>
+            <NavigationProgress />
+            <Navbar />
+            <main className="flex-1">
+              {children}
+            </main>
+            <Footer />
+            <ContinueReadingMiniplayer />
+          </ReadingSessionProvider>
         </AuthProvider>
       </body>
     </html>

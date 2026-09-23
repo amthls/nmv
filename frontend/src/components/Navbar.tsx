@@ -20,7 +20,8 @@ import {
   Settings,
   Sparkles,
   LogIn,
-  UserPlus
+  UserPlus,
+  Flag
 } from 'lucide-react';
 import QuickActionModal from './QuickActionModal';
 import AuthModal from './auth/AuthModal';
@@ -100,6 +101,8 @@ export default function Navbar() {
       router.push(`/truyen/${notif.story_slug}/${notif.chapter_slug}`);
     } else if (notif.story_slug) {
       router.push(`/truyen/${notif.story_slug}`);
+    } else if (notif.post_slug) {
+      router.push(`/fandom/${notif.post_slug}`);
     }
   };
 
@@ -394,6 +397,20 @@ export default function Navbar() {
                         >
                           <BookOpen className="w-4 h-4 text-indigo-400" />
                           <span>Đăng chương mới</span>
+                        </Link>
+                      </div>
+                    )}
+
+                    {/* Moderation */}
+                    {hasRole('admin', 'mod') && (
+                      <div className="py-1 border-t border-white/10">
+                        <Link
+                          href="/bao-cao"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          className="flex items-center gap-2.5 px-4 py-1.5 text-xs text-gray-300 hover:text-white hover:bg-white/5 transition"
+                        >
+                          <Flag className="w-4 h-4 text-amber-400" />
+                          <span>Báo cáo vi phạm</span>
                         </Link>
                       </div>
                     )}

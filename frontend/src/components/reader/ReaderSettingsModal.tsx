@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Settings, X, Type, AlignLeft, AlignJustify, Palette, Eye } from 'lucide-react';
+import { Settings, X, Type, AlignLeft, AlignJustify, Palette, Eye, Image as ImageIcon } from 'lucide-react';
+import { IMAGE_QUALITY_OPTIONS, useImageQuality } from '@/lib/imageQuality';
 
 export interface ReaderSettings {
   theme: 'dark' | 'amoled' | 'sepia' | 'light';
@@ -25,6 +26,8 @@ export default function ReaderSettingsModal({
   settings,
   onSettingsChange,
 }: ReaderSettingsModalProps) {
+  const [imageQuality, setImageQuality] = useImageQuality();
+
   if (!isOpen) return null;
 
   const themes = [
@@ -206,6 +209,34 @@ export default function ReaderSettingsModal({
               </button>
             </div>
           </div>
+        </div>
+
+        {/* 6. Image resolution */}
+        <div className="space-y-2 pt-1">
+          <label className="text-xs font-semibold text-gray-300 flex items-center gap-1.5">
+            <ImageIcon className="w-3.5 h-3.5 text-brand-400" />
+            <span>Độ phân giải ảnh</span>
+          </label>
+          <div className="grid grid-cols-4 gap-1.5">
+            {IMAGE_QUALITY_OPTIONS.map((q) => (
+              <button
+                key={q.id}
+                type="button"
+                onClick={() => setImageQuality(q.id)}
+                title={q.hint}
+                className={`py-1.5 rounded-lg text-[11px] font-semibold border transition ${
+                  imageQuality === q.id
+                    ? 'bg-brand-600 border-brand-500 text-white'
+                    : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
+                }`}
+              >
+                {q.label}
+              </button>
+            ))}
+          </div>
+          <p className="text-[10px] text-gray-500">
+            {IMAGE_QUALITY_OPTIONS.find((q) => q.id === imageQuality)?.hint}. Áp dụng cho ảnh manga, ảnh minh họa và ảnh trong bài viết.
+          </p>
         </div>
 
         {/* Footer */}

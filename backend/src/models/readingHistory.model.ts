@@ -56,40 +56,18 @@ export class UserReadingLog {
       timeSpentSeconds = 0,
     } = params;
 
-    // Kiểm tra xem trong vòng 10 giây gần nhất người dùng đã có log cho chương này chưa (tránh ghi trùng lặp khi vừa load trang vừa mount component)
-    const recentCheck = await pool.query(
-      `SELECT id FROM reading_history 
-       WHERE user_id = $1::uuid AND chapter_id = $2::uuid 
-         AND read_at >= (NOW() - INTERVAL '10 seconds')
-       ORDER BY read_at DESC LIMIT 1;`,
-      [userId, chapterId]
-    );
-
-    if (recentCheck.rows.length > 0) {
-      // Cập nhật tọa độ cuộn của log vừa tạo
-      const updated = await pool.query(
-        `UPDATE reading_history 
-         SET scroll_position = $1, page_number = $2, read_at = NOW() 
-         WHERE id = $3::uuid RETURNING *;`,
-        [scrollPosition, pageNumber, recentCheck.rows[0].id]
-      );
-      const row = updated.rows[0];
-      return new UserReadingLog({
-        id: row.id,
-        userId: row.user_id,
-        storyId: row.story_id,
-        chapterId: row.chapter_id,
-        scrollPosition: Number(row.scroll_position),
-        pageNumber: Number(row.page_number),
-        readAt: row.read_at,
-        timeSpentSeconds: Number(row.time_spent_seconds),
-      });
-    }
-
-    // Sinh một bản log hoàn toàn mới cho lượt đọc này
+    // Mỗi người dùng chỉ giữ đúng 1 bản log cho mỗi chương (ràng buộc UNIQUE user_id + chapter_id).
+    // Đọc lại một chương đã đọc trước đó (dù cách nhau vài giây hay vài ngày) sẽ cập nhật lại
+    // bản log sẵn có thay vì sinh thêm bản ghi trùng lặp.
     const result = await pool.query(
       `INSERT INTO reading_history (user_id, story_id, chapter_id, scroll_position, page_number, read_at, time_spent_seconds)
        VALUES ($1::uuid, $2::uuid, $3::uuid, $4, $5, NOW(), $6)
+       ON CONFLICT (user_id, chapter_id) DO UPDATE
+       SET scroll_position = EXCLUDED.scroll_position,
+           page_number = EXCLUDED.page_number,
+           story_id = EXCLUDED.story_id,
+           read_at = NOW(),
+           time_spent_seconds = reading_history.time_spent_seconds + EXCLUDED.time_spent_seconds
        RETURNING *;`,
       [userId, storyId, chapterId, scrollPosition, pageNumber, timeSpentSeconds]
     );
@@ -111,32 +89,37 @@ export class UserReadingLog {
    * Lấy danh sách toàn bộ các bản log đọc truyện riêng biệt của một người dùng
    */
   static async getLogsByUser(userId: string, limit: number = 100) {
+    // Mỗi bộ truyện chỉ hiển thị 1 dòng duy nhất: bản log của chương đọc gần nhất
+    // (tránh việc một bộ truyện đọc nhiều chương chiếm hết LIMIT, che khuất các bộ truyện khác).
     const result = await pool.query(
-      `SELECT 
-        rh.id,
-        rh.user_id,
-        rh.story_id,
-        rh.chapter_id,
-        rh.scroll_position,
-        rh.page_number,
-        rh.read_at,
-        rh.time_spent_seconds,
-        s.title as story_title,
-        s.slug as story_slug,
-        s.cover_image_url as story_cover,
-        s.author_name as story_author,
-        s.story_type,
-        s.total_chapters,
-        c.title as chapter_title,
-        c.slug as chapter_slug,
-        c.chapter_number,
-        g.name as group_name
-      FROM reading_history rh
-      JOIN stories s ON rh.story_id = s.id
-      JOIN chapters c ON rh.chapter_id = c.id
-      LEFT JOIN translation_groups g ON s.group_id = g.id
-      WHERE rh.user_id = $1::uuid
-      ORDER BY rh.read_at DESC
+      `SELECT * FROM (
+        SELECT DISTINCT ON (rh.story_id)
+          rh.id,
+          rh.user_id,
+          rh.story_id,
+          rh.chapter_id,
+          rh.scroll_position,
+          rh.page_number,
+          rh.read_at,
+          rh.time_spent_seconds,
+          s.title as story_title,
+          s.slug as story_slug,
+          s.cover_image_url as story_cover,
+          s.author_name as story_author,
+          s.story_type,
+          s.total_chapters,
+          c.title as chapter_title,
+          c.slug as chapter_slug,
+          c.chapter_number,
+          g.name as group_name
+        FROM reading_history rh
+        JOIN stories s ON rh.story_id = s.id
+        JOIN chapters c ON rh.chapter_id = c.id
+        LEFT JOIN translation_groups g ON s.group_id = g.id
+        WHERE rh.user_id = $1::uuid
+        ORDER BY rh.story_id, rh.read_at DESC
+      ) latest_per_story
+      ORDER BY read_at DESC
       LIMIT $2;`,
       [userId, limit]
     );

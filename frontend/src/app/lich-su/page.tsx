@@ -193,13 +193,19 @@ export default function ReadingHistoryPage() {
     }
   };
 
+  const formatChapterNumber = (chapNumber?: number | string) => {
+    const n = Number(chapNumber);
+    return Number.isFinite(n) ? String(n) : chapNumber;
+  };
+
   const getChapterDisplayText = (chapNumber?: number | string, chapTitle?: string) => {
     if (!chapTitle && chapNumber === undefined) return 'Đọc tiếp';
-    if (!chapTitle) return `Chương ${chapNumber}`;
+    const displayNumber = formatChapterNumber(chapNumber);
+    if (!chapTitle) return `Chương ${displayNumber}`;
     if (/^(chương|chapter|ch\.|hồi)\s*\d+/i.test(chapTitle)) {
       return chapTitle;
     }
-    return chapNumber !== undefined ? `Chương ${chapNumber}: ${chapTitle}` : chapTitle;
+    return chapNumber !== undefined ? `Chương ${displayNumber}: ${chapTitle}` : chapTitle;
   };
 
   // Counts for tabs
@@ -398,6 +404,10 @@ export default function ReadingHistoryPage() {
             const author = item.story_author || item.author_name || 'Chưa rõ';
             const storyType = item.story_type === 'manga' ? 'Manga' : 'Light Novel';
             const chapterDisplay = getChapterDisplayText(item.chapter_number, item.chapter_title);
+            const totalChapters = Number(item.total_chapters) || 0;
+            const progressPercent = totalChapters > 0 && item.chapter_number !== undefined
+              ? Math.min(100, Math.round((Number(item.chapter_number) / totalChapters) * 100))
+              : null;
 
             return (
               <div
@@ -466,6 +476,21 @@ export default function ReadingHistoryPage() {
                       <Clock className="w-3 h-3 text-gray-500 shrink-0" />
                       <span>Đọc lúc: {formatDate(item.read_at || item.updated_at)}</span>
                     </div>
+
+                    {/* Progress */}
+                    {progressPercent !== null && (
+                      <div className="flex items-center gap-2 pt-0.5">
+                        <div className="w-24 h-1.5 rounded-full bg-white/10 overflow-hidden shrink-0">
+                          <div
+                            className="h-full rounded-full bg-brand-500"
+                            style={{ width: `${progressPercent}%` }}
+                          />
+                        </div>
+                        <span className="text-[11px] text-gray-500">
+                          {progressPercent}% ({formatChapterNumber(item.chapter_number)}/{totalChapters})
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
 

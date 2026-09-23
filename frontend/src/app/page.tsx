@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import SmartImage from '@/components/common/SmartImage';
 import StoryCardGrid, { Story } from '@/components/explore/StoryCardGrid';
+import { stripHtml } from '@/lib/richText';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -141,7 +142,7 @@ export default function HomePage() {
               </Link>
 
               <p className="text-xs sm:text-sm text-gray-300 line-clamp-3 leading-relaxed max-w-3xl">
-                {heroStory.synopsis}
+                {stripHtml(heroStory.synopsis)}
               </p>
 
               {/* Tag Pills */}

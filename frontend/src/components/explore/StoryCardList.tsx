@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Star, Eye, BookOpen, Heart, User, ShieldCheck } from 'lucide-react';
 import { Story } from './StoryCardGrid';
 import SmartImage from '@/components/common/SmartImage';
+import { stripHtml } from '@/lib/richText';
 
 export default function StoryCardList({ story }: { story: Story }) {
   const isNovel = story.story_type === 'novel';
@@ -99,7 +100,7 @@ export default function StoryCardList({ story }: { story: Story }) {
 
           {/* Synopsis */}
           <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed">
-            {story.synopsis || 'Chưa có tóm tắt cho bộ truyện này.'}
+            {stripHtml(story.synopsis) || 'Chưa có tóm tắt cho bộ truyện này.'}
           </p>
 
           {/* Tags */}

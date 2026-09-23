@@ -19,7 +19,8 @@ import {
   deleteStory,
   getStoryCollaborators,
   addStoryCollaborator,
-  removeStoryCollaborator
+  removeStoryCollaborator,
+  getManageableStories
 } from '../controllers/story.controller';
 import { 
   getUsers, 
@@ -48,7 +49,8 @@ import {
   updateGroupMemberRole,
   removeGroupMember,
   getGroupMessages,
-  sendGroupMessage
+  sendGroupMessage,
+  deleteGroupMessage
 } from '../controllers/group.controller';
 import { 
   getPosts, 
@@ -62,16 +64,23 @@ import {
   bulkRejectPosts,
   reactToPost 
 } from '../controllers/post.controller';
-import { getComments, createComment, likeComment } from '../controllers/comment.controller';
+import { getComments, createComment, likeComment, updateComment, deleteComment } from '../controllers/comment.controller';
+import { createReport, getReports, resolveReport } from '../controllers/report.controller';
 import { uploadMultipleImages, uploadSingleImage } from '../controllers/upload.controller';
 import { uploadImages } from '../middlewares/upload.middleware';
 import { 
   createStory, 
   createVolume, 
+  updateVolume,
+  deleteVolume,
+  reorderVolumes,
   submitChapter, 
+  getChapterForEdit,
+  updateChapter,
   deleteChapter,
-  getChapterSubmissions, 
-  approveChapterSubmission 
+  getChapterSubmissions,
+  approveChapterSubmission,
+  rejectChapterSubmission
 } from '../controllers/chapter.controller';
 import { 
   getReadingHistory, 
@@ -88,7 +97,17 @@ import {
   checkFavoriteStatus
 } from '../controllers/bookmark.controller';
 
+import { queueStatus } from '../services/queue.service';
+import { loginLimiter, registerLimiter, uploadLimiter, searchLimiter, perUserLimiter } from '../middlewares/security';
+
 const router = Router();
+
+// Spam control for user-generated content, per signed-in user
+const commentLimiter = perUserLimiter({ windowMs: 5 * 60_000, limit: 30, message: 'Bạn bình luận quá nhanh. Vui lòng chờ một chút.' });
+const postLimiter = perUserLimiter({ windowMs: 60 * 60_000, limit: 20, message: 'Bạn đăng bài quá nhiều. Vui lòng thử lại sau.' });
+const reactLimiter = perUserLimiter({ windowMs: 60_000, limit: 60, message: 'Bạn thả cảm xúc quá nhanh.' });
+const reportLimiter = perUserLimiter({ windowMs: 60 * 60_000, limit: 10, message: 'Bạn gửi quá nhiều báo cáo. Vui lòng thử lại sau.' });
+const chatLimiter = perUserLimiter({ windowMs: 60_000, limit: 30, message: 'Bạn nhắn quá nhanh.' });
 
 // Health Check
 router.get('/health', (req, res) => {
@@ -97,29 +116,31 @@ router.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     service: 'NovelHub RESTful API',
     version: '1.0.0',
+    queue: queueStatus(), // 'up' | 'down' | 'disabled' (RabbitMQ publisher connection)
   });
 });
 
 // Authentication & Account Management
-router.post('/auth/login', login);
-router.post('/auth/register', register);
+router.post('/auth/login', loginLimiter, login);
+router.post('/auth/register', registerLimiter, register);
 router.post('/auth/logout', logout);
 router.get('/auth/me', requireAuth, getMe);
 router.get('/auth/accounts', getDemoAccounts);
 
 // File & Image Uploads (Multipart/Form-Data)
-router.post('/upload/images', optionalAuth, uploadImages.array('images', 10) as any, uploadMultipleImages);
-router.post('/upload/image', optionalAuth, uploadImages.single('image') as any, uploadSingleImage);
+router.post('/upload/images', requireAuth, uploadLimiter, uploadImages.array('images', 10) as any, uploadMultipleImages);
+router.post('/upload/image', requireAuth, uploadLimiter, uploadImages.single('image') as any, uploadSingleImage);
 
 // Tags & Categories
 router.get('/tags', getTags);
 
 // Stories
-router.get('/stories', getStories);
-router.get('/stories/explore', exploreStories);
+router.get('/stories', searchLimiter, getStories);
+router.get('/stories/explore', searchLimiter, exploreStories);
 router.get('/stories/trending', getTrendingStories);
 router.get('/stories/recently-updated', getRecentlyUpdatedStories);
 router.get('/stories/illustrations', getFeaturedIllustrations);
+router.get('/stories/manageable', requireAuth, getManageableStories);
 router.get('/stories/:slug', optionalAuth, getStoryBySlug);
 router.get('/stories/:slug/chapters/:chapterSlug', optionalAuth, getChapterBySlug);
 router.post('/stories/:slug/rate', requireAuth, rateStory);
@@ -130,11 +151,17 @@ router.get('/stories/:id/collaborators', getStoryCollaborators);
 router.post('/stories/:id/collaborators', requireAuth, addStoryCollaborator);
 router.delete('/stories/:id/collaborators/:userId', requireAuth, removeStoryCollaborator);
 router.post('/stories/:storyId/volumes', requireAuth, createVolume);
+router.put('/stories/:storyId/volumes/reorder', requireAuth, reorderVolumes);
+router.put('/volumes/:id', requireAuth, updateVolume);
+router.delete('/volumes/:id', requireAuth, deleteVolume);
 
 // Chapters & Submissions
 router.post('/chapters/submissions', requireAuth, submitChapter);
 router.get('/chapters/submissions', optionalAuth, getChapterSubmissions);
 router.post('/chapters/submissions/:id/approve-active', requireAuth, approveChapterSubmission);
+router.post('/chapters/submissions/:id/reject', requireAuth, rejectChapterSubmission);
+router.get('/chapters/:id', requireAuth, getChapterForEdit);
+router.put('/chapters/:id', requireAuth, updateChapter);
 router.delete('/chapters/:id', requireAuth, deleteChapter);
 
 
@@ -160,20 +187,27 @@ router.get('/favorites/status/:storyId', optionalAuth, checkFavoriteStatus);
 
 // Comments
 router.get('/comments', getComments);
-router.post('/comments', requireAuth, createComment);
+router.post('/comments', requireAuth, commentLimiter, createComment);
 router.post('/comments/:id/like', requireAuth, likeComment);
+router.put('/comments/:id', requireAuth, updateComment);
+router.delete('/comments/:id', requireAuth, deleteComment);
+
+// Violation reports
+router.post('/reports', requireAuth, reportLimiter, createReport);
+router.get('/reports', requireAuth, getReports);
+router.put('/reports/:id/resolve', requireAuth, resolveReport);
 
 // Fandom / Community Posts
 router.get('/posts', optionalAuth, getPosts);
-router.get('/posts/:slug', getPostBySlug);
-router.post('/posts', requireAuth, createPost);
+router.get('/posts/:slug', optionalAuth, getPostBySlug);
+router.post('/posts', requireAuth, postLimiter, createPost);
 router.put('/posts/:id', requireAuth, updatePost);
 router.delete('/posts/:id', requireAuth, deletePost);
 router.post('/posts/:id/approve', requireAuth, approvePost);
 router.post('/posts/:id/reject', requireAuth, rejectPost);
 router.post('/posts/bulk-approve', requireAuth, bulkApprovePosts);
 router.post('/posts/bulk-reject', requireAuth, bulkRejectPosts);
-router.post('/posts/:id/react', requireAuth, reactToPost);
+router.post('/posts/:id/react', requireAuth, reactLimiter, reactToPost);
 
 // Users & Profile Settings
 router.get('/profile/me', requireAuth, getCurrentUserProfile);
@@ -196,6 +230,7 @@ router.delete('/groups/:id/members/:memberUserId', requireAuth, removeGroupMembe
 
 // Group Chatroom Messages
 router.get('/groups/:id/messages', optionalAuth, getGroupMessages);
-router.post('/groups/:id/messages', requireAuth, sendGroupMessage);
+router.post('/groups/:id/messages', requireAuth, chatLimiter, sendGroupMessage);
+router.delete('/groups/:id/messages/:messageId', requireAuth, deleteGroupMessage);
 
 export default router;
