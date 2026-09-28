@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """Launch NovelHub with Docker Compose and verify that every service works.
 
-Usage:
-    python3 launch.py            # create .env if needed, build + start, then run checks
-    python3 launch.py check      # only run the health checks against a running stack
-    python3 launch.py status     # docker compose ps
-    python3 launch.py logs [svc] # follow logs (all services or one)
-    python3 launch.py down       # stop containers (data volumes are kept)
+Usage (from the project root; see scripts/README.md for the full guide):
+    python3 scripts/launch.py            # create .env if needed, build + start, seed, then run checks
+    python3 scripts/launch.py check      # only run the health checks against a running stack
+    python3 scripts/launch.py status     # docker compose ps
+    python3 scripts/launch.py logs [svc] # follow logs (all services or one)
+    python3 scripts/launch.py down       # stop containers (data volumes are kept)
 
 Options for "up": --no-build (reuse existing images), --timeout SECONDS (default 600),
-                  --seed (always run the sample-data seeders), --no-seed (never run them).
-By default the seeders run only when the database has no stories yet (fresh install), because
-backend/scripts/seed-passwords.js resets EVERY user's password to "password123".
+                  --no-seed (skip the sample-data seeders).
+The seeders run on every "up" by default. Note that backend/scripts/seed-passwords.js resets
+EVERY user's password to "password123", so use --no-seed once real users sign up.
 Only the Python standard library is used.
 """
 import argparse
@@ -26,7 +26,7 @@ import time
 import urllib.error
 import urllib.request
 
-ROOT = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # project root (this file is in scripts/)
 ENV_FILE = os.path.join(ROOT, ".env")
 ENV_EXAMPLE = os.path.join(ROOT, ".env.example")
 MIGRATIONS_DIR = os.path.join(ROOT, "sql", "migrations")
@@ -277,7 +277,7 @@ def wait_until(desc, fn, timeout):
 
 # ----------------------------------------------------------------------- checks
 
-def run_checks(env, timeout, seed=None):
+def run_checks(env, timeout, seed=True):
     gw = f"http://localhost:{env.get('GATEWAY_PORT', 3000)}"
     be = f"http://127.0.0.1:{env.get('PORT', 5000)}"
     search = f"http://127.0.0.1:{env.get('SEARCH_PORT', 9201)}"
@@ -329,14 +329,11 @@ def run_checks(env, timeout, seed=None):
         info("Applying idempotent SQL migrations...")
         record("database migrations", apply_migrations(env))
 
-        count = story_count(env)
-        if seed is True or (seed is None and count == 0):
-            info(f"Seeding sample data ({count} stories in DB)...")
+        if seed:
+            info(f"Seeding sample data ({story_count(env)} stories in DB before seeding)...")
             record("sample data seeded", run_seeders())
             passed, detail = wait_until("backend restart", backend_up, timeout)
             record("backend  healthy after seeding", passed, "" if passed else detail)
-        elif seed is None:
-            info(f"Database already has {count} stories, skipping seeders (use --seed to force)")
 
     # Search service
     code, body = http("GET", f"{search}/_meta/health")
@@ -382,7 +379,7 @@ def run_checks(env, timeout, seed=None):
     hard_fail = [n for n, p, soft in results if not p and not soft]
     print()
     if hard_fail:
-        print(f"{RED}{BOLD}{len(hard_fail)} check(s) failed.{RESET} Inspect with: python3 launch.py logs <service>")
+        print(f"{RED}{BOLD}{len(hard_fail)} check(s) failed.{RESET} Inspect with: python3 scripts/launch.py logs <service>")
         for svc in SERVICES:
             if st.get(svc, ("missing",))[0] != "running":
                 print(f"\n--- last logs of {svc} ---", flush=True)
@@ -401,10 +398,8 @@ def main():
     p.add_argument("command", nargs="?", default="up", choices=["up", "check", "status", "logs", "down"])
     p.add_argument("service", nargs="?", help="service name for 'logs'")
     p.add_argument("--no-build", action="store_true", help="don't rebuild images on 'up'")
-    g = p.add_mutually_exclusive_group()
-    g.add_argument("--seed", dest="seed", action="store_true", default=None,
-                   help="run the sample-data seeders even if the DB already has stories (resets all passwords!)")
-    g.add_argument("--no-seed", dest="seed", action="store_false", help="never run the seeders")
+    p.add_argument("--no-seed", dest="seed", action="store_false",
+                   help="skip the sample-data seeders (they run by default and reset all passwords)")
     p.add_argument("--timeout", type=int, default=600, help="seconds to wait for services (default 600)")
     a = p.parse_args()
 
