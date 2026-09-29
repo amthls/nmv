@@ -38,6 +38,13 @@ export default function Navbar() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const q = searchQuery.trim();
+    setIsMobileMenuOpen(false);
+    router.push(q ? `/kham-pha?q=${encodeURIComponent(q)}` : '/kham-pha');
+  };
+
   // Notification state
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -103,6 +110,8 @@ export default function Navbar() {
       router.push(`/truyen/${notif.story_slug}`);
     } else if (notif.post_slug) {
       router.push(`/fandom/${notif.post_slug}`);
+    } else if (notif.group_slug) {
+      router.push(`/nhom-dich/${notif.group_slug}`);
     }
   };
 
@@ -180,16 +189,19 @@ export default function Navbar() {
 
           {/* Search Bar */}
           <div className="flex-1 max-w-md hidden sm:block">
-            <div className="relative">
+            <form onSubmit={handleSearchSubmit} role="search" className="relative">
               <input
                 type="text"
+                enterKeyHint="search"
                 placeholder="Tìm truyện chữ, manga, tác giả, thể loại..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full h-10 pl-10 pr-4 rounded-full bg-white/5 border border-white/10 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition"
               />
-              <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            </div>
+              <button type="submit" aria-label="Tìm kiếm" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white">
+                <Search className="w-4 h-4" />
+              </button>
+            </form>
           </div>
 
           {/* Actions & User Auth Section */}
@@ -477,14 +489,19 @@ export default function Navbar() {
         {/* Mobile Navigation Drawer */}
         {isMobileMenuOpen && (
           <div className="md:hidden border-t border-white/10 bg-[#0F0F17] px-4 py-4 space-y-2 animate-in slide-in-from-top-2">
-            <div className="relative mb-3">
+            <form onSubmit={handleSearchSubmit} role="search" className="relative mb-3">
               <input
                 type="text"
+                enterKeyHint="search"
                 placeholder="Tìm truyện chữ, manga..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full h-9 pl-9 pr-3 rounded-lg bg-white/5 border border-white/10 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-brand-500"
               />
-              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            </div>
+              <button type="submit" aria-label="Tìm kiếm" className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white">
+                <Search className="w-4 h-4" />
+              </button>
+            </form>
             <Link 
               href="/" 
               onClick={() => setIsMobileMenuOpen(false)}

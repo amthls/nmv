@@ -290,9 +290,9 @@ export default function PostCard({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-white hover:text-brand-400 transition cursor-pointer">
+              <Link href={`/nguoi-dung/${post.author_username}`} className="text-xs font-bold text-white hover:text-brand-400 transition">
                 {post.author_name || post.author_username}
-              </span>
+              </Link>
               {getRoleBadge(post.author_roles)}
             </div>
             <div className="text-[11px] text-gray-500 flex items-center gap-1.5">

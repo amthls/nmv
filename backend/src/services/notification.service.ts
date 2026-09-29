@@ -10,10 +10,10 @@ import { pool } from '../config/db';
 
 export interface NotifyItem {
   userId: string;
-  type: 'system' | 'chapter_update' | 'comment_reply' | 'post_reaction' | 'post_comment';
+  type: 'system' | 'chapter_update' | 'comment_reply' | 'post_reaction' | 'post_comment' | 'group_join_request' | 'group_member_add';
   title: string;
   message: string | null;
-  referenceType: 'chapter' | 'post' | 'story' | null;
+  referenceType: 'chapter' | 'post' | 'story' | 'group' | null;
   referenceId: string | null;
   senderId: string | null;
   dedupeKey: string;
@@ -38,8 +38,25 @@ const FANOUT_CHUNK = Number(process.env.NOTIFY_FANOUT_CHUNK || 1000);
 const FANOUT_PAUSE_MS = Number(process.env.NOTIFY_FANOUT_PAUSE_MS || 25);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** Anything about a translation group (join requests, decisions, approval) is a "group event". */
+const isGroupEvent = (it: NotifyItem) => it.type.startsWith('group_') || it.referenceType === 'group';
+
+/** Drop group events for recipients who switched them off (user_settings.notify_group_events). */
+async function dropMutedGroupEvents(items: NotifyItem[]): Promise<NotifyItem[]> {
+  const userIds = [...new Set(items.filter(isGroupEvent).map((it) => it.userId))];
+  if (userIds.length === 0) return items;
+  const muted = await pool.query(
+    `SELECT user_id FROM user_settings WHERE user_id = ANY($1::uuid[]) AND notify_group_events = false`,
+    [userIds]
+  );
+  if (muted.rows.length === 0) return items;
+  const mutedIds = new Set(muted.rows.map((r: any) => r.user_id));
+  return items.filter((it) => !(isGroupEvent(it) && mutedIds.has(it.userId)));
+}
+
 /** One multi-row INSERT for any number of single notifications. Returns how many were new. */
-export async function insertNotifications(items: NotifyItem[]): Promise<number> {
+export async function insertNotifications(allItems: NotifyItem[]): Promise<number> {
+  const items = await dropMutedGroupEvents(allItems);
   if (items.length === 0) return 0;
   const cols = 8;
   const values: any[] = [];
@@ -179,4 +196,35 @@ export function postReviewNotifications(posts: { id: string; user_id: string; ti
       referenceType: 'post' as const, referenceId: p.id, senderId: moderatorId,
       dedupeKey: `post-review:${p.id}:${approved ? 'approved' : 'rejected'}`,
     }));
+}
+
+/** Tell every leader/mod of a group that someone asked to join. */
+export function groupJoinRequestNotifications(input: {
+  requestId: string; groupId: string; groupName: string; managerIds: string[]; requesterId: string; requesterName: string; message: string | null;
+}): NotifyItem[] {
+  return input.managerIds
+    .filter((id) => id !== input.requesterId)
+    .map((managerId) => ({
+      userId: managerId, type: 'group_join_request' as const,
+      title: `${input.requesterName} muốn gia nhập nhóm ${input.groupName}`,
+      message: input.message ? `"${snippet(input.message, 120)}"` : null,
+      referenceType: 'group' as const, referenceId: input.groupId, senderId: input.requesterId,
+      dedupeKey: `group-join:${input.requestId}:${managerId}`,
+    }));
+}
+
+/** Tell the requester the leader's decision. */
+export function groupJoinDecisionNotification(input: {
+  requestId: string; groupId: string; groupName: string; requesterId: string; reviewerId: string; approved: boolean;
+}): NotifyItem[] {
+  return [{
+    userId: input.requesterId,
+    type: input.approved ? 'group_member_add' : 'system',
+    title: input.approved
+      ? `Bạn đã được duyệt vào nhóm ${input.groupName}`
+      : `Yêu cầu gia nhập nhóm ${input.groupName} không được chấp nhận`,
+    message: null,
+    referenceType: 'group', referenceId: input.groupId, senderId: input.reviewerId,
+    dedupeKey: `group-join-decision:${input.requestId}`,
+  }];
 }

@@ -25,30 +25,39 @@ services:
       - novel_network
 
   # ============================================================================
-  # 1b. Search Service: novelsearch, a small in-house Go full-text search
-  #     engine that replaces Elasticsearch (story search, optional). It speaks
-  #     the same narrow REST surface the backend used to call on ES, so the
-  #     Node.js integration code (search.service.ts) is unchanged.
-  #     Published on localhost only.
+  # 1b. Search Service: Elasticsearch (story search, optional).
+  #     Single node, security off: it is reachable only on the Docker network and
+  #     127.0.0.1, like Postgres. Tuned for a small index on a small box:
+  #     256 MB heap, ML/geoip/disk-watermark/log-indexing off, hard container cap.
+  #     If it is down, the backend falls back to SQL ILIKE.
   # ============================================================================
   search:
-    build:
-      context: ./search-service
-      dockerfile: Dockerfile
+    image: elasticsearch:9.5.3
     container_name: novel_search
     restart: unless-stopped
     environment:
-      PORT: 8091
-      SNAPSHOT_PATH: /data/snapshot.json
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      xpack.ml.enabled: "false"
+      ingest.geoip.downloader.enabled: "false"
+      cluster.routing.allocation.disk.threshold_enabled: "false"
+      cluster.deprecation_indexing.enabled: "false" # no internal log/history indices
+      indices.lifecycle.history_index_enabled: "false"
+      node.processors: 2 # sizes thread pools; each thread costs stack + buffers
+      # Heap: raise -Xms/-Xmx together (e.g. 512m) once the catalogue grows past ~50k stories.
+      # Direct memory / JIT code cache default to much more than a tiny index needs.
+      # No bootstrap.memory_lock: it pins every reserved page and roughly triples resident RAM.
+      ES_JAVA_OPTS: -Xms256m -Xmx256m -XX:MaxDirectMemorySize=128m -XX:ReservedCodeCacheSize=64m
+    mem_limit: 768m
     ports:
-      - "127.0.0.1:${SEARCH_PORT:-9201}:8091"
+      - "127.0.0.1:${SEARCH_PORT:-9201}:9200"
     volumes:
-      - search_data:/data
+      - es_data:/usr/share/elasticsearch/data
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8091/_meta/health"]
+      test: ["CMD-SHELL", "curl -fs 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=2s' >/dev/null"]
       interval: 10s
       timeout: 5s
-      retries: 12
+      retries: 18
     networks:
       - novel_network
 
@@ -115,7 +124,7 @@ services:
       ENABLE_DEMO_ACCOUNTS: ${ENABLE_DEMO_ACCOUNTS:-false}
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
-      SEARCH_URL: http://search:8091
+      SEARCH_URL: http://search:9200
       SEARCH_INDEX: ${SEARCH_INDEX:-novel_stories}
     volumes:
       - ./uploads:/app/uploads
@@ -202,7 +211,7 @@ services:
 volumes:
   postgres_data:
     driver: local
-  search_data:
+  es_data:
     driver: local
   image_cache:
     driver: local

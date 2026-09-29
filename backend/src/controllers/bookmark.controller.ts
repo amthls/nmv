@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { pool } from '../config/db';
+import { clientDbError } from '../utils/dbErrors';
 
 export const getBookmarks = async (req: Request, res: Response) => {
   try {
@@ -115,6 +116,8 @@ export const createBookmark = async (req: Request, res: Response) => {
       message: 'Đã tạo bookmark thành công.',
     });
   } catch (error: any) {
+    const clientErr = clientDbError(error);
+    if (clientErr) return res.status(clientErr.status).json({ success: false, message: clientErr.message });
     console.error('Error creating bookmark:', error);
     return res.status(500).json({ success: false, message: error.message });
   }
@@ -267,6 +270,8 @@ export const toggleFavorite = async (req: Request, res: Response) => {
       });
     }
   } catch (error: any) {
+    const clientErr = clientDbError(error);
+    if (clientErr) return res.status(clientErr.status).json({ success: false, message: clientErr.message });
     console.error('Error toggling favorite:', error);
     return res.status(500).json({ success: false, message: error.message });
   }

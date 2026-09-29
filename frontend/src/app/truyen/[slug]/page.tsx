@@ -30,6 +30,7 @@ import ReportButton from '@/components/common/ReportButton';
 import { useAuth } from '@/context/AuthContext';
 import RichContent from '@/components/common/RichContent';
 import { stripHtml } from '@/lib/richText';
+import { getGuestHistory } from '@/lib/readingHistory';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -63,18 +64,8 @@ export default function StoryDetailPage() {
         const json = await res.json();
         if (json.success && json.data) {
           setStory(json.data);
-          let following = false;
-          if (typeof json.data.is_favorite === 'boolean' && json.data.is_favorite) {
-            following = true;
-          } else if (typeof window !== 'undefined') {
-            try {
-              const localFavs = JSON.parse(localStorage.getItem('novelhub_guest_favorites') || '[]');
-              if (localFavs.some((f: any) => f.slug === slug || f.id === json.data.id)) {
-                following = true;
-              }
-            } catch (e) {}
-          }
-          setIsFollowing(following);
+          // Follow state is per account and comes only from the server (false for guests)
+          setIsFollowing(json.data.is_favorite === true);
         }
       }
     } catch (err) {
@@ -92,14 +83,9 @@ export default function StoryDetailPage() {
     if (!slug) return;
     const checkHistory = async () => {
       let found: any = null;
-      if (typeof window !== 'undefined') {
-        try {
-          const raw = localStorage.getItem('novelhub_guest_history') || '[]';
-          const list = JSON.parse(raw);
-          found = list.find((h: any) => h.story_slug === slug || (story?.id && h.story_id === story.id));
-        } catch (e) {}
-      }
-      if (!found && isAuthenticated) {
+      if (!isAuthenticated) {
+        found = getGuestHistory().find((h: any) => h.story_slug === slug || (story?.id && h.story_id === story.id));
+      } else {
         try {
           const res = await authFetch(`${API_BASE_URL}/history`);
           if (res.ok) {
@@ -116,6 +102,8 @@ export default function StoryDetailPage() {
           title: found.chapter_title,
           chapter_number: found.chapter_number,
         });
+      } else {
+        setLastReadChapter(null); // e.g. after logout, don't keep the previous account's position
       }
     };
     checkHistory();
@@ -127,55 +115,39 @@ export default function StoryDetailPage() {
       e.stopPropagation();
     }
     if (!story) return;
-
-    const nextStatus = !isFollowing;
-    setIsFollowing(nextStatus);
-    setStory((prev: any) => prev ? {
-      ...prev,
-      total_favorites: Math.max(0, (prev.total_favorites || 0) + (nextStatus ? 1 : -1))
-    } : prev);
-
-    // Update localStorage cache (for both guest & instant fallback)
-    if (typeof window !== 'undefined') {
-      try {
-        const raw = localStorage.getItem('novelhub_guest_favorites') || '[]';
-        let list: any[] = JSON.parse(raw);
-        if (nextStatus) {
-          if (!list.some((f: any) => f.slug === story.slug || f.id === story.id)) {
-            list.unshift({
-              id: story.id,
-              story_id: story.id,
-              title: story.title,
-              slug: story.slug,
-              cover_image_url: story.cover_image_url,
-              author_name: story.author_name,
-              total_chapters: story.total_chapters,
-              latest_chapter_title: story.latest_chapter?.title,
-              latest_chapter_slug: story.latest_chapter?.slug,
-              category: 'reading',
-              created_at: new Date().toISOString()
-            });
-          }
-          showToast('Đã thêm truyện vào Tủ sách đã lưu!');
-        } else {
-          list = list.filter((f: any) => f.slug !== story.slug && f.id !== story.id);
-          showToast('Đã hủy theo dõi truyện.');
-        }
-        localStorage.setItem('novelhub_guest_favorites', JSON.stringify(list));
-      } catch (e) {}
+    if (!isAuthenticated) {
+      openAuthModal('login');
+      return;
     }
 
-    // Sync to PostgreSQL backend if authenticated
-    if (isAuthenticated) {
-      try {
-        await authFetch(`${API_BASE_URL}/favorites/toggle`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ story_id: story.id, category: 'reading' }),
-        });
-      } catch (err) {
-        console.error('Failed to sync follow state to server:', err);
-      }
+    // Optimistic update, rolled back if the server rejects it
+    const nextStatus = !isFollowing;
+    const applyStatus = (following: boolean) => {
+      setIsFollowing(following);
+      setStory((prev: any) => prev ? {
+        ...prev,
+        total_favorites: Math.max(0, (prev.total_favorites || 0) + (following ? 1 : -1))
+      } : prev);
+    };
+    applyStatus(nextStatus);
+
+    try {
+      const res = await authFetch(`${API_BASE_URL}/favorites/toggle`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        // Send the stored category: the server only removes when it matches (otherwise it re-categorizes)
+        body: JSON.stringify({ story_id: story.id, category: story.favorite_category || 'reading' }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) throw new Error(json?.message || `HTTP ${res.status}`);
+      const removed = json.action === 'removed';
+      if (removed === nextStatus) applyStatus(!removed); // server ended in a different state than we guessed
+      setStory((prev: any) => prev ? { ...prev, favorite_category: removed ? null : (prev.favorite_category || 'reading') } : prev);
+      showToast(removed ? 'Đã hủy theo dõi truyện.' : 'Đã thêm truyện vào Tủ sách đã lưu!');
+    } catch (err) {
+      console.error('Failed to update follow state:', err);
+      applyStatus(!nextStatus);
+      showToast('Không thể cập nhật theo dõi. Vui lòng thử lại.');
     }
   };
 

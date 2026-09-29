@@ -64,7 +64,7 @@ interface StoryFormProps {
 
 export default function StoryForm({ mode, initialValues, preselectedGroupId }: StoryFormProps) {
   const router = useRouter();
-  const { authFetch } = useAuth();
+  const { authFetch, user, hasRole } = useAuth();
   const iv = initialValues || {};
 
   const [title, setTitle] = useState(iv.title || '');
@@ -112,6 +112,16 @@ export default function StoryForm({ mode, initialValues, preselectedGroupId }: S
     }
     fetchData();
   }, []);
+
+  // Only groups the user belongs to (the server enforces the same rule); admin/mod may pick any.
+  // The story's current group stays selectable when editing.
+  const selectableGroups = useMemo(() => {
+    if (hasRole('mod')) return groups;
+    return groups.filter((g: any) =>
+      g.id === iv.group_id ||
+      (Array.isArray(g.members) && g.members.some((m: any) => m.user_id === user?.id))
+    );
+  }, [groups, user?.id, iv.group_id]);
 
   const allTags = useMemo(() => {
     const list: TagItem[] = [];
@@ -304,7 +314,7 @@ export default function StoryForm({ mode, initialValues, preselectedGroupId }: S
               className="w-full h-11 px-3 rounded-xl bg-[#0f0f17] border border-white/10 text-white text-xs focus:outline-none focus:border-brand-500"
             >
               <option value="">-- Đăng độc lập (Không thuộc nhóm nào) --</option>
-              {groups.map((g) => (
+              {selectableGroups.map((g) => (
                 <option key={g.id} value={g.id}>
                   {g.name}
                 </option>

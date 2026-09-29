@@ -229,7 +229,7 @@ export default function PostDetailPage() {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-white">{post.author_name || post.author_username}</span>
+                <Link href={`/nguoi-dung/${post.author_username}`} className="text-sm font-bold text-white hover:text-brand-400 transition">{post.author_name || post.author_username}</Link>
                 {post.author_roles?.includes('admin') && (
                   <span className="px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-rose-500/20 text-rose-300 border border-rose-500/30 uppercase">Admin</span>
                 )}

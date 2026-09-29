@@ -47,7 +47,8 @@ CREATE TYPE notification_type AS ENUM (
     'comment_reply',    -- Ai đó reply comment
     'bookmark_update',  -- Truyện bookmark có cập nhật
     'post_reaction',    -- Ai đó react bài viết
-    'post_comment'      -- Ai đó comment bài viết
+    'post_comment',     -- Ai đó comment bài viết
+    'group_join_request'-- Có người xin gia nhập nhóm (gửi tới trưởng nhóm/mod)
 );
 
 -- Loại cảm xúc (reaction)
@@ -73,6 +74,8 @@ CREATE TABLE users (
     ban_reason      TEXT,
     banned_at       TIMESTAMPTZ,
     banned_by       UUID REFERENCES users(id),
+    deleted_at      TIMESTAMPTZ,                  -- tài khoản đã bị xóa (ẩn danh hóa, giữ nội dung)
+    deleted_by      UUID REFERENCES users(id) ON DELETE SET NULL,
     email_verified  BOOLEAN DEFAULT FALSE,
     last_login_at   TIMESTAMPTZ,
     created_at      TIMESTAMPTZ DEFAULT NOW(),
@@ -172,6 +175,8 @@ CREATE TABLE translation_groups (
     rules           TEXT,
     is_active       BOOLEAN DEFAULT TRUE,
     approval_status VARCHAR(20) DEFAULT 'approved',
+    approved_by     UUID REFERENCES users(id) ON DELETE SET NULL,
+    approved_at     TIMESTAMPTZ,
     created_by      UUID NOT NULL REFERENCES users(id),
     created_at      TIMESTAMPTZ DEFAULT NOW(),
     updated_at      TIMESTAMPTZ DEFAULT NOW()
@@ -191,6 +196,22 @@ CREATE TABLE group_members (
 
 CREATE INDEX idx_group_members_group ON group_members(group_id);
 CREATE INDEX idx_group_members_user ON group_members(user_id);
+
+-- Yêu cầu gia nhập nhóm: người dùng xin vào, trưởng nhóm/mod (hoặc admin) duyệt hoặc từ chối
+CREATE TABLE group_join_requests (
+    id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    group_id    UUID NOT NULL REFERENCES translation_groups(id) ON DELETE CASCADE,
+    user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    message     VARCHAR(500),
+    status      approval_status NOT NULL DEFAULT 'pending',
+    reviewed_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    reviewed_at TIMESTAMPTZ,
+    created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX uq_group_join_requests_pending ON group_join_requests(group_id, user_id) WHERE status = 'pending';
+CREATE INDEX idx_group_join_requests_group ON group_join_requests(group_id, status, created_at);
+CREATE INDEX idx_group_join_requests_user ON group_join_requests(user_id);
 
 CREATE TABLE group_messages (
     id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

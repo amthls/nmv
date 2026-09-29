@@ -29,7 +29,9 @@ import {
   updateUserProfile, 
   updateUserSettings,
   getAdminUserList,
-  manageUserRole
+  manageUserRole,
+  setUserBan,
+  deleteUser
 } from '../controllers/user.controller';
 import { 
   login, 
@@ -38,19 +40,25 @@ import {
   logout, 
   getDemoAccounts 
 } from '../controllers/auth.controller';
-import { requireAuth, optionalAuth } from '../middlewares/auth.middleware';
+import { requireAuth, optionalAuth, requireRole } from '../middlewares/auth.middleware';
 import { 
   getGroups, 
   getGroupBySlug, 
   createGroup, 
   updateGroup,
   approveGroup,
+  rejectGroup,
   addGroupMember,
   updateGroupMemberRole,
   removeGroupMember,
   getGroupMessages,
   sendGroupMessage,
-  deleteGroupMessage
+  deleteGroupMessage,
+  requestToJoinGroup,
+  cancelMyJoinRequest,
+  getGroupJoinRequests,
+  approveJoinRequest,
+  rejectJoinRequest,
 } from '../controllers/group.controller';
 import { 
   getPosts, 
@@ -108,6 +116,7 @@ const postLimiter = perUserLimiter({ windowMs: 60 * 60_000, limit: 20, message: 
 const reactLimiter = perUserLimiter({ windowMs: 60_000, limit: 60, message: 'Bạn thả cảm xúc quá nhanh.' });
 const reportLimiter = perUserLimiter({ windowMs: 60 * 60_000, limit: 10, message: 'Bạn gửi quá nhiều báo cáo. Vui lòng thử lại sau.' });
 const chatLimiter = perUserLimiter({ windowMs: 60_000, limit: 30, message: 'Bạn nhắn quá nhanh.' });
+const joinRequestLimiter = perUserLimiter({ windowMs: 60 * 60_000, limit: 10, message: 'Bạn gửi quá nhiều yêu cầu gia nhập. Vui lòng thử lại sau.' });
 
 // Health Check
 router.get('/health', (req, res) => {
@@ -216,17 +225,29 @@ router.put('/profile/me/settings', requireAuth, updateUserSettings);
 router.get('/users', getUsers);
 router.get('/users/admin/all', requireAuth, getAdminUserList);
 router.post('/users/:userId/roles', requireAuth, manageUserRole);
-router.get('/users/:username', getUserProfile);
+router.get('/users/:username', optionalAuth, getUserProfile);
+// Site moderation (admin/mod, rules in moderationRights): ban/unban, soft-delete an account
+const requireStaff = requireRole('admin', 'mod');
+router.post('/users/:userId/ban', requireAuth, requireStaff, setUserBan(true));
+router.post('/users/:userId/unban', requireAuth, requireStaff, setUserBan(false));
+router.delete('/users/:userId', requireAuth, requireStaff, deleteUser);
 
 // Translation Groups
-router.get('/groups', getGroups);
-router.get('/groups/:slug', getGroupBySlug);
+router.get('/groups', optionalAuth, getGroups);
+router.get('/groups/:slug', optionalAuth, getGroupBySlug);
 router.post('/groups', requireAuth, createGroup);
 router.put('/groups/:id', requireAuth, updateGroup);
 router.post('/groups/:id/approve', requireAuth, approveGroup);
+router.post('/groups/:id/reject', requireAuth, rejectGroup);
 router.post('/groups/:id/members', requireAuth, addGroupMember);
 router.put('/groups/:id/members/:memberUserId', requireAuth, updateGroupMemberRole);
 router.delete('/groups/:id/members/:memberUserId', requireAuth, removeGroupMember);
+// Join requests: user asks, group leader/mod (or admin) approves or rejects
+router.post('/groups/:id/join-requests', requireAuth, joinRequestLimiter, requestToJoinGroup);
+router.delete('/groups/:id/join-requests/me', requireAuth, cancelMyJoinRequest);
+router.get('/groups/:id/join-requests', requireAuth, getGroupJoinRequests);
+router.post('/groups/:id/join-requests/:requestId/approve', requireAuth, approveJoinRequest);
+router.post('/groups/:id/join-requests/:requestId/reject', requireAuth, rejectJoinRequest);
 
 // Group Chatroom Messages
 router.get('/groups/:id/messages', optionalAuth, getGroupMessages);

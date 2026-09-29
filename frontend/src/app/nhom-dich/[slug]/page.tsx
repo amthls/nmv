@@ -58,18 +58,53 @@ export default function GroupDetailPage() {
   const [memberFeedback, setMemberFeedback] = useState<string | null>(null);
   const [submissionFeedback, setSubmissionFeedback] = useState<string | null>(null);
 
+  // Join Request State
+  const [joinRequests, setJoinRequests] = useState<any[]>([]);
+  const [isJoinBusy, setIsJoinBusy] = useState(false);
+  const [joinFeedback, setJoinFeedback] = useState<string | null>(null);
+  const [reviewingRequestId, setReviewingRequestId] = useState<string | null>(null);
+
   const currentMembership = group?.members?.find((m: any) => m.user_id === user?.id);
-  const isLeaderOrMod = hasRole('admin', 'mod') || ['leader', 'mod'].includes(currentMembership?.role);
-  const isMember = isAuthenticated && (isLeaderOrMod || Boolean(currentMembership));
+  // Mirrors the server: group leader/mod or site admin manage the group; only the leader (or admin)
+  // manages other managers; site mods may publish into any group but don't run it.
+  const isSiteAdmin = hasRole('admin');
+  const isLeaderOrMod = isSiteAdmin || ['leader', 'mod'].includes(currentMembership?.role);
+  const isGroupLeader = isSiteAdmin || currentMembership?.role === 'leader';
+  const isMember = isAuthenticated && (hasRole('mod') || isLeaderOrMod || Boolean(currentMembership));
+  const canSeeInternal = isAuthenticated && (isSiteAdmin || Boolean(currentMembership)); // chat
+  // Same rules as the server: admins manage anyone, leaders anyone but other leaders, group mods
+  // only regular members; your own card lets a leader/mod step down (never promote themselves).
+  const leaderCount = group?.members?.filter((m: any) => m.role === 'leader').length || 0;
+  const canManageMember = (m: any) =>
+    m.user_id !== user?.id && (
+      isSiteAdmin ? true
+      : currentMembership?.role === 'leader' ? m.role !== 'leader'
+      : isLeaderOrMod && !['leader', 'mod'].includes(m.role)
+    );
+  const canStepDown = (m: any) =>
+    m.user_id === user?.id && (m.role === 'mod' || (m.role === 'leader' && leaderCount > 1));
+  const roleRank = (r: string) => (r === 'leader' ? 3 : r === 'mod' ? 2 : 1);
+  const ROLE_OPTIONS = [
+    { value: 'leader', label: 'Trưởng Nhóm (Leader)', managerOnly: true },
+    { value: 'mod', label: 'Quản Lý Nhóm (Mod)', managerOnly: true },
+    { value: 'translator', label: 'Dịch Giả (Translator)' },
+    { value: 'editor', label: 'Biên Tập (Editor)' },
+    { value: 'proofreader', label: 'Hiệu Đính (Proofreader)' },
+    { value: 'raw_provider', label: 'Raw Provider' },
+    { value: 'member', label: 'Thành Viên (Member)' },
+  ];
+  const assignableRoles = ROLE_OPTIONS.filter((r) => isGroupLeader || !r.managerOnly);
 
   const fetchGroup = async () => {
     if (!slug) return;
-    setIsLoading(true);
+    if (!group) setIsLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/groups/${slug}`);
+      const res = await authFetch(`${API_BASE_URL}/groups/${slug}`);
       if (res.ok) {
         const json = await res.json();
         if (json.success) setGroup(json.data);
+      } else if (res.status === 404) {
+        setGroup(null);
       }
     } catch (e) {
       console.error('Failed to load group:', e);
@@ -80,13 +115,82 @@ export default function GroupDetailPage() {
 
   useEffect(() => {
     fetchGroup();
-  }, [slug]);
+  }, [slug, user?.id]);
+
+  // Pending join requests (leader/mod only)
+  const fetchJoinRequests = async () => {
+    if (!group?.id) return;
+    try {
+      const res = await authFetch(`${API_BASE_URL}/groups/${group.id}/join-requests`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success) setJoinRequests(json.data || []);
+      }
+    } catch (e) {}
+  };
+
+  useEffect(() => {
+    if (isLeaderOrMod && group?.id) fetchJoinRequests();
+    else setJoinRequests([]);
+  }, [isLeaderOrMod, group?.id]);
+
+  const handleRequestJoin = async () => {
+    if (!isAuthenticated) {
+      openAuthModal('login');
+      return;
+    }
+    if (!group?.id || isJoinBusy) return;
+    const message = prompt('Lời nhắn gửi Trưởng nhóm (không bắt buộc):');
+    if (message === null) return; // cancelled
+    setIsJoinBusy(true);
+    try {
+      const res = await authFetch(`${API_BASE_URL}/groups/${group.id}/join-requests`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: message.trim() }),
+      });
+      const json = await res.json();
+      setJoinFeedback(json.message || null);
+      if (res.ok) fetchGroup();
+    } catch (e) {} finally {
+      setIsJoinBusy(false);
+    }
+  };
+
+  const handleCancelJoin = async () => {
+    if (!group?.id || isJoinBusy || !confirm('Hủy yêu cầu gia nhập nhóm?')) return;
+    setIsJoinBusy(true);
+    try {
+      const res = await authFetch(`${API_BASE_URL}/groups/${group.id}/join-requests/me`, { method: 'DELETE' });
+      const json = await res.json();
+      setJoinFeedback(json.message || null);
+      if (res.ok) fetchGroup();
+    } catch (e) {} finally {
+      setIsJoinBusy(false);
+    }
+  };
+
+  const handleReviewJoin = async (requestId: string, approve: boolean) => {
+    if (!group?.id) return;
+    setReviewingRequestId(requestId);
+    try {
+      const res = await authFetch(`${API_BASE_URL}/groups/${group.id}/join-requests/${requestId}/${approve ? 'approve' : 'reject'}`, {
+        method: 'POST',
+      });
+      const json = await res.json();
+      setMemberFeedback(json.message || null);
+      fetchJoinRequests();
+      if (res.ok && approve) fetchGroup();
+    } catch (e) {} finally {
+      setReviewingRequestId(null);
+    }
+  };
 
   // Fetch Chatroom Messages
   const fetchMessages = async () => {
-    if (!group?.id) return;
+    if (!group?.id || !canSeeInternal) return;
     try {
-      const res = await fetch(`${API_BASE_URL}/groups/${group.id}/messages`);
+      const res = await authFetch(`${API_BASE_URL}/groups/${group.id}/messages`);
       if (res.ok) {
         const json = await res.json();
         if (json.success) setMessages(json.data || []);
@@ -96,9 +200,9 @@ export default function GroupDetailPage() {
 
   // Fetch Chapter Submissions
   const fetchSubmissions = async () => {
-    if (!group?.id) return;
+    if (!group?.id || !isMember) return;
     try {
-      const res = await fetch(`${API_BASE_URL}/chapters/submissions?group_id=${group.id}`);
+      const res = await authFetch(`${API_BASE_URL}/chapters/submissions?group_id=${group.id}`);
       if (res.ok) {
         const json = await res.json();
         if (json.success) setSubmissions(json.data || []);
@@ -107,15 +211,15 @@ export default function GroupDetailPage() {
   };
 
   useEffect(() => {
-    if (activeTab === 'chat' && group?.id) {
+    if (activeTab === 'chat' && group?.id && canSeeInternal) {
       fetchMessages();
       const interval = setInterval(fetchMessages, 4000);
       return () => clearInterval(interval);
     }
-    if (activeTab === 'submissions' && group?.id) {
+    if (activeTab === 'submissions' && group?.id && isMember) {
       fetchSubmissions();
     }
-  }, [activeTab, group?.id]);
+  }, [activeTab, group?.id, canSeeInternal, isMember]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -212,6 +316,16 @@ export default function GroupDetailPage() {
       }
       setMemberFeedback(null);
       fetchGroup();
+    } catch (e) {}
+  };
+
+  const handleLeaveGroup = async () => {
+    if (!group?.id || !user?.id || !confirm(`Bạn có chắc muốn rời nhóm ${group.name}?`)) return;
+    try {
+      const res = await authFetch(`${API_BASE_URL}/groups/${group.id}/members/${user.id}`, { method: 'DELETE' });
+      const json = await res.json();
+      setJoinFeedback(json.message || null);
+      if (res.ok) fetchGroup();
     } catch (e) {}
   };
 
@@ -326,6 +440,10 @@ export default function GroupDetailPage() {
                 : 'Chưa có mô tả nhóm.'}
             </div>
 
+            {joinFeedback && (
+              <div className="text-xs font-semibold text-amber-300">{joinFeedback}</div>
+            )}
+
             {/* Social links */}
             <div className="flex flex-wrap items-center gap-4 text-xs text-gray-400 pt-1">
               {group.discord_url && (
@@ -341,8 +459,43 @@ export default function GroupDetailPage() {
             </div>
           </div>
 
-          {/* Publish Story CTA */}
-          <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 justify-end">
+          {/* Join + Publish Story CTA */}
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto shrink-0 justify-end">
+            {currentMembership && (
+              <button
+                onClick={handleLeaveGroup}
+                className="px-3 py-2.5 rounded-xl bg-white/5 hover:bg-rose-500/20 border border-white/10 hover:border-rose-500/40 text-gray-400 hover:text-rose-300 text-xs font-bold transition"
+              >
+                Rời nhóm
+              </button>
+            )}
+            {!currentMembership && group.approval_status === 'approved' && (
+              group.my_join_request ? (
+                <div className="flex items-center gap-2">
+                  <span className="px-4 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 font-bold text-xs flex items-center gap-1.5">
+                    <Clock className="w-4 h-4" /> Đang chờ Trưởng nhóm duyệt
+                  </span>
+                  <button
+                    onClick={handleCancelJoin}
+                    disabled={isJoinBusy}
+                    className="px-3 py-2.5 rounded-xl bg-white/5 hover:bg-rose-500/20 border border-white/10 hover:border-rose-500/40 text-gray-300 hover:text-rose-300 text-xs font-bold transition disabled:opacity-40"
+                  >
+                    Hủy yêu cầu
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={handleRequestJoin}
+                  disabled={isJoinBusy}
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-bold text-xs shadow-lg shadow-emerald-500/20 flex items-center gap-2 transition"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  <span>{isJoinBusy ? 'Đang gửi...' : 'Xin Gia Nhập Nhóm'}</span>
+                </button>
+              )
+            )}
+
+            {isMember && (<>
             <Link
               href={`/dang-truyen?group_id=${group.id}`}
               className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-brand-500/25 flex items-center gap-2 transition hover:scale-105"
@@ -358,6 +511,7 @@ export default function GroupDetailPage() {
               <FileText className="w-4 h-4 text-brand-400" />
               <span>Đăng Chương Mới</span>
             </Link>
+            </>)}
           </div>
 
         </div>
@@ -403,6 +557,11 @@ export default function GroupDetailPage() {
           >
             <Users className="w-4 h-4 text-indigo-400" />
             <span>Thành Viên ({group.members?.length || 0})</span>
+            {isLeaderOrMod && joinRequests.length > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500 text-black" title="Yêu cầu gia nhập đang chờ duyệt">
+                {joinRequests.length}
+              </span>
+            )}
           </button>
 
           <button
@@ -425,12 +584,14 @@ export default function GroupDetailPage() {
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-white">Danh Sách Truyện Của Nhóm</h2>
+            {isMember && (
             <Link
               href={`/dang-truyen?group_id=${group.id}`}
               className="text-xs text-brand-400 hover:underline font-semibold flex items-center gap-1"
             >
               <Plus className="w-3.5 h-3.5" /> Thêm truyện mới vào nhóm
             </Link>
+            )}
           </div>
 
           {group.stories && group.stories.length > 0 ? (
@@ -453,9 +614,11 @@ export default function GroupDetailPage() {
                     </div>
                     <div className="flex items-center justify-between text-[11px] text-gray-400 pt-2 border-t border-white/5">
                       <span className="text-brand-300 font-semibold">{story.total_chapters || 0} chương</span>
-                      <Link href={`/dang-chuong?story_id=${story.id}`} className="text-cyan-400 hover:underline text-[10px] font-bold">
-                        + Đăng chương
-                      </Link>
+                      {isMember && (
+                        <Link href={`/dang-chuong?story_id=${story.id}`} className="text-cyan-400 hover:underline text-[10px] font-bold">
+                          + Đăng chương
+                        </Link>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -465,10 +628,12 @@ export default function GroupDetailPage() {
             <div className="p-12 text-center rounded-3xl glass-panel border border-white/10 space-y-3">
               <BookOpen className="w-12 h-12 text-brand-400 mx-auto opacity-60" />
               <h3 className="text-base font-bold text-white">Nhóm chưa có bộ truyện nào</h3>
-              <p className="text-xs text-gray-400">Hãy bắt đầu đăng bộ Light Novel hoặc Manga đầu tiên của nhóm!</p>
-              <Link href={`/dang-truyen?group_id=${group.id}`} className="inline-block px-5 py-2 rounded-xl bg-brand-600 text-white text-xs font-bold">
-                Đăng truyện ngay
-              </Link>
+              {isMember && (<>
+                <p className="text-xs text-gray-400">Hãy bắt đầu đăng bộ Light Novel hoặc Manga đầu tiên của nhóm!</p>
+                <Link href={`/dang-truyen?group_id=${group.id}`} className="inline-block px-5 py-2 rounded-xl bg-brand-600 text-white text-xs font-bold">
+                  Đăng truyện ngay
+                </Link>
+              </>)}
             </div>
           )}
         </div>
@@ -489,7 +654,12 @@ export default function GroupDetailPage() {
 
           {/* Messages Feed */}
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-            {messages.length === 0 ? (
+            {!canSeeInternal ? (
+              <div className="h-full flex flex-col items-center justify-center text-center space-y-2 text-xs text-gray-500">
+                <Lock className="w-8 h-8 opacity-40" />
+                <p>Chatroom nội bộ chỉ hiển thị với thành viên nhóm.</p>
+              </div>
+            ) : messages.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center space-y-2 text-xs text-gray-500">
                 <MessageSquare className="w-8 h-8 opacity-40" />
                 <p>Chưa có tin nhắn nào. Hãy gửi lời chào đến các thành viên nhóm!</p>
@@ -509,7 +679,7 @@ export default function GroupDetailPage() {
                         </span>
                       )}
                       <span className="text-gray-500 text-[10px]">{new Date(m.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
-                      {(m.user_id === user?.id || isLeaderOrMod) && (
+                      {(m.user_id === user?.id || isLeaderOrMod) && canSeeInternal && (
                         <button
                           onClick={() => handleDeleteMessage(m.id)}
                           className="opacity-0 group-hover:opacity-100 text-rose-400 hover:text-rose-300 transition ml-auto"
@@ -534,7 +704,7 @@ export default function GroupDetailPage() {
               {chatFeedback}
             </div>
           )}
-          {isMember ? (
+          {canSeeInternal ? (
             <form onSubmit={handleSendMessage} className="p-3 border-t border-white/10 bg-black/30 flex items-center gap-2">
               <input
                 type="text"
@@ -579,12 +749,14 @@ export default function GroupDetailPage() {
               <h2 className="text-lg font-bold text-white">Quản Lý & Duyệt Bản Dịch Chương Của Thành Viên</h2>
               <p className="text-xs text-gray-400">Khi một chương có nhiều thành viên nộp bản dịch, Trưởng nhóm/Mod sẽ duyệt chọn bản dịch chính thức để hiển thị cho độc giả</p>
             </div>
+            {isMember && (
             <Link
               href={`/dang-chuong?group_id=${group.id}`}
               className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold transition flex items-center gap-1.5"
             >
               <Plus className="w-3.5 h-3.5" /> Nộp bản dịch mới
             </Link>
+            )}
           </div>
 
           {submissionFeedback && (
@@ -593,7 +765,12 @@ export default function GroupDetailPage() {
             </div>
           )}
 
-          {submissions.length === 0 ? (
+          {!isMember ? (
+            <div className="p-12 text-center rounded-3xl glass-panel border border-white/10 space-y-3">
+              <Lock className="w-12 h-12 text-brand-400 mx-auto opacity-60" />
+              <h3 className="text-base font-bold text-white">Chỉ thành viên nhóm mới xem được các bản dịch đang chờ duyệt</h3>
+            </div>
+          ) : submissions.length === 0 ? (
             <div className="p-12 text-center rounded-3xl glass-panel border border-white/10 space-y-3">
               <ShieldCheck className="w-12 h-12 text-brand-400 mx-auto opacity-60" />
               <h3 className="text-base font-bold text-white">Không có bản dịch nào đang chờ duyệt</h3>
@@ -708,12 +885,9 @@ export default function GroupDetailPage() {
                   onChange={(e) => setNewMemberRole(e.target.value)}
                   className="h-10 px-3 rounded-xl bg-[#0f0f18] border border-white/10 text-xs text-white focus:outline-none focus:border-brand-500 w-full sm:w-auto"
                 >
-                  <option value="translator">Dịch Giả (Translator)</option>
-                  <option value="editor">Biên Tập (Editor)</option>
-                  <option value="proofreader">Hiệu Đính (Proofreader)</option>
-                  <option value="raw_provider">Raw Provider</option>
-                  <option value="mod">Quản Lý Nhóm (Mod)</option>
-                  <option value="member">Thành Viên</option>
+                  {assignableRoles.filter((r) => r.value !== 'leader').map((r) => (
+                    <option key={r.value} value={r.value}>{r.label}</option>
+                  ))}
                 </select>
 
                 <button
@@ -725,6 +899,56 @@ export default function GroupDetailPage() {
                   <span>Thêm</span>
                 </button>
               </form>
+            </div>
+          )}
+
+          {/* Pending Join Requests (leader/mod only) */}
+          {isLeaderOrMod && (
+            <div className="p-5 rounded-3xl glass-panel border border-white/10 bg-[#131322]/90 space-y-3">
+              <h3 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Clock className="w-4 h-4" /> Yêu Cầu Gia Nhập Đang Chờ Duyệt ({joinRequests.length})
+              </h3>
+
+              {joinRequests.length === 0 ? (
+                <p className="text-xs text-gray-400">Không có yêu cầu nào đang chờ duyệt.</p>
+              ) : (
+                <div className="space-y-2">
+                  {joinRequests.map((r) => (
+                    <div key={r.id} className="p-3 rounded-2xl bg-white/5 border border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-9 h-9 rounded-full overflow-hidden bg-gray-900 border border-white/15 shrink-0">
+                          <SmartImage src={r.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'} alt={r.display_name} className="w-full h-full object-cover" />
+                        </div>
+                        <div className="min-w-0 text-xs space-y-0.5">
+                          <div className="font-bold text-white truncate">
+                            {r.display_name || r.username}
+                            <span className="ml-2 font-normal text-gray-500 text-[10px]">
+                              @{r.username} • {new Date(r.created_at).toLocaleDateString('vi-VN')}
+                            </span>
+                          </div>
+                          {r.message && <div className="text-gray-300 italic break-words">&ldquo;{r.message}&rdquo;</div>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          onClick={() => handleReviewJoin(r.id, true)}
+                          disabled={reviewingRequestId === r.id}
+                          className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-xs font-bold transition flex items-center gap-1.5"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Duyệt
+                        </button>
+                        <button
+                          onClick={() => handleReviewJoin(r.id, false)}
+                          disabled={reviewingRequestId === r.id}
+                          className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-rose-500/20 border border-white/10 hover:border-rose-500/40 text-gray-300 hover:text-rose-300 disabled:opacity-40 text-xs font-bold transition flex items-center gap-1.5"
+                        >
+                          <XCircle className="w-3.5 h-3.5" /> Từ chối
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -740,22 +964,42 @@ export default function GroupDetailPage() {
                       <SmartImage src={m.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'} alt={m.display_name} className="w-full h-full object-cover" />
                     </div>
                     <div className="truncate text-xs">
-                      <div className="font-bold text-white truncate">{m.display_name || m.username}</div>
+                      <Link href={`/nguoi-dung/${m.username}`} className="block font-bold text-white hover:text-brand-400 truncate transition">{m.display_name || m.username}</Link>
                       <div className="text-[10px] text-gray-400 capitalize">{m.role}</div>
                     </div>
                   </div>
 
-                  {isLeaderOrMod && m.role !== 'leader' && (
+                  {canStepDown(m) && (
+                    <select
+                      value={m.role}
+                      onChange={(e) => {
+                        const role = e.target.value;
+                        if (!confirm(`Thôi chức ${m.role === 'leader' ? 'Trưởng nhóm' : 'Quản lý'} và chuyển sang vai trò mới?`)) return;
+                        handleUpdateRole(m.user_id, role);
+                      }}
+                      title="Thôi chức"
+                      className="h-7 px-2 rounded-lg bg-[#0f0f18] border border-amber-500/30 text-[10px] text-amber-200 focus:outline-none shrink-0"
+                    >
+                      {ROLE_OPTIONS.filter((r) => roleRank(r.value) <= roleRank(m.role)).map((r) => (
+                        <option key={r.value} value={r.value}>{r.value === m.role ? `${r.label} (thôi chức...)` : r.label}</option>
+                      ))}
+                    </select>
+                  )}
+
+                  {canManageMember(m) && (
                     <div className="flex items-center gap-1 shrink-0">
                       <select
                         value={m.role}
-                        onChange={(e) => handleUpdateRole(m.user_id, e.target.value)}
-                        className="h-7 px-2 rounded-lg bg-white/5 border border-white/10 text-[10px] text-gray-300 focus:outline-none"
+                        onChange={(e) => {
+                          const role = e.target.value;
+                          if (role === 'leader' && !confirm(`Bổ nhiệm ${m.display_name || m.username} làm Trưởng nhóm?`)) return;
+                          handleUpdateRole(m.user_id, role);
+                        }}
+                        className="h-7 px-2 rounded-lg bg-[#0f0f18] border border-white/10 text-[10px] text-gray-300 focus:outline-none"
                       >
-                        <option value="translator">Translator</option>
-                        <option value="editor">Editor</option>
-                        <option value="mod">Mod</option>
-                        <option value="member">Member</option>
+                        {assignableRoles.map((r) => (
+                          <option key={r.value} value={r.value}>{r.label}</option>
+                        ))}
                       </select>
 
                       <button
