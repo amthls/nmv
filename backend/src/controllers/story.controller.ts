@@ -4,6 +4,8 @@ import { pool } from '../config/db';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import { searchStoryIds, indexStory, removeStoryFromIndex } from '../services/search.service';
 import { sanitizeRichText } from '../utils/richText';
+import { InputError, isUuid, optionalEnum, optionalText, optionalUrl, requiredText } from '../utils/validation';
+import { clientDbError } from '../utils/dbErrors';
 
 function slugify(text: string) {
   return text
@@ -21,6 +23,7 @@ function slugify(text: string) {
  * Authorized if: Admin, Mod, Story Uploader, Member of the assigned translation group, or assigned collaborator.
  */
 export async function canUserManageStory(userId: string, storyId: string, userRoles: string[] = []): Promise<boolean> {
+  if (!isUuid(storyId)) return false;
   if (userRoles.includes('admin') || userRoles.includes('mod')) {
     return true;
   }
@@ -44,6 +47,84 @@ export async function canUserManageStory(userId: string, storyId: string, userRo
   );
   if (collabRes.rows.length > 0) return true;
 
+  return false;
+}
+
+const STORY_TYPES = ['novel', 'manga'] as const;
+const STORY_STATUSES = ['ongoing', 'completed', 'hiatus', 'dropped'] as const;
+
+/** Story fields from a create/update body. A field left undefined was not sent; null clears it. */
+export interface StoryInput {
+  title?: string;
+  original_title?: string | null;
+  synopsis?: string | null;
+  cover_image_url?: string | null;
+  banner_image_url?: string | null;
+  story_type?: typeof STORY_TYPES[number];
+  status?: typeof STORY_STATUSES[number];
+  author_name?: string | null;
+  artist_name?: string | null;
+  original_language?: string | null;
+  group_id?: string | null;
+  tags?: string[];
+}
+
+/** Validates the story fields of a request body (throws InputError). */
+export function parseStoryInput(body: any, isCreate: boolean): StoryInput {
+  const input: StoryInput = {};
+  if (isCreate || body.title !== undefined) input.title = requiredText(body.title, 500, 'Tên truyện');
+  input.original_title = optionalText(body.original_title, 500, 'Tên gốc');
+  if (body.synopsis !== undefined) {
+    if (body.synopsis !== null && typeof body.synopsis !== 'string') throw new InputError('Tóm tắt không hợp lệ.');
+    input.synopsis = sanitizeRichText(body.synopsis) || null;
+  }
+  input.cover_image_url = optionalUrl(body.cover_image_url, 'Ảnh bìa');
+  input.banner_image_url = optionalUrl(body.banner_image_url, 'Ảnh banner');
+  input.story_type = optionalEnum(body.story_type, STORY_TYPES, 'Loại truyện');
+  input.status = optionalEnum(body.status, STORY_STATUSES, 'Tình trạng');
+  input.author_name = optionalText(body.author_name, 200, 'Tác giả');
+  input.artist_name = optionalText(body.artist_name, 200, 'Họa sĩ');
+  input.original_language = optionalText(body.original_language, 10, 'Ngôn ngữ gốc');
+  if (body.group_id !== undefined) {
+    if (body.group_id !== null && body.group_id !== '' && !isUuid(body.group_id)) throw new InputError('Nhóm dịch không hợp lệ.');
+    input.group_id = body.group_id || null;
+  }
+  if (body.tags !== undefined) {
+    if (!Array.isArray(body.tags) || body.tags.length > 50 || !body.tags.every(isUuid)) {
+      throw new InputError('Danh sách thẻ tag không hợp lệ.');
+    }
+    input.tags = Array.from(new Set<string>(body.tags));
+  }
+  return input;
+}
+
+/** Checks that the tags exist and that the user may publish under the chosen group. */
+export async function checkStoryReferences(db: { query: (text: string, params?: any[]) => Promise<any> }, input: StoryInput, userId: string, userRoles: string[]) {
+  if (input.tags && input.tags.length > 0) {
+    const tagRes = await db.query(`SELECT count(*)::int AS n FROM tags WHERE id = ANY($1::uuid[])`, [input.tags]);
+    if (tagRes.rows[0].n !== input.tags.length) throw new InputError('Có thẻ tag không tồn tại.');
+  }
+  if (input.group_id) {
+    const groupRes = await db.query(`SELECT 1 FROM translation_groups WHERE id = $1`, [input.group_id]);
+    if (groupRes.rows.length === 0) throw new InputError('Nhóm dịch không tồn tại.', 404);
+    if (!userRoles.includes('admin') && !userRoles.includes('mod')) {
+      const memRes = await db.query(`SELECT 1 FROM group_members WHERE group_id = $1 AND user_id = $2`, [input.group_id, userId]);
+      if (memRes.rows.length === 0) throw new InputError('Bạn không phải thành viên của nhóm dịch này nên không thể đăng truyện dưới tên nhóm.', 403);
+    }
+  }
+}
+
+/** Sends the right status for an InputError or a client-caused DB error; returns false otherwise. */
+export function sendClientError(res: Response, error: any): boolean {
+  if (error instanceof InputError) {
+    res.status(error.status).json({ success: false, message: error.message });
+    return true;
+  }
+  const dbErr = clientDbError(error);
+  if (dbErr) {
+    res.status(dbErr.status).json({ success: false, message: dbErr.message });
+    return true;
+  }
   return false;
 }
 
@@ -694,24 +775,13 @@ export const updateStory = async (req: AuthenticatedRequest, res: Response) => {
     }
 
     const { id } = req.params;
-    const {
-      title,
-      original_title,
-      synopsis,
-      cover_image_url,
-      banner_image_url,
-      story_type,
-      status,
-      author_name,
-      artist_name,
-      original_language,
-      group_id,
-      uploader_id, // Reassign owner (single author/user)
-      tags,
-    } = req.body;
-
+    if (!isUuid(id)) {
+      return res.status(404).json({ success: false, message: 'Truyện không tồn tại.' });
+    }
+    const body = req.body || {};
     const currentUserId = req.user.id;
     const userRoles = req.user.roles || [];
+    const input = parseStoryInput(body, false);
 
     const isAuthorized = await canUserManageStory(currentUserId, id, userRoles);
     if (!isAuthorized) {
@@ -721,49 +791,56 @@ export const updateStory = async (req: AuthenticatedRequest, res: Response) => {
       });
     }
 
-    const updateRes = await pool.query(`
-      UPDATE stories SET
-        title = COALESCE($1, title),
-        original_title = COALESCE($2, original_title),
-        synopsis = COALESCE($3, synopsis),
-        cover_image_url = COALESCE($4, cover_image_url),
-        banner_image_url = COALESCE($5, banner_image_url),
-        story_type = COALESCE($6::story_type, story_type),
-        status = COALESCE($7::story_status, status),
-        author_name = COALESCE($8, author_name),
-        artist_name = COALESCE($9, artist_name),
-        original_language = COALESCE($10, original_language),
-        group_id = COALESCE($11, group_id),
-        uploader_id = COALESCE($12, uploader_id),
-        updated_at = NOW()
-      WHERE id = $13
-      RETURNING *;
-    `, [
-      title?.trim() || null,
-      original_title?.trim() || null,
-      sanitizeRichText(synopsis) || null,
-      cover_image_url || null,
-      banner_image_url || null,
-      story_type || null,
-      status || null,
-      author_name?.trim() || null,
-      artist_name?.trim() || null,
-      original_language || null,
-      group_id !== undefined ? (group_id || null) : null,
-      (userRoles.includes('admin') || userRoles.includes('mod')) && uploader_id ? uploader_id : null,
-      id
-    ]);
-
-    if (updateRes.rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Truyện không tồn tại.' });
+    // Only fields that were sent are changed; sending null/'' clears an optional field
+    const columns: [keyof StoryInput, string][] = [
+      ['title', 'title'], ['original_title', 'original_title'], ['synopsis', 'synopsis'],
+      ['cover_image_url', 'cover_image_url'], ['banner_image_url', 'banner_image_url'],
+      ['story_type', 'story_type'], ['status', 'status'], ['author_name', 'author_name'],
+      ['artist_name', 'artist_name'], ['original_language', 'original_language'], ['group_id', 'group_id'],
+    ];
+    const sets: string[] = [];
+    const params: any[] = [];
+    for (const [key, column] of columns) {
+      if (input[key] === undefined) continue;
+      params.push(input[key]);
+      const cast = column === 'story_type' ? '::story_type' : column === 'status' ? '::story_status' : '';
+      sets.push(`${column} = $${params.length}${cast}`);
     }
+    // Reassign owner: admin/mod only
+    if ((userRoles.includes('admin') || userRoles.includes('mod')) && isUuid(body.uploader_id)) {
+      params.push(body.uploader_id);
+      sets.push(`uploader_id = $${params.length}`);
+    }
+    sets.push('updated_at = NOW()');
+    params.push(id);
 
-    // Update tags if provided
-    if (Array.isArray(tags)) {
-      await pool.query(`DELETE FROM story_tags WHERE story_id = $1`, [id]);
-      for (const tagId of tags) {
-        await pool.query(`INSERT INTO story_tags (story_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [id, tagId]);
+    const client = await pool.connect();
+    let story: any;
+    try {
+      await client.query('BEGIN');
+      await checkStoryReferences(client, input, currentUserId, userRoles);
+      const updateRes = await client.query(
+        `UPDATE stories SET ${sets.join(', ')} WHERE id = $${params.length} RETURNING *;`,
+        params
+      );
+      if (updateRes.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ success: false, message: 'Truyện không tồn tại.' });
       }
+      story = updateRes.rows[0];
+      if (input.tags !== undefined) {
+        await client.query(`DELETE FROM story_tags WHERE story_id = $1`, [id]);
+        await client.query(
+          `INSERT INTO story_tags (story_id, tag_id) SELECT $1, unnest($2::uuid[]) ON CONFLICT DO NOTHING`,
+          [id, input.tags]
+        );
+      }
+      await client.query('COMMIT');
+    } catch (txErr) {
+      await client.query('ROLLBACK');
+      throw txErr;
+    } finally {
+      client.release();
     }
 
     await indexStory(id);
@@ -771,9 +848,10 @@ export const updateStory = async (req: AuthenticatedRequest, res: Response) => {
     res.json({
       success: true,
       message: 'Cập nhật thông tin truyện thành công!',
-      data: updateRes.rows[0],
+      data: story,
     });
   } catch (error: any) {
+    if (sendClientError(res, error)) return;
     res.status(500).json({ success: false, message: error.message });
   }
 };

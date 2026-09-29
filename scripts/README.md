@@ -79,7 +79,7 @@ Running them again does **not** create duplicate stories. After seeding, the bac
 | `backend GET /api/v1/health` | The API is not answering. `queue=up` means RabbitMQ is connected |
 | `database migrations` | A SQL migration failed (the error is printed) |
 | `sample data seeded` | A seeder failed (the error is printed) |
-| `search GET /_meta/health` | The Go search service is down (search falls back to plain SQL) |
+| `search GET /_cluster/health` | Elasticsearch is down (search falls back to plain SQL) |
 | `gateway GET /` | The website does not load through nginx |
 | `api GET /api/v1/stories` | The API cannot read from the database |
 | `api POST /api/v1/auth/login` | `admin` / `password123` cannot log in (shown as `[WARN]`) |

@@ -33,16 +33,10 @@ export default function BookmarkPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [feedback, setFeedback] = useState<string | null>(null);
 
+  // Followed stories belong to the signed-in account and live only on the server
   const fetchFavorites = async () => {
     setIsLoading(true);
     let list: any[] = [];
-    if (typeof window !== 'undefined') {
-      try {
-        const raw = localStorage.getItem('novelhub_guest_favorites') || '[]';
-        list = JSON.parse(raw);
-      } catch (e) {}
-    }
-
     if (isAuthenticated) {
       try {
         let url = `${API_BASE_URL}/favorites?`;
@@ -50,19 +44,11 @@ export default function BookmarkPage() {
         const res = await authFetch(url);
         if (res.ok) {
           const json = await res.json();
-          if (json.success && Array.isArray(json.data)) {
-            const apiSlugs = new Set(json.data.map((f: any) => f.slug));
-            const guestOnly = list.filter((f: any) => !apiSlugs.has(f.slug));
-            list = [...json.data, ...guestOnly];
-          }
+          if (json.success && Array.isArray(json.data)) list = json.data;
         }
       } catch (e) {
         console.error('Failed to load favorites:', e);
       }
-    }
-
-    if (categoryFilter !== 'all') {
-      list = list.filter((f: any) => (f.category || 'reading') === categoryFilter);
     }
     setFavorites(list);
     setIsLoading(false);
@@ -71,23 +57,12 @@ export default function BookmarkPage() {
   const fetchLineBookmarks = async () => {
     setIsLoading(true);
     let list: any[] = [];
-    if (typeof window !== 'undefined') {
-      try {
-        const raw = localStorage.getItem('novelhub_guest_bookmarks') || '[]';
-        list = JSON.parse(raw);
-      } catch (e) {}
-    }
-
     if (isAuthenticated) {
       try {
         const res = await authFetch(`${API_BASE_URL}/bookmarks`);
         if (res.ok) {
           const json = await res.json();
-          if (json.success && Array.isArray(json.data)) {
-            const apiKeys = new Set(json.data.map((b: any) => `${b.chapter_id}_${b.line_index}`));
-            const guestOnly = list.filter((b: any) => !apiKeys.has(`${b.chapter_id}_${b.line_index}`));
-            list = [...json.data, ...guestOnly];
-          }
+          if (json.success && Array.isArray(json.data)) list = json.data;
         }
       } catch (e) {
         console.error('Failed to load bookmarks:', e);
@@ -97,6 +72,14 @@ export default function BookmarkPage() {
     setLineBookmarks(list);
     setIsLoading(false);
   };
+
+  // Drop the old browser-wide lists that leaked between accounts on the same browser
+  useEffect(() => {
+    try {
+      localStorage.removeItem('novelhub_guest_favorites');
+      localStorage.removeItem('novelhub_guest_bookmarks');
+    } catch (e) {}
+  }, []);
 
   useEffect(() => {
     if (mainTab === 'favorites') {
@@ -122,22 +105,20 @@ export default function BookmarkPage() {
   const handleDeleteFavorite = async (storyId: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setFavorites(prev => prev.filter(f => (f.story_id || f.id) !== storyId));
-    if (typeof window !== 'undefined') {
-      try {
-        const raw = localStorage.getItem('novelhub_guest_favorites') || '[]';
-        const list = JSON.parse(raw).filter((f: any) => (f.story_id || f.id) !== storyId);
-        localStorage.setItem('novelhub_guest_favorites', JSON.stringify(list));
-      } catch (err) {}
-    }
-    if (isAuthenticated) {
-      try {
-        await authFetch(`${API_BASE_URL}/favorites/toggle`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ story_id: storyId, category: 'reading' }),
-        });
-      } catch (err) {}
+    const target = favorites.find(f => f.story_id === storyId);
+    setFavorites(prev => prev.filter(f => f.story_id !== storyId));
+    try {
+      // toggle only removes when the category matches the stored one
+      const res = await authFetch(`${API_BASE_URL}/favorites/toggle`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ story_id: storyId, category: target?.category || 'reading' }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || json?.action !== 'removed') throw new Error(json?.message || `HTTP ${res.status}`);
+    } catch (err) {
+      console.error('Failed to unfollow:', err);
+      fetchFavorites();
     }
   };
 
@@ -145,19 +126,12 @@ export default function BookmarkPage() {
     e.preventDefault();
     e.stopPropagation();
     setLineBookmarks(prev => prev.filter(b => b.id !== id));
-    if (typeof window !== 'undefined') {
-      try {
-        const raw = localStorage.getItem('novelhub_guest_bookmarks') || '[]';
-        const list = JSON.parse(raw).filter((b: any) => b.id !== id);
-        localStorage.setItem('novelhub_guest_bookmarks', JSON.stringify(list));
-      } catch (err) {}
-    }
-    if (isAuthenticated && !id.startsWith('bm-') && !id.startsWith('local-')) {
-      try {
-        await authFetch(`${API_BASE_URL}/bookmarks/${id}`, {
-          method: 'DELETE',
-        });
-      } catch (err) {}
+    try {
+      const res = await authFetch(`${API_BASE_URL}/bookmarks/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    } catch (err) {
+      console.error('Failed to delete bookmark:', err);
+      fetchLineBookmarks();
     }
   };
 
@@ -244,7 +218,23 @@ export default function BookmarkPage() {
       </div>
 
       {/* 3. Content */}
-      {isLoading ? (
+      {!isAuthenticated ? (
+        <div className="text-center py-20 glass-panel rounded-3xl border border-white/10 bg-[#12121e]/80 space-y-4">
+          <div className="w-16 h-16 rounded-full bg-brand-500/10 text-brand-400 flex items-center justify-center mx-auto">
+            <Lock className="w-8 h-8" />
+          </div>
+          <h3 className="text-lg font-bold text-white">Đăng nhập để xem tủ sách của bạn</h3>
+          <p className="text-xs text-gray-400 max-w-sm mx-auto">
+            Truyện đang theo dõi và bookmark được lưu theo tài khoản của bạn.
+          </p>
+          <button
+            onClick={() => openAuthModal('login')}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold shadow-lg shadow-brand-500/25 transition"
+          >
+            <LogIn className="w-4 h-4" /> Đăng nhập
+          </button>
+        </div>
+      ) : isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
           <div className="h-64 rounded-3xl bg-white/5" />
           <div className="h-64 rounded-3xl bg-white/5" />

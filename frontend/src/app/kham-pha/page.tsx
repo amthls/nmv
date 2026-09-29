@@ -1,6 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import PageLoader from '@/components/common/PageLoader';
 import { 
   Search, 
   LayoutGrid, 
@@ -20,9 +22,24 @@ import Pagination from '@/components/explore/Pagination';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
 export default function ExplorePage() {
+  return (
+    <Suspense fallback={<PageLoader label="Đang tải trang khám phá..." />}>
+      <ExplorePageContent />
+    </Suspense>
+  );
+}
+
+function ExplorePageContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlQuery = searchParams?.get('q') || '';
+
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(urlQuery);
+  // What is actually sent to the API: trails the input by 300ms so typing doesn't fire a request per key
+  const [debouncedQuery, setDebouncedQuery] = useState(urlQuery);
+  const latestRequest = useRef(0);
   const [sortBy, setSortBy] = useState('relevance');
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -64,12 +81,33 @@ export default function ExplorePage() {
     fetchTags();
   }, []);
 
+  // Navbar search (or back/forward) changes ?q= -> adopt it
+  useEffect(() => {
+    setSearchQuery(urlQuery);
+    setDebouncedQuery(urlQuery);
+    setCurrentPage(1);
+  }, [urlQuery]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(searchQuery), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Keep ?q= in step with the box so the result is shareable and a repeat navbar search still registers
+  useEffect(() => {
+    const q = debouncedQuery.trim();
+    if (q === urlQuery.trim()) return;
+    router.replace(q ? `/kham-pha?q=${encodeURIComponent(q)}` : '/kham-pha', { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedQuery]);
+
   // 2. Fetch stories with query params
   const fetchStories = useCallback(async () => {
+    const requestId = ++latestRequest.current;
     setIsLoading(true);
     try {
       const params = new URLSearchParams();
-      if (searchQuery.trim()) params.append('q', searchQuery.trim());
+      if (debouncedQuery.trim()) params.append('q', debouncedQuery.trim());
       if (filters.type !== 'all') params.append('type', filters.type);
       if (filters.status !== 'all') params.append('status', filters.status);
       if (filters.language !== 'all') params.append('language', filters.language);
@@ -81,8 +119,11 @@ export default function ExplorePage() {
       params.append('limit', '24');
 
       const res = await fetch(`${API_BASE_URL}/stories/explore?${params.toString()}`);
+      // A newer search started while this one was in flight: drop the stale result
+      if (requestId !== latestRequest.current) return;
       if (res.ok) {
         const json = await res.json();
+        if (requestId !== latestRequest.current) return;
         if (json.success) {
           setStories(json.data || []);
           setPagination(json.pagination || { page: 1, limit: 24, total: 0, totalPages: 1 });
@@ -91,9 +132,9 @@ export default function ExplorePage() {
     } catch (err) {
       console.error('Failed to fetch stories:', err);
     } finally {
-      setIsLoading(false);
+      if (requestId === latestRequest.current) setIsLoading(false);
     }
-  }, [searchQuery, filters, sortBy, currentPage]);
+  }, [debouncedQuery, filters, sortBy, currentPage]);
 
   useEffect(() => {
     fetchStories();

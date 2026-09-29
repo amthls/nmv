@@ -9,9 +9,9 @@ const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000; // 30 days = 1 month
 
 export const login = async (req: Request, res: Response) => {
   try {
-    const { identifier, password } = req.body;
+    const { identifier, password } = req.body || {};
 
-    if (!identifier || !password) {
+    if (typeof identifier !== 'string' || typeof password !== 'string' || !identifier.trim() || !password) {
       return res.status(400).json({
         success: false,
         message: 'Vui l\u00f2ng nh\u1eadp t\u00ean \u0111\u0103ng nh\u1eadp/email v\u00e0 m\u1eadt kh\u1ea9u.',
@@ -105,80 +105,88 @@ export const login = async (req: Request, res: Response) => {
   }
 };
 
+// Usernames appear in profile URLs (/users/:username), so keep them URL-safe
+const USERNAME_RE = /^[A-Za-z0-9_.-]{3,30}$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export const register = async (req: Request, res: Response) => {
+  const fail = (message: string, status = 400) => res.status(status).json({ success: false, message });
   try {
-    const { username, email, password, display_name } = req.body;
-
-    if (!username || !email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Vui l\u00f2ng \u0111i\u1ec1n \u0111\u1ea7y \u0111\u1ee7 username, email v\u00e0 m\u1eadt kh\u1ea9u.',
-      });
+    const body = req.body || {};
+    const { password } = body;
+    if (typeof body.username !== 'string' || typeof body.email !== 'string' || typeof password !== 'string'
+        || !body.username.trim() || !body.email.trim() || !password) {
+      return fail('Vui lòng điền đầy đủ username, email và mật khẩu.');
+    }
+    if (body.display_name !== undefined && body.display_name !== null && typeof body.display_name !== 'string') {
+      return fail('Tên hiển thị không hợp lệ.');
     }
 
-    if (username.length < 3 || username.length > 50) {
-      return res.status(400).json({
-        success: false,
-        message: 'T\u00ean \u0111\u0103ng nh\u1eadp ph\u1ea3i t\u1eeb 3 \u0111\u1ebfn 50 k\u00fd t\u1ef1.',
-      });
-    }
+    const username = body.username.trim();
+    const email = body.email.trim().toLowerCase();
+    const displayName = (body.display_name || '').trim() || username;
 
-    if (password.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: 'M\u1eadt kh\u1ea9u ph\u1ea3i c\u00f3 \u00edt nh\u1ea5t 6 k\u00fd t\u1ef1.',
-      });
+    if (!USERNAME_RE.test(username)) {
+      return fail('Tên đăng nhập phải từ 3 đến 30 ký tự, chỉ gồm chữ không dấu, số và dấu _ . -');
     }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email kh\u00f4ng \u0111\u00fang \u0111\u1ecbnh d\u1ea1ng.',
-      });
+    if (email.length > 255 || !EMAIL_RE.test(email)) {
+      return fail('Email không đúng định dạng.');
+    }
+    if (displayName.length > 100) {
+      return fail('Tên hiển thị tối đa 100 ký tự.');
+    }
+    if (password.length < 6 || !password.trim()) {
+      return fail('Mật khẩu phải có ít nhất 6 ký tự.');
+    }
+    // bcrypt only uses the first 72 bytes; longer passwords would be silently truncated
+    if (Buffer.byteLength(password, 'utf8') > 72) {
+      return fail('Mật khẩu quá dài (tối đa 72 byte).');
     }
 
     const checkRes = await pool.query(
-      'SELECT id, username, email FROM users WHERE LOWER(username) = LOWER($1) OR LOWER(email) = LOWER($2)',
-      [username.trim(), email.trim()]
+      'SELECT username FROM users WHERE LOWER(username) = LOWER($1) OR LOWER(email) = $2',
+      [username, email]
     );
-
     if (checkRes.rows.length > 0) {
-      const existing = checkRes.rows[0];
-      if (existing.username.toLowerCase() === username.toLowerCase()) {
-        return res.status(400).json({
-          success: false,
-          message: 'T\u00ean \u0111\u0103ng nh\u1eadp n\u00e0y \u0111\u00e3 \u0111\u01b0\u1ee3c s\u1eed d\u1ee5ng.',
-        });
-      }
-      return res.status(400).json({
-        success: false,
-        message: 'Email n\u00e0y \u0111\u00e3 \u0111\u01b0\u1ee3c s\u1eed d\u1ee5ng.',
-      });
+      const usernameTaken = checkRes.rows.some((r: any) => r.username.toLowerCase() === username.toLowerCase());
+      return fail(usernameTaken ? 'Tên đăng nhập này đã được sử dụng.' : 'Email này đã được sử dụng.');
     }
 
-    const salt = await bcrypt.genSalt(10);
-    const passwordHash = await bcrypt.hash(password, salt);
+    const passwordHash = await bcrypt.hash(password, 10);
 
-    const insertUserRes = await pool.query(
-      `INSERT INTO users (username, email, password_hash, display_name)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id, username, email, display_name, avatar_url, bio, created_at`,
-      [username.trim(), email.trim(), passwordHash, display_name ? display_name.trim() : username.trim()]
-    );
-
-    const newUser = insertUserRes.rows[0];
-
-    await pool.query(
-      `INSERT INTO user_roles (user_id, role, is_visible)
-       VALUES ($1, 'reader', true)`,
-      [newUser.id]
-    );
-
-    await pool.query(
-      `INSERT INTO user_settings (user_id) VALUES ($1) ON CONFLICT DO NOTHING`,
-      [newUser.id]
-    );
+    // User, role and settings are created together or not at all
+    const client = await pool.connect();
+    let newUser: any;
+    try {
+      await client.query('BEGIN');
+      const insertUserRes = await client.query(
+        `INSERT INTO users (username, email, password_hash, display_name, last_login_at)
+         VALUES ($1, $2, $3, $4, NOW())
+         RETURNING id, username, email, display_name, avatar_url, bio, created_at`,
+        [username, email, passwordHash, displayName]
+      );
+      newUser = insertUserRes.rows[0];
+      await client.query(
+        `INSERT INTO user_roles (user_id, role, is_visible) VALUES ($1, 'reader', true)`,
+        [newUser.id]
+      );
+      await client.query(
+        `INSERT INTO user_settings (user_id) VALUES ($1) ON CONFLICT DO NOTHING`,
+        [newUser.id]
+      );
+      await client.query('COMMIT');
+    } catch (txErr: any) {
+      await client.query('ROLLBACK');
+      if (txErr.code === '23505') {
+        // Lost a race with a concurrent sign-up for the same username/email
+        return fail(String(txErr.constraint).includes('username')
+          ? 'Tên đăng nhập này đã được sử dụng.'
+          : 'Email này đã được sử dụng.');
+      }
+      throw txErr;
+    } finally {
+      client.release();
+    }
 
     const tokenPayload = {
       id: newUser.id,
@@ -199,7 +207,7 @@ export const register = async (req: Request, res: Response) => {
 
     return res.status(201).json({
       success: true,
-      message: '\u0110\u0103ng k\u00fd t\u00e0i kho\u1ea3n th\u00e0nh c\u00f4ng! B\u1ea1n \u0111\u00e3 t\u1ef1 \u0111\u1ed9ng \u0111\u0103ng nh\u1eadp.',
+      message: 'Đăng ký tài khoản thành công! Bạn đã tự động đăng nhập.',
       data: {
         token,
         user: {
@@ -212,7 +220,7 @@ export const register = async (req: Request, res: Response) => {
     console.error('Register error:', error);
     return res.status(500).json({
       success: false,
-      message: 'L\u1ed7i t\u1ea1o t\u00e0i kho\u1ea3n: ' + error.message,
+      message: 'Lỗi tạo tài khoản: ' + error.message,
     });
   }
 };

@@ -33,7 +33,7 @@ import { useAuth } from '@/context/AuthContext';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
 export default function UserProfilePage() {
-  const { user: authUser, isAuthenticated, isLoading: isAuthLoading, openAuthModal, authFetch, hasRole } = useAuth();
+  const { user: authUser, isAuthenticated, isLoading: isAuthLoading, openAuthModal, authFetch, hasRole, refreshProfile } = useAuth();
 
   const [profile, setProfile] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'profile' | 'reader_settings' | 'admin_roles'>('profile');
@@ -52,6 +52,7 @@ export default function UserProfilePage() {
   const [lineHeight, setLineHeight] = useState(1.8);
   const [readingMode, setReadingMode] = useState('scroll');
   const [notifyChapters, setNotifyChapters] = useState(true);
+  const [notifyGroupEvents, setNotifyGroupEvents] = useState(true);
 
   // Admin User & Role Management State
   const [adminUsers, setAdminUsers] = useState<any[]>([]);
@@ -61,6 +62,7 @@ export default function UserProfilePage() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const isAdmin = hasRole('admin');
 
@@ -86,6 +88,7 @@ export default function UserProfilePage() {
             setLineHeight(parseFloat(u.settings.line_height) || 1.8);
             setReadingMode(u.settings.reading_mode || 'scroll');
             setNotifyChapters(u.settings.notify_chapter_update ?? true);
+            setNotifyGroupEvents(u.settings.notify_group_events ?? true);
           }
         }
       }
@@ -162,6 +165,7 @@ export default function UserProfilePage() {
     e.preventDefault();
     setIsSaving(true);
     setFeedback(null);
+    setErrorMsg(null);
     try {
       const res = await authFetch(`${API_BASE_URL}/profile/me`, {
         method: 'PUT',
@@ -174,12 +178,17 @@ export default function UserProfilePage() {
         }),
       });
 
-      if (res.ok) {
+      const json = await res.json().catch(() => null);
+      if (res.ok && json?.success) {
         setFeedback('\u0110\u00e3 c\u1eadp nh\u1eadt th\u00f4ng tin h\u1ed3 s\u01a1 th\u00e0nh c\u00f4ng!');
         fetchProfile();
+        refreshProfile(); // navbar name/avatar come from the auth context
         setTimeout(() => setFeedback(null), 3000);
+      } else {
+        setErrorMsg(json?.message || 'L\u01b0u h\u1ed3 s\u01a1 th\u1ea5t b\u1ea1i.');
       }
-    } catch (e) {
+    } catch (e: any) {
+      setErrorMsg('L\u1ed7i k\u1ebft n\u1ed1i: ' + e.message);
     } finally {
       setIsSaving(false);
     }
@@ -189,6 +198,7 @@ export default function UserProfilePage() {
     e.preventDefault();
     setIsSaving(true);
     setFeedback(null);
+    setErrorMsg(null);
     try {
       const res = await authFetch(`${API_BASE_URL}/profile/me/settings`, {
         method: 'PUT',
@@ -200,15 +210,20 @@ export default function UserProfilePage() {
           line_height: lineHeight,
           reading_mode: readingMode,
           notify_chapter_update: notifyChapters,
+          notify_group_events: notifyGroupEvents,
         }),
       });
 
-      if (res.ok) {
+      const json = await res.json().catch(() => null);
+      if (res.ok && json?.success) {
         setFeedback('\u0110\u00e3 l\u01b0u c\u1ea5u h\u00ecnh tr\u1ea3i nghi\u1ec7m \u0111\u1ecdc truy\u1ec7n m\u1eb7c \u0111\u1ecbnh!');
         fetchProfile();
         setTimeout(() => setFeedback(null), 3000);
+      } else {
+        setErrorMsg(json?.message || 'L\u01b0u c\u1ea5u h\u00ecnh th\u1ea5t b\u1ea1i.');
       }
-    } catch (e) {
+    } catch (e: any) {
+      setErrorMsg('L\u1ed7i k\u1ebft n\u1ed1i: ' + e.message);
     } finally {
       setIsSaving(false);
     }
@@ -380,11 +395,22 @@ export default function UserProfilePage() {
         </div>
       )}
 
+      {errorMsg && (
+        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm">
+          {errorMsg}
+        </div>
+      )}
+
       {/* Tab Content: Profile Edit */}
       {activeTab === 'profile' && (
         <form onSubmit={handleSaveProfile} className="space-y-6">
           <div className="glass-panel p-6 rounded-3xl border border-white/10 bg-[#141420]/80 space-y-5">
             <h3 className="text-lg font-bold text-white">{'Ch\u1ec9nh s\u1eeda h\u1ed3 s\u01a1'}</h3>
+            {profile?.username && (
+              <Link href={`/nguoi-dung/${profile.username}`} className="text-xs text-brand-400 hover:underline font-semibold">
+                {'Xem trang c\u00f4ng khai c\u1ee7a b\u1ea1n \u2192'}
+              </Link>
+            )}
             <div>
               <label className="block text-xs font-semibold text-gray-300 mb-1.5">{'T\u00ean hi\u1ec3n th\u1ecb'}</label>
               <input
@@ -480,6 +506,34 @@ export default function UserProfilePage() {
                 <input type="range" min={1.2} max={2.4} step={0.1} value={lineHeight} onChange={(e) => setLineHeight(parseFloat(e.target.value))} className="w-full accent-brand-500" />
               </div>
             </div>
+            <div className="space-y-3 pt-2 border-t border-white/10">
+              <label className="block text-xs font-semibold text-gray-300 pt-4">{'Th\u00f4ng b\u00e1o'}</label>
+              {[
+                {
+                  checked: notifyChapters, set: setNotifyChapters,
+                  title: 'Ch\u01b0\u01a1ng m\u1edbi',
+                  desc: 'Khi truy\u1ec7n b\u1ea1n theo d\u00f5i c\u00f3 ch\u01b0\u01a1ng m\u1edbi',
+                },
+                {
+                  checked: notifyGroupEvents, set: setNotifyGroupEvents,
+                  title: 'Ho\u1ea1t \u0111\u1ed9ng nh\u00f3m d\u1ecbch',
+                  desc: 'Y\u00eau c\u1ea7u gia nh\u1eadp, k\u1ebft qu\u1ea3 duy\u1ec7t, \u0111\u01b0\u1ee3c th\u00eam v\u00e0o nh\u00f3m, nh\u00f3m \u0111\u01b0\u1ee3c duy\u1ec7t ho\u1eb7c b\u1ecb t\u1eeb ch\u1ed1i',
+                },
+              ].map((opt) => (
+                <label key={opt.title} className="flex items-start gap-3 p-3 rounded-2xl bg-white/5 border border-white/10 cursor-pointer hover:border-white/20 transition">
+                  <input
+                    type="checkbox"
+                    checked={opt.checked}
+                    onChange={(e) => opt.set(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 accent-brand-500"
+                  />
+                  <span className="text-xs">
+                    <span className="block font-semibold text-white">{opt.title}</span>
+                    <span className="text-gray-400">{opt.desc}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
             <button
               type="submit"
               disabled={isSaving}
@@ -564,7 +618,12 @@ export default function UserProfilePage() {
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-bold text-white">{u.display_name || u.username}</span>
-                            <span className="text-xs text-gray-400">(@{u.username})</span>
+                            <Link href={`/nguoi-dung/${u.username}`} className="text-xs text-gray-400 hover:text-brand-400 hover:underline">(@{u.username})</Link>
+                            {u.deleted_at ? (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase bg-gray-500/20 text-gray-300">{'\u0110\u00e3 x\u00f3a'}</span>
+                            ) : u.is_banned && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase bg-rose-600/30 text-rose-200">{'\u0110\u00e3 b\u1ecb kh\u00f3a'}</span>
+                            )}
                           </div>
                           <div className="text-[11px] text-gray-400 mt-0.5">{u.email}</div>
                           

@@ -240,7 +240,7 @@ def run_seeders():
         else:
             all_ok = False
             fail(f"seed {desc}: {(res.stderr or res.stdout).strip()[-400:]}")
-    # novelsearch is fully re-synced only when the backend starts
+    # Elasticsearch is fully re-synced only when the backend starts
     compose("restart", "backend", capture=True, check=False)
     return all_ok
 
@@ -335,9 +335,9 @@ def run_checks(env, timeout, seed=True):
             passed, detail = wait_until("backend restart", backend_up, timeout)
             record("backend  healthy after seeding", passed, "" if passed else detail)
 
-    # Search service
-    code, body = http("GET", f"{search}/_meta/health")
-    record("search   GET /_meta/health", code == 200, f"({code})")
+    # Search service (Elasticsearch)
+    code, body = http("GET", f"{search}/_cluster/health?wait_for_status=yellow&timeout=5s")
+    record("search   GET /_cluster/health", code == 200, f"({code})")
 
     # Frontend through the gateway (Next.js can take a while on first request)
     def home_up():

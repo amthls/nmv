@@ -1,6 +1,15 @@
 import { Response } from 'express';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import { UserReadingLog } from '../models/readingHistory.model';
+import { clientDbError } from '../utils/dbErrors';
+import { pool } from '../config/db';
+import { isUuid } from '../utils/validation';
+
+/** A finite number within [min, max], else the fallback (bad client values must not reach SQL). */
+const clampNumber = (value: unknown, min: number, max: number, fallback: number) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.min(Math.max(n, min), max) : fallback;
+};
 
 /**
  * Lấy danh sách lịch sử đọc truyện của người dùng hiện tại
@@ -13,7 +22,7 @@ export const getReadingHistory = async (req: AuthenticatedRequest, res: Response
     }
 
     const currentUserId = req.user.id;
-    const limit = parseInt(req.query.limit as string) || 100;
+    const limit = Math.min(Math.max(parseInt(req.query.limit as string) || 100, 1), 200);
 
     const logs = await UserReadingLog.getLogsByUser(currentUserId, limit);
 
@@ -36,22 +45,29 @@ export const saveReadingHistory = async (req: AuthenticatedRequest, res: Respons
       return res.status(401).json({ success: false, message: 'Vui lòng đăng nhập để lưu lịch sử đọc.' });
     }
 
-    const { story_id, chapter_id, scroll_position = 0, page_number = 1, time_spent_seconds = 0 } = req.body;
+    const { chapter_id, scroll_position, page_number, time_spent_seconds } = req.body || {};
 
-    if (!story_id || !chapter_id) {
-      return res.status(400).json({ success: false, message: 'Thiếu story_id hoặc chapter_id' });
+    if (!isUuid(chapter_id)) {
+      return res.status(400).json({ success: false, message: 'Thiếu hoặc sai chapter_id' });
     }
 
-    const currentUserId = req.user.id;
+    // The story always comes from the chapter itself, so a wrong story_id can't create a
+    // history entry whose "continue reading" link points into another story
+    const chRes = await pool.query(
+      `SELECT story_id FROM chapters WHERE id = $1 AND is_published = true`,
+      [chapter_id]
+    );
+    if (chRes.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Chương không tồn tại.' });
+    }
 
-    // Sử dụng class UserReadingLog để sinh bản log mới cho người dùng
     const log = await UserReadingLog.recordLog({
-      userId: currentUserId,
-      storyId: story_id,
+      userId: req.user.id,
+      storyId: chRes.rows[0].story_id,
       chapterId: chapter_id,
-      scrollPosition: Number(scroll_position),
-      pageNumber: Number(page_number),
-      timeSpentSeconds: Number(time_spent_seconds),
+      scrollPosition: clampNumber(scroll_position, 0, 100, 0), // percent, numeric(5,2)
+      pageNumber: Math.round(clampNumber(page_number, 1, 100000, 1)),
+      timeSpentSeconds: Math.round(clampNumber(time_spent_seconds, 0, 86400, 0)),
     });
 
     res.json({
@@ -60,6 +76,8 @@ export const saveReadingHistory = async (req: AuthenticatedRequest, res: Respons
       data: log,
     });
   } catch (error: any) {
+    const clientErr = clientDbError(error);
+    if (clientErr) return res.status(clientErr.status).json({ success: false, message: clientErr.message });
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -76,7 +94,7 @@ export const deleteReadingHistoryItem = async (req: AuthenticatedRequest, res: R
     const { id } = req.params;
     const currentUserId = req.user.id;
 
-    const deleted = await UserReadingLog.deleteLog(id, currentUserId);
+    const deleted = isUuid(id) && await UserReadingLog.deleteLog(id, currentUserId);
 
     if (!deleted) {
       return res.status(404).json({

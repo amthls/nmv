@@ -2,7 +2,9 @@ import { enqueueNotificationJob } from '../services/queue.service';
 ﻿import { Request, Response } from 'express';
 import { pool } from '../config/db';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
-import { canUserManageStory } from './story.controller';
+import { canUserManageStory, checkStoryReferences, parseStoryInput, sendClientError } from './story.controller';
+import { InputError, isUuid, optionalUrl, requiredText } from '../utils/validation';
+import { insertWithUniqueSlug } from '../utils/ids';
 import { indexStory } from '../services/search.service';
 import { sanitizeRichText } from '../utils/richText';
 
@@ -25,6 +27,53 @@ export interface ContentBlock {
   image_url?: string; // Inline illustration at this line
 }
 
+type Db = { query: (text: string, params?: any[]) => Promise<any> };
+
+const BLOCK_TYPES = ['paragraph', 'heading', 'image', 'separator'];
+
+/** Validates chapter content blocks from the editor and keeps only the fields the reader uses. */
+function normalizeContentBlocks(input: unknown): ContentBlock[] {
+  if (input === undefined || input === null) return [];
+  if (!Array.isArray(input) || input.length > 5000) throw new InputError('Nội dung chương không hợp lệ.');
+  return input.map((raw: any, idx: number) => {
+    if (!raw || typeof raw !== 'object') throw new InputError(`Đoạn ${idx + 1} không hợp lệ.`);
+    const { text, note } = raw;
+    if (text !== undefined && text !== null && typeof text !== 'string') throw new InputError(`Đoạn ${idx + 1} không hợp lệ.`);
+    if (note !== undefined && note !== null && typeof note !== 'string') throw new InputError(`Ghi chú đoạn ${idx + 1} không hợp lệ.`);
+    if ((text || '').length > 50000) throw new InputError(`Đoạn ${idx + 1} quá dài.`);
+    const block: ContentBlock = {
+      id: typeof raw.id === 'string' && raw.id.length <= 64 ? raw.id : `b${idx + 1}`,
+      type: BLOCK_TYPES.includes(raw.type) ? raw.type : 'paragraph',
+    };
+    if (text) block.text = text;
+    if (note && note.trim()) block.note = note.trim().slice(0, 5000);
+    const imageUrl = optionalUrl(raw.image_url, `Ảnh minh họa đoạn ${idx + 1}`);
+    if (imageUrl) block.image_url = imageUrl;
+    return block;
+  });
+}
+
+/** Plain text of the blocks (inline images as markdown) for search, word count and the `content` column. */
+function blocksToPlainText(blocks: ContentBlock[]): string {
+  return blocks
+    .map((b) => {
+      let line = b.text || '';
+      if (b.image_url) line += `\n![Minh Họa](${b.image_url})`;
+      return line;
+    })
+    .filter(Boolean)
+    .join('\n\n');
+}
+
+/** Chapter numbers may be decimal (e.g. 10.5 for an extra) but never negative. */
+function parseChapterNumber(value: unknown): number {
+  const num = typeof value === 'string' && value.trim() ? Number(value) : value;
+  if (typeof num !== 'number' || !Number.isFinite(num) || num < 0 || num >= 1e8) {
+    throw new InputError('Số chương phải là số từ 0 trở lên.');
+  }
+  return Math.round(num * 100) / 100;
+}
+
 export const submitChapter = async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user || !req.user.id) {
@@ -34,23 +83,18 @@ export const submitChapter = async (req: AuthenticatedRequest, res: Response) =>
       });
     }
 
-    const {
-      story_id,
-      volume_id,
-      chapter_number,
-      title,
-      content_blocks = [],
-      raw_content,
-      group_id,
-      is_draft = false,
-    } = req.body;
+    const body = req.body || {};
+    const { story_id, volume_id, raw_content } = body;
+    const isDraft = body.is_draft === true;
 
-    if (!story_id || !title || !title.trim() || chapter_number === undefined) {
-      return res.status(400).json({
-        success: false,
-        message: 'Thiếu thông tin bắt buộc: story_id, title, chapter_number',
-      });
+    if (!isUuid(story_id)) {
+      return res.status(400).json({ success: false, message: 'Thiếu hoặc sai story_id.' });
     }
+    const title = requiredText(body.title, 500, 'Tiêu đề chương');
+    const numberGiven = !(body.chapter_number === undefined || body.chapter_number === null || body.chapter_number === '');
+    let chapterNumber = numberGiven ? parseChapterNumber(body.chapter_number) : 0;
+    const blocks = normalizeContentBlocks(body.content_blocks);
+    if (volume_id && !isUuid(volume_id)) throw new InputError('Tập không hợp lệ.');
 
     const uploaderId = req.user.id;
     const userRoles = req.user.roles || [];
@@ -70,28 +114,32 @@ export const submitChapter = async (req: AuthenticatedRequest, res: Response) =>
     }
     const story = storyRes.rows[0];
 
-    // Calculate word count from content_blocks
-    let calculatedWordCount = 0;
-    let fullPlainText = '';
-
-    if (Array.isArray(content_blocks) && content_blocks.length > 0) {
-      fullPlainText = content_blocks
-        .map((b: ContentBlock) => {
-          let line = b.text || '';
-          if (b.image_url) line += `\n![Minh Họa](${b.image_url})`;
-          return line;
-        })
-        .filter(Boolean)
-        .join('\n\n');
-      
-      calculatedWordCount = fullPlainText.split(/\s+/).filter(Boolean).length;
-    } else if (raw_content) {
-      fullPlainText = raw_content;
-      calculatedWordCount = raw_content.split(/\s+/).filter(Boolean).length;
+    if (volume_id) {
+      const volRes = await pool.query(`SELECT 1 FROM volumes WHERE id = $1 AND story_id = $2`, [volume_id, story_id]);
+      if (volRes.rows.length === 0) {
+        return res.status(400).json({ success: false, message: 'Tập không thuộc bộ truyện này.' });
+      }
     }
 
-    let chapterSlug = `chuong-${chapter_number}-${slugify(title.trim())}`;
-    const actualGroupId = group_id || story.group_id;
+    if (!numberGiven) {
+      // Next free number after every chapter and pending/draft submission of this story
+      const nextRes = await pool.query(`
+        SELECT FLOOR(COALESCE(MAX(n), 0)) + 1 AS next FROM (
+          SELECT chapter_number AS n FROM chapters WHERE story_id = $1
+          UNION ALL
+          SELECT chapter_number FROM chapter_submissions WHERE story_id = $1
+        ) all_numbers
+      `, [story_id]);
+      chapterNumber = Number(nextRes.rows[0].next);
+    }
+
+    let fullPlainText = blocksToPlainText(blocks);
+    if (blocks.length === 0 && typeof raw_content === 'string') fullPlainText = raw_content;
+    const calculatedWordCount = fullPlainText.split(/\s+/).filter(Boolean).length;
+
+    const chapterSlug = `chuong-${chapterNumber}-${slugify(title)}`.slice(0, 500);
+    // Always the story's own group: a group_id from the request must not decide who may self-approve
+    const actualGroupId = story.group_id;
 
     // Check if uploader is leader/mod of the group or site admin/mod
     let isLeader = false;
@@ -106,42 +154,54 @@ export const submitChapter = async (req: AuthenticatedRequest, res: Response) =>
       }
     }
 
-    const initialApproval = is_draft ? 'draft' : (isLeader ? 'approved' : 'pending');
+    const initialApproval = isDraft ? 'draft' : (isLeader ? 'approved' : 'pending');
 
-    // 1. Insert into chapter_submissions
-    const submissionRes = await pool.query(`
-      INSERT INTO chapter_submissions (
-        story_id, volume_id, chapter_number, title, slug,
-        content_blocks, raw_content, word_count,
-        uploader_id, group_id, approval_status, is_active
-      ) VALUES (
-        $1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10, $11, $12
-      ) RETURNING *;
-    `, [
-      story_id,
-      volume_id || null,
-      chapter_number,
-      title.trim(),
-      chapterSlug,
-      JSON.stringify(content_blocks || []),
-      fullPlainText,
-      calculatedWordCount,
-      uploaderId,
-      actualGroupId || null,
-      initialApproval,
-      initialApproval === 'approved'
-    ]);
+    // Submission and (when approved) the public chapter are written together or not at all
+    const client = await pool.connect();
+    let submission: any;
+    let publishedChapterId: string | undefined;
+    try {
+      await client.query('BEGIN');
+      const submissionRes = await client.query(`
+        INSERT INTO chapter_submissions (
+          story_id, volume_id, chapter_number, title, slug,
+          content_blocks, raw_content, word_count,
+          uploader_id, group_id, approval_status, is_active
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10, $11, $12
+        ) RETURNING *;
+      `, [
+        story_id,
+        volume_id || null,
+        chapterNumber,
+        title,
+        chapterSlug,
+        JSON.stringify(blocks),
+        fullPlainText,
+        calculatedWordCount,
+        uploaderId,
+        actualGroupId || null,
+        initialApproval,
+        initialApproval === 'approved'
+      ]);
+      submission = submissionRes.rows[0];
 
-    const submission = submissionRes.rows[0];
-
-    // 2. If approved immediately (by owner/leader), sync to public chapters table!
-    if (initialApproval === 'approved' && !is_draft) {
-      await syncSubmissionToPublicChapter(submission);
+      if (initialApproval === 'approved') {
+        publishedChapterId = await syncSubmissionToPublicChapter(client, submission);
+      }
+      await client.query('COMMIT');
+    } catch (txErr) {
+      await client.query('ROLLBACK');
+      throw txErr;
+    } finally {
+      client.release();
     }
+
+    if (publishedChapterId) notifyChapterPublished(submission, publishedChapterId);
 
     res.status(201).json({
       success: true,
-      message: is_draft
+      message: isDraft
         ? 'Đã lưu bản nháp chương thành công'
         : (initialApproval === 'approved'
             ? 'Đăng chương thành công và đã xuất bản cho độc giả'
@@ -149,17 +209,19 @@ export const submitChapter = async (req: AuthenticatedRequest, res: Response) =>
       data: submission,
     });
   } catch (error: any) {
+    if (sendClientError(res, error)) return;
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-async function syncSubmissionToPublicChapter(sub: any) {
+/** Publishes a submission as the public chapter (run inside the caller's transaction). */
+async function syncSubmissionToPublicChapter(db: Db, sub: any): Promise<string | undefined> {
   // Extract line annotations and inline images
   const translatorNotes = sub.content_blocks
     ? sub.content_blocks.filter((b: any) => b.note).map((b: any) => ({ text: b.text, note: b.note }))
     : [];
 
-  const chapterRes = await pool.query(`
+  const chapterRes = await db.query(`
     INSERT INTO chapters (
       story_id, volume_id, chapter_number, title, slug,
       content, content_blocks, word_count, is_published,
@@ -195,20 +257,20 @@ async function syncSubmissionToPublicChapter(sub: any) {
 
   const chapterId = chapterRes.rows[0]?.id;
 
-  // Insert inline images into chapter_pages if any
+  // Rebuild inline-image pages (a new version may have fewer images than the old one)
+  if (chapterId) await db.query(`DELETE FROM chapter_pages WHERE chapter_id = $1`, [chapterId]);
   if (chapterId && Array.isArray(sub.content_blocks)) {
     const inlineImages = sub.content_blocks.filter((b: any) => b.image_url);
     for (let i = 0; i < inlineImages.length; i++) {
-      await pool.query(`
+      await db.query(`
         INSERT INTO chapter_pages (chapter_id, page_number, image_url)
-        VALUES ($1, $2, $3)
-        ON CONFLICT (chapter_id, page_number) DO UPDATE SET image_url = EXCLUDED.image_url;
+        VALUES ($1, $2, $3);
       `, [chapterId, i + 1, inlineImages[i].image_url]);
     }
   }
 
   // Update story total chapters and last_chapter_at
-  await pool.query(`
+  await db.query(`
     UPDATE stories SET
       total_chapters = (SELECT count(*) FROM chapters WHERE story_id = $1 AND is_published = true),
       last_chapter_at = NOW(),
@@ -217,24 +279,25 @@ async function syncSubmissionToPublicChapter(sub: any) {
   `, [sub.story_id]);
 
   // Mark this submission as active
-  await pool.query(`
+  await db.query(`
     UPDATE chapter_submissions SET is_active = (id = $1)
     WHERE story_id = $2 AND chapter_number = $3;
   `, [sub.id, sub.story_id, sub.chapter_number]);
 
-  // Notify all users following this story
-  if (chapterId) {
-    // Fan-out to followers is queue work (RabbitMQ -> worker), never done inside the request
-    enqueueNotificationJob({
-      kind: 'chapter_published',
-      storyId: sub.story_id,
-      chapterId,
-      chapterTitle: sub.title,
-      uploaderId: sub.uploader_id || null,
-    }).catch((err: any) => {
-      console.error('[Notification] Failed to enqueue chapter notifications:', err);
-    });
-  }
+  return chapterId;
+}
+
+/** Fan-out to followers is queue work (RabbitMQ -> worker); call only after the chapter is committed. */
+function notifyChapterPublished(sub: any, chapterId: string) {
+  enqueueNotificationJob({
+    kind: 'chapter_published',
+    storyId: sub.story_id,
+    chapterId,
+    chapterTitle: sub.title,
+    uploaderId: sub.uploader_id || null,
+  }).catch((err: any) => {
+    console.error('[Notification] Failed to enqueue chapter notifications:', err);
+  });
 }
 
 /**
@@ -265,6 +328,9 @@ export const deleteChapter = async (req: AuthenticatedRequest, res: Response) =>
     }
 
     const { id } = req.params;
+    if (!isUuid(id)) {
+      return res.status(404).json({ success: false, message: 'Chương không tồn tại.' });
+    }
     const currentUserId = req.user.id;
     const userRoles = req.user.roles || [];
 
@@ -328,9 +394,40 @@ export const deleteChapter = async (req: AuthenticatedRequest, res: Response) =>
   }
 };
 
-export const getChapterSubmissions = async (req: Request, res: Response) => {
+/**
+ * Chapter submissions (unpublished translations) for review. Signed-in only: site admin/mod see
+ * everything; otherwise the caller must be a member of the requested group or the owner of the
+ * requested story. The list never includes the chapter text itself.
+ */
+export const getChapterSubmissions = async (req: AuthenticatedRequest, res: Response) => {
   try {
+    if (!req.user) return res.status(401).json({ success: false, message: 'Bạn chưa đăng nhập.' });
     const { story_id, chapter_number, group_id, status } = req.query;
+
+    if ((story_id !== undefined && !isUuid(story_id)) || (group_id !== undefined && !isUuid(group_id))) {
+      return res.status(400).json({ success: false, message: 'Tham số không hợp lệ.' });
+    }
+    if (status !== undefined && !['pending', 'approved', 'rejected'].includes(String(status))) {
+      return res.status(400).json({ success: false, message: 'Trạng thái không hợp lệ.' });
+    }
+    if (chapter_number !== undefined && !Number.isFinite(Number(chapter_number))) {
+      return res.status(400).json({ success: false, message: 'Số chương không hợp lệ.' });
+    }
+
+    const userRoles = req.user.roles || [];
+    if (!userRoles.includes('admin') && !userRoles.includes('mod')) {
+      let allowed = false;
+      if (group_id) {
+        const mem = await pool.query(`SELECT 1 FROM group_members WHERE group_id = $1 AND user_id = $2`, [group_id, req.user.id]);
+        allowed = mem.rows.length > 0;
+      } else if (story_id) {
+        const own = await pool.query(`SELECT 1 FROM stories WHERE id = $1 AND uploader_id = $2`, [story_id, req.user.id]);
+        allowed = own.rows.length > 0;
+      }
+      if (!allowed) {
+        return res.status(403).json({ success: false, message: 'Chỉ thành viên nhóm dịch mới xem được các bản dịch đang chờ duyệt.' });
+      }
+    }
 
     const params: any[] = [];
     let conditions = 'WHERE 1=1';
@@ -357,7 +454,9 @@ export const getChapterSubmissions = async (req: Request, res: Response) => {
 
     const result = await pool.query(`
       SELECT 
-        cs.*,
+        cs.id, cs.story_id, cs.volume_id, cs.chapter_number, cs.title, cs.slug, cs.word_count,
+        cs.uploader_id, cs.group_id, cs.approval_status, cs.approved_by, cs.approved_at,
+        cs.rejection_reason, cs.is_active, cs.created_at, cs.updated_at,
         u.username as uploader_username,
         u.display_name as uploader_name,
         u.avatar_url as uploader_avatar,
@@ -371,7 +470,8 @@ export const getChapterSubmissions = async (req: Request, res: Response) => {
       LEFT JOIN translation_groups g ON cs.group_id = g.id
       LEFT JOIN volumes v ON cs.volume_id = v.id
       ${conditions}
-      ORDER BY cs.chapter_number ASC, cs.created_at DESC;
+      ORDER BY cs.chapter_number ASC, cs.created_at DESC
+      LIMIT 500;
     `, params);
 
     res.json({
@@ -414,6 +514,9 @@ export const approveChapterSubmission = async (req: AuthenticatedRequest, res: R
     const { id } = req.params;
     const leaderId = req.user.id;
     const userRoles = req.user.roles || [];
+    if (!isUuid(id)) {
+      return res.status(404).json({ success: false, message: 'Bản dịch không tồn tại' });
+    }
 
     const subRes = await pool.query(`SELECT * FROM chapter_submissions WHERE id = $1`, [id]);
     if (subRes.rows.length === 0) {
@@ -430,20 +533,30 @@ export const approveChapterSubmission = async (req: AuthenticatedRequest, res: R
       });
     }
 
-    // Update submission approval
-    await pool.query(`
-      UPDATE chapter_submissions SET
-        approval_status = 'approved',
-        approved_by = $1,
-        approved_at = NOW(),
-        rejection_reason = NULL,
-        is_active = true,
-        updated_at = NOW()
-      WHERE id = $2;
-    `, [leaderId, id]);
-
-    // Sync to public chapters table
-    await syncSubmissionToPublicChapter(submission);
+    // Approve and publish together; notify followers only once it is committed
+    const client = await pool.connect();
+    let chapterId: string | undefined;
+    try {
+      await client.query('BEGIN');
+      await client.query(`
+        UPDATE chapter_submissions SET
+          approval_status = 'approved',
+          approved_by = $1,
+          approved_at = NOW(),
+          rejection_reason = NULL,
+          is_active = true,
+          updated_at = NOW()
+        WHERE id = $2;
+      `, [leaderId, id]);
+      chapterId = await syncSubmissionToPublicChapter(client, submission);
+      await client.query('COMMIT');
+    } catch (txErr) {
+      await client.query('ROLLBACK');
+      throw txErr;
+    } finally {
+      client.release();
+    }
+    if (chapterId) notifyChapterPublished(submission, chapterId);
 
     res.json({
       success: true,
@@ -516,71 +629,63 @@ export const createStory = async (req: AuthenticatedRequest, res: Response) => {
       });
     }
 
-    const {
-      title,
-      original_title,
-      synopsis,
-      cover_image_url,
-      banner_image_url,
-      story_type = 'novel',
-      status = 'ongoing',
-      group_id,
-      author_name,
-      artist_name,
-      original_language = 'ja',
-      tags = [],
-    } = req.body;
-
-    if (!title || !title.trim()) {
-      return res.status(400).json({ success: false, message: 'Tên truyện không được để trống' });
-    }
-
+    const input = parseStoryInput(req.body || {}, true);
     const uploaderId = req.user.id;
+    const title = input.title as string;
 
-    let baseSlug = slugify(title.trim());
-    if (!baseSlug) baseSlug = 'truyen-moi';
-    const uniqueSlug = `${baseSlug}-${Date.now().toString().slice(-4)}`;
+    const baseSlug = slugify(title) || 'truyen-moi';
 
-    const storyRes = await pool.query(`
-      INSERT INTO stories (
-        title, slug, original_title, synopsis, cover_image_url, banner_image_url,
-        story_type, status, group_id, uploader_id,
-        author_name, artist_name, original_language, approval_status
-      ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7::story_type, $8::story_status, $9, $10, $11, $12, $13, 'approved'
-      ) RETURNING *;
-    `, [
-      title.trim(),
-      uniqueSlug,
-      original_title?.trim() || null,
-      sanitizeRichText(synopsis) || null,
-      cover_image_url || null,
-      banner_image_url || null,
-      story_type,
-      status,
-      group_id || null,
-      uploaderId,
-      author_name?.trim() || null,
-      artist_name?.trim() || null,
-      original_language
-    ]);
+    // Story, its default volume and its tags are created together or not at all
+    const client = await pool.connect();
+    let story: any;
+    try {
+      await client.query('BEGIN');
+      await checkStoryReferences(client, input, uploaderId, req.user.roles || []);
 
-    const story = storyRes.rows[0];
+      // Slug: the title, or title-2, title-3... when taken (checked against the database)
+      const storyRes = await insertWithUniqueSlug(client, 'stories', baseSlug, (uniqueSlug) => client.query(`
+        INSERT INTO stories (
+          title, slug, original_title, synopsis, cover_image_url, banner_image_url,
+          story_type, status, group_id, uploader_id,
+          author_name, artist_name, original_language, approval_status, total_volumes
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7::story_type, $8::story_status, $9, $10, $11, $12, $13, 'approved', 1
+        ) RETURNING *;
+      `, [
+        title,
+        uniqueSlug,
+        input.original_title ?? null,
+        input.synopsis ?? null,
+        input.cover_image_url ?? null,
+        input.banner_image_url ?? null,
+        input.story_type ?? 'novel',
+        input.status ?? 'ongoing',
+        input.group_id ?? null,
+        uploaderId,
+        input.author_name ?? null,
+        input.artist_name ?? null,
+        input.original_language ?? 'ja',
+      ]), true);
+      story = storyRes.rows[0];
 
-    // Automatically create Volume 1 by default
-    await pool.query(`
-      INSERT INTO volumes (story_id, title, volume_number)
-      VALUES ($1, 'Tập 1', 1)
-      ON CONFLICT DO NOTHING;
-    `, [story.id]);
+      // Every story starts with Volume 1
+      await client.query(
+        `INSERT INTO volumes (story_id, title, volume_number) VALUES ($1, 'Tập 1', 1) ON CONFLICT DO NOTHING`,
+        [story.id]
+      );
 
-    // Insert tags
-    if (Array.isArray(tags) && tags.length > 0) {
-      for (const tagId of tags) {
-        await pool.query(`
-          INSERT INTO story_tags (story_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING;
-        `, [story.id, tagId]);
+      if (input.tags && input.tags.length > 0) {
+        await client.query(
+          `INSERT INTO story_tags (story_id, tag_id) SELECT $1, unnest($2::uuid[]) ON CONFLICT DO NOTHING`,
+          [story.id, input.tags]
+        );
       }
+      await client.query('COMMIT');
+    } catch (txErr) {
+      await client.query('ROLLBACK');
+      throw txErr;
+    } finally {
+      client.release();
     }
 
     await indexStory(story.id);
@@ -591,6 +696,7 @@ export const createStory = async (req: AuthenticatedRequest, res: Response) => {
       data: story,
     });
   } catch (error: any) {
+    if (sendClientError(res, error)) return;
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -612,18 +718,30 @@ export const createVolume = async (req: AuthenticatedRequest, res: Response) => 
       });
     }
 
-    const num = parseInt(volume_number) || 1;
-    const volTitle = title?.trim() || `Tập ${num}`;
+    // No number given: take the next free one. A taken number is refused (updateVolume edits volumes).
+    let num: number;
+    if (volume_number === undefined || volume_number === null || volume_number === '') {
+      const maxRes = await pool.query(`SELECT COALESCE(MAX(volume_number), 0) + 1 AS next FROM volumes WHERE story_id = $1`, [storyId]);
+      num = Number(maxRes.rows[0].next);
+    } else {
+      num = Number(volume_number);
+      if (!Number.isInteger(num) || num < 1 || num > 100000) {
+        return res.status(400).json({ success: false, message: 'Số tập không hợp lệ.' });
+      }
+    }
+    const volTitle = (typeof title === 'string' && title.trim()) ? title.trim().slice(0, 500) : `Tập ${num}`;
+    const coverUrl = optionalUrl(cover_image_url, 'Ảnh bìa tập') ?? null;
+    const desc = typeof description === 'string' ? description.trim() || null : null;
 
     const volRes = await pool.query(`
       INSERT INTO volumes (story_id, title, volume_number, cover_image_url, description)
       VALUES ($1, $2, $3, $4, $5)
-      ON CONFLICT (story_id, volume_number) DO UPDATE SET
-        title = EXCLUDED.title,
-        cover_image_url = EXCLUDED.cover_image_url,
-        description = EXCLUDED.description
+      ON CONFLICT (story_id, volume_number) DO NOTHING
       RETURNING *;
-    `, [storyId, volTitle, num, cover_image_url || null, description || null]);
+    `, [storyId, volTitle, num, coverUrl, desc]);
+    if (volRes.rows.length === 0) {
+      return res.status(409).json({ success: false, message: `Tập ${num} đã tồn tại trong bộ truyện này.` });
+    }
 
     // Update total_volumes
     await pool.query(`
@@ -637,6 +755,7 @@ export const createVolume = async (req: AuthenticatedRequest, res: Response) => 
       data: volRes.rows[0],
     });
   } catch (error: any) {
+    if (sendClientError(res, error)) return;
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -659,6 +778,9 @@ export const getChapterForEdit = async (req: AuthenticatedRequest, res: Response
       return res.status(401).json({ success: false, message: 'Bạn chưa đăng nhập.' });
     }
     const { id } = req.params;
+    if (!isUuid(id)) {
+      return res.status(404).json({ success: false, message: 'Chương không tồn tại.' });
+    }
     const chRes = await pool.query(CHAPTER_WITH_OWNERS_SQL, [id]);
     if (chRes.rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Chương không tồn tại.' });
@@ -696,7 +818,10 @@ export const updateChapter = async (req: AuthenticatedRequest, res: Response) =>
       return res.status(401).json({ success: false, message: 'Bạn chưa đăng nhập.' });
     }
     const { id } = req.params;
-    const { title, chapter_number, volume_id, content_blocks, raw_content } = req.body;
+    if (!isUuid(id)) {
+      return res.status(404).json({ success: false, message: 'Chương không tồn tại.' });
+    }
+    const { title, chapter_number, volume_id, content_blocks, raw_content } = req.body || {};
 
     const chRes = await pool.query(CHAPTER_WITH_OWNERS_SQL, [id]);
     if (chRes.rows.length === 0) {
@@ -711,24 +836,18 @@ export const updateChapter = async (req: AuthenticatedRequest, res: Response) =>
     if (!newTitle) {
       return res.status(400).json({ success: false, message: 'Tiêu đề chương không được để trống.' });
     }
-    const newNumber = chapter_number === undefined || chapter_number === null ? Number(chapter.chapter_number) : Number(chapter_number);
-    if (!Number.isFinite(newNumber) || newNumber < 0) {
-      return res.status(400).json({ success: false, message: 'Số chương không hợp lệ.' });
+    if (newTitle.length > 500) {
+      return res.status(400).json({ success: false, message: 'Tiêu đề chương tối đa 500 ký tự.' });
     }
+    const newNumber = chapter_number === undefined || chapter_number === null ? Number(chapter.chapter_number) : parseChapterNumber(chapter_number);
+    if (volume_id && !isUuid(volume_id)) throw new InputError('Tập không hợp lệ.');
 
     // Content: blocks win over raw text; keep the old body when neither is sent.
     let blocks: ContentBlock[] = chapter.content_blocks || [];
     let plainText: string = chapter.content || '';
-    if (Array.isArray(content_blocks)) {
-      blocks = content_blocks;
-      plainText = content_blocks
-        .map((b: ContentBlock) => {
-          let line = b.text || '';
-          if (b.image_url) line += `\n![Minh Họa](${b.image_url})`;
-          return line;
-        })
-        .filter(Boolean)
-        .join('\n\n');
+    if (content_blocks !== undefined && content_blocks !== null) {
+      blocks = normalizeContentBlocks(content_blocks);
+      plainText = blocksToPlainText(blocks);
     } else if (typeof raw_content === 'string') {
       plainText = raw_content;
     }
@@ -797,6 +916,7 @@ export const updateChapter = async (req: AuthenticatedRequest, res: Response) =>
       client.release();
     }
   } catch (error: any) {
+    if (sendClientError(res, error)) return;
     res.status(500).json({ success: false, message: error.message });
   }
 };

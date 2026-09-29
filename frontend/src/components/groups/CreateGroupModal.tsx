@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { X, Users, Sparkles, Shield, Send, Check } from 'lucide-react';
 import ImageUploadDropzone from '@/components/common/ImageUploadDropzone';
 import RichTextEditor from '@/components/common/RichTextEditor';
+import { useAuth } from '@/context/AuthContext';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -14,6 +15,8 @@ interface CreateGroupModalProps {
 }
 
 export default function CreateGroupModal({ isOpen, onClose, onSuccess }: CreateGroupModalProps) {
+  const { authFetch } = useAuth();
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [websiteUrl, setWebsiteUrl] = useState('');
@@ -31,8 +34,9 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess }: CreateG
     if (!name.trim() || isSubmitting) return;
 
     setIsSubmitting(true);
+    setErrorMsg(null);
     try {
-      const res = await fetch(`${API_BASE_URL}/groups`, {
+      const res = await authFetch(`${API_BASE_URL}/groups`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -46,17 +50,22 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess }: CreateG
         }),
       });
 
+      const json = await res.json().catch(() => null);
       if (res.ok) {
-        const json = await res.json();
-        setFeedbackMsg(json.message || 'Tạo nhóm dịch thành công');
+        setFeedbackMsg(json?.message || 'Tạo nhóm dịch thành công');
         setTimeout(() => {
           setFeedbackMsg(null);
+          setName(''); setDescription(''); setWebsiteUrl(''); setDiscordUrl(''); setRules('');
+          setAvatarImages([]); setBannerImages([]);
           onSuccess();
           onClose();
         }, 1200);
+      } else {
+        setErrorMsg(json?.message || 'Không thể tạo nhóm dịch. Vui lòng thử lại.');
       }
     } catch (err) {
       console.error('Failed to create group:', err);
+      setErrorMsg('Không thể kết nối máy chủ. Vui lòng thử lại.');
     } finally {
       setIsSubmitting(false);
     }
@@ -94,6 +103,12 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess }: CreateG
           <div className="p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center gap-2 animate-in fade-in">
             <Check className="w-4 h-4 text-emerald-400" />
             <span>{feedbackMsg}</span>
+          </div>
+        )}
+
+        {errorMsg && (
+          <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-semibold">
+            {errorMsg}
           </div>
         )}
 

@@ -19,10 +19,13 @@ import {
 import SmartImage from '@/components/common/SmartImage';
 import CreateGroupModal from '@/components/groups/CreateGroupModal';
 import { stripHtml } from '@/lib/richText';
+import { useAuth } from '@/context/AuthContext';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
 export default function GroupsPage() {
+  const { isAuthenticated, hasRole, authFetch, openAuthModal } = useAuth();
+  const isStaff = hasRole('admin', 'mod'); // may see and approve pending groups
   const [groups, setGroups] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filterTab, setFilterTab] = useState<'all' | 'my_groups' | 'pending'>('all');
@@ -37,11 +40,10 @@ export default function GroupsPage() {
       if (filterTab === 'pending') url += `filter_status=pending&`;
       if (searchQuery.trim()) url += `q=${encodeURIComponent(searchQuery.trim())}&`;
 
-      const res = await fetch(url);
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success) setGroups(json.data || []);
-      }
+      // authFetch: "my groups" and the admin queue depend on who is signed in
+      const res = await authFetch(url);
+      const json = await res.json().catch(() => null);
+      setGroups(res.ok && json?.success ? json.data || [] : []);
     } catch (e) {
       console.error('Failed to fetch groups:', e);
     } finally {
@@ -51,7 +53,14 @@ export default function GroupsPage() {
 
   useEffect(() => {
     fetchGroups();
-  }, [filterTab]);
+  }, [filterTab, isAuthenticated]);
+
+  // Tabs that need a signed-in user / staff fall back to "all" when that no longer holds (e.g. logout)
+  useEffect(() => {
+    if ((filterTab === 'my_groups' && !isAuthenticated) || (filterTab === 'pending' && !isStaff)) setFilterTab('all');
+  }, [isAuthenticated, isStaff]);
+
+  const requireLogin = (action: () => void) => () => (isAuthenticated ? action() : openAuthModal('login'));
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,12 +69,27 @@ export default function GroupsPage() {
 
   const handleApproveGroup = async (groupId: string) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/groups/${groupId}/approve`, {
+      const res = await authFetch(`${API_BASE_URL}/groups/${groupId}/approve`, {
         method: 'POST',
       });
-      if (res.ok) {
-        fetchGroups();
-      }
+      const json = await res.json().catch(() => null);
+      if (!res.ok) alert(json?.message || 'Không thể duyệt nhóm dịch.');
+      fetchGroups();
+    } catch (e) {}
+  };
+
+  const handleRejectGroup = async (group: any) => {
+    const reason = prompt(`Lý do từ chối nhóm "${group.name}" (gửi cho người tạo, không bắt buộc):`);
+    if (reason === null) return;
+    try {
+      const res = await authFetch(`${API_BASE_URL}/groups/${group.id}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: reason.trim() }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok) alert(json?.message || 'Không thể từ chối nhóm dịch.');
+      fetchGroups();
     } catch (e) {}
   };
 
@@ -88,7 +112,7 @@ export default function GroupsPage() {
           </div>
 
           <button
-            onClick={() => setIsCreateModalOpen(true)}
+            onClick={requireLogin(() => setIsCreateModalOpen(true))}
             className="px-6 py-3 rounded-2xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-bold text-xs shadow-xl shadow-brand-500/25 flex items-center gap-2 transition hover:scale-105 shrink-0"
           >
             <Plus className="w-4 h-4" />
@@ -114,7 +138,7 @@ export default function GroupsPage() {
           </button>
           
           <button
-            onClick={() => setFilterTab('my_groups')}
+            onClick={requireLogin(() => setFilterTab('my_groups'))}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition shrink-0 ${
               filterTab === 'my_groups'
                 ? 'bg-brand-600 text-white shadow-md shadow-brand-500/20'
@@ -124,6 +148,7 @@ export default function GroupsPage() {
             👥 Nhóm Của Tôi
           </button>
 
+          {isStaff && (
           <button
             onClick={() => setFilterTab('pending')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition shrink-0 flex items-center gap-1.5 ${
@@ -135,6 +160,7 @@ export default function GroupsPage() {
             <ShieldAlert className="w-3.5 h-3.5" />
             <span>Hàng Chờ Duyệt (Admin)</span>
           </button>
+          )}
         </div>
 
         {/* Search */}
@@ -168,7 +194,7 @@ export default function GroupsPage() {
               : 'Hãy thử tìm kiếm với từ khóa khác hoặc tạo một nhóm dịch mới.'}
           </p>
           <button
-            onClick={() => setIsCreateModalOpen(true)}
+            onClick={requireLogin(() => setIsCreateModalOpen(true))}
             className="px-5 py-2.5 rounded-xl bg-brand-600 text-white text-xs font-bold hover:bg-brand-500 transition"
           >
             Tạo nhóm dịch ngay
@@ -235,16 +261,24 @@ export default function GroupsPage() {
               {/* Bottom Actions */}
               <div className="px-5 py-3.5 border-t border-white/5 bg-black/20 flex items-center justify-between">
                 <div className="text-[11px] text-gray-500 truncate">
-                  Trưởng nhóm: <strong className="text-gray-300">{group.creator_name || group.creator_username}</strong>
+                  Trưởng nhóm: <strong className="text-gray-300">{group.leader?.display_name || group.leader?.username || group.creator_name || group.creator_username}</strong>
                 </div>
 
-                {group.approval_status === 'pending' ? (
-                  <button
-                    onClick={() => handleApproveGroup(group.id)}
-                    className="px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1"
-                  >
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Duyệt Nhóm
-                  </button>
+                {group.approval_status === 'pending' && isStaff ? (
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      onClick={() => handleRejectGroup(group)}
+                      className="px-3 py-1 rounded-xl bg-white/5 hover:bg-rose-500/20 border border-white/10 hover:border-rose-500/40 text-gray-300 hover:text-rose-300 text-xs font-bold transition flex items-center gap-1"
+                    >
+                      <XCircle className="w-3.5 h-3.5" /> Từ Chối
+                    </button>
+                    <button
+                      onClick={() => handleApproveGroup(group.id)}
+                      className="px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Duyệt Nhóm
+                    </button>
+                  </div>
                 ) : (
                   <Link
                     href={`/nhom-dich/${group.slug}`}

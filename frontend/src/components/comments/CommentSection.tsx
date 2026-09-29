@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   MessageSquare, 
@@ -234,9 +235,9 @@ export default function CommentSection({
           {/* Comment Bubble */}
           <div className="flex-1 space-y-1">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-bold text-white hover:text-brand-400 transition cursor-pointer">
+              <Link href={`/nguoi-dung/${comment.username}`} className="text-xs font-bold text-white hover:text-brand-400 transition">
                 {comment.display_name || comment.username}
-              </span>
+              </Link>
               {getRoleBadge(comment.roles)}
               <span className="text-[10px] text-gray-500 flex items-center gap-1">
                 <Clock className="w-3 h-3" />

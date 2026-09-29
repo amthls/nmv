@@ -3,6 +3,7 @@ import { pool } from '../config/db';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import { sanitizeRichText, hasRichContent } from '../utils/richText';
 import { enqueueNotificationJob } from '../services/queue.service';
+import { insertWithUniqueSlug } from '../utils/ids';
 import { postReactionNotification, postReviewNotifications } from '../services/notification.service';
 
 function slugify(text: string) {
@@ -247,9 +248,7 @@ export const createPost = async (req: AuthenticatedRequest, res: Response) => {
       });
     }
 
-    let baseSlug = slugify(title.trim());
-    if (!baseSlug) baseSlug = 'bai-viet-fandom';
-    const uniqueSlug = `${baseSlug}-${Date.now().toString(36)}`;
+    const baseSlug = slugify(title.trim()) || 'bai-viet-fandom';
 
     let approvalStatus = 'pending';
     let isPublished = false;
@@ -264,7 +263,8 @@ export const createPost = async (req: AuthenticatedRequest, res: Response) => {
 
     const finalCover = cover_image_url || (Array.isArray(images) && images.length > 0 ? images[0] : null);
 
-    const insertRes = await pool.query(
+    // Slug: the title, or title-2, title-3... when taken (checked against the database)
+    const insertRes = await insertWithUniqueSlug(pool, 'posts', baseSlug, (uniqueSlug) => pool.query(
       `INSERT INTO posts (
         user_id, story_id, title, slug, content, 
         cover_image_url, images, is_draft, approval_status, 
@@ -286,7 +286,7 @@ export const createPost = async (req: AuthenticatedRequest, res: Response) => {
         approvalStatus,
         isPublished
       ]
-    );
+    ));
 
     const message = is_draft 
       ? '\u0110\u00e3 l\u01b0u b\u1ea3n nh\u00e1p th\u00e0nh c\u00f4ng!' 

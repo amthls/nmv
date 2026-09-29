@@ -82,6 +82,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
+  // Forget the local session (token + cached user). Used when the server rejects it.
+  const clearLocalSession = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('novelhub_token');
+      localStorage.removeItem('novelhub_user');
+    }
+    setToken(null);
+    setUser(null);
+  };
+
   const refreshProfile = async () => {
     const savedToken = token || (typeof window !== 'undefined' ? localStorage.getItem('novelhub_token') : null);
 
@@ -106,13 +116,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
       }
-      // If token/cookie expired or invalid
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('novelhub_token');
-        localStorage.removeItem('novelhub_user');
-      }
-      setToken(null);
-      setUser(null);
+      // Token/cookie expired, invalid, or account banned. A 5xx or network error keeps the session.
+      if (res.status === 401 || res.status === 403) clearLocalSession();
     } catch (e) {
       console.error('Failed to verify token:', e);
     }
@@ -157,14 +162,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               setToken('cookie_session');
             }
           } else {
-            localStorage.removeItem('novelhub_token');
-            localStorage.removeItem('novelhub_user');
-            setToken(null);
-            setUser(null);
+            clearLocalSession();
           }
-        } else if (!savedToken) {
-          setUser(null);
-          setToken(null);
+        } else if (res.status === 401 || res.status === 403 || !savedToken) {
+          // Saved token expired/invalid (or none at all): don't keep showing a stale signed-in user
+          clearLocalSession();
         }
       } catch (err) {
         console.error('Auth initialization error:', err);

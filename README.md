@@ -1,6 +1,6 @@
 # 📚 NovelHub - Light Novel & Manga Platform
 
-Nền tảng đọc **Light Novel (truyện chữ)** và **Manga (truyện tranh)** trực tuyến, có nhóm dịch, diễn đàn Fandom, bookmark từng dòng và tìm kiếm bằng **novelsearch** (search engine tự viết bằng Go, thay cho Elasticsearch).
+Nền tảng đọc **Light Novel (truyện chữ)** và **Manga (truyện tranh)** trực tuyến, có nhóm dịch, diễn đàn Fandom, bookmark từng dòng và tìm kiếm bằng **Elasticsearch**.
 
 > README này được đối chiếu trực tiếp với mã nguồn và CSDL đang chạy (routes trong `backend/src/routes/api.routes.ts`, schema thật trong PostgreSQL). Mục [Hạn chế đã biết](#-hạn-chế-đã-biết) ghi rõ những gì chưa làm.
 
@@ -11,7 +11,7 @@ Nền tảng đọc **Light Novel (truyện chữ)** và **Manga (truyện tranh
 4. [Biến môi trường](#-biến-môi-trường)
 5. [Chống lạm dụng & DDoS](#-chống-lạm-dụng--ddos)
 6. [Hàng đợi thông báo (RabbitMQ)](#-hàng-đợi-thông-báo-rabbitmq)
-7. [Tìm kiếm với novelsearch (Go)](#-tìm-kiếm-với-novelsearch-go)
+7. [Tìm kiếm với Elasticsearch](#-tìm-kiếm-với-elasticsearch)
 8. [Trình soạn thảo rich text](#️-trình-soạn-thảo-rich-text-ckeditor-5) · [Độ phân giải ảnh](#-độ-phân-giải-ảnh-cho-người-đọc) · [Hiệu ứng tải trang](#-hiệu-ứng-tải-trang)
 9. [Chức năng & Trang giao diện](#-chức-năng--trang-giao-diện)
 10. [Phân quyền & quy trình duyệt](#-phân-quyền--quy-trình-duyệt)
@@ -29,7 +29,7 @@ Nền tảng đọc **Light Novel (truyện chữ)** và **Manga (truyện tranh
 | Frontend | Next.js 14 (App Router), React 18, TypeScript, Tailwind CSS, Lucide Icons, CKEditor 5 (trình soạn thảo rich text) |
 | Backend | Node.js 22, Express, TypeScript, JWT (cookie + header), bcryptjs, multer (upload ảnh), sharp (đổi kích thước ảnh), sanitize-html |
 | Database | PostgreSQL 16 (khóa chính UUID), truy vấn bằng `pg` (raw SQL); Prisma chỉ dùng cho `db pull/generate/studio` |
-| Tìm kiếm | novelsearch - search engine tự viết bằng Go 1.22, không phụ thuộc thư viện ngoài (tùy chọn, có fallback về SQL `ILIKE`) |
+| Tìm kiếm | Elasticsearch 9.5 (1 node, đã tối ưu RAM; tùy chọn, có fallback về SQL `ILIKE`) |
 | Hàng đợi | RabbitMQ 3.13 + worker (gửi thông báo), có dự phòng chạy trực tiếp khi broker chết |
 | Cổng vào | nginx 1.27 (giới hạn tần suất, IP thật, cache ảnh) + helmet / express-rate-limit ở backend |
 | Hạ tầng | Docker Compose |
@@ -37,11 +37,11 @@ Nền tảng đọc **Light Novel (truyện chữ)** và **Manga (truyện tranh
 ```
                       (duy nhất cổng 3000 mở ra ngoài)
 Trình duyệt ──> nginx gateway ──┬── /api/v1, /uploads ──> Express API ──> PostgreSQL
-                                │                            │  └──────> novelsearch / Go (tùy chọn)
+                                │                            │  └──────> Elasticsearch (tùy chọn)
                                 └── còn lại ──> Next.js      └─ publish ─> RabbitMQ ──> worker ──> PostgreSQL
 ```
 
-**8 container** (`docker compose ps`): `gateway`, `frontend`, `backend`, `worker`, `postgres`, `search`, `rabbitmq`, cộng `pgadmin` khi bật profile `tools`. Chỉ `gateway` (cổng 3000) mở ra mạng; backend, Postgres, novelsearch và giao diện quản trị RabbitMQ chỉ nghe trên `127.0.0.1`, còn frontend và worker không mở cổng nào.
+**8 container** (`docker compose ps`): `gateway`, `frontend`, `backend`, `worker`, `postgres`, `search`, `rabbitmq`, cộng `pgadmin` khi bật profile `tools`. Chỉ `gateway` (cổng 3000) mở ra mạng; backend, Postgres, Elasticsearch và giao diện quản trị RabbitMQ chỉ nghe trên `127.0.0.1`, còn frontend và worker không mở cổng nào.
 
 Trình duyệt gọi `/api/v1/...` và `/uploads/...` cùng origin; qua gateway các đường dẫn này đi thẳng tới backend. Khi chạy frontend riêng (không có gateway), `frontend/next.config.mjs` vẫn chuyển tiếp sang `http://backend:5000` (địa chỉ **viết cứng**, biến `API_URL` không được dùng).
 
@@ -54,7 +54,7 @@ Trình duyệt gọi `/api/v1/...` và `/uploads/...` cùng origin; qua gateway 
 │   │   ├── controllers/              # auth, story, chapter, comment, group, post, bookmark, history,
 │   │   │                             # notification, tag, upload, user
 │   │   ├── middlewares/              # auth (requireAuth/optionalAuth/requireRole), upload
-│   │   ├── services/search.service.ts# tích hợp novelsearch (search-service/, Go)
+│   │   ├── services/search.service.ts# tích hợp Elasticsearch
 │   │   ├── services/image.service.ts # đổi độ phân giải ảnh theo ?w= (cache trên đĩa)
 │   │   ├── utils/richText.ts         # lọc HTML từ trình soạn thảo (sanitize-html)
 │   │   ├── routes/api.routes.ts      # toàn bộ route /api/v1
@@ -65,7 +65,6 @@ Trình duyệt gọi `/api/v1/...` và `/uploads/...` cùng origin; qua gateway 
 │   ├── app/                          # các trang (xem bảng bên dưới)
 │   ├── components/                   # Navbar, auth, explore, reader, story, groups, fandom, comments...
 │   └── context/AuthContext.tsx
-├── search-service/                   # novelsearch: search engine thay Elasticsearch, viết bằng Go (không có deps ngoài)
 │   ├── main.go                       # HTTP server, route REST tương thích với search.service.ts
 │   ├── index.go                      # index trong bộ nhớ, chấm điểm multi-field/fuzzy/prefix
 │   ├── text.go                       # bỏ dấu tiếng Việt, tokenize, edge-ngram, Levenshtein
@@ -89,10 +88,10 @@ docker compose up -d --build # gateway + frontend + backend + worker + postgres 
 | Backend API | `127.0.0.1:5000/api/v1` | Chỉ máy chủ; kiểm tra `/api/v1/health` (có trường `queue`: `up`/`down`/`disabled`) |
 | PostgreSQL | `127.0.0.1:5432` | Chỉ máy chủ; user `postgres`, DB `novel_platform` |
 | RabbitMQ quản trị | http://127.0.0.1:15673 | Chỉ máy chủ; đăng nhập bằng `RABBITMQ_USER` / `RABBITMQ_PASSWORD` |
-| novelsearch (search) | `127.0.0.1:9201` | **chỉ bind localhost**; engine Go tự viết, không có xác thực/API key nào cả (không được mở ra ngoài) |
+| Elasticsearch (search) | `127.0.0.1:9201` | **chỉ bind localhost**; tắt xác thực (`xpack.security.enabled=false`) nên tuyệt đối không mở ra ngoài |
 | pgAdmin | http://localhost:5050 | tùy chọn: `docker compose --profile tools up -d pgadmin` |
 
-Lần đầu tạo volume, Postgres tự nạp `sql/database.sql`. Backend tự tạo index trong novelsearch và đồng bộ toàn bộ truyện khi khởi động.
+Lần đầu tạo volume, Postgres tự nạp `sql/database.sql`. Backend tự tạo index trong Elasticsearch và đồng bộ toàn bộ truyện khi khởi động.
 
 Chạy không qua Docker (cần Postgres sẵn): `yarn dev:local` (backend + frontend), các script `yarn db:check | db:import | db:studio`.
 
@@ -108,7 +107,7 @@ Chạy không qua Docker (cần Postgres sẵn): `yarn dev:local` (backend + fro
 | `RABBITMQ_URL` / `RABBITMQ_USER` / `RABBITMQ_PASSWORD` | compose tự ghép URL từ hai biến sau | **Bắt buộc** `RABBITMQ_PASSWORD`. Để trống `RABBITMQ_URL` (chạy ngoài Docker) thì thông báo được xử lý trực tiếp, không qua hàng đợi |
 | `ENABLE_DEMO_ACCOUNTS` | `false` | `true` mới hiện danh sách tài khoản demo và gợi ý mật khẩu trên form đăng nhập |
 | `NOTIFY_*`, `WORKER_*` | xem bên dưới | Tinh chỉnh hàng đợi và worker |
-| `SEARCH_URL` | `http://search:8091` (trong compose) | **Để trống để tắt tìm kiếm novelsearch** và dùng SQL `ILIKE` |
+| `SEARCH_URL` | `http://search:9200` (trong compose) | **Để trống để tắt Elasticsearch** và dùng SQL `ILIKE` |
 | `SEARCH_INDEX` | `novel_stories` | Tên index |
 | `SEARCH_PORT` | `9201` | Cổng publish trên máy host (localhost) |
 | `PGADMIN_*` | | Chỉ dùng với profile `tools` |
@@ -117,7 +116,7 @@ Chạy không qua Docker (cần Postgres sẵn): `yarn dev:local` (backend + fro
 
 Chống DDoS băng thông lớn phải làm ở rìa mạng (Cloudflare, tường lửa nhà mạng); phần dưới đây là những gì ứng dụng tự bảo vệ được. Ba lớp:
 
-**1. Không lộ ra ngoài.** Chỉ `gateway` mở cổng. Backend/Postgres/novelsearch/RabbitMQ chỉ nghe `127.0.0.1`, nên không ai trong LAN hay Internet gọi thẳng API hoặc chọc vào DB được. Danh sách tài khoản demo (`/auth/accounts`) và dòng gợi ý "mật khẩu mặc định" tắt mặc định. Lỗi 5xx ở production chỉ trả "Lỗi hệ thống (mã xxxx)", chi tiết SQL/đường dẫn nằm trong log. `helmet`, `X-Powered-By` ẩn, header `nosniff`/`X-Frame-Options`/`Referrer-Policy` ở cả gateway và API.
+**1. Không lộ ra ngoài.** Chỉ `gateway` mở cổng. Backend/Postgres/Elasticsearch/RabbitMQ chỉ nghe `127.0.0.1`, nên không ai trong LAN hay Internet gọi thẳng API hoặc chọc vào DB được. Danh sách tài khoản demo (`/auth/accounts`) và dòng gợi ý "mật khẩu mặc định" tắt mặc định. Lỗi 5xx ở production chỉ trả "Lỗi hệ thống (mã xxxx)", chi tiết SQL/đường dẫn nằm trong log. `helmet`, `X-Powered-By` ẩn, header `nosniff`/`X-Frame-Options`/`Referrer-Policy` ở cả gateway và API.
 
 **2. nginx gateway (`nginx/nginx.conf`)** chặn trước khi yêu cầu tới Node:
 
@@ -152,17 +151,18 @@ Gửi thông báo cho hàng nghìn người theo dõi không còn chạy trong y
 - **Dự phòng:** RabbitMQ chưa cấu hình hoặc chết thì API tự xử lý ngay trong tiến trình (tối đa 2 việc cùng lúc) và yêu cầu của người dùng vẫn thành công; backend và worker tự kết nối lại khi broker sống lại.
 - **Mở rộng:** `docker compose up -d --scale worker=3` (bỏ dòng `container_name` của worker trước). Biến tinh chỉnh: `NOTIFY_FANOUT_CHUNK`, `NOTIFY_FANOUT_PAUSE_MS`, `NOTIFY_MAX_ATTEMPTS`, `NOTIFY_RETRY_DELAY_MS`, `WORKER_PREFETCH`, `WORKER_BATCH_MAX`, `WORKER_FLUSH_MS`, `WORKER_MAX_HEAVY`.
 
-## 🔎 Tìm kiếm với novelsearch (Go)
+## 🔎 Tìm kiếm với Elasticsearch
 
-`search-service/` là một search engine full-text tự viết bằng Go 1.22 (chỉ dùng thư viện chuẩn, không có dependency ngoài), thay thế hoàn toàn Elasticsearch. Nó lộ ra đúng tập REST API nhỏ mà `search.service.ts` gọi (tạo/kiểm tra index, `_bulk`, `_doc/{id}`, `_search` dạng `bool/should/multi_match`), nên phần code Node.js gọi tìm kiếm không phải sửa gì ngoài tên biến môi trường.
+Tìm kiếm truyện dùng **Elasticsearch 9** (container `search`, image chính thức `elasticsearch:9.5.3`, 1 node). Code tích hợp nằm trong `backend/src/services/search.service.ts`, gọi REST API bằng `fetch` có sẵn (không thêm thư viện).
 
-- PostgreSQL vẫn là nguồn dữ liệu chính. novelsearch chỉ xử lý ô tìm kiếm chữ (`q`) của `GET /stories/explore`: trả về danh sách id truyện xếp theo độ liên quan, còn mọi bộ lọc khác (loại, tình trạng, thể loại, số chương, sắp xếp...) vẫn chạy bằng SQL.
+- PostgreSQL vẫn là nguồn dữ liệu chính. Elasticsearch chỉ xử lý ô tìm kiếm chữ (`q`) của `GET /stories/explore`: trả về danh sách id truyện xếp theo độ liên quan (BM25), còn mọi bộ lọc khác (loại, tình trạng, thể loại, số chương, sắp xếp...) vẫn chạy bằng SQL.
 - **Trường được tìm:** tên truyện (ưu tiên cao nhất), tên gốc, tác giả, họa sĩ, thể loại, tên nhóm dịch, tóm tắt.
-- **Tiếng Việt:** bỏ dấu khi so khớp (`nguoi cua` tìm ra "Người Cưa", `đ` ↔ `d` — bảng ánh xạ ký tự tự viết trong `search-service/text.go`), chịu sai chính tả nhẹ (khoảng cách Levenshtein theo ngưỡng kiểu `fuzziness: AUTO` của Elasticsearch), gõ dở từ đầu (`chain`) nhờ edge-ngram (2-15 ký tự) tự cài trên tên truyện.
+- **Tiếng Việt:** analyzer `vi_fold` (`lowercase` + `asciifolding`) bỏ dấu khi so khớp (`nguoi cua` tìm ra "Người Cưa", `đ` ↔ `d`), chịu sai chính tả nhẹ (`fuzziness: AUTO`, chỉ trên tên/tác giả), gõ dở từ đầu (`chain`) nhờ sub-field `title.prefix` dùng edge-ngram 2-15 ký tự. Index được backend tự tạo với cấu hình này.
 - **Sắp xếp:** khi có từ khóa, mặc định `sort=relevance` (theo độ liên quan). Frontend trang Khám phá có mục "Liên quan / Mới cập nhật".
-- **Đồng bộ:** tự index lại toàn bộ khi backend khởi động (thử lại nền tối đa ~5 phút nếu novelsearch chưa sẵn sàng); tự cập nhật khi tạo, sửa (kể cả thể loại) hoặc xóa truyện.
-- **Dự phòng:** novelsearch tắt hoặc lỗi thì tự quay về `ILIKE` trên SQL, API vẫn trả kết quả.
-- **Lưu trữ:** index nằm trong bộ nhớ, được ghi snapshot JSON xuống volume `search_data` (`/data/snapshot.json`) sau mỗi lần ghi để không mất dữ liệu khi container restart; dù vậy backend luôn reindex toàn bộ khi khởi động nên volume này không bắt buộc phải giữ.
+- **Đồng bộ:** tự index lại toàn bộ khi backend khởi động (thử lại nền tối đa ~5 phút nếu Elasticsearch chưa sẵn sàng); tự cập nhật khi tạo, sửa (kể cả thể loại) hoặc xóa truyện.
+- **Dự phòng:** Elasticsearch tắt hoặc lỗi thì tự quay về `ILIKE` trên SQL, API vẫn trả kết quả.
+- **Lưu trữ:** volume `es_data`. Backend luôn reindex toàn bộ khi khởi động nên xóa volume này không mất dữ liệu.
+- **Tối ưu RAM** (trong `docker-compose.yml`): heap 256MB (`-Xms256m -Xmx256m`), giới hạn direct memory 128MB và JIT code cache 64MB, `node.processors: 2` (ít thread hơn), tắt ML, tải GeoIP, ngưỡng dung lượng đĩa và các index log nội bộ (deprecation, ILM history); **không** bật `bootstrap.memory_lock` (nó ghim toàn bộ vùng nhớ JVM đã đặt trước, làm RAM thực tăng ~200MB). Container bị giới hạn cứng `mem_limit: 768m`; đo thực tế ~590MB sau khi tải. Khi kho truyện lớn (vài chục nghìn truyện trở lên) thì tăng cả `-Xms`/`-Xmx` lên 512m và `mem_limit` lên ~1g.
 - **Không cần sửa DB.** Nếu bạn sửa dữ liệu truyện trực tiếp bằng SQL thì khởi động lại backend để index lại.
 
 ## ✍️ Trình soạn thảo rich text (CKEditor 5)
@@ -179,7 +179,7 @@ Dùng `ckeditor5` 48 + `@ckeditor/ckeditor5-react` 11, giao diện tiếng Việ
 
 - **An toàn:** HTML được lọc ở **backend khi lưu** (`backend/src/utils/richText.ts`), chỉ giữ `p, br, strong/b, em/i, u, s, h2-h4, ul/ol/li, blockquote, a, hr`; liên kết chỉ nhận `http`, `https`, `mailto` và tự thêm `rel="noopener noreferrer nofollow"`. Script, iframe, `onerror`, `style`, `javascript:` bị loại. Frontend hiển thị bằng `dangerouslySetInnerHTML` dựa vào lần lọc này, nên **mọi đường ghi vào các trường trên phải đi qua `sanitizeRichText`**.
 - **Dữ liệu cũ:** nội dung không có thẻ HTML vẫn hiển thị như văn bản thường (giữ xuống dòng).
-- **Xem trước/tìm kiếm:** thẻ trong thẻ truyện, trang chủ, danh sách bài viết và danh sách nhóm được bỏ đi (`stripHtml`); novelsearch chỉ index phần chữ của tóm tắt.
+- **Xem trước/tìm kiếm:** thẻ trong thẻ truyện, trang chủ, danh sách bài viết và danh sách nhóm được bỏ đi (`stripHtml`); Elasticsearch chỉ index phần chữ của tóm tắt.
 - **Giấy phép:** CKEditor 5 phát hành kép, GPL v2+ hoặc giấy phép thương mại của CKSource. Code đang dùng `licenseKey: 'GPL'`. Nếu dự án này không phát hành theo GPL-tương-thích thì cần mua giấy phép thương mại.
 - **Chèn ảnh:** nút chèn ảnh, kéo thả hoặc dán ảnh đều tải lên `POST /upload/image` (tối đa 25MB) rồi chèn đường dẫn `/uploads/posts/...`. Có chú thích ảnh, chữ thay thế (alt) và đổi cỡ 25/50/75%/gốc. Bộ lọc backend chỉ nhận ảnh nằm trong `/uploads/` của site (ảnh gắn từ trang khác, đường dẫn có `..` hoặc `javascript:` đều bị bỏ), nên bài viết chỉ có ảnh ngoài sẽ bị coi là rỗng.
 
@@ -249,7 +249,7 @@ Schema thật gồm 31 bảng và 2 view (`sql/database.sql`). Nhóm chính:
 |:---|:---|
 | Người dùng | `users`, `user_roles`, `user_settings`, `user_follows`*, `user_favorites` |
 | Truyện | `stories`, `volumes`, `chapters`, `chapter_pages`, `chapter_submissions`, `story_tags`, `tags`, `tag_categories`, `story_ratings`, `story_collaborators`, `story_views`, `story_views_daily`* |
-| Nhóm dịch | `translation_groups`, `group_members`, `group_messages` |
+| Nhóm dịch | `translation_groups`, `group_members`, `group_join_requests`, `group_messages` |
 | Tương tác | `bookmarks`, `reading_history`, `comments`, `comment_likes`, `notifications`, `broadcast_notifications`* |
 | Fandom | `posts`, `post_tags`, `post_reactions` |
 | Kiểm duyệt | `reports` |
@@ -303,13 +303,16 @@ Ghi chú thực tế: bảng `users` **không có** cột `role`, `coins`, `exp_
 - `GET /reports?status=pending|resolved|dismissed|all` (Admin/Mod), `PUT /reports/:id/resolve` (Admin/Mod, body `status` = `resolved|dismissed`, `resolution_note`)
 
 **Nhóm dịch**
-- `GET /groups`, `GET /groups/:slug`, `POST /groups`, `PUT /groups/:id`, `POST /groups/:id/approve`
-- `POST /groups/:id/members`, `PUT|DELETE /groups/:id/members/:memberUserId`
-- `GET|POST /groups/:id/messages`, `DELETE /groups/:id/messages/:messageId`
+- `GET /groups`, `GET /groups/:slug`, `POST /groups`, `PUT /groups/:id`, `POST /groups/:id/approve`, `POST /groups/:id/reject` (Admin/Mod; xóa nhóm đang chờ duyệt để giải phóng tên, gửi `reason` cho người tạo)
+- `POST /groups/:id/members`, `PUT|DELETE /groups/:id/members/:memberUserId` (thành viên tự `DELETE` chính mình để rời nhóm; Mod nhóm chỉ quản lý được thành viên thường, chỉ Trưởng nhóm/Admin mới bổ nhiệm Trưởng nhóm/Mod; các Trưởng nhóm không hạ cấp hay xóa được nhau, chỉ Admin hoặc chính người đó; ai cũng tự thôi chức được miễn nhóm còn ít nhất một Trưởng nhóm)
+- Xin gia nhập nhóm (trưởng nhóm/mod hoặc admin duyệt): `POST /groups/:id/join-requests` (người dùng gửi, kèm lời nhắn tùy chọn; bị từ chối thì chờ 24 giờ mới gửi lại), `DELETE /groups/:id/join-requests/me` (hủy), `GET /groups/:id/join-requests` (danh sách chờ duyệt), `POST /groups/:id/join-requests/:requestId/approve|reject`
+- `GET|POST /groups/:id/messages`, `DELETE /groups/:id/messages/:messageId` (chỉ thành viên nhóm và Admin)
 
 **Người dùng & Upload**
 - `GET /profile/me`, `PUT /profile/me`, `PUT /profile/me/settings`
-- `GET /users`, `GET /users/admin/all`, `POST /users/:userId/roles`, `GET /users/:username`
+- `GET /users`, `GET /users/admin/all`, `POST /users/:userId/roles`
+- `GET /users/:username`: hồ sơ công khai (trang `/nguoi-dung/:username`), chỉ gồm tên, ảnh, giới thiệu, vai trò công khai, thống kê, nhóm dịch và truyện đã đăng; không có email/cài đặt/lịch sử. Admin/Mod nhận thêm khối `moderation` (email, trạng thái khóa, các thao tác được phép)
+- Quản trị người dùng (Admin/Mod): `POST /users/:userId/ban` (kèm `reason`), `POST /users/:userId/unban`, `DELETE /users/:userId` (xóa mềm: ẩn danh hóa và khóa tài khoản, giữ truyện; `purge_content: true` ẩn luôn bài viết và bình luận). Không ai tác động lên chính mình hoặc Admin; Mod chỉ tác động lên người dùng thường; Admin và Mod đều cấp được quyền Mod cho người dùng thường, chỉ Admin thu hồi quyền Mod (migration `sql/migrations/005_user_soft_delete.sql`)
 - `POST /upload/image`, `POST /upload/images` (tối đa 10 ảnh)
 
 ## 👥 Tài khoản mẫu
@@ -341,6 +344,6 @@ Email có dạng `<tên ngắn>@novelhub.vn` (ví dụ `admin@novelhub.vn`, `sak
 - **Tài khoản mẫu vẫn dùng mật khẩu `password123`** (kể cả `admin`), bất kể danh sách demo đang tắt. Nếu website đang mở ra Internet (ví dụ qua tunnel), hãy đổi mật khẩu hoặc xóa các tài khoản này.
 - Đổi `JWT_SECRET` làm mọi phiên đăng nhập hiện có hết hiệu lực (người dùng phải đăng nhập lại). Token sống 30 ngày, chưa có cơ chế thu hồi.
 - Bộ đếm giới hạn của backend lưu trong bộ nhớ (mất khi khởi động lại, không dùng chung giữa nhiều bản backend); tầng nginx vẫn hoạt động độc lập. Muốn chạy nhiều bản backend cần chuyển sang kho dùng chung (Redis).
-- novelsearch và RabbitMQ chạy trong mạng nội bộ Docker; novelsearch không có xác thực/API key nào (chỉ bind `127.0.0.1`), như Elasticsearch trước đây.
+- Elasticsearch và RabbitMQ chạy trong mạng nội bộ Docker; Elasticsearch tắt xác thực (chỉ bind `127.0.0.1`).
 - Postgres còn dùng mật khẩu mặc định `postgres` (chỉ nghe `127.0.0.1` nên không truy cập từ ngoài; đổi mật khẩu trên volume đã có cần `ALTER USER`).
 - Cổng 3000 chạy HTTP thường; cần HTTPS (Cloudflare tunnel, hoặc chứng chỉ trên gateway) khi dùng thật.

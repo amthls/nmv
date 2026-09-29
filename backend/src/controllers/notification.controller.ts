@@ -34,11 +34,13 @@ export const getNotifications = async (req: AuthenticatedRequest, res: Response)
         s.slug as story_slug,
         s.cover_image_url as story_cover,
         p.slug as post_slug,
-        p.title as post_title
+        p.title as post_title,
+        tg.slug as group_slug
       FROM notifications n
       LEFT JOIN chapters c ON n.reference_id = c.id AND n.reference_type = 'chapter'
       LEFT JOIN stories s ON s.id = COALESCE(c.story_id, CASE WHEN n.reference_type = 'story' THEN n.reference_id END)
       LEFT JOIN posts p ON n.reference_id = p.id AND n.reference_type = 'post'
+      LEFT JOIN translation_groups tg ON n.reference_id = tg.id AND n.reference_type = 'group'
       WHERE n.user_id = $1::uuid
       ORDER BY n.created_at DESC
       LIMIT 50;

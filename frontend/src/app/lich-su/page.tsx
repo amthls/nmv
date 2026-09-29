@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import SmartImage from '@/components/common/SmartImage';
 import { useAuth } from '@/context/AuthContext';
+import { getGuestHistory, setGuestHistory } from '@/lib/readingHistory';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -32,51 +33,21 @@ export default function ReadingHistoryPage() {
 
   const fetchHistory = useCallback(async () => {
     setIsLoading(true);
-    let guestList: any[] = [];
-    if (typeof window !== 'undefined') {
-      try {
-        const raw = localStorage.getItem('novelhub_guest_history') || '[]';
-        guestList = JSON.parse(raw);
-        if (!Array.isArray(guestList)) guestList = [];
-      } catch (e) {
-        console.error('Failed to parse guest history:', e);
-      }
-    }
-
-    let combinedList: any[] = [...guestList];
-
+    // Signed in: the account's history from the server. Signed out: this browser's guest history.
+    // The two are never merged, so a shared browser doesn't leak history between people.
+    let combinedList: any[] = [];
     if (isAuthenticated) {
       try {
         const res = await authFetch(`${API_BASE_URL}/history`);
         if (res.ok) {
           const json = await res.json();
-          if (json.success && Array.isArray(json.data)) {
-            const apiStoryIds = new Set(json.data.map((h: any) => h.story_id));
-            const guestOnly = guestList.filter((h: any) => !apiStoryIds.has(h.story_id));
-            combinedList = [...json.data, ...guestOnly];
-
-            // Sync any guest-only entries to server in the background
-            if (guestOnly.length > 0) {
-              guestOnly.forEach((g: any) => {
-                if (g.story_id && g.chapter_id) {
-                  authFetch(`${API_BASE_URL}/history`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      story_id: g.story_id,
-                      chapter_id: g.chapter_id,
-                      scroll_position: g.scroll_position || 0,
-                      page_number: g.page_number || 1,
-                    }),
-                  }).catch(() => {});
-                }
-              });
-            }
-          }
+          if (json.success && Array.isArray(json.data)) combinedList = [...json.data];
         }
       } catch (e) {
         console.error('Failed to fetch history from API:', e);
       }
+    } else {
+      combinedList = getGuestHistory();
     }
 
     // Sort by read_at DESC
@@ -119,28 +90,21 @@ export default function ReadingHistoryPage() {
       return true;
     }));
 
-    // Remove from local storage
-    if (typeof window !== 'undefined') {
+    if (!isAuthenticated) {
+      setGuestHistory(getGuestHistory().filter((h: any) => {
+        if (targetId && h.id && h.id === targetId) return false;
+        if (storyId && h.story_id && h.story_id === storyId) return false;
+        return true;
+      }));
+    } else {
+      const idToDelete = storyId || targetId;
       try {
-        const raw = localStorage.getItem('novelhub_guest_history') || '[]';
-        const updated = JSON.parse(raw).filter((h: any) => {
-          if (targetId && h.id && h.id === targetId) return false;
-          if (storyId && h.story_id && h.story_id === storyId) return false;
-          return true;
-        });
-        localStorage.setItem('novelhub_guest_history', JSON.stringify(updated));
-      } catch (err) {}
-    }
-
-    // Delete from backend if authenticated
-    if (isAuthenticated) {
-      const idToDelete = (storyId) ? storyId : targetId;
-      if (idToDelete && !String(idToDelete).startsWith('hist-')) {
-        try {
-          await authFetch(`${API_BASE_URL}/history/${idToDelete}`, { method: 'DELETE' });
-        } catch (err) {
-          console.error('Failed to delete history item:', err);
-        }
+        const res = await authFetch(`${API_BASE_URL}/history/${idToDelete}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      } catch (err) {
+        console.error('Failed to delete history item:', err);
+        fetchHistory();
+        return;
       }
     }
 
@@ -152,14 +116,16 @@ export default function ReadingHistoryPage() {
     if (!confirm('Bạn có chắc chắn muốn xóa toàn bộ lịch sử đọc của mình không?')) return;
     
     setHistory([]);
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('novelhub_guest_history');
-    }
-    if (isAuthenticated) {
+    if (!isAuthenticated) {
+      setGuestHistory([]);
+    } else {
       try {
-        await authFetch(`${API_BASE_URL}/history`, { method: 'DELETE' });
+        const res = await authFetch(`${API_BASE_URL}/history`, { method: 'DELETE' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
       } catch (err) {
         console.error('Failed to clear history:', err);
+        fetchHistory();
+        return;
       }
     }
     setFeedback('Đã xóa toàn bộ lịch sử đọc thành công!');

@@ -111,6 +111,12 @@ export default function AuthModal() {
       return;
     }
 
+    // Same rule as the server: usernames appear in profile URLs
+    if (!/^[A-Za-z0-9_.-]{3,30}$/.test(regUsername.trim())) {
+      setErrorMsg('Tên đăng nhập phải từ 3 đến 30 ký tự, chỉ gồm chữ không dấu, số và dấu _ . -');
+      return;
+    }
+
     if (regPassword !== regConfirmPassword) {
       setErrorMsg('Mật khẩu xác nhận không khớp.');
       return;

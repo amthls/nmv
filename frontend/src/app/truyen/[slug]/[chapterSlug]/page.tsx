@@ -61,22 +61,7 @@ export default function ChapterReaderPage() {
     if (!chapId) return;
     const lines = new Set<number>();
 
-    // 1. Read local storage guest bookmarks
-    if (typeof window !== 'undefined') {
-      try {
-        const raw = localStorage.getItem('novelhub_guest_bookmarks') || '[]';
-        const list: any[] = JSON.parse(raw);
-        list.forEach((b: any) => {
-          if (b.chapter_id === chapId || b.chapter_slug === chapterSlug) {
-            if (b.line_index !== null && b.line_index !== undefined) {
-              lines.add(b.line_index);
-            }
-          }
-        });
-      } catch (e) {}
-    }
-
-    // 2. If authenticated, fetch from server and merge
+    // Line bookmarks belong to the signed-in account and live only on the server
     if (isAuthenticated) {
       try {
         const res = await authFetch(`${API_BASE_URL}/bookmarks?chapter_id=${chapId}`);
@@ -96,7 +81,7 @@ export default function ChapterReaderPage() {
     }
 
     setBookmarkedLines(lines);
-  }, [isAuthenticated, authFetch, chapterSlug]);
+  }, [isAuthenticated, authFetch]);
 
   useEffect(() => {
     if (chapterData?.id) {
@@ -193,65 +178,44 @@ export default function ChapterReaderPage() {
 
   const handleToggleBookmarkLine = async (lineIdx: number, lineText: string) => {
     if (!chapterData) return;
-
-    const nextIsBookmarked = !bookmarkedLines.has(lineIdx);
-
-    // 1. Instant local state update
-    setBookmarkedLines((prev) => {
-      const next = new Set(prev);
-      if (nextIsBookmarked) {
-        next.add(lineIdx);
-      } else {
-        next.delete(lineIdx);
-      }
-      return next;
-    });
-
-    // 2. Persist in localStorage for instant access & guest fallback
-    if (typeof window !== 'undefined') {
-      try {
-        const raw = localStorage.getItem('novelhub_guest_bookmarks') || '[]';
-        let list: any[] = JSON.parse(raw);
-        if (nextIsBookmarked) {
-          const newItem = {
-            id: `bm-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
-            story_id: chapterData.story_id || chapterData.story?.id,
-            chapter_id: chapterData.id,
-            story_title: chapterData.story?.title || 'Tiểu Thuyết',
-            story_slug: chapterData.story?.slug || storySlug,
-            chapter_title: chapterData.title,
-            chapter_slug: chapterData.slug || chapterSlug,
-            chapter_number: chapterData.chapter_number,
-            line_index: lineIdx,
-            line_text: lineText,
-            created_at: new Date().toISOString()
-          };
-          list = [newItem, ...list.filter((b: any) => !(b.chapter_id === chapterData.id && b.line_index === lineIdx))];
-          showToast(`Đã lưu bookmark đoạn ${lineIdx + 1}!`);
-        } else {
-          list = list.filter((b: any) => !(b.chapter_id === chapterData.id && b.line_index === lineIdx));
-          showToast(`Đã bỏ bookmark đoạn ${lineIdx + 1}.`);
-        }
-        localStorage.setItem('novelhub_guest_bookmarks', JSON.stringify(list));
-      } catch (e) {}
+    if (!isAuthenticated) {
+      openAuthModal('login');
+      return;
     }
 
-    // 3. Sync with database if authenticated
-    if (isAuthenticated) {
-      try {
-        await authFetch(`${API_BASE_URL}/bookmarks`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            story_id: chapterData.story_id || chapterData.story?.id,
-            chapter_id: chapterData.id,
-            line_text: lineText,
-            line_index: lineIdx,
-          }),
-        });
-      } catch (e) {
-        console.error('Failed to sync bookmark with server:', e);
-      }
+    // Optimistic update, rolled back if the server rejects it
+    const nextIsBookmarked = !bookmarkedLines.has(lineIdx);
+    const applyBookmarked = (bookmarked: boolean) => {
+      setBookmarkedLines((prev) => {
+        const next = new Set(prev);
+        if (bookmarked) next.add(lineIdx);
+        else next.delete(lineIdx);
+        return next;
+      });
+    };
+    applyBookmarked(nextIsBookmarked);
+
+    try {
+      // The server toggles: it removes an existing bookmark on the same line, otherwise adds one
+      const res = await authFetch(`${API_BASE_URL}/bookmarks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          story_id: chapterData.story_id || chapterData.story?.id,
+          chapter_id: chapterData.id,
+          line_text: lineText,
+          line_index: lineIdx,
+        }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok || !json?.success) throw new Error(json?.message || `HTTP ${res.status}`);
+      const added = json.action !== 'removed';
+      if (added !== nextIsBookmarked) applyBookmarked(added);
+      showToast(added ? `Đã lưu bookmark đoạn ${lineIdx + 1}!` : `Đã bỏ bookmark đoạn ${lineIdx + 1}.`);
+    } catch (e) {
+      console.error('Failed to update bookmark:', e);
+      applyBookmarked(!nextIsBookmarked);
+      showToast('Không thể cập nhật bookmark. Vui lòng thử lại.');
     }
   };
 

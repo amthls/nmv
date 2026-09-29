@@ -222,8 +222,9 @@ function ChapterEditorContent() {
               setSelectedStory(json.data);
               setVolumes(json.data.volumes || []);
               setSelectedVolumeId('');
-              const nextNum = (json.data.total_chapters || 0) + 1;
-              setChapterNumber(nextNum);
+              // Next number after the highest published chapter (the count is wrong when numbers have gaps)
+              const latest = Number(json.data.latest_chapter?.chapter_number);
+              setChapterNumber(Number.isFinite(latest) ? Math.floor(latest) + 1 : 1);
             }
           }
         }
@@ -291,24 +292,26 @@ function ChapterEditorContent() {
   // Handle Create New Volume
   const handleCreateVolume = async () => {
     if (!newVolumeTitle.trim() || !selectedStoryId) return;
+    setErrorMsg(null);
     try {
-      const nextVolNum = volumes.length + 1;
+      // No volume_number: the server takes the next free number, so an existing volume is never overwritten
       const res = await authFetch(`${API_BASE_URL}/stories/${selectedStoryId}/volumes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: newVolumeTitle.trim(),
-          volume_number: nextVolNum,
-        }),
+        body: JSON.stringify({ title: newVolumeTitle.trim() }),
       });
-      if (res.ok) {
-        const json = await res.json();
+      const json = await res.json().catch(() => null);
+      if (res.ok && json?.success) {
         setVolumes([...volumes, json.data]);
         setSelectedVolumeId(json.data.id);
         setIsCreatingNewVolume(false);
         setNewVolumeTitle('');
+      } else {
+        setErrorMsg(json?.message || 'Tạo tập mới thất bại.');
       }
-    } catch (e) {}
+    } catch (e: any) {
+      setErrorMsg('Lỗi: ' + e.message);
+    }
   };
 
   // Handle Submit / Save
@@ -318,6 +321,11 @@ function ChapterEditorContent() {
       return;
     }
     if (!selectedStoryId || !chapterTitle.trim() || isSubmitting) return;
+    const parsedNumber = Number(chapterNumber);
+    if (String(chapterNumber).trim() === '' || !Number.isFinite(parsedNumber) || parsedNumber < 0) {
+      setErrorMsg('Số chương phải là số từ 0 trở lên.');
+      return;
+    }
 
     setIsSubmitting(true);
     setErrorMsg(null);
@@ -335,7 +343,7 @@ function ChapterEditorContent() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             title: chapterTitle.trim(),
-            chapter_number: parseFloat(chapterNumber.toString()),
+            chapter_number: parsedNumber,
             volume_id: selectedVolumeId || null,
             content_blocks: formattedBlocks,
           }),
@@ -361,7 +369,7 @@ function ChapterEditorContent() {
           story_id: selectedStoryId,
           volume_id: selectedVolumeId || null,
           title: chapterTitle.trim(),
-          chapter_number: parseFloat(chapterNumber.toString()),
+          chapter_number: parsedNumber,
           content: paragraphs.join('\n\n'),
           content_blocks: formattedBlocks,
           word_count: totalWords,
