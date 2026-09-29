@@ -2,11 +2,11 @@
 """Launch NovelHub with Docker Compose and verify that every service works.
 
 Usage (from the project root; see scripts/README.md for the full guide):
-    python3 scripts/launch.py            # create .env if needed, build + start, seed, then run checks
-    python3 scripts/launch.py check      # only run the health checks against a running stack
-    python3 scripts/launch.py status     # docker compose ps
-    python3 scripts/launch.py logs [svc] # follow logs (all services or one)
-    python3 scripts/launch.py down       # stop containers (data volumes are kept)
+    python scripts/launch.py            # create .env if needed, build + start, seed, then run checks
+    python scripts/launch.py check      # only run the health checks against a running stack
+    python scripts/launch.py status     # docker compose ps
+    python scripts/launch.py logs [svc] # follow logs (all services or one)
+    python scripts/launch.py down       # stop containers (data volumes are kept)
 
 Options for "up": --no-build (reuse existing images), --timeout SECONDS (default 600),
                   --no-seed (skip the sample-data seeders).
@@ -36,6 +36,11 @@ SERVICES = ["postgres", "search", "rabbitmq", "backend", "worker", "frontend", "
 GREEN, RED, YELLOW, BOLD, RESET = "\033[32m", "\033[31m", "\033[33m", "\033[1m", "\033[0m"
 if not sys.stdout.isatty():
     GREEN = RED = YELLOW = BOLD = RESET = ""
+elif os.name == "nt":
+    os.system("")  # enables ANSI colors in the classic Windows console
+
+# How to re-run this script in hints: "python3" is the Microsoft Store stub on most Windows machines
+PY = "python" if os.name == "nt" else "python3"
 
 
 def info(msg):
@@ -123,7 +128,7 @@ def ensure_env():
 def compose(*args, capture=False, check=True):
     cmd = ["docker", "compose", *args]
     if capture:
-        res = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
+        res = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
     else:
         res = subprocess.run(cmd, cwd=ROOT)
     if check and res.returncode != 0:
@@ -219,21 +224,21 @@ def story_count(env):
         ["docker", "compose", "exec", "-T", "postgres", "psql", "-tA",
          "-U", env.get("POSTGRES_USER", "postgres"), "-d", env.get("POSTGRES_DB", "novel_platform"),
          "-c", "SELECT count(*) FROM stories"],
-        cwd=ROOT, capture_output=True, text=True,
+        cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace",
     )
     return int(res.stdout.strip()) if res.returncode == 0 and res.stdout.strip().isdigit() else None
 
 
 def run_seeders():
     """The runtime image only ships dist/, so mount the scripts (and src/, which seed-fandom imports)."""
-    backend = os.path.join(ROOT, "backend")
+    backend = os.path.join(ROOT, "backend").replace("\\", "/")  # Docker Desktop wants C:/... in -v
     all_ok = True
     for desc, cmd in SEEDERS:
         res = subprocess.run(
             ["docker", "compose", "run", "--rm", "--no-deps", "-T",
              "-v", f"{backend}/scripts:/app/scripts:ro", "-v", f"{backend}/src:/app/src:ro",
              "backend", *cmd],
-            cwd=ROOT, capture_output=True, text=True,
+            cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace",
         )
         if res.returncode == 0:
             ok(f"seed {desc}")
@@ -379,7 +384,7 @@ def run_checks(env, timeout, seed=True):
     hard_fail = [n for n, p, soft in results if not p and not soft]
     print()
     if hard_fail:
-        print(f"{RED}{BOLD}{len(hard_fail)} check(s) failed.{RESET} Inspect with: python3 scripts/launch.py logs <service>")
+        print(f"{RED}{BOLD}{len(hard_fail)} check(s) failed.{RESET} Inspect with: {PY} scripts/launch.py logs <service>")
         for svc in SERVICES:
             if st.get(svc, ("missing",))[0] != "running":
                 print(f"\n--- last logs of {svc} ---", flush=True)
