@@ -180,7 +180,7 @@ export default function ImageUploadDropzone({
                   e.stopPropagation();
                   removeImage(idx);
                 }}
-                className="absolute top-1 right-1 p-1 rounded-full bg-rose-600/90 text-white hover:bg-rose-500 transition opacity-0 group-hover:opacity-100 shadow-md"
+                className="absolute top-1 right-1 p-1 rounded-full bg-rose-600/90 text-snow hover:bg-rose-500 transition opacity-0 group-hover:opacity-100 shadow-md"
                 title="Xóa ảnh này"
               >
                 <X className="w-3 h-3" />

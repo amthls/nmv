@@ -81,6 +81,13 @@ export const uploadLimiter = limiter({
   message: 'Bạn tải ảnh lên quá nhiều. Vui lòng thử lại sau ít phút.',
 });
 
+/** Manga chapters are dozens of pages: a separate, larger budget (20 pages per request). */
+export const mangaUploadLimiter = limiter({
+  windowMs: 10 * 60_000,
+  limit: 120,
+  message: 'Bạn tải trang truyện lên quá nhiều. Vui lòng thử lại sau ít phút.',
+});
+
 /** Resized-image requests are CPU work (sharp): cap per address. */
 export const imageResizeLimiter = limiter({
   windowMs: 60_000,

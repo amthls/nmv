@@ -74,7 +74,7 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess }: CreateG
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in">
       <div 
-        className="w-full max-w-2xl bg-[#141422] border border-white/15 rounded-3xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto"
+        className="w-full max-w-2xl bg-glass border border-white/15 rounded-3xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -199,7 +199,7 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess }: CreateG
             <button
               type="submit"
               disabled={!name.trim() || isSubmitting}
-              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 disabled:opacity-40 text-white font-bold text-xs shadow-lg shadow-brand-500/25 flex items-center gap-2 transition hover:scale-105"
+              className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 disabled:opacity-40 text-snow font-bold text-xs shadow-lg shadow-brand-500/25 flex items-center gap-2 transition hover:scale-105"
             >
               <Send className="w-3.5 h-3.5" />
               <span>{isSubmitting ? 'Đang tạo...' : 'Tạo Nhóm Dịch'}</span>

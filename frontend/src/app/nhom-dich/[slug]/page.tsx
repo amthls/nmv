@@ -134,6 +134,49 @@ export default function GroupDetailPage() {
     else setJoinRequests([]);
   }, [isLeaderOrMod, group?.id]);
 
+  // Stories posted to the group by members, waiting for the leader/vice leader (no admin review)
+  const [pendingStories, setPendingStories] = useState<any[]>([]);
+  const [reviewingStoryId, setReviewingStoryId] = useState<string | null>(null);
+  const [storyFeedback, setStoryFeedback] = useState<string | null>(null);
+
+  const fetchPendingStories = async () => {
+    if (!group?.id) return;
+    try {
+      const res = await authFetch(`${API_BASE_URL}/groups/${group.id}/pending-stories`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success) setPendingStories(json.data || []);
+      }
+    } catch (e) {}
+  };
+
+  useEffect(() => {
+    if (isLeaderOrMod && group?.id) fetchPendingStories();
+    else setPendingStories([]);
+  }, [isLeaderOrMod, group?.id]);
+
+  const handleReviewStory = async (storyId: string, approve: boolean) => {
+    let reason: string | null = null;
+    if (!approve) {
+      reason = prompt('Lý do từ chối (không bắt buộc):');
+      if (reason === null) return;
+    }
+    setReviewingStoryId(storyId);
+    try {
+      const res = await authFetch(`${API_BASE_URL}/stories/${storyId}/${approve ? 'approve' : 'reject'}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason }),
+      });
+      const json = await res.json();
+      setStoryFeedback(json.message || null);
+      fetchPendingStories();
+      if (res.ok && approve) fetchGroup();
+    } catch (e) {} finally {
+      setReviewingStoryId(null);
+    }
+  };
+
   const handleRequestJoin = async () => {
     if (!isAuthenticated) {
       openAuthModal('login');
@@ -391,7 +434,7 @@ export default function GroupDetailPage() {
       <div className="min-h-[50vh] flex flex-col items-center justify-center p-4 text-center space-y-4">
         <AlertCircle className="w-12 h-12 text-brand-400" />
         <h2 className="text-xl font-bold text-white">Không tìm thấy nhóm dịch này</h2>
-        <Link href="/nhom-dich" className="px-4 py-2 rounded-xl bg-brand-600 text-white text-xs font-semibold">
+        <Link href="/nhom-dich" className="px-4 py-2 rounded-xl bg-brand-600 text-snow text-xs font-semibold">
           Quay lại danh sách nhóm
         </Link>
       </div>
@@ -402,10 +445,10 @@ export default function GroupDetailPage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 pb-24">
       
       {/* 1. Header Banner & Profile */}
-      <div className="rounded-3xl overflow-hidden glass-panel border border-white/10 bg-[#12121e]/90 shadow-2xl relative">
+      <div className="rounded-3xl overflow-hidden glass-panel border border-white/10 bg-glass shadow-2xl relative">
         
         {/* Banner */}
-        <div className="h-44 sm:h-56 w-full relative bg-gradient-to-r from-brand-900/60 via-indigo-900/40 to-[#0A0A10]">
+        <div className="h-44 sm:h-56 w-full relative bg-gradient-to-r from-brand-900/60 via-indigo-900/40 to-surface">
           {group.banner_url && (
             <SmartImage src={group.banner_url} alt={group.name} className="w-full h-full object-cover" />
           )}
@@ -415,7 +458,7 @@ export default function GroupDetailPage() {
         <div className="p-6 sm:p-8 relative pt-16 sm:pt-6 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-6">
           
           {/* Avatar */}
-          <div className="absolute -top-14 sm:-top-16 left-6 sm:left-8 w-28 h-28 sm:w-32 sm:h-32 rounded-3xl overflow-hidden border-4 border-[#12121e] bg-gray-900 shadow-2xl">
+          <div className="absolute -top-14 sm:-top-16 left-6 sm:left-8 w-28 h-28 sm:w-32 sm:h-32 rounded-3xl overflow-hidden border-4 border-surface-2 bg-gray-900 shadow-2xl">
             <SmartImage 
               src={group.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200'} 
               alt={group.name} 
@@ -487,7 +530,7 @@ export default function GroupDetailPage() {
                 <button
                   onClick={handleRequestJoin}
                   disabled={isJoinBusy}
-                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-bold text-xs shadow-lg shadow-emerald-500/20 flex items-center gap-2 transition"
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-snow font-bold text-xs shadow-lg shadow-emerald-500/20 flex items-center gap-2 transition"
                 >
                   <UserPlus className="w-4 h-4" />
                   <span>{isJoinBusy ? 'Đang gửi...' : 'Xin Gia Nhập Nhóm'}</span>
@@ -498,7 +541,7 @@ export default function GroupDetailPage() {
             {isMember && (<>
             <Link
               href={`/dang-truyen?group_id=${group.id}`}
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-brand-500/25 flex items-center gap-2 transition hover:scale-105"
+              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-snow font-bold text-xs shadow-lg shadow-brand-500/25 flex items-center gap-2 transition hover:scale-105"
             >
               <Plus className="w-4 h-4" />
               <span>Đăng Bộ Truyện Mới</span>
@@ -527,6 +570,11 @@ export default function GroupDetailPage() {
           >
             <BookOpen className="w-4 h-4" />
             <span>Tác Phẩm ({group.stories?.length || 0})</span>
+            {isLeaderOrMod && pendingStories.length > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500 text-ink" title="Truyện đang chờ duyệt">
+                {pendingStories.length}
+              </span>
+            )}
           </button>
 
           <button
@@ -558,7 +606,7 @@ export default function GroupDetailPage() {
             <Users className="w-4 h-4 text-indigo-400" />
             <span>Thành Viên ({group.members?.length || 0})</span>
             {isLeaderOrMod && joinRequests.length > 0 && (
-              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500 text-black" title="Yêu cầu gia nhập đang chờ duyệt">
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500 text-ink" title="Yêu cầu gia nhập đang chờ duyệt">
                 {joinRequests.length}
               </span>
             )}
@@ -594,10 +642,53 @@ export default function GroupDetailPage() {
             )}
           </div>
 
+          {/* Pending stories (leader/vice leader only) */}
+          {isLeaderOrMod && (pendingStories.length > 0 || storyFeedback) && (
+            <div className="p-5 rounded-3xl glass-panel border border-white/10 bg-glass space-y-3">
+              <h3 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Clock className="w-4 h-4" /> Truyện Đang Chờ Duyệt ({pendingStories.length})
+              </h3>
+              {storyFeedback && <p className="text-xs text-emerald-300">{storyFeedback}</p>}
+              <div className="space-y-2">
+                {pendingStories.map((s) => (
+                  <div key={s.id} className="p-3 rounded-2xl bg-white/5 border border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-14 rounded-lg overflow-hidden bg-gray-900 shrink-0">
+                        <SmartImage src={s.cover_image_url} alt={s.title} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="min-w-0 text-xs space-y-0.5">
+                        <Link href={`/truyen/${s.slug}`} className="font-bold text-white hover:text-brand-300 line-clamp-2">{s.title}</Link>
+                        <div className="text-gray-500 text-[10px]">
+                          Đăng bởi {s.uploader_name || s.uploader_username} • {new Date(s.updated_at || s.created_at).toLocaleDateString('vi-VN')}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => handleReviewStory(s.id, true)}
+                        disabled={reviewingStoryId === s.id}
+                        className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-snow text-xs font-bold transition flex items-center gap-1.5"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Duyệt
+                      </button>
+                      <button
+                        onClick={() => handleReviewStory(s.id, false)}
+                        disabled={reviewingStoryId === s.id}
+                        className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-rose-500/20 border border-white/10 hover:border-rose-500/40 text-gray-300 hover:text-rose-300 disabled:opacity-40 text-xs font-bold transition flex items-center gap-1.5"
+                      >
+                        <XCircle className="w-3.5 h-3.5" /> Từ chối
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {group.stories && group.stories.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {group.stories.map((story: any) => (
-                <div key={story.id} className="flex gap-3.5 p-3.5 rounded-2xl glass-panel border border-white/10 hover:border-brand-500/40 transition bg-[#12121e]/80 group">
+                <div key={story.id} className="flex gap-3.5 p-3.5 rounded-2xl glass-panel border border-white/10 hover:border-brand-500/40 transition bg-glass group">
                   <div className="w-20 h-28 rounded-xl overflow-hidden bg-gray-900 shrink-0 shadow-md">
                     <SmartImage src={story.cover_image_url} alt={story.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                   </div>
@@ -630,7 +721,7 @@ export default function GroupDetailPage() {
               <h3 className="text-base font-bold text-white">Nhóm chưa có bộ truyện nào</h3>
               {isMember && (<>
                 <p className="text-xs text-gray-400">Hãy bắt đầu đăng bộ Light Novel hoặc Manga đầu tiên của nhóm!</p>
-                <Link href={`/dang-truyen?group_id=${group.id}`} className="inline-block px-5 py-2 rounded-xl bg-brand-600 text-white text-xs font-bold">
+                <Link href={`/dang-truyen?group_id=${group.id}`} className="inline-block px-5 py-2 rounded-xl bg-brand-600 text-snow text-xs font-bold">
                   Đăng truyện ngay
                 </Link>
               </>)}
@@ -641,7 +732,7 @@ export default function GroupDetailPage() {
 
       {/* TAB 2: INTERNAL TEAM CHATROOM */}
       {activeTab === 'chat' && (
-        <div className="rounded-3xl glass-panel border border-white/10 bg-[#12121e]/90 overflow-hidden flex flex-col h-[600px] shadow-2xl">
+        <div className="rounded-3xl glass-panel border border-white/10 bg-glass overflow-hidden flex flex-col h-[600px] shadow-2xl">
           
           {/* Chat Header */}
           <div className="p-4 border-b border-white/10 bg-black/20 flex items-center justify-between">
@@ -716,7 +807,7 @@ export default function GroupDetailPage() {
               <button
                 type="submit"
                 disabled={!newMessage.trim() || isSendingMsg}
-                className="px-5 h-10 rounded-xl bg-brand-600 hover:bg-brand-500 disabled:opacity-40 text-white font-bold text-xs flex items-center gap-1.5 transition"
+                className="px-5 h-10 rounded-xl bg-brand-600 hover:bg-brand-500 disabled:opacity-40 text-snow font-bold text-xs flex items-center gap-1.5 transition"
               >
                 <Send className="w-3.5 h-3.5" />
                 <span>Gửi</span>
@@ -752,7 +843,7 @@ export default function GroupDetailPage() {
             {isMember && (
             <Link
               href={`/dang-chuong?group_id=${group.id}`}
-              className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold transition flex items-center gap-1.5"
+              className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow text-xs font-bold transition flex items-center gap-1.5"
             >
               <Plus className="w-3.5 h-3.5" /> Nộp bản dịch mới
             </Link>
@@ -779,7 +870,7 @@ export default function GroupDetailPage() {
           ) : (
             <div className="space-y-3">
               {submissions.map((sub) => (
-                <div key={sub.id} className="p-4 rounded-2xl glass-panel border border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-[#131322]/85">
+                <div key={sub.id} className="p-4 rounded-2xl glass-panel border border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-surface-2/85">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs font-bold text-brand-400">[{sub.story_title}]</span>
@@ -820,7 +911,7 @@ export default function GroupDetailPage() {
                       <button
                         onClick={() => handleApproveSubmission(sub.id)}
                         disabled={isApproving === sub.id}
-                        className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-500/20 transition flex items-center gap-1.5"
+                        className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-snow text-xs font-bold shadow-md shadow-emerald-500/20 transition flex items-center gap-1.5"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         <span>{isApproving === sub.id ? 'Đang duyệt...' : 'Duyệt Lại Bản Này'}</span>
@@ -830,7 +921,7 @@ export default function GroupDetailPage() {
                         <button
                           onClick={() => handleApproveSubmission(sub.id)}
                           disabled={isApproving === sub.id}
-                          className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-md shadow-emerald-500/20 transition flex items-center gap-1.5"
+                          className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-snow text-xs font-bold shadow-md shadow-emerald-500/20 transition flex items-center gap-1.5"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" />
                           <span>{isApproving === sub.id ? 'Đang duyệt...' : 'Duyệt Bản Này'}</span>
@@ -859,7 +950,7 @@ export default function GroupDetailPage() {
           
           {/* Add Member Card (leader/mod only) */}
           {isLeaderOrMod && (
-            <div className="p-5 rounded-3xl glass-panel border border-white/10 bg-[#131322]/90 space-y-3">
+            <div className="p-5 rounded-3xl glass-panel border border-white/10 bg-glass space-y-3">
               <h3 className="text-xs font-bold text-brand-400 uppercase tracking-wider flex items-center gap-1.5">
                 <UserPlus className="w-4 h-4" /> Thêm Thành Viên Mới Vào Nhóm
               </h3>
@@ -883,7 +974,7 @@ export default function GroupDetailPage() {
                 <select
                   value={newMemberRole}
                   onChange={(e) => setNewMemberRole(e.target.value)}
-                  className="h-10 px-3 rounded-xl bg-[#0f0f18] border border-white/10 text-xs text-white focus:outline-none focus:border-brand-500 w-full sm:w-auto"
+                  className="h-10 px-3 rounded-xl bg-surface-3 border border-white/10 text-xs text-white focus:outline-none focus:border-brand-500 w-full sm:w-auto"
                 >
                   {assignableRoles.filter((r) => r.value !== 'leader').map((r) => (
                     <option key={r.value} value={r.value}>{r.label}</option>
@@ -893,7 +984,7 @@ export default function GroupDetailPage() {
                 <button
                   type="submit"
                   disabled={!newMemberInput.trim() || isAddingMember}
-                  className="px-5 h-10 rounded-xl bg-brand-600 hover:bg-brand-500 disabled:opacity-40 text-white font-bold text-xs flex items-center gap-1.5 transition w-full sm:w-auto justify-center"
+                  className="px-5 h-10 rounded-xl bg-brand-600 hover:bg-brand-500 disabled:opacity-40 text-snow font-bold text-xs flex items-center gap-1.5 transition w-full sm:w-auto justify-center"
                 >
                   <UserPlus className="w-3.5 h-3.5" />
                   <span>Thêm</span>
@@ -904,7 +995,7 @@ export default function GroupDetailPage() {
 
           {/* Pending Join Requests (leader/mod only) */}
           {isLeaderOrMod && (
-            <div className="p-5 rounded-3xl glass-panel border border-white/10 bg-[#131322]/90 space-y-3">
+            <div className="p-5 rounded-3xl glass-panel border border-white/10 bg-glass space-y-3">
               <h3 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
                 <Clock className="w-4 h-4" /> Yêu Cầu Gia Nhập Đang Chờ Duyệt ({joinRequests.length})
               </h3>
@@ -933,7 +1024,7 @@ export default function GroupDetailPage() {
                         <button
                           onClick={() => handleReviewJoin(r.id, true)}
                           disabled={reviewingRequestId === r.id}
-                          className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-xs font-bold transition flex items-center gap-1.5"
+                          className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-snow text-xs font-bold transition flex items-center gap-1.5"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" /> Duyệt
                         </button>
@@ -958,7 +1049,7 @@ export default function GroupDetailPage() {
             
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {group.members?.map((m: any) => (
-                <div key={m.id} className="p-3.5 rounded-2xl glass-panel border border-white/10 flex items-center justify-between gap-3 bg-[#12121e]/80">
+                <div key={m.id} className="p-3.5 rounded-2xl glass-panel border border-white/10 flex items-center justify-between gap-3 bg-glass">
                   <div className="flex items-center gap-3 truncate">
                     <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-900 border border-white/15 shrink-0">
                       <SmartImage src={m.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'} alt={m.display_name} className="w-full h-full object-cover" />
@@ -978,7 +1069,7 @@ export default function GroupDetailPage() {
                         handleUpdateRole(m.user_id, role);
                       }}
                       title="Thôi chức"
-                      className="h-7 px-2 rounded-lg bg-[#0f0f18] border border-amber-500/30 text-[10px] text-amber-200 focus:outline-none shrink-0"
+                      className="h-7 px-2 rounded-lg bg-surface-3 border border-amber-500/30 text-[10px] text-amber-200 focus:outline-none shrink-0"
                     >
                       {ROLE_OPTIONS.filter((r) => roleRank(r.value) <= roleRank(m.role)).map((r) => (
                         <option key={r.value} value={r.value}>{r.value === m.role ? `${r.label} (thôi chức...)` : r.label}</option>
@@ -995,7 +1086,7 @@ export default function GroupDetailPage() {
                           if (role === 'leader' && !confirm(`Bổ nhiệm ${m.display_name || m.username} làm Trưởng nhóm?`)) return;
                           handleUpdateRole(m.user_id, role);
                         }}
-                        className="h-7 px-2 rounded-lg bg-[#0f0f18] border border-white/10 text-[10px] text-gray-300 focus:outline-none"
+                        className="h-7 px-2 rounded-lg bg-surface-3 border border-white/10 text-[10px] text-gray-300 focus:outline-none"
                       >
                         {assignableRoles.map((r) => (
                           <option key={r.value} value={r.value}>{r.label}</option>
@@ -1021,7 +1112,7 @@ export default function GroupDetailPage() {
 
       {/* TAB 5: RULES & INFO */}
       {activeTab === 'info' && (
-        <div className="p-6 rounded-3xl glass-panel border border-white/10 bg-[#12121e]/90 space-y-4 max-w-3xl">
+        <div className="p-6 rounded-3xl glass-panel border border-white/10 bg-glass space-y-4 max-w-3xl">
           <h2 className="text-base font-bold text-white">Nội Quy & Tiêu Chuẩn Dịch Thuật Của Nhóm</h2>
           <div className="text-xs text-gray-300 leading-relaxed">
             {stripHtml(group.rules)

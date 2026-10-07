@@ -20,7 +20,10 @@ import {
   getStoryCollaborators,
   addStoryCollaborator,
   removeStoryCollaborator,
-  getManageableStories
+  getManageableStories,
+  getGroupPendingStories,
+  approveStory,
+  rejectStory
 } from '../controllers/story.controller';
 import { 
   getUsers, 
@@ -74,8 +77,8 @@ import {
 } from '../controllers/post.controller';
 import { getComments, createComment, likeComment, updateComment, deleteComment } from '../controllers/comment.controller';
 import { createReport, getReports, resolveReport } from '../controllers/report.controller';
-import { uploadMultipleImages, uploadSingleImage } from '../controllers/upload.controller';
-import { uploadImages } from '../middlewares/upload.middleware';
+import { uploadMultipleImages, uploadSingleImage, uploadMangaPages } from '../controllers/upload.controller';
+import { uploadImages, uploadMangaPageFiles } from '../middlewares/upload.middleware';
 import { 
   createStory, 
   createVolume, 
@@ -106,7 +109,7 @@ import {
 } from '../controllers/bookmark.controller';
 
 import { queueStatus } from '../services/queue.service';
-import { loginLimiter, registerLimiter, uploadLimiter, searchLimiter, perUserLimiter } from '../middlewares/security';
+import { loginLimiter, registerLimiter, uploadLimiter, mangaUploadLimiter, searchLimiter, perUserLimiter } from '../middlewares/security';
 
 const router = Router();
 
@@ -139,6 +142,7 @@ router.get('/auth/accounts', getDemoAccounts);
 // File & Image Uploads (Multipart/Form-Data)
 router.post('/upload/images', requireAuth, uploadLimiter, uploadImages.array('images', 10) as any, uploadMultipleImages);
 router.post('/upload/image', requireAuth, uploadLimiter, uploadImages.single('image') as any, uploadSingleImage);
+router.post('/upload/manga-pages', requireAuth, mangaUploadLimiter, uploadMangaPageFiles.array('pages', 20) as any, uploadMangaPages as any);
 
 // Tags & Categories
 router.get('/tags', getTags);
@@ -156,6 +160,9 @@ router.post('/stories/:slug/rate', requireAuth, rateStory);
 router.post('/stories', requireAuth, createStory);
 router.put('/stories/:id', requireAuth, updateStory);
 router.delete('/stories/:id', requireAuth, deleteStory);
+// Group stories: approved by the group's leader/mod (no admin review)
+router.post('/stories/:id/approve', requireAuth, approveStory);
+router.post('/stories/:id/reject', requireAuth, rejectStory);
 router.get('/stories/:id/collaborators', getStoryCollaborators);
 router.post('/stories/:id/collaborators', requireAuth, addStoryCollaborator);
 router.delete('/stories/:id/collaborators/:userId', requireAuth, removeStoryCollaborator);
@@ -246,6 +253,7 @@ router.delete('/groups/:id/members/:memberUserId', requireAuth, removeGroupMembe
 router.post('/groups/:id/join-requests', requireAuth, joinRequestLimiter, requestToJoinGroup);
 router.delete('/groups/:id/join-requests/me', requireAuth, cancelMyJoinRequest);
 router.get('/groups/:id/join-requests', requireAuth, getGroupJoinRequests);
+router.get('/groups/:id/pending-stories', requireAuth, getGroupPendingStories);
 router.post('/groups/:id/join-requests/:requestId/approve', requireAuth, approveJoinRequest);
 router.post('/groups/:id/join-requests/:requestId/reject', requireAuth, rejectJoinRequest);
 

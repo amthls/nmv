@@ -6,6 +6,7 @@ import { AuthProvider } from '@/context/AuthContext';
 import { ReadingSessionProvider } from '@/context/ReadingSessionContext';
 import NavigationProgress from '@/components/common/NavigationProgress';
 import ContinueReadingMiniplayer from '@/components/reader/ContinueReadingMiniplayer';
+import { THEME_INIT_SCRIPT } from '@/lib/themeScript';
 
 export const metadata: Metadata = {
   title: 'NovelHub - N\u1ec1n T\u1ea3ng \u0110\u1ecdc Light Novel & Manga Tr\u1ef1c Tuy\u1ebfn',
@@ -18,8 +19,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="vi" className="dark">
-      <body className="min-h-screen flex flex-col bg-[#0d0d15] text-[#f3f4f6]">
+    <html lang="vi" suppressHydrationWarning>
+      <head>
+        {/* Apply the saved theme before first paint so the page never flashes the wrong colours */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
+      <body className="min-h-screen flex flex-col text-white">
         <AuthProvider>
           <ReadingSessionProvider>
             <NavigationProgress />

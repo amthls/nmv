@@ -157,7 +157,7 @@ export default function SmartStorySearch({
 
           {/* Autocomplete Suggestions Dropdown */}
           {isOpen && suggestions.length > 0 && (
-            <div className="absolute top-12 left-0 right-0 z-30 bg-[#161626] border border-white/15 rounded-2xl shadow-2xl p-2 space-y-1 max-h-64 overflow-y-auto animate-in fade-in zoom-in-95">
+            <div className="absolute top-12 left-0 right-0 z-30 bg-glass border border-white/15 rounded-2xl shadow-2xl p-2 space-y-1 max-h-64 overflow-y-auto animate-in fade-in zoom-in-95">
               {suggestions.map((s) => (
                 <div
                   key={s.id}

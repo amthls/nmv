@@ -4,11 +4,11 @@ import { BookOpen, Heart } from 'lucide-react';
 
 export default function Footer() {
   return (
-    <footer className="border-t border-white/10 bg-[#0B0B12] text-gray-400 py-10 mt-20">
+    <footer className="border-t border-white/10 bg-glass text-gray-400 py-10 mt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-8">
         <div className="space-y-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center text-white font-bold">
+            <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center text-snow font-bold">
               <BookOpen className="w-4 h-4" />
             </div>
             <span className="text-lg font-bold text-white">NovelHub</span>
@@ -21,10 +21,10 @@ export default function Footer() {
         <div>
           <h4 className="text-sm font-semibold text-white mb-3">Khám phá</h4>
           <ul className="space-y-2 text-xs">
-            <li><Link href="/truyen-chu" className="hover:text-brand-400 transition">Light Novel mới</Link></li>
-            <li><Link href="/manga" className="hover:text-brand-400 transition">Manga hot</Link></li>
-            <li><Link href="/bang-xep-hang" className="hover:text-brand-400 transition">Bảng xếp hạng</Link></li>
-            <li><Link href="/the-loai" className="hover:text-brand-400 transition">Tất cả thể loại</Link></li>
+            <li><Link href="/kham-pha?type=novel&sort=updated" className="hover:text-brand-400 transition">Light Novel mới</Link></li>
+            <li><Link href="/kham-pha?type=manga&sort=views" className="hover:text-brand-400 transition">Manga hot</Link></li>
+            <li><Link href="/kham-pha?sort=views" className="hover:text-brand-400 transition">Bảng xếp hạng</Link></li>
+            <li><Link href="/kham-pha" className="hover:text-brand-400 transition">Tất cả thể loại</Link></li>
           </ul>
         </div>
 
@@ -34,17 +34,17 @@ export default function Footer() {
             <li><Link href="/nhom-dich" className="hover:text-brand-400 transition">Danh sách nhóm dịch</Link></li>
             <li><Link href="/dang-truyen" className="hover:text-brand-400 transition">Đăng tải truyện</Link></li>
             <li><Link href="/fandom" className="hover:text-brand-400 transition">Fandom / Blog</Link></li>
-            <li><Link href="/noi-quy" className="hover:text-brand-400 transition">Nội quy cộng đồng</Link></li>
+            <li><Link href="/thong-tin#noi-quy" className="hover:text-brand-400 transition">Nội quy cộng đồng</Link></li>
           </ul>
         </div>
 
         <div>
           <h4 className="text-sm font-semibold text-white mb-3">Hỗ trợ & Điều khoản</h4>
           <ul className="space-y-2 text-xs">
-            <li><Link href="/dieu-khoan" className="hover:text-brand-400 transition">Điều khoản sử dụng</Link></li>
-            <li><Link href="/chinh-sach" className="hover:text-brand-400 transition">Chính sách bảo mật</Link></li>
+            <li><Link href="/thong-tin#dieu-khoan" className="hover:text-brand-400 transition">Điều khoản sử dụng</Link></li>
+            <li><Link href="/thong-tin#chinh-sach" className="hover:text-brand-400 transition">Chính sách bảo mật</Link></li>
             <li><Link href="/bao-cao" className="hover:text-brand-400 transition">Báo cáo vi phạm</Link></li>
-            <li><Link href="/lien-he" className="hover:text-brand-400 transition">Liên hệ quản trị</Link></li>
+            <li><Link href="/thong-tin#lien-he" className="hover:text-brand-400 transition">Liên hệ quản trị</Link></li>
           </ul>
         </div>
       </div>

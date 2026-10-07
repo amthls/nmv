@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
@@ -21,11 +21,13 @@ import {
   Sparkles,
   LogIn,
   UserPlus,
-  Flag
+  Flag,
+  ImagePlus
 } from 'lucide-react';
 import QuickActionModal from './QuickActionModal';
 import AuthModal from './auth/AuthModal';
 import { useAuth } from '@/context/AuthContext';
+import ThemeToggle from './common/ThemeToggle';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -151,17 +153,17 @@ export default function Navbar() {
 
   return (
     <>
-      <header className="sticky top-0 z-30 w-full glass-panel border-b border-white/10 bg-[#0F0F17]/90 backdrop-blur-md">
+      <header className="sticky top-0 z-30 w-full glass-strong !border-x-0 !border-t-0 !rounded-none">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
           
           {/* Logo & Brand */}
           <div className="flex items-center gap-6">
             <Link href="/" className="flex items-center gap-2.5 group">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 via-brand-500 to-indigo-400 flex items-center justify-center text-white shadow-lg shadow-brand-500/25 group-hover:scale-105 transition-transform">
+              <div className="w-10 h-10 rounded-lg bg-gradient-to-tr from-brand-600 via-brand-500 to-indigo-400 flex items-center justify-center text-snow shadow-lg shadow-brand-500/25 group-hover:scale-105 transition-transform">
                 <BookOpen className="w-5 h-5" />
               </div>
               <div className="hidden sm:block">
-                <span className="text-lg font-extrabold bg-gradient-to-r from-white via-gray-200 to-brand-400 bg-clip-text text-transparent">
+                <span className="text-lg font-extrabold bg-gradient-to-r from-brand-600 to-cyan-500 bg-clip-text text-transparent">
                   NovelHub
                 </span>
                 <span className="block text-[10px] text-brand-400 font-semibold tracking-wider uppercase -mt-1">
@@ -196,7 +198,7 @@ export default function Navbar() {
                 placeholder="Tìm truyện chữ, manga, tác giả, thể loại..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-10 pl-10 pr-4 rounded-full bg-white/5 border border-white/10 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition"
+                className="w-full h-10 pl-10 pr-4 rounded-full bg-black/40 border border-white/10 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition"
               />
               <button type="submit" aria-label="Tìm kiếm" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white">
                 <Search className="w-4 h-4" />
@@ -206,10 +208,12 @@ export default function Navbar() {
 
           {/* Actions & User Auth Section */}
           <div className="flex items-center gap-2.5">
+            <ThemeToggle />
+
             {/* Quick Action Popup Button (+) */}
             <button
               onClick={() => setIsQuickActionOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white text-xs font-semibold shadow-md shadow-brand-500/20 hover:scale-105 transition-all"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-snow text-xs font-semibold shadow-md shadow-brand-500/20 hover:scale-105 transition-all"
               title="Mở menu tiện ích"
             >
               <Plus className="w-4 h-4" />
@@ -234,7 +238,7 @@ export default function Navbar() {
                 >
                   <Bell className="w-5 h-5" />
                   {unreadCount > 0 ? (
-                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-[10px] font-bold text-white flex items-center justify-center ring-2 ring-[#0F0F17] animate-pulse">
+                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-[10px] font-bold text-snow flex items-center justify-center ring-2 ring-surface animate-pulse">
                       {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
                   ) : (
@@ -244,8 +248,8 @@ export default function Navbar() {
 
                 {/* Notification Dropdown Popover */}
                 {isNotificationOpen && (
-                  <div className="absolute right-0 mt-3 w-80 sm:w-96 rounded-2xl bg-[#141420] border border-white/15 shadow-2xl shadow-black/80 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-150">
-                    <div className="p-3.5 px-4 border-b border-white/10 flex items-center justify-between bg-[#181828]">
+                  <div className="absolute right-0 mt-3 w-80 sm:w-96 rounded-2xl bg-glass border border-white/15 shadow-2xl shadow-black/80 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="p-3.5 px-4 border-b border-white/10 flex items-center justify-between bg-glass">
                       <div className="flex items-center gap-2">
                         <Bell className="w-4 h-4 text-brand-400" />
                         <span className="text-sm font-bold text-white">Thông báo</span>
@@ -266,9 +270,9 @@ export default function Navbar() {
                       )}
                     </div>
 
-                    <div className="max-h-[380px] overflow-y-auto divide-y divide-white/5 bg-[#141420]">
+                    <div className="max-h-[380px] overflow-y-auto divide-y divide-white/5 bg-glass">
                       {notifications.length === 0 ? (
-                        <div className="p-8 text-center bg-[#141420]">
+                        <div className="p-8 text-center bg-glass">
                           <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-3 text-brand-400">
                             <Bell className="w-6 h-6" />
                           </div>
@@ -297,7 +301,7 @@ export default function Navbar() {
                                 </div>
                               )}
                               {!n.is_read && (
-                                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-brand-500 ring-2 ring-[#141420]" />
+                                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-brand-500 ring-2 ring-surface-2" />
                               )}
                             </div>
 
@@ -333,7 +337,7 @@ export default function Navbar() {
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                   className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-white/5 transition border border-transparent hover:border-white/10"
                 >
-                  <div className="relative w-8 h-8 rounded-full overflow-hidden bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center text-white text-xs font-bold ring-1 ring-white/20">
+                  <div className="relative w-8 h-8 rounded-full overflow-hidden bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center text-snow text-xs font-bold ring-1 ring-white/20">
                     {user.avatar_url ? (
                       <img src={user.avatar_url} alt={user.username} className="w-full h-full object-cover" />
                     ) : (
@@ -355,7 +359,7 @@ export default function Navbar() {
 
                 {/* Dropdown Menu */}
                 {isUserMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-[#141420] border border-white/10 shadow-2xl py-2 z-50 animate-in fade-in slide-in-from-top-2">
+                  <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-glass border border-white/10 shadow-2xl py-2 z-50 animate-in fade-in slide-in-from-top-2">
                     <div className="px-4 py-2.5 border-b border-white/10">
                       <p className="text-xs font-semibold text-white">{user.display_name || user.username}</p>
                       <p className="text-[11px] text-gray-400 font-mono truncate">@{user.username} • {user.email}</p>
@@ -388,8 +392,8 @@ export default function Navbar() {
                       </Link>
                     </div>
 
-                    {/* Creator actions */}
-                    {hasRole('admin', 'mod', 'author', 'translator') && (
+                    {/* Creator actions: any signed-in reader may post (becomes author/translator once published) */}
+                    {(
                       <div className="py-1 border-t border-white/10">
                         <div className="px-4 py-1 text-[10px] uppercase font-bold text-gray-400 tracking-wider">
                           Sáng tác & Dịch thuật
@@ -410,6 +414,14 @@ export default function Navbar() {
                           <BookOpen className="w-4 h-4 text-indigo-400" />
                           <span>Đăng chương mới</span>
                         </Link>
+                        <Link
+                          href="/dang-truyen-tranh"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          className="flex items-center gap-2.5 px-4 py-1.5 text-xs text-gray-300 hover:text-white hover:bg-white/5 transition"
+                        >
+                          <ImagePlus className="w-4 h-4 text-rose-400" />
+                          <span>Đăng truyện tranh</span>
+                        </Link>
                       </div>
                     )}
 
@@ -426,20 +438,6 @@ export default function Navbar() {
                         </Link>
                       </div>
                     )}
-
-                    {/* Quick Switch Role Demo */}
-                    <div className="py-1 border-t border-white/10">
-                      <button
-                        onClick={() => {
-                          setIsUserMenuOpen(false);
-                          openAuthModal('demo');
-                        }}
-                        className="w-full flex items-center gap-2.5 px-4 py-2 text-xs text-brand-400 hover:text-brand-300 hover:bg-white/5 transition text-left"
-                      >
-                        <Sparkles className="w-4 h-4 text-brand-400" />
-                        <span>Chuyển Role khác (Demo)</span>
-                      </button>
-                    </div>
 
                     {/* Logout */}
                     <div className="py-1 border-t border-white/10">
@@ -468,7 +466,7 @@ export default function Navbar() {
                 </button>
                 <button
                   onClick={() => openAuthModal('register')}
-                  className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold shadow-md shadow-brand-500/20 transition"
+                  className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow text-xs font-semibold shadow-md shadow-brand-500/20 transition"
                 >
                   <UserPlus className="w-4 h-4" />
                   <span>Đăng ký</span>
@@ -488,7 +486,7 @@ export default function Navbar() {
 
         {/* Mobile Navigation Drawer */}
         {isMobileMenuOpen && (
-          <div className="md:hidden border-t border-white/10 bg-[#0F0F17] px-4 py-4 space-y-2 animate-in slide-in-from-top-2">
+          <div className="md:hidden border-t border-white/10 px-4 py-4 space-y-2 animate-in slide-in-from-top-2">
             <form onSubmit={handleSearchSubmit} role="search" className="relative mb-3">
               <input
                 type="text"
@@ -561,7 +559,7 @@ export default function Navbar() {
                     setIsMobileMenuOpen(false);
                     openAuthModal('register');
                   }}
-                  className="flex-1 py-2 rounded-lg bg-brand-600 text-white text-xs font-semibold"
+                  className="flex-1 py-2 rounded-lg bg-brand-600 text-snow text-xs font-semibold"
                 >
                   Đăng ký
                 </button>

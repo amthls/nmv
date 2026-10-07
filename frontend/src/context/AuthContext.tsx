@@ -35,8 +35,8 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   isAuthModalOpen: boolean;
-  authModalTab: 'login' | 'register' | 'demo';
-  openAuthModal: (tab?: 'login' | 'register' | 'demo') => void;
+  authModalTab: 'login' | 'register';
+  openAuthModal: (tab?: 'login' | 'register') => void;
   closeAuthModal: () => void;
   login: (identifier: string, password: string) => Promise<{ success: boolean; message?: string }>;
   register: (data: { username: string; email: string; password: string; display_name?: string }) => Promise<{ success: boolean; message?: string }>;
@@ -53,9 +53,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
-  const [authModalTab, setAuthModalTab] = useState<'login' | 'register' | 'demo'>('login');
+  const [authModalTab, setAuthModalTab] = useState<'login' | 'register'>('login');
 
-  const openAuthModal = (tab: 'login' | 'register' | 'demo' = 'login') => {
+  const openAuthModal = (tab: 'login' | 'register' = 'login') => {
     setAuthModalTab(tab);
     setIsAuthModalOpen(true);
   };

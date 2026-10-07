@@ -43,7 +43,7 @@ export default function ChapterSelectorModal({
       onClick={onClose}
     >
       <div 
-        className="w-full max-w-lg bg-[#141422] border border-white/15 rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl space-y-4 max-h-[85vh] flex flex-col animate-in slide-in-from-bottom-4 duration-300"
+        className="w-full max-w-lg bg-glass border border-white/15 rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl space-y-4 max-h-[85vh] flex flex-col animate-in slide-in-from-bottom-4 duration-300"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -109,7 +109,7 @@ export default function ChapterSelectorModal({
                 >
                   <div className="flex items-center gap-2.5 truncate">
                     <span className={`w-7 h-7 rounded-lg text-[10px] font-bold flex items-center justify-center shrink-0 ${
-                      isCurrent ? 'bg-brand-500 text-white' : 'bg-white/10 text-gray-400'
+                      isCurrent ? 'bg-brand-500 text-snow' : 'bg-white/10 text-gray-400'
                     }`}>
                       {c.chapter_number}
                     </span>
@@ -117,7 +117,7 @@ export default function ChapterSelectorModal({
                   </div>
 
                   {isCurrent && (
-                    <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-500 text-white shrink-0 ml-2 shadow-sm">
+                    <span className="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-500 text-snow shrink-0 ml-2 shadow-sm">
                       <Check className="w-3 h-3" /> Đang đọc
                     </span>
                   )}

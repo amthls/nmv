@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import ImageQualityPicker from '@/components/common/ImageQualityPicker';
 import { 
   User, 
   Settings, 
@@ -252,7 +253,7 @@ export default function UserProfilePage() {
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <button
             onClick={() => openAuthModal('login')}
-            className="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold text-sm shadow-lg shadow-brand-500/25 transition flex items-center justify-center gap-2"
+            className="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow font-semibold text-sm shadow-lg shadow-brand-500/25 transition flex items-center justify-center gap-2"
           >
             <LogIn className="w-4 h-4" />
             {'\u0110\u0103ng nh\u1eadp ngay'}
@@ -265,15 +266,15 @@ export default function UserProfilePage() {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 pb-24">
       {/* 1. Header Profile Banner */}
-      <div className="rounded-3xl overflow-hidden glass-panel border border-white/10 bg-[#12121e]/90 shadow-2xl relative">
-        <div className="h-44 sm:h-56 w-full relative bg-gradient-to-r from-brand-900/60 via-indigo-900/40 to-[#0A0A10]">
+      <div className="rounded-3xl overflow-hidden glass-panel border border-white/10 bg-glass shadow-2xl relative">
+        <div className="h-44 sm:h-56 w-full relative bg-gradient-to-r from-brand-900/60 via-indigo-900/40 to-surface">
           {profile?.banner_url && (
             <SmartImage src={profile.banner_url} alt="Profile banner" className="w-full h-full object-cover" />
           )}
         </div>
 
         <div className="p-6 sm:p-8 relative pt-16 sm:pt-6 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-6">
-          <div className="absolute -top-14 sm:-top-16 left-6 sm:left-8 w-28 h-28 sm:w-32 sm:h-32 rounded-3xl overflow-hidden border-4 border-[#12121e] bg-gray-900 shadow-2xl">
+          <div className="absolute -top-14 sm:-top-16 left-6 sm:left-8 w-28 h-28 sm:w-32 sm:h-32 rounded-3xl overflow-hidden border-4 border-surface-2 bg-gray-900 shadow-2xl">
             <SmartImage 
               src={profile?.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200'} 
               alt={profile?.display_name || profile?.username} 
@@ -312,7 +313,7 @@ export default function UserProfilePage() {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setActiveTab('profile')}
-              className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold shadow-lg shadow-brand-500/20 flex items-center gap-1.5 transition"
+              className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow text-xs font-semibold shadow-lg shadow-brand-500/20 flex items-center gap-1.5 transition"
             >
               <Edit3 className="w-3.5 h-3.5" />
               {'S\u1eeda h\u1ed3 s\u01a1'}
@@ -404,7 +405,7 @@ export default function UserProfilePage() {
       {/* Tab Content: Profile Edit */}
       {activeTab === 'profile' && (
         <form onSubmit={handleSaveProfile} className="space-y-6">
-          <div className="glass-panel p-6 rounded-3xl border border-white/10 bg-[#141420]/80 space-y-5">
+          <div className="glass-panel p-6 rounded-3xl border border-white/10 bg-glass space-y-5">
             <h3 className="text-lg font-bold text-white">{'Ch\u1ec9nh s\u1eeda h\u1ed3 s\u01a1'}</h3>
             {profile?.username && (
               <Link href={`/nguoi-dung/${profile.username}`} className="text-xs text-brand-400 hover:underline font-semibold">
@@ -452,7 +453,7 @@ export default function UserProfilePage() {
             <button
               type="submit"
               disabled={isSaving}
-              className="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-semibold shadow-lg shadow-brand-500/25 flex items-center gap-2 transition disabled:opacity-50"
+              className="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow text-sm font-semibold shadow-lg shadow-brand-500/25 flex items-center gap-2 transition disabled:opacity-50"
             >
               <Save className="w-4 h-4" />
               {isSaving ? '\u0110ang l\u01b0u...' : 'L\u01b0u th\u00f4ng tin'}
@@ -464,16 +465,21 @@ export default function UserProfilePage() {
       {/* Tab Content: Reader Settings */}
       {activeTab === 'reader_settings' && (
         <form onSubmit={handleSaveSettings} className="space-y-6">
-          <div className="glass-panel p-6 rounded-3xl border border-white/10 bg-[#141420]/80 space-y-6">
+          <div className="glass-panel p-6 rounded-3xl border border-white/10 bg-glass space-y-6">
             <h3 className="text-lg font-bold text-white">{'C\u1ea5u h\u00ecnh tr\u1ea3i nghi\u1ec7m \u0111\u1ecdc'}</h3>
+            <div>
+              <label className="block text-xs font-semibold text-gray-300 mb-3">\u0110\u1ed9 ph\u00e2n gi\u1ea3i \u1ea3nh khi \u0111\u1ecdc truy\u1ec7n tranh</label>
+              <ImageQualityPicker />
+              <p className="mt-2 text-[10.5px] text-gray-500">L\u01b0u ngay tr\u00ean tr\u00ecnh duy\u1ec7t n\u00e0y, kh\u00f4ng c\u1ea7n b\u1ea5m L\u01b0u.</p>
+            </div>
             <div>
               <label className="block text-xs font-semibold text-gray-300 mb-3">{'Giao di\u1ec7n n\u1ec1n (Theme)'}</label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
-                  { id: 'dark', name: 'T\u1ed1i ti\u00eau chu\u1ea9n', bg: 'bg-[#0f0f17]', text: 'text-white' },
+                  { id: 'dark', name: 'T\u1ed1i ti\u00eau chu\u1ea9n', bg: 'bg-[#0d0d15]', text: 'text-snow' },
                   { id: 'sepia', name: 'V\u00e0ng \u1ea5m (Sepia)', bg: 'bg-[#fbf0d9]', text: 'text-[#5f4b32]' },
-                  { id: 'light', name: 'S\u00e1ng', bg: 'bg-white', text: 'text-gray-900' },
-                  { id: 'midnight', name: 'Xanh \u0111\u00eam', bg: 'bg-[#0b0f19]', text: 'text-blue-100' },
+                  { id: 'light', name: 'S\u00e1ng', bg: 'bg-snow', text: 'text-ink' },
+                  { id: 'midnight', name: 'Xanh \u0111\u00eam', bg: 'bg-[#0b1020]', text: 'text-[#dbeafe]' },
                 ].map((t) => (
                   <button
                     key={t.id}
@@ -537,7 +543,7 @@ export default function UserProfilePage() {
             <button
               type="submit"
               disabled={isSaving}
-              className="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-sm font-semibold shadow-lg shadow-brand-500/25 flex items-center gap-2 transition disabled:opacity-50"
+              className="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow text-sm font-semibold shadow-lg shadow-brand-500/25 flex items-center gap-2 transition disabled:opacity-50"
             >
               <Save className="w-4 h-4" />
               {isSaving ? '\u0110ang l\u01b0u...' : 'L\u01b0u c\u1ea5u h\u00ecnh \u0111\u1ecdc'}
@@ -549,7 +555,7 @@ export default function UserProfilePage() {
       {/* Tab Content: Admin Role Assignment */}
       {isAdmin && activeTab === 'admin_roles' && (
         <div className="space-y-6">
-          <div className="glass-panel p-6 rounded-3xl border border-rose-500/30 bg-[#161220]/90 space-y-5">
+          <div className="glass-panel p-6 rounded-3xl border border-rose-500/30 bg-glass space-y-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -656,7 +662,7 @@ export default function UserProfilePage() {
                               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
                                 isUserMod
                                   ? 'bg-rose-600/30 hover:bg-rose-600/50 text-rose-300 border border-rose-500/40'
-                                  : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/20'
+                                  : 'bg-indigo-600 hover:bg-indigo-500 text-snow shadow-md shadow-indigo-600/20'
                               }`}
                             >
                               <ShieldAlert className="w-3.5 h-3.5" />

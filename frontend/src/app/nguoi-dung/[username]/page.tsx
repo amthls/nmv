@@ -134,7 +134,7 @@ export default function UserProfilePage() {
       <div className="min-h-[50vh] flex flex-col items-center justify-center p-4 text-center space-y-4">
         <AlertCircle className="w-12 h-12 text-brand-400" />
         <h2 className="text-xl font-bold text-white">Không tìm thấy người dùng này</h2>
-        <Link href="/" className="px-4 py-2 rounded-xl bg-brand-600 text-white text-xs font-semibold">
+        <Link href="/" className="px-4 py-2 rounded-xl bg-brand-600 text-snow text-xs font-semibold">
           Về trang chủ
         </Link>
       </div>
@@ -154,15 +154,15 @@ export default function UserProfilePage() {
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 pb-24">
 
       {/* Header */}
-      <div className="rounded-3xl overflow-hidden glass-panel border border-white/10 bg-[#12121e]/90 shadow-2xl">
-        <div className="h-36 sm:h-48 w-full relative bg-gradient-to-r from-brand-900/60 via-indigo-900/40 to-[#0A0A10]">
+      <div className="rounded-3xl overflow-hidden glass-panel border border-white/10 bg-glass shadow-2xl">
+        <div className="h-36 sm:h-48 w-full relative bg-gradient-to-r from-brand-900/60 via-indigo-900/40 to-surface">
           {profile.banner_url && (
             <SmartImage src={profile.banner_url} alt={profile.display_name || profile.username} className="w-full h-full object-cover" />
           )}
         </div>
 
         <div className="p-6 sm:p-8 pt-16 sm:pt-6 relative">
-          <div className="absolute -top-12 sm:-top-14 left-6 sm:left-8 w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden border-4 border-[#12121e] bg-gray-900 shadow-2xl">
+          <div className="absolute -top-12 sm:-top-14 left-6 sm:left-8 w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden border-4 border-surface-2 bg-gray-900 shadow-2xl">
             <SmartImage
               src={profile.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200'}
               alt={profile.display_name || profile.username}
@@ -213,7 +213,7 @@ export default function UserProfilePage() {
 
       {/* Moderation (admin/mod only; the server decides which actions are allowed) */}
       {mod && !isSelf && (
-        <div className="p-5 rounded-3xl glass-panel border border-rose-500/30 bg-[#161220]/90 space-y-3">
+        <div className="p-5 rounded-3xl glass-panel border border-rose-500/30 bg-glass space-y-3">
           <h2 className="text-xs font-bold text-rose-300 uppercase tracking-wider flex items-center gap-1.5">
             <Shield className="w-4 h-4" /> Quản trị tài khoản
           </h2>
@@ -237,17 +237,17 @@ export default function UserProfilePage() {
           {Object.values(mod.can).some(Boolean) ? (
             <div className="flex flex-wrap gap-2">
               {mod.can.ban && (
-                <button onClick={handleBan} disabled={isActing} className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white text-xs font-bold flex items-center gap-1.5 transition">
+                <button onClick={handleBan} disabled={isActing} className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-snow text-xs font-bold flex items-center gap-1.5 transition">
                   <Ban className="w-3.5 h-3.5" /> Khóa tài khoản
                 </button>
               )}
               {mod.can.unban && (
-                <button onClick={handleUnban} disabled={isActing} className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-xs font-bold flex items-center gap-1.5 transition">
+                <button onClick={handleUnban} disabled={isActing} className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-snow text-xs font-bold flex items-center gap-1.5 transition">
                   <Unlock className="w-3.5 h-3.5" /> Mở khóa
                 </button>
               )}
               {mod.can.grant_mod && (
-                <button onClick={() => handleRole('grant')} disabled={isActing} className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-xs font-bold flex items-center gap-1.5 transition">
+                <button onClick={() => handleRole('grant')} disabled={isActing} className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-snow text-xs font-bold flex items-center gap-1.5 transition">
                   <ShieldCheck className="w-3.5 h-3.5" /> Cấp quyền Mod
                 </button>
               )}
@@ -274,7 +274,7 @@ export default function UserProfilePage() {
           <h2 className="text-sm font-bold text-white flex items-center gap-2"><Users className="w-4 h-4 text-indigo-400" /> Nhóm dịch</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {profile.groups.map((g: any) => (
-              <Link key={g.slug} href={`/nhom-dich/${g.slug}`} className="p-3 rounded-2xl glass-panel border border-white/10 hover:border-brand-500/40 bg-[#12121e]/80 flex items-center gap-3 transition">
+              <Link key={g.slug} href={`/nhom-dich/${g.slug}`} className="p-3 rounded-2xl glass-panel border border-white/10 hover:border-brand-500/40 bg-glass flex items-center gap-3 transition">
                 <div className="w-10 h-10 rounded-xl overflow-hidden bg-gray-900 shrink-0">
                   <SmartImage src={g.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'} alt={g.name} className="w-full h-full object-cover" />
                 </div>

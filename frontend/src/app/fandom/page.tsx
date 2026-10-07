@@ -226,7 +226,7 @@ export default function FandomPage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       
       {/* 1. Header Banner */}
-      <div className="relative rounded-3xl overflow-hidden glass-panel border border-brand-500/20 p-6 sm:p-8 bg-gradient-to-r from-brand-900/30 via-indigo-900/20 to-[#0F0F17] shadow-xl">
+      <div className="relative rounded-3xl overflow-hidden glass-panel border border-brand-500/20 p-6 sm:p-8 bg-gradient-to-r from-brand-900/30 via-indigo-900/20 to-surface shadow-xl">
         <div className="relative flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/20 text-brand-300 border border-brand-500/30 text-xs font-bold">
@@ -242,7 +242,7 @@ export default function FandomPage() {
 
           <button
             onClick={handleOpenCreatePost}
-            className="px-6 py-3 rounded-2xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-bold text-xs shadow-xl shadow-brand-500/25 flex items-center gap-2 transition hover:scale-105 shrink-0"
+            className="px-6 py-3 rounded-2xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-snow font-bold text-xs shadow-xl shadow-brand-500/25 flex items-center gap-2 transition hover:scale-105 shrink-0"
           >
             <Plus className="w-4 h-4" />
             <span>Đăng Bài Viết Mới</span>
@@ -365,7 +365,7 @@ export default function FandomPage() {
           {/* Quick Trigger Post Box */}
           <div 
             onClick={handleOpenCreatePost}
-            className="p-4 rounded-3xl glass-panel border border-white/10 hover:border-brand-500/40 transition cursor-pointer flex items-center gap-3 bg-[#131322]/90 shadow-md group"
+            className="p-4 rounded-3xl glass-panel border border-white/10 hover:border-brand-500/40 transition cursor-pointer flex items-center gap-3 bg-glass shadow-md group"
           >
             <div className="w-9 h-9 rounded-full bg-brand-600/30 text-brand-300 border border-brand-500/30 flex items-center justify-center font-bold text-xs">
               {user?.display_name ? user.display_name.slice(0, 1).toUpperCase() : 'Bạn'}
@@ -373,7 +373,7 @@ export default function FandomPage() {
             <div className="flex-1 py-2 px-4 rounded-2xl bg-white/5 text-xs text-gray-400 group-hover:text-gray-300 transition">
               Bạn muốn chia sẻ cảm nhận, review hay thảo luận về bộ truyện nào...?
             </div>
-            <button className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs shadow-md shadow-brand-500/20">
+            <button className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow font-bold text-xs shadow-md shadow-brand-500/20">
               Đăng
             </button>
           </div>
@@ -422,7 +422,7 @@ export default function FandomPage() {
           )}
 
           {filterTab === 'pending' && isAdminOrMod && (
-            <div className="p-4 rounded-3xl bg-[#1c1424] border border-rose-500/30 space-y-3">
+            <div className="p-4 rounded-3xl bg-glass border border-rose-500/30 space-y-3">
               <div className="flex items-center justify-between text-xs font-semibold text-rose-300">
                 <span className="flex items-center gap-1.5">
                   <ShieldAlert className="w-4 h-4 text-rose-400" /> Hàng chờ duyệt bài đăng ({posts.length} bài)
@@ -451,7 +451,7 @@ export default function FandomPage() {
                       type="button"
                       onClick={handleBulkApprove}
                       disabled={selectedPostIds.length === 0 || isBulkProcessing}
-                      className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-emerald-600/20"
+                      className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-snow text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-emerald-600/20"
                     >
                       <CheckCircle2 className="w-3.5 h-3.5" />
                       <span>Duyệt ({selectedPostIds.length}) bài đã chọn</span>
@@ -461,7 +461,7 @@ export default function FandomPage() {
                       type="button"
                       onClick={handleBulkReject}
                       disabled={selectedPostIds.length === 0 || isBulkProcessing}
-                      className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-rose-600/20"
+                      className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-snow text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-rose-600/20"
                     >
                       <XCircle className="w-3.5 h-3.5" />
                       <span>Từ chối ({selectedPostIds.length}) bài</span>
@@ -500,7 +500,7 @@ export default function FandomPage() {
               </p>
               <button
                 onClick={handleOpenCreatePost}
-                className="px-5 py-2 rounded-xl bg-brand-600 text-white text-xs font-bold hover:bg-brand-500 transition"
+                className="px-5 py-2 rounded-xl bg-brand-600 text-snow text-xs font-bold hover:bg-brand-500 transition"
               >
                 Tạo bài viết ngay
               </button>
@@ -540,7 +540,7 @@ export default function FandomPage() {
         <aside className="lg:col-span-3 space-y-6">
           
           {/* Moderation Notice */}
-          <div className="glass-panel border border-white/10 rounded-3xl p-5 space-y-3 bg-[#131322]/80">
+          <div className="glass-panel border border-white/10 rounded-3xl p-5 space-y-3 bg-glass">
             <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-emerald-400" /> Kiểm Duyệt Bài Viết
             </h3>
@@ -554,7 +554,7 @@ export default function FandomPage() {
           </div>
 
           {/* Active Members Leaderboard */}
-          <div className="glass-panel border border-white/10 rounded-3xl p-5 space-y-3 bg-[#131322]/80">
+          <div className="glass-panel border border-white/10 rounded-3xl p-5 space-y-3 bg-glass">
             <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
               <Award className="w-4 h-4 text-amber-400" /> Thành Viên Sôi Nổi Tuần
             </h3>
@@ -568,7 +568,7 @@ export default function FandomPage() {
                 <div key={idx} className="flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2.5">
                     <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                      idx === 0 ? 'bg-amber-500 text-black' : idx === 1 ? 'bg-gray-400 text-black' : 'bg-amber-800 text-white'
+                      idx === 0 ? 'bg-amber-500 text-ink' : idx === 1 ? 'bg-gray-400 text-black' : 'bg-amber-800 text-snow'
                     }`}>
                       {idx + 1}
                     </span>

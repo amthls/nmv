@@ -30,7 +30,7 @@ export default function AuthModal() {
     register 
   } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'login' | 'register' | 'demo'>('login');
+  const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
   
   // Login Form
   const [loginIdentifier, setLoginIdentifier] = useState('');
@@ -45,12 +45,6 @@ export default function AuthModal() {
   const [regConfirmPassword, setRegConfirmPassword] = useState('');
   const [showRegPassword, setShowRegPassword] = useState(false);
 
-  // Demo Accounts
-  const [demoAccounts, setDemoAccounts] = useState<any[]>([]);
-  const [demoRoleFilter, setDemoRoleFilter] = useState<string>('all');
-  const [isDemoLoading, setIsDemoLoading] = useState(false);
-  // The demo tab and the "default password" hint only exist when the server has demo accounts enabled
-  const [demoEnabled, setDemoEnabled] = useState(false);
 
   // Form states
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -62,27 +56,8 @@ export default function AuthModal() {
       setActiveTab(authModalTab);
       setErrorMsg(null);
       setSuccessMsg(null);
-      fetchDemoAccounts();
     }
   }, [isAuthModalOpen, authModalTab]);
-
-  const fetchDemoAccounts = async () => {
-    setIsDemoLoading(true);
-    try {
-      const res = await fetch(`${API_BASE_URL}/auth/accounts`);
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success) {
-          setDemoAccounts(json.data || []);
-          setDemoEnabled(!json.disabled && (json.data || []).length > 0);
-        }
-      }
-    } catch (e) {
-      console.error('Failed to load demo accounts:', e);
-    } finally {
-      setIsDemoLoading(false);
-    }
-  };
 
   if (!isAuthModalOpen) return null;
 
@@ -144,40 +119,10 @@ export default function AuthModal() {
     }
   };
 
-  const handleQuickLogin = async (username: string) => {
-    setIsSubmitting(true);
-    setErrorMsg(null);
-    const res = await login(username, 'password123');
-    setIsSubmitting(false);
-    if (!res.success) {
-      setErrorMsg(res.message || 'Đăng nhập nhanh thất bại.');
-    }
-  };
-
-  const filteredDemoAccounts = demoAccounts.filter((acc) => {
-    if (demoRoleFilter === 'all') return true;
-    return acc.roles?.includes(demoRoleFilter);
-  });
-
-  const getRoleBadgeClass = (role: string) => {
-    switch (role) {
-      case 'admin':
-        return 'bg-red-500/20 text-red-400 border border-red-500/30';
-      case 'mod':
-        return 'bg-purple-500/20 text-purple-400 border border-purple-500/30';
-      case 'translator':
-        return 'bg-blue-500/20 text-blue-400 border border-blue-500/30';
-      case 'author':
-        return 'bg-amber-500/20 text-amber-400 border border-amber-500/30';
-      default:
-        return 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
-    }
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
       <div 
-        className="relative w-full max-w-xl max-h-[92vh] overflow-y-auto rounded-2xl bg-[#141420] border border-white/10 shadow-2xl text-white p-6 sm:p-8"
+        className="relative w-full max-w-xl max-h-[92vh] overflow-y-auto rounded-2xl bg-glass border border-white/10 shadow-2xl text-white p-6 sm:p-8"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Close Button */}
@@ -196,7 +141,6 @@ export default function AuthModal() {
           <h3 className="text-2xl font-bold bg-gradient-to-r from-white via-gray-100 to-brand-300 bg-clip-text text-transparent">
             {activeTab === 'login' && 'Đăng Nhập NovelHub'}
             {activeTab === 'register' && 'Tạo Tài Khoản Mới'}
-            {activeTab === 'demo' && 'Đăng Nhập Nhanh Theo Vai Trò'}
           </h3>
           <p className="text-xs text-gray-400 mt-1">
             Bảo mật thông tin cá nhân, đồng bộ lịch sử đọc & bookmark trên mọi thiết bị.
@@ -209,7 +153,7 @@ export default function AuthModal() {
             onClick={() => { setActiveTab('login'); setErrorMsg(null); }}
             className={`flex-1 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
               activeTab === 'login'
-                ? 'bg-brand-600 text-white shadow-md'
+                ? 'bg-brand-600 text-snow shadow-md'
                 : 'text-gray-400 hover:text-white'
             }`}
           >
@@ -220,26 +164,13 @@ export default function AuthModal() {
             onClick={() => { setActiveTab('register'); setErrorMsg(null); }}
             className={`flex-1 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
               activeTab === 'register'
-                ? 'bg-brand-600 text-white shadow-md'
+                ? 'bg-brand-600 text-snow shadow-md'
                 : 'text-gray-400 hover:text-white'
             }`}
           >
             <UserPlus className="w-4 h-4" />
             Đăng ký
           </button>
-          {demoEnabled && (
-          <button
-            onClick={() => { setActiveTab('demo'); setErrorMsg(null); }}
-            className={`flex-1 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
-              activeTab === 'demo'
-                ? 'bg-gradient-to-r from-indigo-600 to-brand-600 text-white shadow-md'
-                : 'text-brand-400 hover:text-brand-300'
-            }`}
-          >
-            <Sparkles className="w-4 h-4" />
-            Chọn Vai Trò (Demo)
-          </button>
-          )}
         </div>
 
         {/* Error / Success Feedback */}
@@ -282,11 +213,6 @@ export default function AuthModal() {
                 <label className="text-xs font-semibold text-gray-300">
                   Mật khẩu
                 </label>
-                {demoEnabled && (
-                  <span className="text-[11px] text-brand-400 hover:underline cursor-pointer" onClick={() => setActiveTab('demo')}>
-                    Mật khẩu mặc định: password123
-                  </span>
-                )}
               </div>
               <div className="relative">
                 <input
@@ -311,7 +237,7 @@ export default function AuthModal() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full h-11 mt-2 rounded-xl bg-gradient-to-r from-brand-600 via-indigo-600 to-brand-500 hover:from-brand-500 hover:to-indigo-500 text-white font-semibold text-sm shadow-lg shadow-brand-500/25 flex items-center justify-center gap-2 transition disabled:opacity-50"
+              className="w-full h-11 mt-2 rounded-xl bg-gradient-to-r from-brand-600 via-indigo-600 to-brand-500 hover:from-brand-500 hover:to-indigo-500 text-snow font-semibold text-sm shadow-lg shadow-brand-500/25 flex items-center justify-center gap-2 transition disabled:opacity-50"
             >
               {isSubmitting ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -434,7 +360,7 @@ export default function AuthModal() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full h-11 mt-3 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-semibold text-sm shadow-lg shadow-brand-500/25 flex items-center justify-center gap-2 transition disabled:opacity-50"
+              className="w-full h-11 mt-3 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-snow font-semibold text-sm shadow-lg shadow-brand-500/25 flex items-center justify-center gap-2 transition disabled:opacity-50"
             >
               {isSubmitting ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -461,88 +387,6 @@ export default function AuthModal() {
           </form>
         )}
 
-        {/* TAB 3: DEMO ROLES QUICK LOGIN (Mỗi Role có >= 2 tài khoản) */}
-        {activeTab === 'demo' && (
-          <div className="space-y-4">
-            <div className="p-3 rounded-xl bg-brand-500/10 border border-brand-500/20 text-xs text-brand-300 flex items-start gap-2.5">
-              <ShieldCheck className="w-4 h-4 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="font-semibold">Đa dạng tài khoản theo Role (Mật khẩu chung: <code className="bg-brand-900/50 px-1 py-0.5 rounded text-white">password123</code>)</p>
-                <p className="text-[11px] text-gray-400 mt-0.5">
-                  Bấm <strong className="text-white">"Đăng nhập ngay"</strong> vào bất kỳ tài khoản nào bên dưới để trải nghiệm quyền hạn tương ứng.
-                </p>
-              </div>
-            </div>
-
-            {/* Role Filter Pills */}
-            <div className="flex flex-wrap gap-1.5 pb-1">
-              {[
-                { id: 'all', label: 'Tất cả' },
-                { id: 'admin', label: 'Admin (2 accs)' },
-                { id: 'mod', label: 'Mod (3 accs)' },
-                { id: 'translator', label: 'Translator (4 accs)' },
-                { id: 'author', label: 'Tác giả (3 accs)' },
-                { id: 'reader', label: 'Độc giả (4+ accs)' },
-              ].map((pill) => (
-                <button
-                  key={pill.id}
-                  onClick={() => setDemoRoleFilter(pill.id)}
-                  className={`text-[11px] px-2.5 py-1 rounded-lg font-medium transition ${
-                    demoRoleFilter === pill.id
-                      ? 'bg-brand-600 text-white'
-                      : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
-                  }`}
-                >
-                  {pill.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Accounts Grid */}
-            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-              {filteredDemoAccounts.map((acc) => (
-                <div
-                  key={acc.id}
-                  className="p-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-brand-500/30 transition flex items-center justify-between gap-3 group"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center text-white text-xs font-bold ring-1 ring-white/20 flex-shrink-0 overflow-hidden">
-                      {acc.username.slice(0, 2).toUpperCase()}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-xs font-bold text-white truncate">
-                          {acc.display_name || acc.username}
-                        </span>
-                        <span className="text-[10px] text-gray-400 font-mono">
-                          @{acc.username}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1 mt-1">
-                        {acc.roles?.map((r: string) => (
-                          <span
-                            key={r}
-                            className={`text-[9px] px-1.5 py-0.2 rounded font-semibold uppercase ${getRoleBadgeClass(r)}`}
-                          >
-                            {r}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => handleQuickLogin(acc.username)}
-                    disabled={isSubmitting}
-                    className="px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold shadow transition whitespace-nowrap group-hover:scale-105 flex-shrink-0"
-                  >
-                    Đăng nhập ngay
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

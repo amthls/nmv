@@ -211,7 +211,7 @@ export default function ReadingHistoryPage() {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 pb-24">
       
       {/* 1. Header Banner */}
-      <div className="rounded-3xl p-6 sm:p-8 glass-panel border border-brand-500/20 bg-gradient-to-r from-brand-950/60 via-[#161626] to-[#0F0F17] bg-[#141420] shadow-xl">
+      <div className="rounded-3xl p-6 sm:p-8 glass-panel border border-brand-500/20 bg-gradient-to-r from-brand-950/60 via-surface-2 to-surface bg-glass shadow-xl">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/20 text-brand-300 border border-brand-500/30 text-xs font-bold">
@@ -247,7 +247,7 @@ export default function ReadingHistoryPage() {
           </div>
           <button
             onClick={() => openAuthModal('login')}
-            className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold shrink-0 transition flex items-center gap-1.5 shadow-md"
+            className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-ink font-bold shrink-0 transition flex items-center gap-1.5 shadow-md"
           >
             <LogIn className="w-3.5 h-3.5" /> Đăng nhập ngay
           </button>
@@ -270,7 +270,7 @@ export default function ReadingHistoryPage() {
             onClick={() => setTypeFilter('all')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
               typeFilter === 'all'
-                ? 'bg-brand-600 text-white shadow-md shadow-brand-500/25'
+                ? 'bg-brand-600 text-snow shadow-md shadow-brand-500/25'
                 : 'text-gray-400 hover:text-white'
             }`}
           >
@@ -280,7 +280,7 @@ export default function ReadingHistoryPage() {
             onClick={() => setTypeFilter('novel')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
               typeFilter === 'novel'
-                ? 'bg-brand-600 text-white shadow-md shadow-brand-500/25'
+                ? 'bg-brand-600 text-snow shadow-md shadow-brand-500/25'
                 : 'text-gray-400 hover:text-white'
             }`}
           >
@@ -290,7 +290,7 @@ export default function ReadingHistoryPage() {
             onClick={() => setTypeFilter('manga')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
               typeFilter === 'manga'
-                ? 'bg-brand-600 text-white shadow-md shadow-brand-500/25'
+                ? 'bg-brand-600 text-snow shadow-md shadow-brand-500/25'
                 : 'text-gray-400 hover:text-white'
             }`}
           >
@@ -327,7 +327,7 @@ export default function ReadingHistoryPage() {
           ))}
         </div>
       ) : filteredHistory.length === 0 ? (
-        <div className="text-center py-20 glass-panel rounded-3xl border border-white/10 bg-[#12121e] space-y-4">
+        <div className="text-center py-20 glass-panel rounded-3xl border border-white/10 bg-glass space-y-4">
           <div className="w-16 h-16 rounded-full bg-brand-500/10 text-brand-400 flex items-center justify-center mx-auto">
             <History className="w-8 h-8" />
           </div>
@@ -349,7 +349,7 @@ export default function ReadingHistoryPage() {
           ) : (
             <Link
               href="/kham-pha"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold shadow-lg shadow-brand-500/25 transition"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow text-xs font-semibold shadow-lg shadow-brand-500/25 transition"
             >
               <Compass className="w-4 h-4" />
               Khám phá truyện mới
@@ -378,7 +378,7 @@ export default function ReadingHistoryPage() {
             return (
               <div
                 key={item.id || item.story_id}
-                className="group p-4 sm:p-5 rounded-3xl glass-panel border border-white/10 bg-[#141420] hover:border-brand-500/30 transition duration-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                className="group p-4 sm:p-5 rounded-3xl glass-panel border border-white/10 bg-glass hover:border-brand-500/30 transition duration-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
               >
                 {/* Left: Cover + Meta Info */}
                 <div className="flex items-start gap-4 min-w-0 flex-1">
@@ -472,7 +472,7 @@ export default function ReadingHistoryPage() {
 
                   <Link
                     href={readChapterHref}
-                    className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold shadow-md shadow-brand-500/25 transition flex items-center justify-center gap-1.5"
+                    className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow text-xs font-bold shadow-md shadow-brand-500/25 transition flex items-center justify-center gap-1.5"
                   >
                     Đọc tiếp
                     <ArrowRight className="w-3.5 h-3.5" />

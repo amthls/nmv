@@ -12,6 +12,7 @@
     "@ckeditor/ckeditor5-react": "^11.2.0",
     "ckeditor5": "^48.5.1",
     "clsx": "^2.1.1",
+    "fflate": "^0.8.2",
     "lucide-react": "^0.460.0",
     "next": "^14.2.18",
     "react": "^18.3.1",

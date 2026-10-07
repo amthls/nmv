@@ -162,6 +162,32 @@ export default function StoryDetailPage() {
     )
   );
   const canManage = story?.can_manage ?? (hasRole('admin', 'mod') || isOwner);
+  const [isReviewing, setIsReviewing] = useState(false);
+
+  // Group story waiting for the group's leader/vice leader
+  const handleReviewStory = async (approve: boolean) => {
+    if (!story || isReviewing) return;
+    let reason: string | null = null;
+    if (!approve) {
+      reason = prompt('Lý do từ chối (không bắt buộc):');
+      if (reason === null) return;
+    }
+    setIsReviewing(true);
+    try {
+      const res = await authFetch(`${API_BASE_URL}/stories/${story.id}/${approve ? 'approve' : 'reject'}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason }),
+      });
+      const json = await res.json();
+      alert(json.message || (res.ok ? 'Đã xử lý.' : 'Thao tác thất bại.'));
+      if (res.ok && json.success) fetchStory();
+    } catch (err: any) {
+      alert('Lỗi: ' + err.message);
+    } finally {
+      setIsReviewing(false);
+    }
+  };
 
   const handleDeleteStory = async () => {
     if (!story || isDeleting) return;
@@ -352,7 +378,7 @@ export default function StoryDetailPage() {
       <div className="max-w-4xl mx-auto px-4 py-20 text-center space-y-4">
         <AlertCircle className="w-12 h-12 text-brand-400 mx-auto" />
         <h2 className="text-xl font-bold text-white">Không tìm thấy bộ truyện này</h2>
-        <Link href="/kham-pha" className="inline-block px-4 py-2 rounded-xl bg-brand-600 text-white text-xs font-semibold">
+        <Link href="/kham-pha" className="inline-block px-4 py-2 rounded-xl bg-brand-600 text-snow text-xs font-semibold">
           Quay lại trang Khám Phá
         </Link>
       </div>
@@ -365,18 +391,22 @@ export default function StoryDetailPage() {
   return (
     <div className="min-h-screen pb-20">
       
-      {/* 1. Blur Hero Banner Header */}
-      <div className="relative overflow-hidden border-b border-white/10 bg-[#0c0c16]">
-        {/* Background Blur Image */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20 filter blur-3xl scale-110">
-          <SmartImage 
-            src={story.cover_image_url} 
-            alt="Blur background"
-            className="w-full h-full object-cover"
+      {/* 1. Hero header: sharp story art behind everything (also behind the navbar), like the home banner */}
+      <div className="relative isolate overflow-hidden -mt-16 pt-16">
+        <div className="pointer-events-none absolute inset-0 -z-10">
+          <SmartImage
+            src={story.banner_image_url || story.cover_image_url}
+            alt=""
+            aria-hidden
+            className="w-full h-full object-cover object-[50%_25%]"
           />
+          {/* dark wash only behind the text, a short fade into the page at the bottom */}
+          <div className="absolute inset-0 bg-[linear-gradient(68deg,rgba(0,0,0,0.72)_30%,rgba(0,0,0,0.15)_100%)]" />
+          <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-b from-transparent to-surface" />
         </div>
 
-        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+        {/* header content always uses the dark palette: white text on the darkened art */}
+        <div className="dark relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-16 md:pt-12 md:pb-20 [text-shadow:0_1px_8px_rgba(0,0,0,0.45)]">
           
           {/* Breadcrumbs */}
           <div className="flex items-center gap-2 text-xs text-gray-400 mb-6">
@@ -386,6 +416,46 @@ export default function StoryDetailPage() {
             <ChevronRight className="w-3.5 h-3.5 text-gray-600" />
             <span className="text-gray-200 font-medium truncate max-w-xs">{story.title}</span>
           </div>
+
+          {story.approval_status && story.approval_status !== 'approved' && (
+            <div className={`mb-6 p-4 rounded-2xl border text-xs flex flex-col sm:flex-row sm:items-center gap-3 [text-shadow:none] ${
+              story.approval_status === 'rejected'
+                ? 'bg-rose-500/20 border-rose-500/30 text-rose-200'
+                : 'bg-amber-500/20 border-amber-500/30 text-amber-100'
+            }`}>
+              <div className="flex-1">
+                {story.approval_status === 'rejected' ? (
+                  <>
+                    <b>Truyện không được nhóm duyệt.</b>
+                    {story.rejection_reason && <> Lý do: {story.rejection_reason}.</>} Bạn có thể sửa thông tin truyện để gửi duyệt lại.
+                  </>
+                ) : (
+                  <>
+                    <b>Truyện đang chờ duyệt.</b> Chỉ hiển thị công khai sau khi Trưởng nhóm hoặc Phó nhóm{' '}
+                    {story.group_name ? <>của <b>{story.group_name}</b> </> : ''}duyệt.
+                  </>
+                )}
+              </div>
+              {story.can_review && story.approval_status === 'pending' && (
+                <div className="flex gap-2 shrink-0">
+                  <button
+                    onClick={() => handleReviewStory(true)}
+                    disabled={isReviewing}
+                    className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold disabled:opacity-50"
+                  >
+                    Duyệt
+                  </button>
+                  <button
+                    onClick={() => handleReviewStory(false)}
+                    disabled={isReviewing}
+                    className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold disabled:opacity-50"
+                  >
+                    Từ chối
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Main Story Hero Grid */}
           <div className="flex flex-col md:flex-row gap-8 items-start">
@@ -397,7 +467,7 @@ export default function StoryDetailPage() {
                 alt={story.title}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
               />
-              <span className={`absolute top-3 left-3 px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider text-white backdrop-blur-md shadow-md ${
+              <span className={`absolute top-3 left-3 px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider text-snow backdrop-blur-md shadow-md ${
                 isNovel ? 'bg-indigo-600/90' : 'bg-rose-600/90'
               }`}>
                 {isNovel ? 'Light Novel' : 'Manga'}
@@ -439,6 +509,18 @@ export default function StoryDetailPage() {
                 <div className="px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] uppercase font-semibold text-gray-400">
                   {story.status === 'ongoing' ? 'Đang tiến hành' : 'Hoàn thành'}
                 </div>
+
+                {/* Imported stories credit where they came from (scripts/crawler.py) */}
+                {story.source_url && (
+                  <a
+                    href={story.source_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-semibold text-gray-400 hover:text-white transition"
+                  >
+                    Nguồn: {({ mangadex: 'MangaDex', toptruyen: 'TopTruyen', nettruyen: 'NetTruyen', valvrare: 'Valvrareteam', truyenyy: 'TruyenYY' } as Record<string, string>)[story.source_name] || story.source_name} ↗
+                  </a>
+                )}
 
                 {canManage && (
                   <div className="px-2.5 py-1 rounded-full bg-amber-500/20 border border-amber-500/40 text-[11px] font-bold text-amber-300 flex items-center gap-1">
@@ -502,7 +584,7 @@ export default function StoryDetailPage() {
                 {lastReadChapter ? (
                   <Link
                     href={`/truyen/${story.slug}/${lastReadChapter.slug}`}
-                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-lg shadow-emerald-500/25 flex items-center gap-2 transition-all hover:scale-105"
+                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-snow font-bold text-xs shadow-lg shadow-emerald-500/25 flex items-center gap-2 transition-all hover:scale-105"
                   >
                     <BookOpen className="w-4 h-4" />
                     <span>
@@ -514,7 +596,7 @@ export default function StoryDetailPage() {
                 {story.first_chapter ? (
                   <Link
                     href={`/truyen/${story.slug}/${story.first_chapter.slug}`}
-                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-bold text-xs shadow-lg shadow-brand-500/25 flex items-center gap-2 transition-all hover:scale-105"
+                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-snow font-bold text-xs shadow-lg shadow-brand-500/25 flex items-center gap-2 transition-all hover:scale-105"
                   >
                     <BookOpen className="w-4 h-4" />
                     <span>Đọc từ đầu</span>
@@ -622,7 +704,7 @@ export default function StoryDetailPage() {
               {canManage && (
                 <Link
                   href={`/dang-chuong?story_id=${story.id}`}
-                  className="px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold transition flex items-center gap-1"
+                  className="px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow text-xs font-bold transition flex items-center gap-1"
                 >
                   <PlusCircle className="w-3.5 h-3.5" />
                   <span>Đăng chương</span>
@@ -737,7 +819,7 @@ export default function StoryDetailPage() {
       {/* 4. Rating Modal */}
       {isRatingOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-sm bg-[#161626] border border-white/10 rounded-2xl p-6 shadow-2xl space-y-4">
+          <div className="w-full max-w-sm bg-glass border border-white/10 rounded-2xl p-6 shadow-2xl space-y-4">
             <h3 className="text-base font-bold text-white text-center">Đánh Giá Bộ Truyện</h3>
             <p className="text-xs text-gray-400 text-center">Chọn số điểm từ 1 đến 10 cho bộ truyện này</p>
 
@@ -765,7 +847,7 @@ export default function StoryDetailPage() {
               </button>
               <button
                 onClick={handleRate}
-                className="flex-1 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold shadow-md transition"
+                className="flex-1 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow text-xs font-semibold shadow-md transition"
               >
                 Gửi Đánh Giá
               </button>

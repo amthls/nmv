@@ -2,143 +2,97 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Star, Eye, BookOpen, Heart, User, ShieldCheck } from 'lucide-react';
-import { Story } from './StoryCardGrid';
+import { Star, Eye, BookOpen, Heart } from 'lucide-react';
+import { Story, formatCount, formatRating, formatTimeAgo } from './StoryCardGrid';
 import SmartImage from '@/components/common/SmartImage';
 import { stripHtml } from '@/lib/richText';
 
+const STATUS_LABEL: Record<Story['status'], string> = {
+  ongoing: 'Đang tiến hành',
+  completed: 'Hoàn thành',
+  hiatus: 'Tạm ngưng',
+  dropped: 'Ngừng',
+};
+
+const STATUS_DOT: Record<Story['status'], string> = {
+  ongoing: 'bg-emerald-400',
+  completed: 'bg-sky-400',
+  hiatus: 'bg-amber-400',
+  dropped: 'bg-rose-400',
+};
+
+/**
+ * Wide list card in the same style as the home banner: the story art fills the card and stays
+ * sharp, a dark wash sits only behind the text, cover on the left. The whole card opens the story.
+ */
 export default function StoryCardList({ story }: { story: Story }) {
   const isNovel = story.story_type === 'novel';
-  const rating = typeof story.rating_avg === 'number' ? story.rating_avg.toFixed(1) : parseFloat(story.rating_avg || '0').toFixed(1);
-
-  const statusLabel = {
-    ongoing: 'Đang tiến hành',
-    completed: 'Đã hoàn thành',
-    hiatus: 'Tạm ngưng',
-    dropped: 'Ngừng',
-  }[story.status] || 'Đang tiến hành';
-
-  const statusColor = {
-    ongoing: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
-    completed: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
-    hiatus: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
-    dropped: 'text-rose-400 bg-rose-500/10 border-rose-500/20',
-  }[story.status];
+  const backdrop = story.illustrations?.[0] || story.banner_image_url || story.cover_image_url;
 
   return (
-    <div className="group relative flex flex-col sm:flex-row gap-4 p-4 rounded-2xl glass-panel border border-white/10 hover:border-brand-500/30 transition-all duration-300">
-      {/* Thumbnail */}
-      <Link href={`/truyen/${story.slug}`} className="sm:w-36 h-48 sm:h-auto shrink-0 relative overflow-hidden rounded-xl bg-gray-900 block">
-        <SmartImage
-          src={story.cover_image_url}
-          alt={story.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-        />
-        <span className={`absolute top-2 left-2 px-2 py-0.5 rounded text-[10px] font-bold text-white uppercase backdrop-blur-md ${
-          isNovel ? 'bg-indigo-600/90' : 'bg-rose-600/90'
-        }`}>
-          {isNovel ? 'Novel' : 'Manga'}
-        </span>
-      </Link>
+    <Link
+      href={`/truyen/${story.slug}`}
+      title={story.title}
+      className="group relative isolate block overflow-hidden rounded-[4px] bg-[#111] shadow-[0_10px_30px_-18px_rgba(10,40,90,0.55)] transition-shadow duration-500 hover:shadow-[0_22px_44px_-20px_rgba(22,114,214,0.55)]"
+    >
+      {/* Backdrop: sharp story art */}
+      <SmartImage
+        src={backdrop}
+        alt=""
+        aria-hidden
+        className="absolute inset-0 -z-10 w-full h-full object-cover object-[50%_30%] transition-transform duration-[1200ms] ease-silk group-hover:scale-105"
+      />
+      <div className="absolute inset-0 -z-10 bg-[linear-gradient(68deg,rgba(0,0,0,0.74)_32%,rgba(0,0,0,0.14)_100%)]" />
 
-      {/* Details */}
-      <div className="flex-1 flex flex-col justify-between gap-3">
-        <div className="space-y-2">
-          {/* Header Info */}
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${statusColor}`}>
-                {statusLabel}
-              </span>
-              {story.original_language && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-gray-400 uppercase">
-                  {story.original_language}
-                </span>
-              )}
-            </div>
+      {/* Content always uses the dark palette: white text on the darkened art */}
+      <div className="dark flex gap-4 sm:gap-5 p-3 sm:p-4 [text-shadow:0_1px_8px_rgba(0,0,0,0.45)]">
+        <div className="relative w-[92px] sm:w-[128px] shrink-0 aspect-[2/3] overflow-hidden rounded-[3px] shadow-[0_14px_30px_-12px_rgba(0,0,0,0.7)]">
+          <SmartImage src={story.cover_image_url} alt={story.title} className="w-full h-full object-cover transition-transform duration-700 ease-silk group-hover:scale-105" />
+          <span className={`absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-[2px] text-[9px] font-extrabold uppercase tracking-wider text-snow [text-shadow:none] ${
+            isNovel ? 'bg-sky-600/90' : 'bg-rose-600/90'
+          }`}>
+            {isNovel ? 'Novel' : 'Manga'}
+          </span>
+        </div>
 
-            <div className="flex items-center gap-3 text-xs text-gray-400 font-medium">
-              <span className="flex items-center gap-1 text-amber-300">
-                <Star className="w-3.5 h-3.5 fill-amber-300" />
-                {rating} ({story.rating_count || 0})
-              </span>
-              <span className="flex items-center gap-1">
-                <Eye className="w-3.5 h-3.5 text-cyan-400" />
-                {typeof story.total_views === 'number' ? story.total_views.toLocaleString() : story.total_views}
-              </span>
-              <span className="flex items-center gap-1">
-                <Heart className="w-3.5 h-3.5 text-rose-400" />
-                {typeof story.total_favorites === 'number' ? story.total_favorites.toLocaleString() : story.total_favorites}
-              </span>
-            </div>
+        <div className="flex-1 min-w-0 flex flex-col">
+          <div className="flex items-center gap-2 text-[11px] text-gray-300">
+            <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[story.status] || STATUS_DOT.ongoing}`} />
+            <span>{STATUS_LABEL[story.status] || STATUS_LABEL.ongoing}</span>
+            {story.original_language && <span className="uppercase text-gray-400">· {story.original_language}</span>}
+            {story.last_chapter_at && <span className="ml-auto text-gray-400 hidden sm:inline">{formatTimeAgo(story.last_chapter_at)}</span>}
           </div>
 
-          {/* Title */}
-          <Link href={`/truyen/${story.slug}`}>
-            <h3 className="text-base font-bold text-white group-hover:text-brand-400 transition-colors line-clamp-1">
-              {story.title}
-            </h3>
-          </Link>
+          <h3 className="mt-1 text-base sm:text-2xl font-bold leading-tight tracking-tight text-white line-clamp-2 group-hover:text-brand-400 transition-colors">
+            {story.title}
+          </h3>
 
-          {/* Meta Line */}
-          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-400">
-            <span className="flex items-center gap-1">
-              <User className="w-3 h-3 text-gray-500" />
-              {story.author_name || 'Chưa rõ tác giả'}
-            </span>
-            {story.group_name && (
-              <span className="flex items-center gap-1 text-brand-300">
-                <ShieldCheck className="w-3 h-3 text-brand-400" />
-                {story.group_name}
-              </span>
-            )}
-            <span className="flex items-center gap-1">
-              <BookOpen className="w-3 h-3 text-gray-500" />
-              {story.total_chapters || 0} chương
-            </span>
-          </div>
-
-          {/* Synopsis */}
-          <p className="text-xs text-gray-400 line-clamp-2 leading-relaxed">
-            {stripHtml(story.synopsis) || 'Chưa có tóm tắt cho bộ truyện này.'}
-          </p>
-
-          {/* Tags */}
           {story.tags && story.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 pt-1">
-              {story.tags.map((tag) => (
-                <span key={tag.id} className="text-[10px] px-2 py-0.5 rounded-md bg-white/5 hover:bg-white/10 text-gray-300 border border-white/5 transition">
+            <div className="mt-2 flex flex-wrap gap-1 max-h-[21px] sm:max-h-[44px] overflow-hidden">
+              {story.tags.slice(0, 8).map((tag) => (
+                <span key={tag.id} className="px-1.5 py-[3px] rounded-[3px] bg-black/45 backdrop-blur-sm text-[10px] font-bold uppercase tracking-wide text-gray-200 [text-shadow:none]">
                   {tag.name}
                 </span>
               ))}
             </div>
           )}
-        </div>
 
-        {/* Latest chapter bar */}
-        <div className="pt-2.5 border-t border-white/5 flex items-center justify-between text-xs">
-          {story.latest_chapter ? (
-            <div className="flex items-center gap-2 text-gray-300 truncate">
-              <span className="text-[11px] text-brand-400 font-semibold shrink-0">Chương mới nhất:</span>
-              <Link 
-                href={`/truyen/${story.slug}/${story.latest_chapter.slug}`}
-                className="truncate hover:text-brand-400 transition font-medium"
-              >
-                {story.latest_chapter.title}
-              </Link>
-            </div>
-          ) : (
-            <span className="text-gray-500 italic text-[11px]">Đang cập nhật chương mới...</span>
-          )}
+          <p className="mt-2 hidden sm:block text-[13px] leading-relaxed text-gray-300 line-clamp-2 max-w-3xl">
+            {stripHtml(story.synopsis) || 'Chưa có tóm tắt cho bộ truyện này.'}
+          </p>
 
-          <Link
-            href={`/truyen/${story.slug}`}
-            className="px-3 py-1 rounded-lg bg-brand-600 hover:bg-brand-500 text-white font-medium text-xs shrink-0 transition"
-          >
-            Đọc truyện
-          </Link>
+          <div className="mt-auto pt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-300">
+            <span className="italic font-medium text-white truncate max-w-[45%] pr-1">{story.author_name || 'Chưa rõ tác giả'}</span>
+            <span className="flex items-center gap-1 font-semibold text-amber-400"><Star className="w-3.5 h-3.5 fill-current" />{formatRating(story.rating_avg)}</span>
+            <span className="flex items-center gap-1"><Eye className="w-3.5 h-3.5" />{formatCount(story.total_views)}</span>
+            <span className="hidden sm:flex items-center gap-1"><Heart className="w-3.5 h-3.5" />{formatCount(story.total_favorites)}</span>
+            <span className="flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" />{story.total_chapters || 0} chương</span>
+            {story.latest_chapter && (
+              <span className="hidden md:inline ml-auto truncate max-w-[35%] text-brand-300">{story.latest_chapter.title}</span>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }

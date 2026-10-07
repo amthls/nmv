@@ -47,6 +47,13 @@ export default function QuickActionModal({ isOpen, onClose }: QuickActionModalPr
       color: 'from-amber-500/20 to-amber-600/10 text-amber-400 border-amber-500/30',
     },
     {
+      icon: FileText,
+      title: 'Đăng truyện tranh',
+      desc: 'Kéo thả cả chương: ảnh, thư mục, ZIP/CBZ',
+      href: '/dang-truyen-tranh',
+      color: 'from-rose-500/20 to-rose-600/10 text-rose-400 border-rose-500/30',
+    },
+    {
       icon: MessageSquare,
       title: 'Fandom / Diễn đàn',
       desc: 'Đăng bài viết, chia sẻ ảnh từ máy tính, thảo luận',
@@ -72,7 +79,7 @@ export default function QuickActionModal({ isOpen, onClose }: QuickActionModalPr
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
       <div 
-        className="relative w-full max-w-2xl bg-[#141420] border border-white/10 rounded-2xl p-6 shadow-2xl overflow-hidden"
+        className="relative w-full max-w-2xl bg-glass border border-white/10 rounded-2xl p-6 shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

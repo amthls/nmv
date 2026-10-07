@@ -69,7 +69,7 @@ export default function FloatingReaderBar({
         isVisible ? 'translate-y-0 opacity-100' : 'translate-y-16 opacity-0'
       }`}
     >
-      <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-[#11111d]/90 hover:bg-[#11111d]/95 backdrop-blur-xl border border-white/15 shadow-2xl shadow-black/80 ring-1 ring-white/5 transition-all">
+      <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-surface/90 hover:bg-surface/95 backdrop-blur-xl border border-white/15 shadow-2xl shadow-black/80 ring-1 ring-white/5 transition-all">
         
         {/* 1. Nút Chương Trước */}
         <button

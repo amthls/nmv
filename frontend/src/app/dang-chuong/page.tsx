@@ -418,7 +418,7 @@ function ChapterEditorContent() {
         </p>
         <button
           onClick={() => openAuthModal('login')}
-          className="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold text-sm shadow-lg shadow-brand-500/25 transition flex items-center justify-center gap-2 mx-auto"
+          className="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow font-semibold text-sm shadow-lg shadow-brand-500/25 transition flex items-center justify-center gap-2 mx-auto"
         >
           <LogIn className="w-4 h-4" />
           Đăng nhập ngay
@@ -442,7 +442,7 @@ function ChapterEditorContent() {
       </div>
 
       {/* Header */}
-      <div className="rounded-3xl p-6 sm:p-7 glass-panel border border-white/10 bg-[#141420] shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+      <div className="rounded-3xl p-6 sm:p-7 glass-panel border border-white/10 bg-glass shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="space-y-1.5">
           <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-wide flex items-center gap-2">
             <Pencil className="w-5 h-5 text-brand-400" />
@@ -491,7 +491,7 @@ function ChapterEditorContent() {
             </span>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <button type="button" onClick={restoreDraft} className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold text-[11px] transition">
+            <button type="button" onClick={restoreDraft} className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-ink font-bold text-[11px] transition">
               Khôi phục
             </button>
             <button type="button" onClick={dismissDraft} className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 font-bold text-[11px] transition">
@@ -502,7 +502,7 @@ function ChapterEditorContent() {
       )}
 
       {/* 1. PUBLICATION METADATA */}
-      <div className="p-6 rounded-3xl glass-panel border border-white/10 bg-[#12121e]/90 space-y-4 shadow-xl">
+      <div className="p-6 rounded-3xl glass-panel border border-white/10 bg-glass space-y-4 shadow-xl">
         <h2 className="text-xs font-bold text-brand-400 uppercase tracking-wider">Thông Tin Chương</h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -512,7 +512,7 @@ function ChapterEditorContent() {
               value={selectedStoryId}
               disabled={isEditMode}
               onChange={(e) => setSelectedStoryId(e.target.value)}
-              className="w-full h-10 px-3 rounded-xl bg-[#0f0f18] border border-white/10 text-xs text-white focus:outline-none focus:border-brand-500 font-semibold"
+              className="w-full h-10 px-3 rounded-xl bg-surface-3 border border-white/10 text-xs text-white focus:outline-none focus:border-brand-500 font-semibold"
               required
             >
               <option value="">-- Chọn bộ truyện để đăng chương --</option>
@@ -528,6 +528,11 @@ function ChapterEditorContent() {
             ) : stories.length === 0 && (
               <p className="text-[10px] text-amber-400 mt-1">
                 Bạn chưa sở hữu, chưa là thành viên nhóm dịch, hoặc chưa là cộng tác viên của bộ truyện nào. Hãy <Link href="/dang-truyen" className="underline">Đăng truyện mới</Link> trước.
+              </p>
+            )}
+            {!isEditMode && selectedStory?.story_type === 'manga' && (
+              <p className="text-[11px] text-brand-500 mt-1.5">
+                Đây là truyện tranh. <Link href="/dang-truyen-tranh" className="font-semibold underline">Dùng trình đăng truyện tranh</Link> để kéo thả cả chương, tự xếp trang và nén ảnh.
               </p>
             )}
           </div>
@@ -553,7 +558,7 @@ function ChapterEditorContent() {
               step="0.1"
               value={chapterNumber}
               onChange={(e) => setChapterNumber(e.target.value)}
-              className="w-full h-10 px-3 rounded-xl bg-[#0f0f18] border border-white/10 text-xs text-white font-bold text-center focus:outline-none focus:border-brand-500"
+              className="w-full h-10 px-3 rounded-xl bg-surface-3 border border-white/10 text-xs text-white font-bold text-center focus:outline-none focus:border-brand-500"
               required
             />
           </div>
@@ -577,12 +582,12 @@ function ChapterEditorContent() {
                   placeholder="Tên tập mới (e.g. Quyển 2)..."
                   value={newVolumeTitle}
                   onChange={(e) => setNewVolumeTitle(e.target.value)}
-                  className="flex-1 h-10 px-3 rounded-xl bg-[#0f0f18] border border-white/10 text-xs text-white"
+                  className="flex-1 h-10 px-3 rounded-xl bg-surface-3 border border-white/10 text-xs text-white"
                 />
                 <button
                   type="button"
                   onClick={handleCreateVolume}
-                  className="px-3 h-10 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold"
+                  className="px-3 h-10 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-snow text-xs font-bold"
                 >
                   Tạo
                 </button>
@@ -591,7 +596,7 @@ function ChapterEditorContent() {
               <select
                 value={selectedVolumeId}
                 onChange={(e) => setSelectedVolumeId(e.target.value)}
-                className="w-full h-10 px-3 rounded-xl bg-[#0f0f18] border border-white/10 text-xs text-white focus:outline-none focus:border-brand-500 font-semibold"
+                className="w-full h-10 px-3 rounded-xl bg-surface-3 border border-white/10 text-xs text-white focus:outline-none focus:border-brand-500 font-semibold"
               >
                 <option value="">Không thuộc tập nào</option>
                 {volumes.map((v) => (
@@ -611,14 +616,14 @@ function ChapterEditorContent() {
       </div>
 
       {/* 2. EDITOR & PREVIEW */}
-      <div className="p-6 rounded-3xl glass-panel border border-white/10 bg-[#12121e]/90 space-y-4 shadow-2xl">
+      <div className="p-6 rounded-3xl glass-panel border border-white/10 bg-glass space-y-4 shadow-2xl">
 
         <div className="flex items-center gap-1 p-1 rounded-xl bg-white/5 border border-white/10 text-xs font-bold w-fit">
           <button
             type="button"
             onClick={() => setActiveTab('editor')}
             className={`px-4 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
-              activeTab === 'editor' ? 'bg-brand-600 text-white shadow-md' : 'text-gray-400 hover:text-white'
+              activeTab === 'editor' ? 'bg-brand-600 text-snow shadow-md' : 'text-gray-400 hover:text-white'
             }`}
           >
             <Pencil className="w-3.5 h-3.5" />
@@ -629,7 +634,7 @@ function ChapterEditorContent() {
             type="button"
             onClick={() => setActiveTab('preview')}
             className={`px-4 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
-              activeTab === 'preview' ? 'bg-brand-600 text-white shadow-md' : 'text-gray-400 hover:text-white'
+              activeTab === 'preview' ? 'bg-brand-600 text-snow shadow-md' : 'text-gray-400 hover:text-white'
             }`}
           >
             <Eye className="w-3.5 h-3.5" />
@@ -676,7 +681,7 @@ function ChapterEditorContent() {
                         <select
                           value={annotationTargetIdx}
                           onChange={(e) => setAnnotationTargetIdx(e.target.value === '' ? '' : Number(e.target.value))}
-                          className="h-9 px-3 rounded-xl bg-[#0f0f18] border border-white/10 text-xs text-white"
+                          className="h-9 px-3 rounded-xl bg-surface-3 border border-white/10 text-xs text-white"
                         >
                           <option value="">Chọn đoạn văn...</option>
                           {paragraphs.map((p, idx) => (
@@ -739,7 +744,7 @@ function ChapterEditorContent() {
 
         {/* PREVIEW TAB */}
         {activeTab === 'preview' && (
-          <div className="p-6 sm:p-8 rounded-2xl bg-[#0d0d15] border border-white/10 space-y-6 max-w-3xl mx-auto font-serif text-gray-200 text-base leading-loose shadow-inner">
+          <div className="p-6 sm:p-8 rounded-2xl bg-surface border border-white/10 space-y-6 max-w-3xl mx-auto font-serif text-gray-200 text-base leading-loose shadow-inner">
 
             <div className="text-center pb-6 border-b border-white/10 space-y-2 font-sans">
               <div className="text-xs uppercase font-bold tracking-wider text-brand-400">
@@ -811,7 +816,7 @@ function ChapterEditorContent() {
               type="button"
               onClick={() => handleSaveOrSubmit(false)}
               disabled={!selectedStoryId || !chapterTitle.trim() || isSubmitting || (isEditMode && editLoadState !== 'ready')}
-              className="px-8 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 disabled:opacity-40 text-white font-bold text-xs shadow-xl shadow-brand-500/25 flex items-center gap-2 transition hover:scale-105"
+              className="px-8 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 disabled:opacity-40 text-snow font-bold text-xs shadow-xl shadow-brand-500/25 flex items-center gap-2 transition hover:scale-105"
             >
               <Send className="w-4 h-4" />
               <span>{isSubmitting ? 'Đang gửi...' : (isEditMode ? 'Lưu Thay Đổi' : 'Nộp & Xuất Bản Chương')}</span>
