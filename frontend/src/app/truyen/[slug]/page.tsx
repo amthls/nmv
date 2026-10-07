@@ -582,103 +582,120 @@ export default function StoryDetailPage() {
                 </div>
               )}
 
-              {/* Action CTA Buttons */}
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 pt-3">
-                {lastReadChapter ? (
-                  <Link
-                    href={`/truyen/${story.slug}/${lastReadChapter.slug}`}
-                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-snow font-bold text-xs shadow-lg shadow-emerald-500/25 flex items-center gap-2 transition-all hover:scale-105"
-                  >
-                    <BookOpen className="w-4 h-4" />
-                    <span>
-                      Đọc tiếp {lastReadChapter.chapter_number !== undefined ? `(Chương ${lastReadChapter.chapter_number})` : ''}
-                    </span>
-                  </Link>
-                ) : null}
+              {/* Actions: 1) reading  2) reader tools  3) management (team only) */}
+              <div className="pt-3 space-y-3">
+                {/* 1. Reading */}
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-2.5">
+                  {lastReadChapter ? (
+                    <Link
+                      href={`/truyen/${story.slug}/${lastReadChapter.slug}`}
+                      className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-snow font-bold text-sm shadow-lg shadow-emerald-500/25 flex items-center gap-2 transition-all hover:scale-[1.03]"
+                    >
+                      <BookOpen className="w-4 h-4" />
+                      <span>
+                        Đọc tiếp{lastReadChapter.chapter_number !== undefined && lastReadChapter.chapter_number !== null
+                          ? ` · Chương ${Number(lastReadChapter.chapter_number)}`
+                          : ''}
+                      </span>
+                    </Link>
+                  ) : null}
 
-                {story.first_chapter ? (
-                  <Link
-                    href={`/truyen/${story.slug}/${story.first_chapter.slug}`}
-                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-snow font-bold text-xs shadow-lg shadow-brand-500/25 flex items-center gap-2 transition-all hover:scale-105"
-                  >
-                    <BookOpen className="w-4 h-4" />
-                    <span>Đọc từ đầu</span>
-                  </Link>
-                ) : null}
+                  {story.first_chapter ? (
+                    <Link
+                      href={`/truyen/${story.slug}/${story.first_chapter.slug}`}
+                      className={
+                        lastReadChapter
+                          ? 'px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold text-sm border border-white/10 flex items-center gap-2 transition'
+                          : 'px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-snow font-bold text-sm shadow-lg shadow-brand-500/25 flex items-center gap-2 transition-all hover:scale-[1.03]'
+                      }
+                    >
+                      <BookOpen className="w-4 h-4" />
+                      <span>Đọc từ đầu</span>
+                    </Link>
+                  ) : null}
 
-                {story.latest_chapter && story.latest_chapter.slug !== story.first_chapter?.slug ? (
-                  <Link
-                    href={`/truyen/${story.slug}/${story.latest_chapter.slug}`}
-                    className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold text-xs border border-white/10 transition"
-                  >
-                    Chương mới nhất
-                  </Link>
-                ) : null}
+                  {story.latest_chapter && story.latest_chapter.slug !== story.first_chapter?.slug ? (
+                    <Link
+                      href={`/truyen/${story.slug}/${story.latest_chapter.slug}`}
+                      className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold text-sm border border-white/10 transition"
+                    >
+                      Chương mới nhất
+                    </Link>
+                  ) : null}
+                </div>
 
-                <button
-                  type="button"
-                  onClick={handleToggleFollow}
-                  className={`px-4 py-2.5 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition-all cursor-pointer select-none active:scale-95 shadow-sm ${
-                    isFollowing
-                      ? 'bg-rose-600/25 border-rose-500 text-rose-300 hover:bg-rose-600/35 ring-1 ring-rose-500/50'
-                      : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/15 hover:text-white hover:border-white/20'
-                  }`}
-                  title={isFollowing ? 'Bỏ theo dõi truyện này' : 'Theo dõi truyện để nhận thông báo'}
-                >
-                  <Heart className={`w-4 h-4 transition-transform ${isFollowing ? 'fill-rose-500 text-rose-500 scale-110' : 'text-gray-400'}`} />
-                  <span>{isFollowing ? 'Đang theo dõi' : 'Theo dõi'}</span>
-                </button>
+                {/* 2. Reader tools, one compact toolbar */}
+                <div className="flex justify-center md:justify-start">
+                  <div className="inline-flex items-stretch rounded-xl bg-black/30 border border-white/10 backdrop-blur-sm divide-x divide-white/10 overflow-hidden text-xs font-semibold">
+                    <button
+                      type="button"
+                      onClick={handleToggleFollow}
+                      className={`px-3.5 py-2 flex items-center gap-1.5 transition select-none active:scale-95 ${
+                        isFollowing ? 'text-rose-300 bg-rose-600/20 hover:bg-rose-600/30' : 'text-gray-300 hover:text-white hover:bg-white/10'
+                      }`}
+                      title={isFollowing ? 'Bỏ theo dõi truyện này' : 'Theo dõi truyện để nhận thông báo'}
+                    >
+                      <Heart className={`w-3.5 h-3.5 ${isFollowing ? 'fill-rose-500 text-rose-500' : ''}`} />
+                      <span>{isFollowing ? 'Đang theo dõi' : 'Theo dõi'}</span>
+                    </button>
 
-                {story.allow_download && (story.total_chapters || story.first_chapter) ? (
-                  <button
-                    type="button"
-                    onClick={() => setIsDownloadOpen(true)}
-                    className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-200 text-xs font-semibold flex items-center gap-1.5 transition"
-                    title="Tải truyện dạng EPUB hoặc PDF"
-                  >
-                    <Download className="w-3.5 h-3.5 text-brand-400" />
-                    <span>Tải xuống</span>
-                  </button>
-                ) : null}
+                    {story.allow_download && (story.total_chapters || story.first_chapter) ? (
+                      <button
+                        type="button"
+                        onClick={() => setIsDownloadOpen(true)}
+                        className="px-3.5 py-2 flex items-center gap-1.5 text-gray-300 hover:text-white hover:bg-white/10 transition"
+                        title="Tải truyện dạng EPUB hoặc PDF"
+                      >
+                        <Download className="w-3.5 h-3.5 text-brand-400" />
+                        <span>Tải xuống</span>
+                      </button>
+                    ) : null}
 
-                <button
-                  onClick={() => setIsRatingOpen(true)}
-                  className="px-3.5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 text-xs font-semibold flex items-center gap-1.5 transition"
-                >
-                  <Star className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Đánh giá</span>
-                </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsRatingOpen(true)}
+                      className="px-3.5 py-2 flex items-center gap-1.5 text-gray-300 hover:text-white hover:bg-white/10 transition"
+                      title="Đánh giá truyện"
+                    >
+                      <Star className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Đánh giá</span>
+                    </button>
 
-                <ReportButton targetType="story" targetId={story.id} />
+                    <ReportButton
+                      targetType="story"
+                      targetId={story.id}
+                      className="px-3.5 py-2 flex items-center gap-1.5 text-gray-400 hover:text-amber-400 hover:bg-white/10 transition"
+                    />
+                  </div>
+                </div>
 
-                {/* Manage Actions for Owner / Admin / Mod */}
+                {/* 3. Management, only for the story's team / Admin / Mod */}
                 {canManage && (
-                  <>
+                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 pt-3 border-t border-white/10">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mr-1">Quản lý</span>
                     <Link
                       href={`/dang-chuong?story_id=${story.id}`}
-                      className="px-4 py-2.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold flex items-center gap-1.5 transition"
+                      className="px-3 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold flex items-center gap-1.5 transition"
                     >
                       <PlusCircle className="w-3.5 h-3.5" />
                       <span>Thêm chương</span>
                     </Link>
-
                     <Link
                       href={`/dang-truyen/sua/${story.slug}`}
-                      className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-200 border border-white/15 text-xs font-bold flex items-center gap-1.5 transition"
+                      className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-200 border border-white/15 text-xs font-bold flex items-center gap-1.5 transition"
                     >
                       <Pencil className="w-3.5 h-3.5" />
                       <span>Sửa truyện</span>
                     </Link>
-
                     <button
                       onClick={handleDeleteStory}
                       disabled={isDeleting}
-                      className="px-4 py-2.5 rounded-xl bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/40 text-xs font-bold flex items-center gap-1.5 transition"
+                      className="px-3 py-1.5 rounded-lg bg-rose-600/15 hover:bg-rose-600/25 text-rose-300 border border-rose-500/30 text-xs font-bold flex items-center gap-1.5 transition"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                       <span>{isDeleting ? 'Đang xóa...' : 'Xóa truyện'}</span>
                     </button>
-                  </>
+                  </div>
                 )}
               </div>
 
