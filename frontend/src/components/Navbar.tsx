@@ -22,12 +22,14 @@ import {
   LogIn,
   UserPlus,
   Flag,
-  ImagePlus
+  ImagePlus,
+  Dices
 } from 'lucide-react';
 import QuickActionModal from './QuickActionModal';
 import AuthModal from './auth/AuthModal';
 import { useAuth } from '@/context/AuthContext';
 import ThemeToggle from './common/ThemeToggle';
+import StoryCaseOpening from './random/StoryCaseOpening';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -36,6 +38,7 @@ export default function Navbar() {
   const { user, isAuthenticated, logout, openAuthModal, hasRole, authFetch } = useAuth();
   
   const [isQuickActionOpen, setIsQuickActionOpen] = useState(false);
+  const [isCaseOpen, setIsCaseOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -209,6 +212,16 @@ export default function Navbar() {
           {/* Actions & User Auth Section */}
           <div className="flex items-center gap-2.5">
             <ThemeToggle />
+
+            {/* Random story case (CS2-style) */}
+            <button
+              onClick={() => setIsCaseOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-snow text-xs font-semibold shadow-md shadow-orange-500/20 hover:scale-105 transition-all"
+              title="Mở hòm truyện ngẫu nhiên"
+            >
+              <Dices className="w-4 h-4" />
+              <span className="hidden lg:inline">Random</span>
+            </button>
 
             {/* Quick Action Popup Button (+) */}
             <button
@@ -574,6 +587,8 @@ export default function Navbar() {
         isOpen={isQuickActionOpen} 
         onClose={() => setIsQuickActionOpen(false)} 
       />
+
+      <StoryCaseOpening isOpen={isCaseOpen} onClose={() => setIsCaseOpen(false)} />
 
       {/* Global Authentication Modal */}
       <AuthModal />
