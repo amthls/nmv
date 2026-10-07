@@ -128,6 +128,7 @@ services:
       SEARCH_INDEX: ${SEARCH_INDEX:-novel_stories}
     volumes:
       - ./uploads:/app/uploads
+      - ./exports:/app/exports # built EPUB/PDF files (served only by the download endpoint)
       - image_cache:/app/.cache # resized copies of uploaded images (safe to delete)
     depends_on:
       postgres:
@@ -156,6 +157,36 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-novel_platform}?schema=public
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (openssl rand -hex 32)}
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - novel_network
+
+  # ============================================================================
+  # 2c. Export worker: builds EPUB/PDF downloads (queue novel.exports). Separate from the
+  #     notification worker so a big manga export never delays notifications.
+  # ============================================================================
+  export-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: novel_export_worker
+    command: ["node", "dist/exportWorker.js"]
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-novel_platform}?schema=public
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (openssl rand -hex 32)}
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672
+      EXPORT_CONCURRENCY: ${EXPORT_CONCURRENCY:-1}
+      EXPORT_KEEP_DAYS: ${EXPORT_KEEP_DAYS:-7}
+    volumes:
+      - ./uploads:/app/uploads:ro
+      - ./exports:/app/exports
+    mem_limit: ${EXPORT_WORKER_MEMORY:-1g}
     depends_on:
       postgres:
         condition: service_healthy

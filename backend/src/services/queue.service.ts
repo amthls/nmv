@@ -19,6 +19,9 @@ import { processNotificationJob } from './notification.service';
 export const QUEUE = 'novel.notifications';
 export const RETRY_QUEUE = 'novel.notifications.retry';
 export const DLQ = 'novel.notifications.dlq';
+// EPUB/PDF builds: their own queue (and their own worker container) so a big export never
+// delays notifications. A message is just { id } of a story_exports row; the row holds the job.
+export const EXPORT_QUEUE = 'novel.exports';
 export const MAX_ATTEMPTS = Number(process.env.NOTIFY_MAX_ATTEMPTS || 5);
 const RETRY_DELAY_MS = Number(process.env.NOTIFY_RETRY_DELAY_MS || 10_000);
 
@@ -46,6 +49,7 @@ async function assertTopology(ch: any) {
     arguments: { 'x-message-ttl': RETRY_DELAY_MS, 'x-dead-letter-exchange': '', 'x-dead-letter-routing-key': QUEUE },
   });
   await ch.assertQueue(QUEUE, { durable: true });
+  await ch.assertQueue(EXPORT_QUEUE, { durable: true });
 }
 
 /** Connect in the background and keep reconnecting; safe to call once at start-up. */
@@ -136,6 +140,24 @@ export async function enqueueNotificationJob(job: NotificationJob): Promise<'que
   return 'inline';
 }
 
+/** Publish an export job; false when the broker is unavailable (the caller then builds it inline). */
+export async function publishExportJob(id: string): Promise<boolean> {
+  if (!publishChannel) return false;
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('publish confirm timeout')), 2500);
+      publishChannel.sendToQueue(EXPORT_QUEUE, Buffer.from(JSON.stringify({ id })), { persistent: true, contentType: 'application/json' }, (err: Error | null) => {
+        clearTimeout(timer);
+        err ? reject(err) : resolve();
+      });
+    });
+    return true;
+  } catch (err: any) {
+    console.warn('[Queue] export publish failed, building inline instead:', err.message);
+    return false;
+  }
+}
+
 // --- consumer (worker process) -----------------------------------------------------------------
 
 /** Send a failed message to the retry queue, or to the DLQ once it has used up its attempts. */
@@ -174,6 +196,41 @@ export async function startConsumer(
       try { await ch.cancel(consumerTag); } catch {}
       try { await ch.close(); } catch {}
       try { await conn.close(); } catch {}
+    },
+  };
+}
+
+/** Consumer for the export queue (export worker). `handler` resolves when the job is done. */
+export async function startExportConsumer(
+  prefetch: number,
+  handler: (id: string) => Promise<void>,
+  onClose: () => void
+): Promise<{ close: () => Promise<void>; requeue: (id: string) => void }> {
+  if (!queueEnabled()) throw new Error('RABBITMQ_URL is not set');
+  const conn: any = await amqp.connect(brokerUrl());
+  conn.on('error', (e: Error) => console.error('[ExportWorker] connection error:', e.message));
+  conn.on('close', onClose);
+  const ch: any = await conn.createChannel();
+  await assertTopology(ch);
+  await ch.prefetch(prefetch);
+  const { consumerTag } = await ch.consume(EXPORT_QUEUE, async (msg: any) => {
+    if (!msg) return;
+    let id: string | null = null;
+    try { id = JSON.parse(msg.content.toString()).id; } catch {}
+    try {
+      if (typeof id === 'string') await handler(id);
+    } finally {
+      ch.ack(msg); // the outcome (ready/failed) is recorded on the story_exports row
+    }
+  });
+  return {
+    close: async () => {
+      try { await ch.cancel(consumerTag); } catch {}
+      try { await ch.close(); } catch {}
+      try { await conn.close(); } catch {}
+    },
+    requeue: (id: string) => {
+      ch.sendToQueue(EXPORT_QUEUE, Buffer.from(JSON.stringify({ id })), { persistent: true, contentType: 'application/json' });
     },
   };
 }

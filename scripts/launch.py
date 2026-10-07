@@ -31,7 +31,7 @@ ENV_FILE = os.path.join(ROOT, ".env")
 ENV_EXAMPLE = os.path.join(ROOT, ".env.example")
 MIGRATIONS_DIR = os.path.join(ROOT, "sql", "migrations")
 
-SERVICES = ["postgres", "search", "rabbitmq", "backend", "worker", "frontend", "gateway"]
+SERVICES = ["postgres", "search", "rabbitmq", "backend", "worker", "export-worker", "frontend", "gateway"]
 
 GREEN, RED, YELLOW, BOLD, RESET = "\033[32m", "\033[31m", "\033[33m", "\033[1m", "\033[0m"
 if not sys.stdout.isatty():

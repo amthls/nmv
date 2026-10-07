@@ -662,9 +662,9 @@ export const createStory = async (req: AuthenticatedRequest, res: Response) => {
         INSERT INTO stories (
           title, slug, original_title, synopsis, cover_image_url, banner_image_url,
           story_type, status, group_id, uploader_id,
-          author_name, artist_name, original_language, approval_status, total_volumes
+          author_name, artist_name, original_language, approval_status, total_volumes, allow_download
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7::story_type, $8::story_status, $9, $10, $11, $12, $13, $14::approval_status, 1
+          $1, $2, $3, $4, $5, $6, $7::story_type, $8::story_status, $9, $10, $11, $12, $13, $14::approval_status, 1, $15
         ) RETURNING *;
       `, [
         title,
@@ -681,6 +681,7 @@ export const createStory = async (req: AuthenticatedRequest, res: Response) => {
         input.artist_name ?? null,
         input.original_language ?? 'ja',
         approvalStatus,
+        input.allow_download ?? false,
       ]), true);
       story = storyRes.rows[0];
       if (approvalStatus === 'approved') {
