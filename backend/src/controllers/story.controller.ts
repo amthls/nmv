@@ -124,6 +124,7 @@ export interface StoryInput {
   original_language?: string | null;
   group_id?: string | null;
   tags?: string[];
+  allow_download?: boolean; // readers may download EPUB/PDF
 }
 
 /** Validates the story fields of a request body (throws InputError). */
@@ -145,6 +146,10 @@ export function parseStoryInput(body: any, isCreate: boolean): StoryInput {
   if (body.group_id !== undefined) {
     if (body.group_id !== null && body.group_id !== '' && !isUuid(body.group_id)) throw new InputError('Nhóm dịch không hợp lệ.');
     input.group_id = body.group_id || null;
+  }
+  if (body.allow_download !== undefined) {
+    if (typeof body.allow_download !== 'boolean') throw new InputError('Tùy chọn cho phép tải không hợp lệ.');
+    input.allow_download = body.allow_download;
   }
   if (body.tags !== undefined) {
     if (!Array.isArray(body.tags) || body.tags.length > 50 || !body.tags.every(isUuid)) {
@@ -692,7 +697,7 @@ export const getChapterBySlug = async (req: Request, res: Response) => {
 
     const storyRes = await pool.query(`
       SELECT 
-        s.id, s.title, s.slug, s.story_type, s.cover_image_url, s.author_name,
+        s.id, s.title, s.slug, s.story_type, s.cover_image_url, s.author_name, s.allow_download,
         g.name as group_name, g.slug as group_slug
       FROM stories s
       LEFT JOIN translation_groups g ON s.group_id = g.id
@@ -863,6 +868,7 @@ export const updateStory = async (req: AuthenticatedRequest, res: Response) => {
       ['cover_image_url', 'cover_image_url'], ['banner_image_url', 'banner_image_url'],
       ['story_type', 'story_type'], ['status', 'status'], ['author_name', 'author_name'],
       ['artist_name', 'artist_name'], ['original_language', 'original_language'], ['group_id', 'group_id'],
+      ['allow_download', 'allow_download'],
     ];
     const sets: string[] = [];
     const params: any[] = [];
@@ -886,8 +892,12 @@ export const updateStory = async (req: AuthenticatedRequest, res: Response) => {
     try {
       await client.query('BEGIN');
       await checkStoryReferences(client, input, currentUserId, userRoles);
-      const curRes = await client.query(`SELECT group_id, approval_status FROM stories WHERE id = $1`, [id]);
+      const curRes = await client.query(`SELECT group_id, approval_status, source_name FROM stories WHERE id = $1`, [id]);
       const current = curRes.rows[0];
+      // Imported stories belong to their original site: they are never offered as downloads
+      if (input.allow_download === true && current?.source_name) {
+        throw new InputError('Truyện được nhập tự động từ trang khác nên không thể bật tải xuống.');
+      }
       if (current) {
         const groupId = input.group_id !== undefined ? input.group_id : current.group_id;
         // Re-check when the group changes, or when a refused/pending story is edited (resubmission)

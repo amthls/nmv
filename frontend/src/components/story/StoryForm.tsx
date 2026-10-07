@@ -10,6 +10,7 @@ import {
   Search,
   X,
   AlertCircle,
+  Download as DownloadIcon,
 } from 'lucide-react';
 import ImageUploadDropzone from '@/components/common/ImageUploadDropzone';
 import { useAuth } from '@/context/AuthContext';
@@ -54,6 +55,8 @@ export interface StoryFormInitialValues {
   banner_image_url?: string | null;
   slug?: string;
   tags?: { id: string }[];
+  allow_download?: boolean;
+  source_name?: string | null; // imported stories can never be offered as downloads
 }
 
 interface StoryFormProps {
@@ -76,6 +79,8 @@ export default function StoryForm({ mode, initialValues, preselectedGroupId }: S
   const [status, setStatus] = useState<'ongoing' | 'completed' | 'hiatus' | 'dropped'>(iv.status || 'ongoing');
   const [selectedGroupId, setSelectedGroupId] = useState(iv.group_id || preselectedGroupId || '');
   const [originalLanguage, setOriginalLanguage] = useState(iv.original_language || 'ja');
+  const [allowDownload, setAllowDownload] = useState(Boolean(iv.allow_download));
+  const isImported = Boolean(iv.source_name);
 
   const [groups, setGroups] = useState<any[]>([]);
   const [tagCategories, setTagCategories] = useState<TagCategory[]>([]);
@@ -201,6 +206,8 @@ export default function StoryForm({ mode, initialValues, preselectedGroupId }: S
         cover_image_url: coverImages.length > 0 ? coverImages[0] : null,
         banner_image_url: bannerImages.length > 0 ? bannerImages[0] : null,
         tags: selectedTags,
+        // imported stories may be switched off, never on (they belong to their original site)
+        ...(isImported && allowDownload ? {} : { allow_download: allowDownload }),
       };
 
       const res = await authFetch(
@@ -306,6 +313,33 @@ export default function StoryForm({ mode, initialValues, preselectedGroupId }: S
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Downloads (EPUB / PDF) */}
+        <div className="flex items-start justify-between gap-4 p-4 rounded-2xl bg-white/5 border border-white/10">
+          <div className="min-w-0">
+            <div className="text-xs font-bold text-gray-200 flex items-center gap-1.5">
+              <DownloadIcon className="w-3.5 h-3.5 text-brand-400" /> Cho phép độc giả tải truyện (EPUB / PDF)
+            </div>
+            <p className="text-[11px] text-gray-400 mt-1 leading-relaxed">
+              {isImported
+                ? iv.allow_download
+                  ? 'Truyện nhập tự động này đang được bật tải bởi script khởi động. Bạn có thể tắt, nhưng tắt rồi thì không bật lại được.'
+                  : 'Truyện này được nhập tự động từ trang khác nên không thể bật tải xuống.'
+                : 'Khi bật, trang truyện có nút "Tải xuống": độc giả chọn chương, định dạng EPUB hoặc PDF, gộp 1 tệp hoặc mỗi chương 1 tệp. Có thể tắt bất cứ lúc nào.'}
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={allowDownload}
+            disabled={isImported && !iv.allow_download}
+            onClick={() => setAllowDownload((v) => !v)}
+            className={`relative shrink-0 w-11 h-6 rounded-full transition disabled:opacity-40 disabled:cursor-not-allowed ${allowDownload ? 'bg-brand-600' : 'bg-white/15'}`}
+            title={allowDownload ? 'Đang bật' : 'Đang tắt'}
+          >
+            <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-snow shadow transition-transform ${allowDownload ? 'translate-x-5' : ''}`} />
+          </button>
         </div>
 
         {/* Original Title & Group Selection */}

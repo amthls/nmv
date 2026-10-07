@@ -108,8 +108,9 @@ import {
   checkFavoriteStatus
 } from '../controllers/bookmark.controller';
 
+import { createExport, getExport, downloadExport } from '../controllers/export.controller';
 import { queueStatus } from '../services/queue.service';
-import { loginLimiter, registerLimiter, uploadLimiter, mangaUploadLimiter, searchLimiter, perUserLimiter } from '../middlewares/security';
+import { loginLimiter, registerLimiter, uploadLimiter, mangaUploadLimiter, searchLimiter, perUserLimiter, exportLimiter } from '../middlewares/security';
 
 const router = Router();
 
@@ -169,6 +170,10 @@ router.delete('/stories/:id/collaborators/:userId', requireAuth, removeStoryColl
 router.post('/stories/:storyId/volumes', requireAuth, createVolume);
 router.put('/stories/:storyId/volumes/reorder', requireAuth, reorderVolumes);
 router.put('/volumes/:id', requireAuth, updateVolume);
+// EPUB/PDF downloads (only for stories whose team turned allow_download on)
+router.post('/stories/:slug/exports', optionalAuth, exportLimiter, createExport);
+router.get('/exports/:id', getExport);
+router.get('/exports/:id/download', downloadExport);
 router.delete('/volumes/:id', requireAuth, deleteVolume);
 
 // Chapters & Submissions

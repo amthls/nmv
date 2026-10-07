@@ -22,11 +22,13 @@ import {
   CheckCircle2,
   Pencil,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Download
 } from 'lucide-react';
 import SmartImage from '@/components/common/SmartImage';
 import CommentSection from '@/components/comments/CommentSection';
 import ReportButton from '@/components/common/ReportButton';
+import DownloadModal from '@/components/story/DownloadModal';
 import { useAuth } from '@/context/AuthContext';
 import RichContent from '@/components/common/RichContent';
 import { stripHtml } from '@/lib/richText';
@@ -44,6 +46,7 @@ export default function StoryDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isRatingOpen, setIsRatingOpen] = useState(false);
+  const [isDownloadOpen, setIsDownloadOpen] = useState(false);
   const [selectedRating, setSelectedRating] = useState(10);
   const [isDeleting, setIsDeleting] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -626,6 +629,18 @@ export default function StoryDetailPage() {
                   <span>{isFollowing ? 'Đang theo dõi' : 'Theo dõi'}</span>
                 </button>
 
+                {story.allow_download && (story.total_chapters || story.first_chapter) ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsDownloadOpen(true)}
+                    className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-200 text-xs font-semibold flex items-center gap-1.5 transition"
+                    title="Tải truyện dạng EPUB hoặc PDF"
+                  >
+                    <Download className="w-3.5 h-3.5 text-brand-400" />
+                    <span>Tải xuống</span>
+                  </button>
+                ) : null}
+
                 <button
                   onClick={() => setIsRatingOpen(true)}
                   className="px-3.5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 text-xs font-semibold flex items-center gap-1.5 transition"
@@ -865,6 +880,9 @@ export default function StoryDetailPage() {
         </div>
       )}
 
+      {story && (
+        <DownloadModal isOpen={isDownloadOpen} onClose={() => setIsDownloadOpen(false)} storySlug={story.slug} story={story} />
+      )}
     </div>
   );
 }

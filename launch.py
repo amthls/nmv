@@ -17,7 +17,9 @@ commits (fast-forward only, skipped when there are local changes) and rebuilds o
 
 Options for "up": --no-build (reuse existing images), --timeout SECONDS (default 600),
                   --seed (always run the sample-data seeders), --no-seed (never run them),
-                  --crawl-target N (default 100), --no-crawl (don't start scripts/crawler.py).
+                  --crawl-target N (default 100), --no-crawl (don't start scripts/crawler.py),
+                  --download-ratio R (default 0.3: after crawling, EPUB/PDF downloads are turned on
+                  for a random 30% of the imported stories; 0 = off).
 After a successful start, scripts/crawler.py runs in the background (log: logs/crawler.log) and
 imports stories (MangaDex, TopTruyen, NetTruyen, Valvrare) until the site has --crawl-target stories; it exits at once
 when there are already enough.
@@ -51,7 +53,7 @@ BUILD_INPUTS = ["backend", "frontend", "nginx", "docker-compose.yml"]
 SKIP_DIRS = {"node_modules", ".next", "dist", "build", "__pycache__", ".git"}
 SKIP_FILES = {"tsconfig.tsbuildinfo"}
 
-SERVICES = ["postgres", "search", "rabbitmq", "backend", "worker", "frontend", "gateway"]
+SERVICES = ["postgres", "search", "rabbitmq", "backend", "worker", "export-worker", "frontend", "gateway"]
 
 GREEN, RED, YELLOW, BOLD, RESET = "\033[32m", "\033[31m", "\033[33m", "\033[1m", "\033[0m"
 if not sys.stdout.isatty():
@@ -511,12 +513,12 @@ def ensure_manga_dir():
         ok(f"created manga image folder {os.path.relpath(MANGA_DIR, ROOT)}")
 
 
-def start_crawler(target, foreground=False):
+def start_crawler(target, foreground=False, download_ratio=0.3):
     """Run scripts/crawler.py; it checks the story count itself and exits when the target is met."""
     if not os.path.exists(CRAWLER):
         warn("scripts/crawler.py not found, skipping the importer")
         return
-    cmd = [sys.executable, CRAWLER, "--target", str(target)]
+    cmd = [sys.executable, CRAWLER, "--target", str(target), "--download-ratio", str(download_ratio)]
     if foreground:
         subprocess.run(cmd, cwd=ROOT)
         return
@@ -547,6 +549,8 @@ def main():
     p.add_argument("--timeout", type=int, default=600, help="seconds to wait for services (default 600)")
     p.add_argument("--crawl-target", type=int, default=100, help="import manga until the site has this many stories")
     p.add_argument("--no-crawl", action="store_true", help="don't start the MangaDex importer after 'up'")
+    p.add_argument("--download-ratio", type=float, default=0.3,
+                   help="after crawling, turn on EPUB/PDF downloads for this share of imported stories at random (0 = off)")
     a = p.parse_args()
 
     check_docker()
@@ -563,7 +567,7 @@ def main():
 
     if a.command == "crawl":
         ensure_manga_dir()
-        start_crawler(a.crawl_target, foreground=True)
+        start_crawler(a.crawl_target, foreground=True, download_ratio=a.download_ratio)
         return
 
     env = ensure_env()
@@ -599,7 +603,7 @@ def main():
     seed = a.seed if starting else False
     passed = run_checks(env, a.timeout, seed)
     if passed and starting and not a.no_crawl:
-        start_crawler(a.crawl_target)
+        start_crawler(a.crawl_target, download_ratio=a.download_ratio)
     sys.exit(0 if passed else 1)
 
 

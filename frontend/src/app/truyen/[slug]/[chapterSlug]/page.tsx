@@ -19,10 +19,12 @@ import {
   Clock,
   Trash2,
   Pencil,
-  CheckCircle2
+  CheckCircle2,
+  Download,
 } from 'lucide-react';
 import ReaderSettingsModal, { ReaderSettings, READER_FONTS } from '@/components/reader/ReaderSettingsModal';
 import ChapterSelectorModal from '@/components/reader/ChapterSelectorModal';
+import DownloadModal from '@/components/story/DownloadModal';
 import FloatingReaderBar from '@/components/reader/FloatingReaderBar';
 import CommentSection from '@/components/comments/CommentSection';
 import ReportButton from '@/components/common/ReportButton';
@@ -46,6 +48,7 @@ export default function ChapterReaderPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isDownloadOpen, setIsDownloadOpen] = useState(false);
   const [isChapterSelectorOpen, setIsChapterSelectorOpen] = useState(false);
   const [bookmarkedLines, setBookmarkedLines] = useState<Set<number>>(new Set());
   const [highlightedLine, setHighlightedLine] = useState<number | null>(null);
@@ -431,6 +434,17 @@ export default function ChapterReaderPage() {
               <Settings className="w-4 h-4" />
             </button>
 
+            {/* Download this chapter (EPUB/PDF) when the story's team allows it */}
+            {chapterData.story?.allow_download && (
+              <button
+                onClick={() => setIsDownloadOpen(true)}
+                className="p-2 rounded-lg hover:bg-white/10 transition ml-1"
+                title="Tải chương này (EPUB / PDF)"
+              >
+                <Download className="w-4 h-4" />
+              </button>
+            )}
+
             {/* Report violation (icon only in the header) */}
             {chapterData?.id && (
               <ReportButton
@@ -710,6 +724,15 @@ export default function ChapterReaderPage() {
         settings={settings}
         onSettingsChange={setSettings}
       />
+
+      {chapterData.story?.allow_download && (
+        <DownloadModal
+          isOpen={isDownloadOpen}
+          onClose={() => setIsDownloadOpen(false)}
+          storySlug={storySlug}
+          initialChapterIds={[chapterData.id]}
+        />
+      )}
 
       <ChapterSelectorModal
         isOpen={isChapterSelectorOpen}

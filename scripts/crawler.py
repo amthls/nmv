@@ -5,6 +5,7 @@
     python scripts/crawler.py --target 120 --max-chapters 2
     python scripts/crawler.py --sources mangadex,toptruyen
     python scripts/crawler.py --dry-run             # only report what would be imported
+    python scripts/crawler.py --download-ratio 0.5  # afterwards, let readers download ~50% of imported stories
 
 Called automatically by `python launch.py` (in the background). It does nothing when the target
 is already reached.
@@ -689,6 +690,29 @@ def give_views_to_unviewed():
         log(f"gave starting view counts to {len(rows)} imported stories")
 
 
+def enable_random_downloads(ratio):
+    """Turn on EPUB/PDF downloads for a random share of the imported stories (demo data).
+    Tops up to `ratio` of them and never turns any off, so re-running does not keep adding more."""
+    ratio = max(0.0, min(1.0, ratio))
+    if ratio <= 0:
+        return
+    rows = psql(f"""
+        WITH pool AS (
+            SELECT s.id, s.allow_download FROM stories s
+             WHERE s.source_name IS NOT NULL AND s.approval_status = 'approved'
+               AND EXISTS (SELECT 1 FROM chapters c WHERE c.story_id = s.id AND c.is_published)
+        ), need AS (
+            SELECT GREATEST(0, CEIL(count(*) * {ratio})::int - count(*) FILTER (WHERE allow_download)) AS n FROM pool
+        )
+        UPDATE stories SET allow_download = true
+         WHERE id IN (SELECT id FROM pool WHERE NOT allow_download ORDER BY random() LIMIT (SELECT n FROM need))
+        RETURNING title;""")
+    total = psql("SELECT count(*) FILTER (WHERE allow_download), count(*) FROM stories WHERE source_name IS NOT NULL;")[0]
+    if rows:
+        log(f"downloads (EPUB/PDF) turned on for {len(rows)} more imported stories: {', '.join(r[0] for r in rows[:5])}{' ...' if len(rows) > 5 else ''}")
+    log(f"downloads enabled on {total[0]}/{total[1]} imported stories (target {round(ratio * 100)}%)")
+
+
 # ----------------------------------------------------------------------------- importer
 
 class Importer:
@@ -1021,6 +1045,8 @@ def main():
     p.add_argument("--max-failures", type=int, default=8, help="drop a source after this many failed imports in a row (default 8)")
     p.add_argument("--dry-run", action="store_true", help="list what would be imported, write nothing")
     p.add_argument("--no-reindex", action="store_true", help="don't restart the backend to refresh search afterwards")
+    p.add_argument("--download-ratio", type=float, default=0.3,
+                   help="after crawling, allow EPUB/PDF downloads on this share of imported stories, picked at random (default 0.3, 0 = off)")
     args = p.parse_args()
 
     if not acquire_lock():
@@ -1028,6 +1054,11 @@ def main():
         return
     try:
         imported = Importer(args).run()
+        if not args.dry_run:
+            try:
+                enable_random_downloads(args.download_ratio)
+            except Exception as e:  # e.g. migration 007 not applied yet
+                log(f"could not enable random downloads: {e}")
         if imported and not args.dry_run and not args.no_reindex:
             subprocess.run(["docker", "compose", "restart", "backend"], cwd=ROOT, capture_output=True)
             log("backend restarted to refresh the search index")
