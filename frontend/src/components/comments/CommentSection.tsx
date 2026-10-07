@@ -254,13 +254,13 @@ export default function CommentSection({
                   maxLength={1000}
                   value={editText}
                   onChange={(e) => setEditText(e.target.value)}
-                  className="w-full p-3 rounded-xl bg-[#141422] border border-white/10 text-xs text-white focus:outline-none focus:border-brand-500 resize-none"
+                  className="w-full p-3 rounded-xl bg-glass border border-white/10 text-xs text-white focus:outline-none focus:border-brand-500 resize-none"
                 />
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleSaveEdit(comment.id)}
                     disabled={!editText.trim()}
-                    className="px-3.5 h-8 rounded-lg bg-brand-600 hover:bg-brand-500 disabled:opacity-40 text-white text-[11px] font-bold transition"
+                    className="px-3.5 h-8 rounded-lg bg-brand-600 hover:bg-brand-500 disabled:opacity-40 text-snow text-[11px] font-bold transition"
                   >
                     Lưu
                   </button>
@@ -345,7 +345,7 @@ export default function CommentSection({
                   <button
                     onClick={() => handleSubmitComment(comment.id)}
                     disabled={!replyText.trim() || isSubmitting}
-                    className="px-3.5 h-9 rounded-xl bg-brand-600 hover:bg-brand-500 disabled:opacity-40 text-white text-xs font-semibold flex items-center gap-1.5 transition"
+                    className="px-3.5 h-9 rounded-xl bg-brand-600 hover:bg-brand-500 disabled:opacity-40 text-snow text-xs font-semibold flex items-center gap-1.5 transition"
                   >
                     <Send className="w-3 h-3" />
                   </button>
@@ -394,7 +394,7 @@ export default function CommentSection({
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
             placeholder="Chia sẻ cảm nghĩ, dự đoán cốt truyện hoặc gửi lời động viên tới nhóm dịch..."
-            className="w-full p-3.5 rounded-2xl bg-[#141422] border border-white/10 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-500 resize-none transition"
+            className="w-full p-3.5 rounded-2xl bg-glass border border-white/10 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-500 resize-none transition"
           />
         </div>
 
@@ -406,7 +406,7 @@ export default function CommentSection({
           <button
             onClick={() => handleSubmitComment()}
             disabled={!newComment.trim() || isSubmitting}
-            className="px-5 py-2 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 disabled:opacity-40 text-white font-bold text-xs shadow-lg shadow-brand-500/25 flex items-center gap-2 transition"
+            className="px-5 py-2 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 disabled:opacity-40 text-snow font-bold text-xs shadow-lg shadow-brand-500/25 flex items-center gap-2 transition"
           >
             <Send className="w-3.5 h-3.5" />
             <span>Gửi Bình Luận</span>

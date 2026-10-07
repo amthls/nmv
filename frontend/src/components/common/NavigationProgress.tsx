@@ -88,7 +88,7 @@ export default function NavigationProgress() {
         <div
           role="status"
           aria-live="polite"
-          className="fixed bottom-5 right-5 z-[150] flex items-center gap-3 pl-3 pr-4 py-2.5 rounded-2xl bg-[#161626]/95 backdrop-blur border border-white/10 shadow-2xl nh-loader-fade"
+          className="fixed bottom-5 right-5 z-[150] flex items-center gap-3 pl-3 pr-4 py-2.5 rounded-2xl bg-glass backdrop-blur border border-white/10 shadow-2xl nh-loader-fade"
         >
           <BookLoader size="sm" label="" />
           <span className="text-xs font-semibold text-gray-200">

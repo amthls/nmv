@@ -89,7 +89,7 @@ export default function ReportButton({ targetType, targetId, variant = 'button',
           onClick={close}
         >
           <div
-            className="w-full max-w-md rounded-3xl bg-[#12121e] border border-white/10 shadow-2xl p-6 space-y-4"
+            className="w-full max-w-md rounded-3xl bg-glass border border-white/10 shadow-2xl p-6 space-y-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between">
@@ -119,7 +119,7 @@ export default function ReportButton({ targetType, targetId, variant = 'button',
                   <select
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
-                    className="w-full h-10 px-3 rounded-xl bg-[#0f0f18] border border-white/10 text-xs text-white focus:outline-none focus:border-brand-500"
+                    className="w-full h-10 px-3 rounded-xl bg-surface-3 border border-white/10 text-xs text-white focus:outline-none focus:border-brand-500"
                   >
                     {REASONS.map((r) => (
                       <option key={r.value} value={r.value}>{r.label}</option>
@@ -135,7 +135,7 @@ export default function ReportButton({ targetType, targetId, variant = 'button',
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Cho ban quản trị biết cụ thể vấn đề..."
-                    className="w-full p-3 rounded-xl bg-[#0f0f18] border border-white/10 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-500 resize-none"
+                    className="w-full p-3 rounded-xl bg-surface-3 border border-white/10 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-500 resize-none"
                   />
                 </div>
 
@@ -153,7 +153,7 @@ export default function ReportButton({ targetType, targetId, variant = 'button',
                     type="button"
                     onClick={send}
                     disabled={isSending}
-                    className="flex-1 h-10 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-black text-xs font-bold transition"
+                    className="flex-1 h-10 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-ink text-xs font-bold transition"
                   >
                     {isSending ? 'Đang gửi...' : 'Gửi báo cáo'}
                   </button>

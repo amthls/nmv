@@ -7,14 +7,26 @@ Usage:
     python3 launch.py status     # docker compose ps
     python3 launch.py logs [svc] # follow logs (all services or one)
     python3 launch.py down       # stop containers (data volumes are kept)
+    python3 launch.py crawl      # run the MangaDex importer now, in the foreground
+    python3 launch.py update     # git pull, then rebuild only if this machine runs an old build
+
+Old-build detection: after each build a fingerprint of the source (backend/, frontend/, nginx/,
+docker-compose.yml) is saved in .build-stamp.json. "up" and "update" compare it with the code on
+disk and report when the running images are older than the code. "update" first pulls the latest
+commits (fast-forward only, skipped when there are local changes) and rebuilds only when needed.
 
 Options for "up": --no-build (reuse existing images), --timeout SECONDS (default 600),
-                  --seed (always run the sample-data seeders), --no-seed (never run them).
+                  --seed (always run the sample-data seeders), --no-seed (never run them),
+                  --crawl-target N (default 100), --no-crawl (don't start scripts/crawler.py).
+After a successful start, scripts/crawler.py runs in the background (log: logs/crawler.log) and
+imports stories (MangaDex, TopTruyen, NetTruyen, Valvrare) until the site has --crawl-target stories; it exits at once
+when there are already enough.
 By default the seeders run only when the database has no stories yet (fresh install), because
 backend/scripts/seed-passwords.js resets EVERY user's password to "password123".
 Only the Python standard library is used.
 """
 import argparse
+import hashlib
 import json
 import os
 import secrets
@@ -30,6 +42,14 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 ENV_FILE = os.path.join(ROOT, ".env")
 ENV_EXAMPLE = os.path.join(ROOT, ".env.example")
 MIGRATIONS_DIR = os.path.join(ROOT, "sql", "migrations")
+CRAWLER = os.path.join(ROOT, "scripts", "crawler.py")
+CRAWLER_LOG = os.path.join(ROOT, "logs", "crawler.log")
+MANGA_DIR = os.path.join(ROOT, "uploads", "manga")
+BUILD_STAMP = os.path.join(ROOT, ".build-stamp.json")
+# What goes into the Docker images; generated folders are skipped
+BUILD_INPUTS = ["backend", "frontend", "nginx", "docker-compose.yml"]
+SKIP_DIRS = {"node_modules", ".next", "dist", "build", "__pycache__", ".git"}
+SKIP_FILES = {"tsconfig.tsbuildinfo"}
 
 SERVICES = ["postgres", "search", "rabbitmq", "backend", "worker", "frontend", "gateway"]
 
@@ -180,6 +200,88 @@ def container_states():
     for c in items:
         states[c.get("Service")] = (c.get("State", ""), c.get("Health", ""))
     return states
+
+
+# ------------------------------------------------------------------ build updates
+
+def source_fingerprint():
+    """Hash of every file the images are built from (paths + contents)."""
+    h = hashlib.sha256()
+    for item in BUILD_INPUTS:
+        top = os.path.join(ROOT, item)
+        if os.path.isfile(top):
+            files = [top]
+        else:
+            files = []
+            for dirpath, dirnames, filenames in os.walk(top):
+                dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS)
+                files += [os.path.join(dirpath, f) for f in sorted(filenames) if f not in SKIP_FILES]
+        for path in files:
+            h.update(os.path.relpath(path, ROOT).replace(os.sep, "/").encode())
+            with open(path, "rb") as f:
+                # Normalise line endings so a CRLF checkout matches an LF one
+                h.update(f.read().replace(b"\r\n", b"\n"))
+    return h.hexdigest()[:16]
+
+
+def read_stamp():
+    try:
+        with open(BUILD_STAMP, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
+
+
+def write_stamp(fingerprint):
+    with open(BUILD_STAMP, "w", encoding="utf-8") as f:
+        json.dump({"fingerprint": fingerprint, "built_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+                   "commit": git("rev-parse", "--short", "HEAD").stdout.strip()}, f, indent=2)
+
+
+def build_state(fingerprint):
+    """('none' | 'old' | 'current', reason) for the images on this machine vs the code on disk."""
+    images = compose("images", "-q", capture=True, check=False).stdout.strip()
+    if not images:
+        return "none", "no build on this machine yet"
+    stamp = read_stamp()
+    if not stamp:
+        return "old", "the build has no stamp (made by an older launch.py)"
+    if stamp.get("fingerprint") != fingerprint:
+        return "old", f"the code changed since the build of {stamp.get('built_at', '?')}"
+    return "current", f"built {stamp.get('built_at', '?')}"
+
+
+def git(*args):
+    if not shutil.which("git"):
+        return subprocess.CompletedProcess(args, 1, "", "git not installed")
+    return subprocess.run(["git", *args], cwd=ROOT, capture_output=True, text=True)
+
+
+def pull_latest():
+    """Fast-forward to the latest commits of the current branch. Never touches local changes."""
+    if git("rev-parse", "--is-inside-work-tree").returncode != 0:
+        warn("not a git checkout, skipping 'git pull'")
+        return
+    branch = git("rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
+    if git("rev-parse", "--abbrev-ref", "@{u}").returncode != 0:
+        warn(f"branch '{branch}' has no upstream, skipping 'git pull'")
+        return
+    info("Checking for new code (git fetch)...")
+    if git("fetch", "--quiet").returncode != 0:
+        warn("could not reach the git remote, using the code already on this machine")
+        return
+    behind = int(git("rev-list", "--count", "HEAD..@{u}").stdout.strip() or 0)
+    if behind == 0:
+        ok(f"code is up to date with the remote ({branch})")
+        return
+    if git("status", "--porcelain", "--untracked-files=no").stdout.strip():
+        warn(f"{behind} new commit(s) on the remote, but this machine has local changes: commit/stash them, then run update again")
+        return
+    res = git("pull", "--ff-only", "--quiet")
+    if res.returncode != 0:
+        warn("git pull failed: " + (res.stderr.strip() or "branch has diverged from the remote"))
+        return
+    ok(f"pulled {behind} new commit(s) on {branch}")
 
 
 def apply_migrations(env):
@@ -339,8 +441,13 @@ def run_checks(env, timeout, seed=None):
             info(f"Database already has {count} stories, skipping seeders (use --seed to force)")
 
     # Search service
-    code, body = http("GET", f"{search}/_meta/health")
-    record("search   GET /_meta/health", code == 200, f"({code})")
+    code, body = http("GET", f"{search}/_cluster/health")
+    status = ""
+    try:
+        status = json.loads(body).get("status", "")
+    except Exception:
+        pass
+    record("search   GET /_cluster/health", code == 200 and status in ("green", "yellow"), f"({code} {status})".rstrip())
 
     # Frontend through the gateway (Next.js can take a while on first request)
     def home_up():
@@ -394,11 +501,43 @@ def run_checks(env, timeout, seed=None):
     return True
 
 
+# ---------------------------------------------------------------------- crawler
+
+def ensure_manga_dir():
+    if os.path.isdir(MANGA_DIR):
+        ok(f"manga image folder {os.path.relpath(MANGA_DIR, ROOT)}")
+    else:
+        os.makedirs(MANGA_DIR, exist_ok=True)
+        ok(f"created manga image folder {os.path.relpath(MANGA_DIR, ROOT)}")
+
+
+def start_crawler(target, foreground=False):
+    """Run scripts/crawler.py; it checks the story count itself and exits when the target is met."""
+    if not os.path.exists(CRAWLER):
+        warn("scripts/crawler.py not found, skipping the importer")
+        return
+    cmd = [sys.executable, CRAWLER, "--target", str(target)]
+    if foreground:
+        subprocess.run(cmd, cwd=ROOT)
+        return
+    os.makedirs(os.path.dirname(CRAWLER_LOG), exist_ok=True)
+    log = open(CRAWLER_LOG, "a", encoding="utf-8")
+    log.write(f"\n===== {time.strftime('%Y-%m-%d %H:%M:%S')} launch.py =====\n")
+    log.flush()
+    kwargs = {"cwd": ROOT, "stdout": log, "stderr": subprocess.STDOUT, "stdin": subprocess.DEVNULL}
+    if os.name == "nt":
+        kwargs["creationflags"] = 0x00000008 | 0x00000200  # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP
+    else:
+        kwargs["start_new_session"] = True
+    subprocess.Popen(cmd, **kwargs)
+    info(f"Manga importer started in the background (target {target} stories). Log: {os.path.relpath(CRAWLER_LOG, ROOT)}")
+
+
 # ------------------------------------------------------------------------- main
 
 def main():
     p = argparse.ArgumentParser(description="Launch and verify NovelHub with Docker Compose")
-    p.add_argument("command", nargs="?", default="up", choices=["up", "check", "status", "logs", "down"])
+    p.add_argument("command", nargs="?", default="up", choices=["up", "update", "check", "status", "logs", "down", "crawl"])
     p.add_argument("service", nargs="?", help="service name for 'logs'")
     p.add_argument("--no-build", action="store_true", help="don't rebuild images on 'up'")
     g = p.add_mutually_exclusive_group()
@@ -406,6 +545,8 @@ def main():
                    help="run the sample-data seeders even if the DB already has stories (resets all passwords!)")
     g.add_argument("--no-seed", dest="seed", action="store_false", help="never run the seeders")
     p.add_argument("--timeout", type=int, default=600, help="seconds to wait for services (default 600)")
+    p.add_argument("--crawl-target", type=int, default=100, help="import manga until the site has this many stories")
+    p.add_argument("--no-crawl", action="store_true", help="don't start the MangaDex importer after 'up'")
     a = p.parse_args()
 
     check_docker()
@@ -420,16 +561,46 @@ def main():
         compose("logs", "-f", "--tail", "100", *([a.service] if a.service else []), check=False)
         return
 
+    if a.command == "crawl":
+        ensure_manga_dir()
+        start_crawler(a.crawl_target, foreground=True)
+        return
+
     env = ensure_env()
-    if a.command == "up":
+    starting = a.command in ("up", "update")
+    if starting:
         check_ports(env)
         os.makedirs(os.path.join(ROOT, "uploads"), exist_ok=True)
-        info("Building and starting containers (first build can take several minutes)...")
-        compose("up", "-d", *([] if a.no_build else ["--build"]))
+        ensure_manga_dir()
+        if a.command == "update":
+            pull_latest()
+        fingerprint = source_fingerprint()
+        state, reason = build_state(fingerprint)
+        if state == "old":
+            warn(f"Old build detected: {reason}")
+        if a.no_build:
+            if state != "current":
+                warn("--no-build: keeping the old images, the site will not have the latest changes")
+            compose("up", "-d")
+        elif a.command == "update" and state == "current":
+            ok(f"build is already the latest ({reason}), no rebuild needed")
+            compose("up", "-d")
+        else:
+            info("Building and starting containers with the latest code (first build can take several minutes)...")
+            compose("up", "-d", "--build")
+            write_stamp(fingerprint)
+            ok("build updated to the current code")
+    elif a.command == "check":
+        state, reason = build_state(source_fingerprint())
+        if state == "old":
+            warn(f"Running an old build: {reason}. Run 'python launch.py update' to update")
 
-    # Seeding only happens as part of "up"; "check" stays read-only apart from the idempotent migrations
-    seed = a.seed if a.command == "up" else False
-    sys.exit(0 if run_checks(env, a.timeout, seed) else 1)
+    # Seeding only happens when starting; "check" stays read-only apart from the idempotent migrations
+    seed = a.seed if starting else False
+    passed = run_checks(env, a.timeout, seed)
+    if passed and starting and not a.no_crawl:
+        start_crawler(a.crawl_target)
+    sys.exit(0 if passed else 1)
 
 
 if __name__ == "__main__":

@@ -104,7 +104,7 @@ export default function FilterSidebar({
   const content = (
     <div className="space-y-6">
       {/* Filter Header */}
-      <div className="flex items-center justify-between pb-3 border-b border-white/10">
+      <div className="flex items-center justify-between pb-3 border-b border-white/[0.04]">
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-brand-400" />
           <h3 className="font-bold text-sm text-white uppercase tracking-wider">Bộ Lọc Tìm Kiếm</h3>
@@ -124,7 +124,7 @@ export default function FilterSidebar({
         <label className="text-xs font-semibold text-gray-300 uppercase tracking-wide">
           Loại truyện
         </label>
-        <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-black/40 border border-white/5">
+        <div className="grid grid-cols-3 gap-1.5 p-1 rounded-xl bg-black/40 border border-white/[0.03]">
           {[
             { value: 'all', label: 'Tất cả' },
             { value: 'novel', label: 'Truyện chữ' },
@@ -135,7 +135,7 @@ export default function FilterSidebar({
               onClick={() => handleTypeChange(item.value)}
               className={`py-1.5 px-2 rounded-lg text-xs font-medium transition-all ${
                 filters.type === item.value
-                  ? 'bg-brand-600 text-white shadow-sm shadow-brand-500/30'
+                  ? 'bg-brand-600 text-snow shadow-sm shadow-brand-500/30'
                   : 'text-gray-400 hover:text-gray-200'
               }`}
             >
@@ -153,7 +153,7 @@ export default function FilterSidebar({
         <select
           value={filters.status}
           onChange={e => handleStatusChange(e.target.value)}
-          className="w-full h-9 px-3 rounded-xl bg-[#141420] border border-white/10 text-xs text-white focus:outline-none focus:border-brand-500"
+          className="w-full h-9 px-3 rounded-xl bg-glass border border-white/[0.04] text-xs text-white focus:outline-none focus:border-brand-500"
         >
           <option value="all">Tất cả tình trạng</option>
           <option value="ongoing">Đang tiến hành</option>
@@ -172,7 +172,7 @@ export default function FilterSidebar({
           <select
             value={filters.language}
             onChange={e => handleLanguageChange(e.target.value)}
-            className="w-full h-9 px-2.5 rounded-xl bg-[#141420] border border-white/10 text-xs text-white focus:outline-none focus:border-brand-500"
+            className="w-full h-9 px-2.5 rounded-xl bg-glass border border-white/[0.04] text-xs text-white focus:outline-none focus:border-brand-500"
           >
             <option value="all">Tất cả</option>
             <option value="ja">🇯🇵 Nhật Bản</option>
@@ -190,7 +190,7 @@ export default function FilterSidebar({
           <select
             value={filters.min_chapters}
             onChange={e => handleMinChaptersChange(e.target.value)}
-            className="w-full h-9 px-2.5 rounded-xl bg-[#141420] border border-white/10 text-xs text-white focus:outline-none focus:border-brand-500"
+            className="w-full h-9 px-2.5 rounded-xl bg-glass border border-white/[0.04] text-xs text-white focus:outline-none focus:border-brand-500"
           >
             <option value="0">Tất cả</option>
             <option value="1">≥ 1 chương</option>
@@ -202,7 +202,7 @@ export default function FilterSidebar({
       </div>
 
       {/* Tag Instructions */}
-      <div className="p-2.5 rounded-xl bg-white/5 border border-white/5 text-[11px] text-gray-400 space-y-1">
+      <div className="p-2.5 rounded-xl bg-white/5 border border-white/[0.03] text-[11px] text-gray-400 space-y-1">
         <div className="flex items-center gap-1.5 text-gray-300 font-semibold">
           <Sparkles className="w-3.5 h-3.5 text-brand-400" />
           <span>Hướng dẫn chọn Tag:</span>
@@ -243,11 +243,11 @@ export default function FilterSidebar({
                     const isIncluded = filters.tags.includes(tag.slug);
                     const isExcluded = filters.exclude_tags.includes(tag.slug);
 
-                    let btnClass = 'bg-white/5 hover:bg-white/10 text-gray-400 border-white/5';
+                    let btnClass = 'bg-white/5 hover:bg-white/10 text-gray-400 border-white/[0.03]';
                     if (isIncluded) {
-                      btnClass = 'bg-brand-600 text-white border-brand-500 shadow-sm shadow-brand-500/30';
+                      btnClass = 'bg-brand-600 text-snow border-brand-500 shadow-sm shadow-brand-500/30';
                     } else if (isExcluded) {
-                      btnClass = 'bg-rose-600/80 text-white border-rose-500 line-through';
+                      btnClass = 'bg-rose-600/80 text-snow border-rose-500 line-through';
                     }
 
                     return (
@@ -276,7 +276,7 @@ export default function FilterSidebar({
   return (
     <>
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:block w-72 shrink-0 p-5 rounded-2xl glass-panel border border-white/10 h-fit sticky top-20">
+      <aside className="hidden lg:block w-72 shrink-0 p-5 rounded-2xl glass-panel border border-white/[0.04] h-fit sticky top-20">
         {content}
       </aside>
 
@@ -284,10 +284,10 @@ export default function FilterSidebar({
       {isOpenMobile && (
         <div className="lg:hidden fixed inset-0 z-50 flex justify-end bg-black/70 backdrop-blur-sm animate-in fade-in">
           <div 
-            className="w-full max-w-xs h-full bg-[#0F0F17] p-5 border-l border-white/10 overflow-y-auto"
+            className="w-full max-w-xs h-full bg-surface p-5 border-l border-white/[0.04] overflow-y-auto"
             onClick={e => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between pb-4 mb-4 border-b border-white/10">
+            <div className="flex items-center justify-between pb-4 mb-4 border-b border-white/[0.04]">
               <span className="font-bold text-base text-white">Bộ lọc</span>
               <button
                 onClick={onCloseMobile}

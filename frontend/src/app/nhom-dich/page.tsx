@@ -97,7 +97,7 @@ export default function GroupsPage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 pb-24">
       
       {/* 1. Header Banner */}
-      <div className="relative rounded-3xl overflow-hidden glass-panel border border-brand-500/20 p-6 sm:p-8 bg-gradient-to-r from-brand-900/30 via-indigo-900/20 to-[#0F0F17] shadow-xl">
+      <div className="relative rounded-3xl overflow-hidden glass-panel border border-brand-500/20 p-6 sm:p-8 bg-gradient-to-r from-brand-900/30 via-indigo-900/20 to-surface shadow-xl">
         <div className="relative flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="space-y-2 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/20 text-brand-300 border border-brand-500/30 text-xs font-bold">
@@ -113,7 +113,7 @@ export default function GroupsPage() {
 
           <button
             onClick={requireLogin(() => setIsCreateModalOpen(true))}
-            className="px-6 py-3 rounded-2xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-bold text-xs shadow-xl shadow-brand-500/25 flex items-center gap-2 transition hover:scale-105 shrink-0"
+            className="px-6 py-3 rounded-2xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-snow font-bold text-xs shadow-xl shadow-brand-500/25 flex items-center gap-2 transition hover:scale-105 shrink-0"
           >
             <Plus className="w-4 h-4" />
             <span>Thành Lập Nhóm Mới</span>
@@ -130,7 +130,7 @@ export default function GroupsPage() {
             onClick={() => setFilterTab('all')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition shrink-0 ${
               filterTab === 'all'
-                ? 'bg-brand-600 text-white shadow-md shadow-brand-500/20'
+                ? 'bg-brand-600 text-snow shadow-md shadow-brand-500/20'
                 : 'text-gray-400 hover:text-white'
             }`}
           >
@@ -141,7 +141,7 @@ export default function GroupsPage() {
             onClick={requireLogin(() => setFilterTab('my_groups'))}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition shrink-0 ${
               filterTab === 'my_groups'
-                ? 'bg-brand-600 text-white shadow-md shadow-brand-500/20'
+                ? 'bg-brand-600 text-snow shadow-md shadow-brand-500/20'
                 : 'text-gray-400 hover:text-white'
             }`}
           >
@@ -153,7 +153,7 @@ export default function GroupsPage() {
             onClick={() => setFilterTab('pending')}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition shrink-0 flex items-center gap-1.5 ${
               filterTab === 'pending'
-                ? 'bg-rose-600 text-white shadow-md shadow-rose-500/20'
+                ? 'bg-rose-600 text-snow shadow-md shadow-rose-500/20'
                 : 'text-gray-400 hover:text-white'
             }`}
           >
@@ -195,7 +195,7 @@ export default function GroupsPage() {
           </p>
           <button
             onClick={requireLogin(() => setIsCreateModalOpen(true))}
-            className="px-5 py-2.5 rounded-xl bg-brand-600 text-white text-xs font-bold hover:bg-brand-500 transition"
+            className="px-5 py-2.5 rounded-xl bg-brand-600 text-snow text-xs font-bold hover:bg-brand-500 transition"
           >
             Tạo nhóm dịch ngay
           </button>
@@ -205,7 +205,7 @@ export default function GroupsPage() {
           {groups.map((group) => (
             <div 
               key={group.id}
-              className="rounded-3xl glass-panel border border-white/10 hover:border-brand-500/40 transition-all duration-300 overflow-hidden flex flex-col justify-between group hover:-translate-y-1 hover:shadow-xl hover:shadow-brand-500/10 bg-[#12121e]/85"
+              className="rounded-3xl glass-panel border border-white/10 hover:border-brand-500/40 transition-all duration-300 overflow-hidden flex flex-col justify-between group hover:-translate-y-1 hover:shadow-xl hover:shadow-brand-500/10 bg-surface-2/85"
             >
               <div>
                 {/* Banner */}
@@ -216,7 +216,7 @@ export default function GroupsPage() {
                     <div className="w-full h-full bg-gradient-to-br from-indigo-600/30 to-brand-600/20" />
                   )}
                   {group.approval_status === 'pending' && (
-                    <span className="absolute top-3 right-3 px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-500 text-black shadow-md">
+                    <span className="absolute top-3 right-3 px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-500 text-ink shadow-md">
                       Chờ Admin duyệt
                     </span>
                   )}
@@ -225,7 +225,7 @@ export default function GroupsPage() {
                 {/* Avatar & Info */}
                 <div className="px-5 pb-4 relative pt-12">
                   {/* Floating Avatar */}
-                  <div className="absolute -top-10 left-5 w-20 h-20 rounded-2xl overflow-hidden border-2 border-[#12121e] bg-gray-900 shadow-xl">
+                  <div className="absolute -top-10 left-5 w-20 h-20 rounded-2xl overflow-hidden border-2 border-surface-2 bg-gray-900 shadow-xl">
                     <SmartImage 
                       src={group.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200'} 
                       alt={group.name} 
@@ -274,7 +274,7 @@ export default function GroupsPage() {
                     </button>
                     <button
                       onClick={() => handleApproveGroup(group.id)}
-                      className="px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition flex items-center gap-1"
+                      className="px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-snow text-xs font-bold transition flex items-center gap-1"
                     >
                       <CheckCircle2 className="w-3.5 h-3.5" /> Duyệt Nhóm
                     </button>

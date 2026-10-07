@@ -229,8 +229,8 @@ export default function PostCard({
   return (
     <article className={`rounded-3xl glass-panel border transition-all duration-300 p-5 sm:p-6 space-y-4 shadow-lg relative ${
       isSelected 
-        ? 'border-brand-500 bg-[#17172b]/95 ring-2 ring-brand-500/40' 
-        : 'border-white/10 hover:border-brand-500/30 bg-[#12121e]/80'
+        ? 'border-brand-500 bg-glass ring-2 ring-brand-500/40' 
+        : 'border-white/10 hover:border-brand-500/30 bg-glass'
     }`}>
       
       {/* Multi-Select Checkbox for Bulk Operations (Admin/Mod only) */}
@@ -241,7 +241,7 @@ export default function PostCard({
             onClick={() => onSelectToggle && onSelectToggle(post.id)}
             className={`w-6 h-6 rounded-lg border flex items-center justify-center transition ${
               isSelected 
-                ? 'bg-brand-600 border-brand-500 text-white' 
+                ? 'bg-brand-600 border-brand-500 text-snow' 
                 : 'bg-black/60 border-white/30 text-transparent hover:border-white/60'
             }`}
           >
@@ -262,14 +262,14 @@ export default function PostCard({
               <button
                 onClick={handleApprove}
                 disabled={isProcessing}
-                className="px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold transition flex items-center gap-1"
+                className="px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-snow text-[11px] font-bold transition flex items-center gap-1"
               >
                 <CheckCircle2 className="w-3.5 h-3.5" /> Duyệt
               </button>
               <button
                 onClick={handleReject}
                 disabled={isProcessing}
-                className="px-3 py-1 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-[11px] font-bold transition flex items-center gap-1"
+                className="px-3 py-1 rounded-xl bg-rose-600 hover:bg-rose-500 text-snow text-[11px] font-bold transition flex items-center gap-1"
               >
                 <XCircle className="w-3.5 h-3.5" /> Từ chối
               </button>
@@ -310,7 +310,7 @@ export default function PostCard({
           >
             <Share2 className="w-4 h-4" />
             {copied && (
-              <span className="absolute -top-7 right-0 text-[10px] px-2 py-0.5 rounded-md bg-brand-600 text-white font-bold whitespace-nowrap shadow-md">
+              <span className="absolute -top-7 right-0 text-[10px] px-2 py-0.5 rounded-md bg-brand-600 text-snow font-bold whitespace-nowrap shadow-md">
                 Đã sao chép!
               </span>
             )}
@@ -328,7 +328,7 @@ export default function PostCard({
 
               {isMenuOpen && (
                 <div 
-                  className="absolute right-0 top-8 z-30 w-44 bg-[#18182a] border border-white/15 rounded-2xl shadow-2xl p-1.5 space-y-1 animate-in fade-in zoom-in-95 text-xs font-semibold"
+                  className="absolute right-0 top-8 z-30 w-44 bg-glass border border-white/15 rounded-2xl shadow-2xl p-1.5 space-y-1 animate-in fade-in zoom-in-95 text-xs font-semibold"
                   onMouseLeave={() => setIsMenuOpen(false)}
                 >
                   {onEdit && (
@@ -438,7 +438,7 @@ export default function PostCard({
           onMouseLeave={() => setIsReactionPickerOpen(false)}
         >
           {isReactionPickerOpen && (
-            <div className="absolute -top-12 left-0 z-20 flex items-center gap-1.5 p-1.5 rounded-full bg-[#1c1c2e] border border-white/15 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="absolute -top-12 left-0 z-20 flex items-center gap-1.5 p-1.5 rounded-full bg-surface-3 border border-white/15 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-200">
               {emojiList.map((emo) => (
                 <button
                   key={emo.type}

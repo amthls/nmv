@@ -79,7 +79,18 @@ app.use((req, res) => {
 });
 
 // Global Error Handler Middleware
+const UPLOAD_ERRORS: Record<string, string> = {
+  LIMIT_FILE_SIZE: 'Có ảnh nặng quá 25 MB. Hãy giảm dung lượng ảnh rồi tải lại.',
+  LIMIT_FILE_COUNT: 'Gửi quá nhiều ảnh trong một lần.',
+  LIMIT_UNEXPECTED_FILE: 'Trường tải lên không hợp lệ.',
+  LIMIT_PART_COUNT: 'Yêu cầu tải lên có quá nhiều phần.',
+};
+
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  // Upload problems are the client's to fix: answer 400 with a message they can act on
+  if (err?.name === 'MulterError' || /^Chỉ chấp nhận/.test(err?.message || '')) {
+    return res.status(400).json({ success: false, message: UPLOAD_ERRORS[err.code] || err.message });
+  }
   console.error('[Express Global Error]', err);
   res.status(err.status || 500).json({
     success: false,

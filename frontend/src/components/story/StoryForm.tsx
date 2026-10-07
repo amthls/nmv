@@ -64,7 +64,7 @@ interface StoryFormProps {
 
 export default function StoryForm({ mode, initialValues, preselectedGroupId }: StoryFormProps) {
   const router = useRouter();
-  const { authFetch, user, hasRole } = useAuth();
+  const { authFetch, user, hasRole, refreshProfile } = useAuth();
   const iv = initialValues || {};
 
   const [title, setTitle] = useState(iv.title || '');
@@ -122,6 +122,14 @@ export default function StoryForm({ mode, initialValues, preselectedGroupId }: S
       (Array.isArray(g.members) && g.members.some((m: any) => m.user_id === user?.id))
     );
   }, [groups, user?.id, iv.group_id]);
+
+  // Group stories need the group's leader/vice leader ("mod") unless the poster is one (or site staff)
+  const needsGroupReview = useMemo(() => {
+    if (!selectedGroupId || hasRole('admin', 'mod')) return false;
+    const g = groups.find((x: any) => x.id === selectedGroupId);
+    const me = Array.isArray(g?.members) ? g.members.find((m: any) => m.user_id === user?.id) : null;
+    return !['leader', 'mod'].includes(me?.role);
+  }, [groups, selectedGroupId, user?.id]);
 
   const allTags = useMemo(() => {
     const list: TagItem[] = [];
@@ -211,7 +219,14 @@ export default function StoryForm({ mode, initialValues, preselectedGroupId }: S
           setTimeout(() => {
             router.push(`/truyen/${json.data.slug}`);
           }, 1200);
+        } else if (json.data.approval_status === 'pending') {
+          // Group story: goes live once the group's leader/vice leader approves it
+          setFeedback(json.message || 'Truyện đang chờ Trưởng nhóm hoặc Phó nhóm duyệt.');
+          setTimeout(() => {
+            router.push(`/truyen/${json.data.slug}`);
+          }, 2500);
         } else {
+          refreshProfile().catch(() => {}); // the account just became an author/translator
           setFeedback('Đăng bộ truyện thành công! Đang chuyển hướng sang trang đăng chương...');
           setTimeout(() => {
             router.push(`/dang-chuong?story_id=${json.data.id}`);
@@ -243,7 +258,7 @@ export default function StoryForm({ mode, initialValues, preselectedGroupId }: S
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="p-6 sm:p-8 rounded-3xl border border-white/10 bg-[#141420] shadow-2xl space-y-6">
+      <form onSubmit={handleSubmit} className="p-6 sm:p-8 rounded-3xl border border-white/10 bg-glass shadow-2xl space-y-6">
 
         {/* Story Title & Type */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -264,7 +279,7 @@ export default function StoryForm({ mode, initialValues, preselectedGroupId }: S
             <select
               value={storyType}
               onChange={(e) => setStoryType(e.target.value as any)}
-              className="w-full h-11 px-3 rounded-xl bg-[#0f0f17] border border-white/10 text-white text-xs focus:outline-none focus:border-brand-500 font-semibold"
+              className="w-full h-11 px-3 rounded-xl bg-surface border border-white/10 text-white text-xs focus:outline-none focus:border-brand-500 font-semibold"
             >
               <option value="novel">Light Novel / Web Novel</option>
               <option value="manga">Manga / Truyện Tranh</option>
@@ -283,7 +298,7 @@ export default function StoryForm({ mode, initialValues, preselectedGroupId }: S
                 onClick={() => setStatus(opt.value as any)}
                 className={`px-3.5 py-2 rounded-xl text-xs font-semibold border transition cursor-pointer ${
                   status === opt.value
-                    ? 'bg-brand-600 border-brand-500 text-white shadow-md shadow-brand-500/25'
+                    ? 'bg-brand-600 border-brand-500 text-snow shadow-md shadow-brand-500/25'
                     : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10 hover:text-white'
                 }`}
               >
@@ -311,7 +326,7 @@ export default function StoryForm({ mode, initialValues, preselectedGroupId }: S
             <select
               value={selectedGroupId}
               onChange={(e) => setSelectedGroupId(e.target.value)}
-              className="w-full h-11 px-3 rounded-xl bg-[#0f0f17] border border-white/10 text-white text-xs focus:outline-none focus:border-brand-500"
+              className="w-full h-11 px-3 rounded-xl bg-surface border border-white/10 text-white text-xs focus:outline-none focus:border-brand-500"
             >
               <option value="">-- Đăng độc lập (Không thuộc nhóm nào) --</option>
               {selectableGroups.map((g) => (
@@ -320,6 +335,13 @@ export default function StoryForm({ mode, initialValues, preselectedGroupId }: S
                 </option>
               ))}
             </select>
+            <p className="text-[11px] text-gray-400">
+              {selectedGroupId
+                ? needsGroupReview
+                  ? 'Truyện sẽ hiển thị sau khi Trưởng nhóm hoặc Phó nhóm duyệt.'
+                  : 'Bạn là Trưởng/Phó nhóm nên truyện được đăng ngay.'
+                : 'Đăng độc lập: truyện hiển thị ngay, không cần duyệt.'}
+            </p>
           </div>
         </div>
 
@@ -352,7 +374,7 @@ export default function StoryForm({ mode, initialValues, preselectedGroupId }: S
             <select
               value={originalLanguage}
               onChange={(e) => setOriginalLanguage(e.target.value)}
-              className="w-full h-10 px-3 rounded-xl bg-[#0f0f17] border border-white/10 text-white text-xs focus:outline-none focus:border-brand-500"
+              className="w-full h-10 px-3 rounded-xl bg-surface border border-white/10 text-white text-xs focus:outline-none focus:border-brand-500"
             >
               <option value="ja">Tiếng Nhật (Japanese)</option>
               <option value="ko">Tiếng Hàn (Korean)</option>
@@ -417,7 +439,7 @@ export default function StoryForm({ mode, initialValues, preselectedGroupId }: S
           </div>
 
           {selectedTags.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5 p-3 rounded-2xl bg-[#0f0f17] border border-brand-500/20">
+            <div className="flex flex-wrap items-center gap-1.5 p-3 rounded-2xl bg-surface border border-brand-500/20">
               <span className="text-[11px] text-gray-400 font-medium mr-1">Đã chọn:</span>
               {selectedTags.map((tagId) => {
                 const tagObj = allTags.find((t) => t.id === tagId);
@@ -425,7 +447,7 @@ export default function StoryForm({ mode, initialValues, preselectedGroupId }: S
                 return (
                   <span
                     key={tagId}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-brand-600 text-white text-xs font-medium shadow-sm transition hover:bg-brand-700"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-brand-600 text-snow text-xs font-medium shadow-sm transition hover:bg-brand-700"
                   >
                     <span>{tagObj.name}</span>
                     <button
@@ -442,7 +464,7 @@ export default function StoryForm({ mode, initialValues, preselectedGroupId }: S
             </div>
           )}
 
-          <div className="space-y-2.5 p-4 rounded-2xl bg-[#0f0f17] border border-white/10">
+          <div className="space-y-2.5 p-4 rounded-2xl bg-surface border border-white/10">
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
               <div className="flex flex-wrap items-center gap-1.5">
                 <button
@@ -450,7 +472,7 @@ export default function StoryForm({ mode, initialValues, preselectedGroupId }: S
                   onClick={() => setActiveCategoryTab('all')}
                   className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
                     activeCategoryTab === 'all'
-                      ? 'bg-brand-600 text-white shadow-md shadow-brand-500/25'
+                      ? 'bg-brand-600 text-snow shadow-md shadow-brand-500/25'
                       : 'bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white'
                   }`}
                 >
@@ -463,7 +485,7 @@ export default function StoryForm({ mode, initialValues, preselectedGroupId }: S
                     onClick={() => setActiveCategoryTab(cat.category_name)}
                     className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
                       activeCategoryTab === cat.category_name
-                        ? 'bg-brand-600 text-white shadow-md shadow-brand-500/25'
+                        ? 'bg-brand-600 text-snow shadow-md shadow-brand-500/25'
                         : 'bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white'
                     }`}
                   >
@@ -517,7 +539,7 @@ export default function StoryForm({ mode, initialValues, preselectedGroupId }: S
                             title={tag.description || tag.name}
                             className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition cursor-pointer flex items-center gap-1.5 select-none ${
                               isSelected
-                                ? 'bg-brand-600 border-brand-500 text-white shadow-md shadow-brand-500/25 font-semibold'
+                                ? 'bg-brand-600 border-brand-500 text-snow shadow-md shadow-brand-500/25 font-semibold'
                                 : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10 hover:border-white/20 hover:text-white'
                             }`}
                           >
@@ -545,7 +567,7 @@ export default function StoryForm({ mode, initialValues, preselectedGroupId }: S
           <button
             type="submit"
             disabled={!title.trim() || isSubmitting}
-            className="px-8 py-3 rounded-2xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 disabled:opacity-40 text-white font-bold text-xs shadow-xl shadow-brand-500/25 flex items-center gap-2 transition hover:scale-105 cursor-pointer"
+            className="px-8 py-3 rounded-2xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 disabled:opacity-40 text-snow font-bold text-xs shadow-xl shadow-brand-500/25 flex items-center gap-2 transition hover:scale-105 cursor-pointer"
           >
             <Send className="w-4 h-4" />
             <span>

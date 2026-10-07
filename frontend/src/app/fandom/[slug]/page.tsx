@@ -189,7 +189,7 @@ export default function PostDetailPage() {
       <div className="min-h-[50vh] flex flex-col items-center justify-center p-4 text-center space-y-4">
         <AlertCircle className="w-12 h-12 text-brand-400" />
         <h2 className="text-xl font-bold text-white">Không tìm thấy bài viết này</h2>
-        <Link href="/fandom" className="px-4 py-2 rounded-xl bg-brand-600 text-white text-xs font-semibold">
+        <Link href="/fandom" className="px-4 py-2 rounded-xl bg-brand-600 text-snow text-xs font-semibold">
           Quay lại Fandom
         </Link>
       </div>
@@ -215,7 +215,7 @@ export default function PostDetailPage() {
       </div>
 
       {/* Main Post Article Card */}
-      <article className="rounded-3xl glass-panel border border-white/10 p-6 sm:p-8 space-y-6 bg-[#12121e]/90 shadow-2xl relative">
+      <article className="rounded-3xl glass-panel border border-white/10 p-6 sm:p-8 space-y-6 bg-glass shadow-2xl relative">
         
         {/* Author Header */}
         <div className="flex items-center justify-between pb-4 border-b border-white/10">
@@ -255,7 +255,7 @@ export default function PostDetailPage() {
             >
               <Share2 className="w-4 h-4" />
               {copied && (
-                <span className="absolute -top-7 right-0 text-[10px] px-2 py-0.5 rounded-md bg-brand-600 text-white font-bold whitespace-nowrap shadow-md">
+                <span className="absolute -top-7 right-0 text-[10px] px-2 py-0.5 rounded-md bg-brand-600 text-snow font-bold whitespace-nowrap shadow-md">
                   Đã sao chép!
                 </span>
               )}
@@ -281,7 +281,7 @@ export default function PostDetailPage() {
                 </button>
 
                 {showMenu && (
-                  <div className="absolute right-0 mt-1 w-44 rounded-xl bg-[#1c1c2e] border border-white/10 shadow-xl py-1 z-20">
+                  <div className="absolute right-0 mt-1 w-44 rounded-xl bg-surface-3 border border-white/10 shadow-xl py-1 z-20">
                     <button
                       onClick={() => {
                         setIsEditing(true);
@@ -334,7 +334,7 @@ export default function PostDetailPage() {
               <button
                 onClick={handleSaveEdit}
                 disabled={isSaving}
-                className="px-4 py-1.5 rounded-xl bg-brand-600 text-white text-xs font-bold hover:bg-brand-500 transition flex items-center gap-1"
+                className="px-4 py-1.5 rounded-xl bg-brand-600 text-snow text-xs font-bold hover:bg-brand-500 transition flex items-center gap-1"
               >
                 <Check className="w-3.5 h-3.5" /> {isSaving ? 'Đang lưu...' : 'Lưu thay đổi'}
               </button>

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Settings, X, Type, AlignLeft, AlignJustify, Palette, Eye, Image as ImageIcon } from 'lucide-react';
-import { IMAGE_QUALITY_OPTIONS, useImageQuality } from '@/lib/imageQuality';
+import ImageQualityPicker from '@/components/common/ImageQualityPicker';
 
 export interface ReaderSettings {
   theme: 'dark' | 'amoled' | 'sepia' | 'light';
@@ -26,15 +26,14 @@ export default function ReaderSettingsModal({
   settings,
   onSettingsChange,
 }: ReaderSettingsModalProps) {
-  const [imageQuality, setImageQuality] = useImageQuality();
 
   if (!isOpen) return null;
 
   const themes = [
-    { id: 'dark', name: 'Tối', bg: 'bg-[#12121e]', border: 'border-[#2d2d44]', text: 'text-gray-200' },
-    { id: 'amoled', name: 'AMOLED', bg: 'bg-black', border: 'border-white/20', text: 'text-gray-300' },
+    { id: 'dark', name: 'Tối', bg: 'bg-[#141420]', border: 'border-[#2a2a3e]', text: 'text-[#e5e7eb]' },
+    { id: 'amoled', name: 'AMOLED', bg: 'bg-[#000000]', border: 'border-[#333333]', text: 'text-[#d1d5db]' },
     { id: 'sepia', name: 'Sepia (Vàng)', bg: 'bg-[#F4ECD8]', border: 'border-[#d4c5a9]', text: 'text-[#5B4636]' },
-    { id: 'light', name: 'Sáng', bg: 'bg-white', border: 'border-gray-300', text: 'text-gray-900' },
+    { id: 'light', name: 'Sáng', bg: 'bg-snow', border: 'border-[#d1d5db]', text: 'text-ink' },
   ];
 
   const fonts = [
@@ -54,7 +53,7 @@ export default function ReaderSettingsModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
       <div 
-        className="w-full max-w-md bg-[#161626] border border-white/10 rounded-2xl p-5 shadow-2xl space-y-5"
+        className="w-full max-w-md bg-glass border border-white/10 rounded-2xl p-5 shadow-2xl space-y-5"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -107,7 +106,7 @@ export default function ReaderSettingsModal({
                 onClick={() => onSettingsChange({ ...settings, fontFamily: f.id as any })}
                 className={`p-2 rounded-xl border text-xs text-left transition ${
                   settings.fontFamily === f.id
-                    ? 'bg-brand-600 text-white border-brand-500 shadow-md'
+                    ? 'bg-brand-600 text-snow border-brand-500 shadow-md'
                     : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
                 }`}
               >
@@ -161,7 +160,7 @@ export default function ReaderSettingsModal({
                 onClick={() => onSettingsChange({ ...settings, lineHeight: lh })}
                 className={`py-1.5 rounded-lg border text-xs font-semibold transition ${
                   settings.lineHeight === lh
-                    ? 'bg-brand-600 text-white border-brand-500 shadow-sm'
+                    ? 'bg-brand-600 text-snow border-brand-500 shadow-sm'
                     : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
                 }`}
               >
@@ -178,7 +177,7 @@ export default function ReaderSettingsModal({
             <select
               value={settings.maxWidth}
               onChange={(e) => onSettingsChange({ ...settings, maxWidth: e.target.value })}
-              className="w-full h-8 px-2.5 rounded-lg bg-[#141420] border border-white/10 text-xs text-white focus:outline-none focus:border-brand-500"
+              className="w-full h-8 px-2.5 rounded-lg bg-glass border border-white/10 text-xs text-white focus:outline-none focus:border-brand-500"
             >
               {widths.map((w) => (
                 <option key={w.id} value={w.id}>{w.label}</option>
@@ -192,7 +191,7 @@ export default function ReaderSettingsModal({
               <button
                 onClick={() => onSettingsChange({ ...settings, textAlign: 'left' })}
                 className={`flex-1 h-full rounded flex items-center justify-center transition ${
-                  settings.textAlign === 'left' ? 'bg-brand-600 text-white' : 'text-gray-400'
+                  settings.textAlign === 'left' ? 'bg-brand-600 text-snow' : 'text-gray-400'
                 }`}
                 title="Căn trái"
               >
@@ -201,7 +200,7 @@ export default function ReaderSettingsModal({
               <button
                 onClick={() => onSettingsChange({ ...settings, textAlign: 'justify' })}
                 className={`flex-1 h-full rounded flex items-center justify-center transition ${
-                  settings.textAlign === 'justify' ? 'bg-brand-600 text-white' : 'text-gray-400'
+                  settings.textAlign === 'justify' ? 'bg-brand-600 text-snow' : 'text-gray-400'
                 }`}
                 title="Căn đều hai bên"
               >
@@ -217,33 +216,14 @@ export default function ReaderSettingsModal({
             <ImageIcon className="w-3.5 h-3.5 text-brand-400" />
             <span>Độ phân giải ảnh</span>
           </label>
-          <div className="grid grid-cols-4 gap-1.5">
-            {IMAGE_QUALITY_OPTIONS.map((q) => (
-              <button
-                key={q.id}
-                type="button"
-                onClick={() => setImageQuality(q.id)}
-                title={q.hint}
-                className={`py-1.5 rounded-lg text-[11px] font-semibold border transition ${
-                  imageQuality === q.id
-                    ? 'bg-brand-600 border-brand-500 text-white'
-                    : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
-                }`}
-              >
-                {q.label}
-              </button>
-            ))}
-          </div>
-          <p className="text-[10px] text-gray-500">
-            {IMAGE_QUALITY_OPTIONS.find((q) => q.id === imageQuality)?.hint}. Áp dụng cho ảnh manga, ảnh minh họa và ảnh trong bài viết.
-          </p>
+          <ImageQualityPicker compact />
         </div>
 
         {/* Footer */}
         <div className="pt-2 border-t border-white/10">
           <button
             onClick={onClose}
-            className="w-full py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold shadow-md transition"
+            className="w-full py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow text-xs font-semibold shadow-md transition"
           >
             Đóng & Lưu Cài Đặt
           </button>

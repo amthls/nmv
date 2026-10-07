@@ -6,6 +6,8 @@ import { searchStoryIds, indexStory, removeStoryFromIndex } from '../services/se
 import { sanitizeRichText } from '../utils/richText';
 import { InputError, isUuid, optionalEnum, optionalText, optionalUrl, requiredText } from '../utils/validation';
 import { clientDbError } from '../utils/dbErrors';
+import { enqueueNotificationJob } from '../services/queue.service';
+import { NotifyItem } from '../services/notification.service';
 
 function slugify(text: string) {
   return text
@@ -48,6 +50,61 @@ export async function canUserManageStory(userId: string, storyId: string, userRo
   if (collabRes.rows.length > 0) return true;
 
   return false;
+}
+
+type Queryable = { query: (text: string, params?: any[]) => Promise<any> };
+
+/**
+ * Who may approve a story posted under a translation group: site admin/mod, or the
+ * group's leader ("trưởng nhóm") / group mod ("phó nhóm").
+ */
+export async function canUserReviewGroupStory(db: Queryable, userId: string, userRoles: string[], groupId: string): Promise<boolean> {
+  if (userRoles.includes('admin') || userRoles.includes('mod')) return true;
+  const memRes = await db.query(`SELECT role FROM group_members WHERE group_id = $1 AND user_id = $2`, [groupId, userId]);
+  return memRes.rows.length > 0 && ['leader', 'mod'].includes(memRes.rows[0].role);
+}
+
+/**
+ * Approval needed for a story: none without a group (no admin review); with a group,
+ * stories from the leader/group mod go live at once, everyone else waits for them.
+ */
+export async function storyApprovalFor(db: Queryable, userId: string, userRoles: string[], groupId: string | null): Promise<'approved' | 'pending'> {
+  if (!groupId) return 'approved';
+  return (await canUserReviewGroupStory(db, userId, userRoles, groupId)) ? 'approved' : 'pending';
+}
+
+/** Someone with a published story becomes an author (own story) or a translator (group story). */
+export async function grantPublisherRole(db: Queryable, userId: string, groupId: string | null) {
+  await db.query(
+    `INSERT INTO user_roles (user_id, role, is_visible) VALUES ($1, $2::user_role, true) ON CONFLICT (user_id, role) DO NOTHING`,
+    [userId, groupId ? 'translator' : 'author']
+  );
+}
+
+function notify(items: NotifyItem[], what: string) {
+  if (items.length === 0) return;
+  enqueueNotificationJob({ kind: 'notify', items })
+    .catch((err) => console.error(`[Stories] ${what} notification failed:`, err.message));
+}
+
+/** Tell the group's leader/mods that a story is waiting for their review. */
+export async function notifyGroupStoryPending(story: { id: string; title: string; group_id: string; uploader_id: string }) {
+  try {
+    const res = await pool.query(
+      `SELECT gm.user_id, g.name FROM group_members gm JOIN translation_groups g ON g.id = gm.group_id
+       WHERE gm.group_id = $1 AND gm.role IN ('leader', 'mod') AND gm.user_id <> $2`,
+      [story.group_id, story.uploader_id]
+    );
+    notify(res.rows.map((r: any) => ({
+      userId: r.user_id, type: 'system' as const,
+      title: `Truyện mới chờ duyệt trong nhóm ${r.name}`,
+      message: `"${story.title}"`,
+      referenceType: 'group' as const, referenceId: story.group_id, senderId: story.uploader_id,
+      dedupeKey: `story-pending:${story.id}:${r.user_id}:${Date.now()}`,
+    })), 'pending story');
+  } catch (err: any) {
+    console.error('[Stories] pending story notification failed:', err.message);
+  }
 }
 
 const STORY_TYPES = ['novel', 'manga'] as const;
@@ -597,6 +654,10 @@ export const getStoryBySlug = async (req: Request, res: Response) => {
 
     const currentUserId = (req as any).user?.id;
     const currentUserRoles = (req as any).user?.roles || [];
+    story.can_review = Boolean(
+      currentUserId && story.approval_status !== 'approved' && story.group_id &&
+      await canUserReviewGroupStory(pool, currentUserId, currentUserRoles, story.group_id)
+    );
     if (currentUserId) {
       const favCheck = await pool.query(
         'SELECT id, category FROM user_favorites WHERE user_id = $1::uuid AND story_id = $2::uuid',
@@ -609,6 +670,11 @@ export const getStoryBySlug = async (req: Request, res: Response) => {
       story.is_favorite = false;
       story.favorite_category = null;
       story.can_manage = false;
+    }
+
+    // A story waiting for (or refused by) the group is only visible to its team and reviewers
+    if (story.approval_status && story.approval_status !== 'approved' && !story.can_manage && !story.can_review) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy truyện' });
     }
 
     res.json({
@@ -816,9 +882,29 @@ export const updateStory = async (req: AuthenticatedRequest, res: Response) => {
 
     const client = await pool.connect();
     let story: any;
+    let approvalStatus: string | null = null;
     try {
       await client.query('BEGIN');
       await checkStoryReferences(client, input, currentUserId, userRoles);
+      const curRes = await client.query(`SELECT group_id, approval_status FROM stories WHERE id = $1`, [id]);
+      const current = curRes.rows[0];
+      if (current) {
+        const groupId = input.group_id !== undefined ? input.group_id : current.group_id;
+        // Re-check when the group changes, or when a refused/pending story is edited (resubmission)
+        if (groupId !== current.group_id || current.approval_status !== 'approved') {
+          approvalStatus = await storyApprovalFor(client, currentUserId, userRoles, groupId);
+          if (approvalStatus !== current.approval_status) {
+            params.splice(params.length - 1, 0, approvalStatus);
+            sets.push(`approval_status = $${params.length - 1}::approval_status`);
+            if (approvalStatus === 'approved') {
+              params.splice(params.length - 1, 0, currentUserId);
+              sets.push(`approved_by = $${params.length - 1}`, 'approved_at = NOW()', 'rejection_reason = NULL');
+            }
+          } else {
+            approvalStatus = null;
+          }
+        }
+      }
       const updateRes = await client.query(
         `UPDATE stories SET ${sets.join(', ')} WHERE id = $${params.length} RETURNING *;`,
         params
@@ -828,6 +914,7 @@ export const updateStory = async (req: AuthenticatedRequest, res: Response) => {
         return res.status(404).json({ success: false, message: 'Truyện không tồn tại.' });
       }
       story = updateRes.rows[0];
+      if (approvalStatus === 'approved') await grantPublisherRole(client, story.uploader_id, story.group_id);
       if (input.tags !== undefined) {
         await client.query(`DELETE FROM story_tags WHERE story_id = $1`, [id]);
         await client.query(
@@ -844,10 +931,13 @@ export const updateStory = async (req: AuthenticatedRequest, res: Response) => {
     }
 
     await indexStory(id);
+    if (approvalStatus === 'pending') notifyGroupStoryPending(story);
 
     res.json({
       success: true,
-      message: 'Cập nhật thông tin truyện thành công!',
+      message: approvalStatus === 'pending'
+        ? 'Đã cập nhật! Truyện đang chờ Trưởng nhóm hoặc Phó nhóm duyệt.'
+        : 'Cập nhật thông tin truyện thành công!',
       data: story,
     });
   } catch (error: any) {
@@ -1040,3 +1130,92 @@ export const removeStoryCollaborator = async (req: AuthenticatedRequest, res: Re
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+/**
+ * Stories waiting for a group's review (leader/group mod, or site admin/mod).
+ */
+export const getGroupPendingStories = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ success: false, message: 'Bạn chưa đăng nhập.' });
+    const { id } = req.params;
+    if (!isUuid(id)) return res.status(404).json({ success: false, message: 'Nhóm dịch không tồn tại.' });
+    if (!(await canUserReviewGroupStory(pool, req.user.id, req.user.roles || [], id))) {
+      return res.status(403).json({ success: false, message: 'Chỉ Trưởng nhóm hoặc Phó nhóm mới xem được truyện chờ duyệt.' });
+    }
+    const result = await pool.query(`
+      SELECT s.id, s.title, s.slug, s.cover_image_url, s.story_type, s.created_at, s.updated_at,
+        u.id as uploader_id, u.username as uploader_username, u.display_name as uploader_name, u.avatar_url as uploader_avatar
+      FROM stories s
+      JOIN users u ON s.uploader_id = u.id
+      WHERE s.group_id = $1 AND s.approval_status = 'pending'
+      ORDER BY s.updated_at DESC
+      LIMIT 200;
+    `, [id]);
+    res.json({ success: true, data: result.rows });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/** Approve (or reject) a pending group story: leader/group mod of that group, or site admin/mod. */
+const reviewStory = (approve: boolean) => async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ success: false, message: 'Bạn chưa đăng nhập.' });
+    const { id } = req.params;
+    if (!isUuid(id)) return res.status(404).json({ success: false, message: 'Truyện không tồn tại.' });
+    const reason = approve ? null : optionalText(req.body?.reason, 1000, 'Lý do') ?? null;
+
+    const storyRes = await pool.query(`SELECT id, title, slug, group_id, uploader_id, approval_status FROM stories WHERE id = $1`, [id]);
+    const story = storyRes.rows[0];
+    if (!story) return res.status(404).json({ success: false, message: 'Truyện không tồn tại.' });
+    if (story.approval_status !== 'pending' || !story.group_id) {
+      return res.status(400).json({ success: false, message: 'Truyện này không ở trạng thái chờ duyệt.' });
+    }
+    if (!(await canUserReviewGroupStory(pool, req.user.id, req.user.roles || [], story.group_id))) {
+      return res.status(403).json({ success: false, message: 'Chỉ Trưởng nhóm hoặc Phó nhóm mới có quyền duyệt truyện của nhóm.' });
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const upd = await client.query(`
+        UPDATE stories SET approval_status = $1::approval_status, approved_by = $2, approved_at = NOW(),
+          rejection_reason = $3, updated_at = NOW()
+        WHERE id = $4 AND approval_status = 'pending'
+      `, [approve ? 'approved' : 'rejected', req.user.id, reason, id]);
+      if (upd.rowCount === 0) {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ success: false, message: 'Truyện đã được người khác xử lý.' });
+      }
+      if (approve) await grantPublisherRole(client, story.uploader_id, story.group_id);
+      await client.query('COMMIT');
+    } catch (txErr) {
+      await client.query('ROLLBACK');
+      throw txErr;
+    } finally {
+      client.release();
+    }
+
+    await indexStory(id);
+    if (story.uploader_id !== req.user.id) {
+      notify([{
+        userId: story.uploader_id, type: 'system',
+        title: approve ? 'Truyện của bạn đã được nhóm duyệt' : 'Truyện của bạn không được nhóm duyệt',
+        message: reason ? `"${story.title}" — ${reason}` : `"${story.title}"`,
+        referenceType: 'story', referenceId: story.id, senderId: req.user.id,
+        dedupeKey: `story-review:${story.id}:${approve ? 'approved' : 'rejected'}:${Date.now()}`,
+      }], 'story review');
+    }
+
+    res.json({
+      success: true,
+      message: approve ? `Đã duyệt truyện "${story.title}".` : `Đã từ chối truyện "${story.title}".`,
+    });
+  } catch (error: any) {
+    if (sendClientError(res, error)) return;
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const approveStory = reviewStory(true);
+export const rejectStory = reviewStory(false);

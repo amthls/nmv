@@ -65,7 +65,7 @@ export default function EditStoryPage() {
         </p>
         <button
           onClick={() => openAuthModal('login')}
-          className="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold text-sm shadow-lg shadow-brand-500/25 transition flex items-center justify-center gap-2 mx-auto"
+          className="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow font-semibold text-sm shadow-lg shadow-brand-500/25 transition flex items-center justify-center gap-2 mx-auto"
         >
           <LogIn className="w-4 h-4" />
           Đăng nhập ngay
@@ -121,7 +121,7 @@ export default function EditStoryPage() {
         </Link>
       </div>
 
-      <div className="p-6 sm:p-8 rounded-3xl border border-brand-500/20 bg-[#141420] bg-gradient-to-r from-brand-950/60 via-[#161626] to-[#0F0F17] space-y-2 shadow-xl">
+      <div className="p-6 sm:p-8 rounded-3xl border border-brand-500/20 bg-glass bg-gradient-to-r from-brand-950/60 via-surface-2 to-surface space-y-2 shadow-xl">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/20 text-brand-300 border border-brand-500/30 text-xs font-bold">
           <Pencil className="w-3.5 h-3.5 text-brand-400" /> Chỉnh Sửa Thông Tin Truyện
         </div>

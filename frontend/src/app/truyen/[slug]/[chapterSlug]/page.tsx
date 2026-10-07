@@ -321,7 +321,7 @@ export default function ChapterReaderPage() {
         <h2 className="text-xl font-bold text-white">Không tìm thấy nội dung chương này</h2>
         <Link
           href={`/truyen/${storySlug}`}
-          className="px-4 py-2 rounded-xl bg-brand-600 text-white text-xs font-semibold"
+          className="px-4 py-2 rounded-xl bg-brand-600 text-snow text-xs font-semibold"
         >
           Quay lại trang truyện
         </Link>
@@ -331,17 +331,17 @@ export default function ChapterReaderPage() {
 
   // Theme styling classes
   const themeClasses = {
-    dark: 'bg-[#0d0d15] text-[#e2e8f0]',
-    amoled: 'bg-[#000000] text-[#cccccc]',
-    sepia: 'bg-[#F4ECD8] text-[#5B4636]',
-    light: 'bg-[#FFFFFF] text-[#1a202c]',
+    dark: 'dark bg-surface text-[#e2e8f0]',
+    amoled: 'dark bg-[#000000] text-[#cccccc]',
+    sepia: 'light bg-[#F4ECD8] text-[#5B4636]',
+    light: 'light bg-[#FFFFFF] text-[#1a202c]',
   }[settings.theme];
 
   const headerBgClass = {
-    dark: 'bg-[#12121e]/90 border-white/10 text-white',
+    dark: 'bg-glass border-white/10 text-white',
     amoled: 'bg-black/90 border-white/20 text-white',
     sepia: 'bg-[#e8dec5]/90 border-[#d4c5a9] text-[#5B4636]',
-    light: 'bg-gray-100/90 border-gray-200 text-gray-900',
+    light: 'bg-glass border-white/10 text-white',
   }[settings.theme];
 
   const fontClass = {
@@ -384,7 +384,7 @@ export default function ChapterReaderPage() {
           <div className="flex items-center gap-3 truncate">
             <Link
               href={`/truyen/${storySlug}`}
-              className="p-1.5 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 transition"
+              className="p-1.5 rounded-lg hover:bg-white/10 transition"
               title="Quay lại mục lục truyện"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -402,7 +402,7 @@ export default function ChapterReaderPage() {
             <button
               onClick={() => chapterData.prev_chapter && router.push(`/truyen/${storySlug}/${chapterData.prev_chapter.slug}`)}
               disabled={!chapterData.prev_chapter}
-              className="p-2 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition"
+              className="p-2 rounded-lg hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition"
               title="Chương trước (Phím A / Mũi tên trái)"
             >
               <ChevronLeft className="w-4 h-4" />
@@ -411,7 +411,7 @@ export default function ChapterReaderPage() {
             {/* Chapter Selector Trigger */}
             <button
               onClick={() => setIsChapterSelectorOpen(true)}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-black/10 dark:bg-white/10 hover:bg-black/15 dark:hover:bg-white/15 text-xs font-semibold transition"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-xs font-semibold transition"
               title="Mục lục chương"
             >
               <List className="w-3.5 h-3.5" />
@@ -422,7 +422,7 @@ export default function ChapterReaderPage() {
             <button
               onClick={() => chapterData.next_chapter && router.push(`/truyen/${storySlug}/${chapterData.next_chapter.slug}`)}
               disabled={!chapterData.next_chapter}
-              className="p-2 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition"
+              className="p-2 rounded-lg hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition"
               title="Chương sau (Phím D / Mũi tên phải)"
             >
               <ChevronRight className="w-4 h-4" />
@@ -431,7 +431,7 @@ export default function ChapterReaderPage() {
             {/* Reader Settings Trigger */}
             <button
               onClick={() => setIsSettingsOpen(true)}
-              className="p-2 rounded-lg bg-brand-600 hover:bg-brand-500 text-white shadow-sm transition ml-1"
+              className="p-2 rounded-lg bg-brand-600 hover:bg-brand-500 text-snow shadow-sm transition ml-1"
               title="Tùy chỉnh font chữ, cỡ chữ, màu nền"
             >
               <Settings className="w-4 h-4" />
@@ -442,7 +442,7 @@ export default function ChapterReaderPage() {
               <ReportButton
                 targetType="chapter"
                 targetId={chapterData.id}
-                className="p-2 rounded-lg hover:bg-black/10 dark:hover:bg-white/10 transition ml-1 flex items-center [&>span]:hidden"
+                className="p-2 rounded-lg hover:bg-white/10 transition ml-1 flex items-center [&>span]:hidden"
               />
             )}
 
@@ -512,13 +512,20 @@ export default function ChapterReaderPage() {
 
         {/* 3. MANGA DISPLAY MODE */}
         {isManga && chapterData.pages && chapterData.pages.length > 0 ? (
-          <div className="space-y-4 flex flex-col items-center">
+          <div className="flex flex-col items-center">
             {chapterData.pages.map((page: any) => (
-              <div key={page.page_number} className="w-full max-w-3xl rounded-xl overflow-hidden shadow-2xl bg-black/40">
+              <div
+                key={page.page_number}
+                className="w-full max-w-3xl overflow-hidden bg-black/40"
+                // reserve the page's height before it loads so the reader does not jump while scrolling
+                style={page.width && page.height ? { aspectRatio: `${page.width} / ${page.height}` } : undefined}
+              >
                 <SmartImage
                   src={page.image_url}
                   adaptive
                   alt={`Trang ${page.page_number}`}
+                  width={page.width || undefined}
+                  height={page.height || undefined}
                   className="w-full h-auto"
                 />
               </div>
@@ -668,7 +675,7 @@ export default function ChapterReaderPage() {
           {chapterData.next_chapter ? (
             <Link
               href={`/truyen/${storySlug}/${chapterData.next_chapter.slug}`}
-              className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white text-xs font-bold shadow-lg shadow-brand-500/25 transition hover:scale-105"
+              className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-snow text-xs font-bold shadow-lg shadow-brand-500/25 transition hover:scale-105"
             >
               <span>Chương tiếp</span>
               <ChevronRight className="w-4 h-4" />

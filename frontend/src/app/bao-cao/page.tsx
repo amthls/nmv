@@ -108,7 +108,7 @@ export default function ReportsPage() {
         <h2 className="text-2xl font-bold text-white mb-2">Chỉ dành cho Admin/Mod</h2>
         <p className="text-sm text-gray-400 mb-6">Bạn cần đăng nhập bằng tài khoản quản trị hoặc kiểm duyệt viên để xem báo cáo vi phạm.</p>
         {!isAuthenticated && (
-          <button onClick={() => openAuthModal('login')} className="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-semibold text-sm transition">
+          <button onClick={() => openAuthModal('login')} className="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow font-semibold text-sm transition">
             Đăng nhập
           </button>
         )}
@@ -135,7 +135,7 @@ export default function ReportsPage() {
             onClick={() => setStatus(t.value)}
             className={`px-3.5 h-8 rounded-lg text-xs font-bold border transition ${
               status === t.value
-                ? 'bg-brand-600 border-brand-500 text-white'
+                ? 'bg-brand-600 border-brand-500 text-snow'
                 : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
             }`}
           >

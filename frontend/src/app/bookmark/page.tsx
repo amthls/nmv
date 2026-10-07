@@ -153,7 +153,7 @@ export default function BookmarkPage() {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 pb-24">
       
       {/* 1. Header Banner */}
-      <div className="rounded-3xl p-6 sm:p-8 glass-panel border border-brand-500/20 bg-gradient-to-r from-brand-900/30 via-indigo-900/20 to-[#0F0F17] shadow-xl space-y-2">
+      <div className="rounded-3xl p-6 sm:p-8 glass-panel border border-brand-500/20 bg-gradient-to-r from-brand-900/30 via-indigo-900/20 to-surface shadow-xl space-y-2">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/20 text-brand-300 border border-brand-500/30 text-xs font-bold">
           <Bookmark className="w-3.5 h-3.5 text-brand-400" /> Tủ Sách & Đánh Dấu Cá Nhân
         </div>
@@ -172,7 +172,7 @@ export default function BookmarkPage() {
             onClick={() => setMainTab('favorites')}
             className={`px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
               mainTab === 'favorites'
-                ? 'bg-brand-600 text-white shadow-md shadow-brand-500/25'
+                ? 'bg-brand-600 text-snow shadow-md shadow-brand-500/25'
                 : 'text-gray-400 hover:text-white'
             }`}
           >
@@ -183,7 +183,7 @@ export default function BookmarkPage() {
             onClick={() => setMainTab('line_bookmarks')}
             className={`px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
               mainTab === 'line_bookmarks'
-                ? 'bg-brand-600 text-white shadow-md shadow-brand-500/25'
+                ? 'bg-brand-600 text-snow shadow-md shadow-brand-500/25'
                 : 'text-gray-400 hover:text-white'
             }`}
           >
@@ -219,7 +219,7 @@ export default function BookmarkPage() {
 
       {/* 3. Content */}
       {!isAuthenticated ? (
-        <div className="text-center py-20 glass-panel rounded-3xl border border-white/10 bg-[#12121e]/80 space-y-4">
+        <div className="text-center py-20 glass-panel rounded-3xl border border-white/10 bg-glass space-y-4">
           <div className="w-16 h-16 rounded-full bg-brand-500/10 text-brand-400 flex items-center justify-center mx-auto">
             <Lock className="w-8 h-8" />
           </div>
@@ -229,7 +229,7 @@ export default function BookmarkPage() {
           </p>
           <button
             onClick={() => openAuthModal('login')}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold shadow-lg shadow-brand-500/25 transition"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow text-xs font-semibold shadow-lg shadow-brand-500/25 transition"
           >
             <LogIn className="w-4 h-4" /> Đăng nhập
           </button>
@@ -245,7 +245,7 @@ export default function BookmarkPage() {
           {mainTab === 'favorites' && (
             <div>
               {favorites.length === 0 ? (
-                <div className="text-center py-20 glass-panel rounded-3xl border border-white/10 bg-[#12121e]/80 space-y-4">
+                <div className="text-center py-20 glass-panel rounded-3xl border border-white/10 bg-glass space-y-4">
                   <div className="w-16 h-16 rounded-full bg-brand-500/10 text-brand-400 flex items-center justify-center mx-auto">
                     <BookOpen className="w-8 h-8" />
                   </div>
@@ -255,7 +255,7 @@ export default function BookmarkPage() {
                   </p>
                   <Link
                     href="/kham-pha"
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold shadow-lg shadow-brand-500/25 transition"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow text-xs font-semibold shadow-lg shadow-brand-500/25 transition"
                   >
                     Khám phá truyện mới ngay
                   </Link>
@@ -265,7 +265,7 @@ export default function BookmarkPage() {
                   {favorites.map((fav) => (
                     <div
                       key={fav.id}
-                      className="group rounded-3xl overflow-hidden glass-panel border border-white/10 bg-[#141420]/80 hover:border-brand-500/40 transition duration-300 flex flex-col justify-between"
+                      className="group rounded-3xl overflow-hidden glass-panel border border-white/10 bg-glass hover:border-brand-500/40 transition duration-300 flex flex-col justify-between"
                     >
                       <div className="p-5 flex gap-4">
                         <Link href={`/truyen/${fav.slug}`} className="w-24 h-32 rounded-2xl overflow-hidden flex-shrink-0 bg-gray-900 border border-white/10 relative">
@@ -290,10 +290,10 @@ export default function BookmarkPage() {
                               onChange={(e) => handleUpdateCategory(fav.story_id, e.target.value)}
                               className="text-[11px] font-medium bg-white/5 border border-white/10 text-brand-300 rounded-lg px-2 py-1 focus:outline-none"
                             >
-                              <option value="reading" className="bg-[#141420] text-white">Đang đọc</option>
-                              <option value="completed" className="bg-[#141420] text-white">Đã đọc xong</option>
-                              <option value="on_hold" className="bg-[#141420] text-white">Tạm dừng</option>
-                              <option value="plan_to_read" className="bg-[#141420] text-white">Dự định đọc</option>
+                              <option value="reading" className="bg-glass text-white">Đang đọc</option>
+                              <option value="completed" className="bg-glass text-white">Đã đọc xong</option>
+                              <option value="on_hold" className="bg-glass text-white">Tạm dừng</option>
+                              <option value="plan_to_read" className="bg-glass text-white">Dự định đọc</option>
                             </select>
                           </div>
                         </div>
@@ -329,7 +329,7 @@ export default function BookmarkPage() {
           {mainTab === 'line_bookmarks' && (
             <div>
               {lineBookmarks.length === 0 ? (
-                <div className="text-center py-20 glass-panel rounded-3xl border border-white/10 bg-[#12121e]/80 space-y-4">
+                <div className="text-center py-20 glass-panel rounded-3xl border border-white/10 bg-glass space-y-4">
                   <div className="w-16 h-16 rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center mx-auto">
                     <Bookmark className="w-8 h-8" />
                   </div>
@@ -343,7 +343,7 @@ export default function BookmarkPage() {
                   {lineBookmarks.map((bm) => (
                     <div
                       key={bm.id}
-                      className="p-5 rounded-3xl glass-panel border border-white/10 bg-[#141420]/80 hover:border-brand-500/30 transition flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                      className="p-5 rounded-3xl glass-panel border border-white/10 bg-glass hover:border-brand-500/30 transition flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
                     >
                       <Link 
                         href={`/truyen/${bm.story_slug}/${bm.chapter_slug}?line=${bm.line_index}#line-${bm.line_index}`}
@@ -379,7 +379,7 @@ export default function BookmarkPage() {
                         </button>
                         <Link
                           href={`/truyen/${bm.story_slug}/${bm.chapter_slug}?line=${bm.line_index}#line-${bm.line_index}`}
-                          className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold shadow transition flex items-center gap-1.5"
+                          className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow text-xs font-semibold shadow transition flex items-center gap-1.5"
                         >
                           Đến chương <ArrowRight className="w-3.5 h-3.5" />
                         </Link>

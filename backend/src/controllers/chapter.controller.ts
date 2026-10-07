@@ -2,7 +2,10 @@ import { enqueueNotificationJob } from '../services/queue.service';
 ﻿import { Request, Response } from 'express';
 import { pool } from '../config/db';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
-import { canUserManageStory, checkStoryReferences, parseStoryInput, sendClientError } from './story.controller';
+import {
+  canUserManageStory, checkStoryReferences, parseStoryInput, sendClientError,
+  storyApprovalFor, grantPublisherRole, notifyGroupStoryPending,
+} from './story.controller';
 import { InputError, isUuid, optionalUrl, requiredText } from '../utils/validation';
 import { insertWithUniqueSlug } from '../utils/ids';
 import { indexStory } from '../services/search.service';
@@ -24,8 +27,12 @@ export interface ContentBlock {
   type: 'paragraph' | 'heading' | 'image' | 'separator';
   text?: string;
   note?: string; // Translator Note on this line
-  image_url?: string; // Inline illustration at this line
+  image_url?: string; // Inline illustration at this line (or one manga page)
+  width?: number; // pixel size of image_url, when known
+  height?: number;
 }
+
+const pixelSize = (v: unknown) => (Number.isInteger(v) && (v as number) > 0 && (v as number) <= 100000 ? (v as number) : undefined);
 
 type Db = { query: (text: string, params?: any[]) => Promise<any> };
 
@@ -48,7 +55,12 @@ function normalizeContentBlocks(input: unknown): ContentBlock[] {
     if (text) block.text = text;
     if (note && note.trim()) block.note = note.trim().slice(0, 5000);
     const imageUrl = optionalUrl(raw.image_url, `Ảnh minh họa đoạn ${idx + 1}`);
-    if (imageUrl) block.image_url = imageUrl;
+    if (imageUrl) {
+      block.image_url = imageUrl;
+      const width = pixelSize(raw.width);
+      const height = pixelSize(raw.height);
+      if (width && height) { block.width = width; block.height = height; }
+    }
     return block;
   });
 }
@@ -263,9 +275,9 @@ async function syncSubmissionToPublicChapter(db: Db, sub: any): Promise<string |
     const inlineImages = sub.content_blocks.filter((b: any) => b.image_url);
     for (let i = 0; i < inlineImages.length; i++) {
       await db.query(`
-        INSERT INTO chapter_pages (chapter_id, page_number, image_url)
-        VALUES ($1, $2, $3);
-      `, [chapterId, i + 1, inlineImages[i].image_url]);
+        INSERT INTO chapter_pages (chapter_id, page_number, image_url, width, height)
+        VALUES ($1, $2, $3, $4, $5);
+      `, [chapterId, i + 1, inlineImages[i].image_url, inlineImages[i].width || null, inlineImages[i].height || null]);
     }
   }
 
@@ -638,9 +650,12 @@ export const createStory = async (req: AuthenticatedRequest, res: Response) => {
     // Story, its default volume and its tags are created together or not at all
     const client = await pool.connect();
     let story: any;
+    let approvalStatus: 'approved' | 'pending' = 'approved';
     try {
       await client.query('BEGIN');
       await checkStoryReferences(client, input, uploaderId, req.user.roles || []);
+      // No admin review: own stories go live at once; group stories wait for the group's leader/mod
+      approvalStatus = await storyApprovalFor(client, uploaderId, req.user.roles || [], input.group_id ?? null);
 
       // Slug: the title, or title-2, title-3... when taken (checked against the database)
       const storyRes = await insertWithUniqueSlug(client, 'stories', baseSlug, (uniqueSlug) => client.query(`
@@ -649,7 +664,7 @@ export const createStory = async (req: AuthenticatedRequest, res: Response) => {
           story_type, status, group_id, uploader_id,
           author_name, artist_name, original_language, approval_status, total_volumes
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7::story_type, $8::story_status, $9, $10, $11, $12, $13, 'approved', 1
+          $1, $2, $3, $4, $5, $6, $7::story_type, $8::story_status, $9, $10, $11, $12, $13, $14::approval_status, 1
         ) RETURNING *;
       `, [
         title,
@@ -665,8 +680,12 @@ export const createStory = async (req: AuthenticatedRequest, res: Response) => {
         input.author_name ?? null,
         input.artist_name ?? null,
         input.original_language ?? 'ja',
+        approvalStatus,
       ]), true);
       story = storyRes.rows[0];
+      if (approvalStatus === 'approved') {
+        await grantPublisherRole(client, uploaderId, story.group_id);
+      }
 
       // Every story starts with Volume 1
       await client.query(
@@ -689,10 +708,13 @@ export const createStory = async (req: AuthenticatedRequest, res: Response) => {
     }
 
     await indexStory(story.id);
+    if (approvalStatus === 'pending') notifyGroupStoryPending(story);
 
     res.status(201).json({
       success: true,
-      message: 'Đăng bộ truyện mới thành công!',
+      message: approvalStatus === 'pending'
+        ? 'Đã gửi truyện! Truyện sẽ hiển thị sau khi Trưởng nhóm hoặc Phó nhóm duyệt.'
+        : 'Đăng bộ truyện mới thành công!',
       data: story,
     });
   } catch (error: any) {
@@ -892,8 +914,8 @@ export const updateChapter = async (req: AuthenticatedRequest, res: Response) =>
       const inlineImages = blocks.filter((b: any) => b.image_url);
       for (let i = 0; i < inlineImages.length; i++) {
         await client.query(
-          `INSERT INTO chapter_pages (chapter_id, page_number, image_url) VALUES ($1, $2, $3)`,
-          [id, i + 1, inlineImages[i].image_url]
+          `INSERT INTO chapter_pages (chapter_id, page_number, image_url, width, height) VALUES ($1, $2, $3, $4, $5)`,
+          [id, i + 1, inlineImages[i].image_url, inlineImages[i].width || null, inlineImages[i].height || null]
         );
       }
 

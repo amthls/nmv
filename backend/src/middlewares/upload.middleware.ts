@@ -1,6 +1,7 @@
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 
 const uploadsDir = path.resolve(process.cwd(), 'uploads', 'posts');
 if (!fs.existsSync(uploadsDir)) {
@@ -50,6 +51,25 @@ const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCa
     cb(new Error('Chỉ chấp nhận các định dạng file ảnh (JPEG, PNG, WebP, GIF, AVIF)'));
   }
 };
+
+// Manga pages land in a temp dir first; the controller re-encodes them into uploads/manga/<story>/
+const mangaTmpDir = path.join(os.tmpdir(), 'novelhub-manga');
+fs.mkdirSync(mangaTmpDir, { recursive: true });
+fs.mkdirSync(path.resolve(process.cwd(), 'uploads', 'manga'), { recursive: true });
+
+export const uploadMangaPageFiles = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, mangaTmpDir),
+    filename: (req, file, cb) => cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${MIME_TO_EXT[file.mimetype] || '.bin'}`),
+  }),
+  // Every page is decoded by sharp in the controller, which reports bad files one by one; filtering
+  // on the browser-supplied MIME type here would reject the whole batch for one odd file type.
+  fileFilter: (req, file, cb) => cb(null, true),
+  limits: {
+    fileSize: 25 * 1024 * 1024,
+    files: 20,
+  },
+});
 
 export const uploadImages = multer({
   storage,

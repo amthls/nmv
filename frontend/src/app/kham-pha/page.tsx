@@ -29,10 +29,31 @@ export default function ExplorePage() {
   );
 }
 
+// Must match the grid classes below: grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5
+const GRID_BREAKPOINTS: [string, number][] = [['(min-width: 1280px)', 5], ['(min-width: 1024px)', 4], ['(min-width: 640px)', 3]];
+const BASE_PAGE_SIZE = 24;
+const SORT_VALUES = ['relevance', 'updated', 'views', 'rating', 'favorites', 'newest', 'title_asc', 'title_desc'];
+
+/** Columns the story grid currently shows, following the viewport. */
+function useGridColumns() {
+  const [columns, setColumns] = useState(5);
+  useEffect(() => {
+    const queries = GRID_BREAKPOINTS.map(([q, n]) => [window.matchMedia(q), n] as const);
+    const update = () => setColumns(queries.find(([mq]) => mq.matches)?.[1] ?? 2);
+    update();
+    queries.forEach(([mq]) => mq.addEventListener('change', update));
+    return () => queries.forEach(([mq]) => mq.removeEventListener('change', update));
+  }, []);
+  return columns;
+}
+
 function ExplorePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const urlQuery = searchParams?.get('q') || '';
+  // Links such as /kham-pha?sort=views&type=manga (home rows, footer) open with those choices applied
+  const urlSort = searchParams?.get('sort') || '';
+  const urlType = searchParams?.get('type') || '';
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
@@ -40,8 +61,22 @@ function ExplorePageContent() {
   // What is actually sent to the API: trails the input by 300ms so typing doesn't fire a request per key
   const [debouncedQuery, setDebouncedQuery] = useState(urlQuery);
   const latestRequest = useRef(0);
-  const [sortBy, setSortBy] = useState('relevance');
+  const [sortBy, setSortBy] = useState(SORT_VALUES.includes(urlSort) ? urlSort : 'relevance');
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Whole rows only: the page size is a multiple of the visible column count (25 on 5 columns)
+  const columns = useGridColumns();
+  const pageSize = viewMode === 'grid' ? columns * Math.ceil(BASE_PAGE_SIZE / columns) : BASE_PAGE_SIZE;
+  const previousPageSize = useRef(pageSize);
+  useEffect(() => {
+    // Keep the first story of the current page in view when the page size changes
+    if (previousPageSize.current !== pageSize) {
+      const firstIndex = (currentPage - 1) * previousPageSize.current;
+      previousPageSize.current = pageSize;
+      setCurrentPage(Math.floor(firstIndex / pageSize) + 1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageSize]);
 
   const [categories, setCategories] = useState<TagCategoryItem[]>([]);
   const [stories, setStories] = useState<Story[]>([]);
@@ -55,7 +90,7 @@ function ExplorePageContent() {
   const [isLoading, setIsLoading] = useState(true);
 
   const [filters, setFilters] = useState<FilterState>({
-    type: 'all',
+    type: urlType === 'novel' || urlType === 'manga' ? urlType : 'all',
     status: 'all',
     language: 'all',
     min_chapters: '0',
@@ -116,7 +151,7 @@ function ExplorePageContent() {
       if (filters.exclude_tags.length > 0) params.append('exclude_tags', filters.exclude_tags.join(','));
       params.append('sort', sortBy);
       params.append('page', currentPage.toString());
-      params.append('limit', '24');
+      params.append('limit', String(pageSize));
 
       const res = await fetch(`${API_BASE_URL}/stories/explore?${params.toString()}`);
       // A newer search started while this one was in flight: drop the stale result
@@ -134,7 +169,7 @@ function ExplorePageContent() {
     } finally {
       if (requestId === latestRequest.current) setIsLoading(false);
     }
-  }, [debouncedQuery, filters, sortBy, currentPage]);
+  }, [debouncedQuery, filters, sortBy, currentPage, pageSize]);
 
   useEffect(() => {
     fetchStories();
@@ -178,7 +213,7 @@ function ExplorePageContent() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-white/10">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-white/[0.04]">
         <div>
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-brand-600/20 text-brand-400 border border-brand-500/20">
@@ -203,7 +238,7 @@ function ExplorePageContent() {
               setSearchQuery(e.target.value);
               setCurrentPage(1);
             }}
-            className="w-full h-10 pl-10 pr-4 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-brand-500 transition"
+            className="w-full h-10 pl-10 pr-4 rounded-xl bg-white/5 border border-white/[0.04] text-sm text-white placeholder-gray-400 focus:outline-none focus:border-brand-500 transition"
           />
           <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           {searchQuery && (
@@ -234,13 +269,13 @@ function ExplorePageContent() {
         <div className="flex-1 w-full space-y-5">
           
           {/* Controls Bar: Mobile filter button, Sorting, View mode */}
-          <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl glass-panel border border-white/10">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl glass-panel border border-white/[0.04]">
             
             {/* Left: Mobile Filter trigger & Count */}
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setIsMobileFilterOpen(true)}
-                className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold shadow-md transition"
+                className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow text-xs font-semibold shadow-md transition"
               >
                 <Filter className="w-3.5 h-3.5" />
                 <span>Bộ lọc {activeFiltersCount > 0 && `(${activeFiltersCount})`}</span>
@@ -263,7 +298,7 @@ function ExplorePageContent() {
                     setSortBy(e.target.value);
                     setCurrentPage(1);
                   }}
-                  className="h-8 px-2.5 rounded-lg bg-[#141420] border border-white/10 text-xs text-white focus:outline-none focus:border-brand-500"
+                  className="h-8 px-2.5 rounded-lg bg-glass border border-white/[0.04] text-xs text-white focus:outline-none focus:border-brand-500"
                 >
                   <option value="relevance">Liên quan / Mới cập nhật</option>
                   <option value="updated">Mới cập nhật</option>
@@ -276,12 +311,12 @@ function ExplorePageContent() {
               </div>
 
               {/* View Switcher */}
-              <div className="flex items-center gap-1 p-1 rounded-lg bg-black/40 border border-white/5">
+              <div className="flex items-center gap-1 p-1 rounded-lg bg-black/40 border border-white/[0.03]">
                 <button
                   onClick={() => setViewMode('grid')}
                   className={`p-1.5 rounded-md transition ${
                     viewMode === 'grid'
-                      ? 'bg-brand-600 text-white shadow-sm'
+                      ? 'bg-brand-600 text-snow shadow-sm'
                       : 'text-gray-400 hover:text-white'
                   }`}
                   title="Dạng lưới thẻ"
@@ -292,7 +327,7 @@ function ExplorePageContent() {
                   onClick={() => setViewMode('list')}
                   className={`p-1.5 rounded-md transition ${
                     viewMode === 'list'
-                      ? 'bg-brand-600 text-white shadow-sm'
+                      ? 'bg-brand-600 text-snow shadow-sm'
                       : 'text-gray-400 hover:text-white'
                   }`}
                   title="Dạng danh sách chi tiết"
@@ -316,7 +351,7 @@ function ExplorePageContent() {
               )}
 
               {filters.status !== 'all' && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-gray-300 text-xs font-medium">
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/5 border border-white/[0.04] text-gray-300 text-xs font-medium">
                   Trạng thái: {filters.status}
                   <button onClick={() => setFilters({ ...filters, status: 'all' })}><X className="w-3 h-3" /></button>
                 </span>
@@ -347,9 +382,9 @@ function ExplorePageContent() {
 
           {/* Stories Result List/Grid */}
           {isLoading ? (
-            <div className={`grid gap-4 ${viewMode === 'grid' ? 'grid-cols-2 sm:grid-cols-3 xl:grid-cols-4' : 'grid-cols-1'}`}>
-              {[...Array(8)].map((_, i) => (
-                <div key={i} className="rounded-2xl glass-panel border border-white/5 p-4 animate-pulse space-y-3">
+            <div className={`grid gap-4 ${viewMode === 'grid' ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-y-6' : 'grid-cols-1'}`}>
+              {[...Array(viewMode === 'grid' ? columns * 2 : 4)].map((_, i) => (
+                <div key={i} className="rounded-2xl glass-panel border border-white/[0.03] p-4 animate-pulse space-y-3">
                   <div className="aspect-[3/4] bg-white/5 rounded-xl w-full" />
                   <div className="h-4 bg-white/5 rounded w-3/4" />
                   <div className="h-3 bg-white/5 rounded w-1/2" />
@@ -357,8 +392,8 @@ function ExplorePageContent() {
               ))}
             </div>
           ) : stories.length === 0 ? (
-            <div className="p-12 text-center rounded-2xl glass-panel border border-white/10 space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-gray-400 mx-auto">
+            <div className="p-12 text-center rounded-2xl glass-panel border border-white/[0.04] space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/[0.04] flex items-center justify-center text-gray-400 mx-auto">
                 <AlertCircle className="w-6 h-6 text-brand-400" />
               </div>
               <div>
@@ -369,7 +404,7 @@ function ExplorePageContent() {
               </div>
               <button
                 onClick={handleResetFilters}
-                className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold transition"
+                className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow text-xs font-semibold transition"
               >
                 Đặt lại bộ lọc
               </button>
@@ -377,7 +412,7 @@ function ExplorePageContent() {
           ) : (
             <div className={`grid gap-4 ${
               viewMode === 'grid'
-                ? 'grid-cols-2 sm:grid-cols-3 xl:grid-cols-4'
+                ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-y-6'
                 : 'grid-cols-1'
             }`}>
               {stories.map(story => (
