@@ -4,9 +4,22 @@ import React from 'react';
 import { Settings, X, Type, AlignLeft, AlignJustify, Palette, Eye, Image as ImageIcon } from 'lucide-react';
 import ImageQualityPicker from '@/components/common/ImageQualityPicker';
 
+// Every font here ships a full Vietnamese subset (loaded from Google Fonts in globals.css).
+// Georgia / Times have no complete Vietnamese glyphs, so stacked marks (ặ, ễ, ở...) fell back
+// to another font letter by letter and the text looked broken.
+export const READER_FONTS = {
+  Literata: { name: 'Literata (Mặc định)', stack: "'Literata', 'Noto Serif', serif" },
+  'Noto Serif': { name: 'Noto Serif (Văn học)', stack: "'Noto Serif', 'Literata', serif" },
+  Merriweather: { name: 'Merriweather (Cổ điển)', stack: "'Merriweather', 'Noto Serif', serif" },
+  Inter: { name: 'Inter (Hiện đại)', stack: "'Inter', sans-serif" },
+  Roboto: { name: 'Roboto (Chuẩn)', stack: "'Roboto', 'Inter', sans-serif" },
+} as const;
+
+export type ReaderFont = keyof typeof READER_FONTS;
+
 export interface ReaderSettings {
   theme: 'dark' | 'amoled' | 'sepia' | 'light';
-  fontFamily: 'Inter' | 'Noto Serif' | 'Roboto' | 'Georgia' | 'Merriweather';
+  fontFamily: ReaderFont;
   fontSize: number; // 14 to 32 px
   lineHeight: number; // 1.4 to 2.4
   maxWidth: string; // '700px' | '850px' | '1000px' | '100%'
@@ -36,12 +49,7 @@ export default function ReaderSettingsModal({
     { id: 'light', name: 'Sáng', bg: 'bg-snow', border: 'border-[#d1d5db]', text: 'text-ink' },
   ];
 
-  const fonts = [
-    { id: 'Noto Serif', name: 'Noto Serif (Văn học)', class: 'font-serif' },
-    { id: 'Inter', name: 'Inter (Hiện đại)', class: 'font-sans' },
-    { id: 'Georgia', name: 'Georgia (Cổ điển)', class: 'font-serif' },
-    { id: 'Roboto', name: 'Roboto (Chuẩn)', class: 'font-sans' },
-  ];
+  const fonts = (Object.keys(READER_FONTS) as ReaderFont[]).map((id) => ({ id, ...READER_FONTS[id] }));
 
   const widths = [
     { id: '720px', label: 'Hẹp' },
@@ -103,14 +111,14 @@ export default function ReaderSettingsModal({
             {fonts.map((f) => (
               <button
                 key={f.id}
-                onClick={() => onSettingsChange({ ...settings, fontFamily: f.id as any })}
+                onClick={() => onSettingsChange({ ...settings, fontFamily: f.id })}
                 className={`p-2 rounded-xl border text-xs text-left transition ${
                   settings.fontFamily === f.id
                     ? 'bg-brand-600 text-snow border-brand-500 shadow-md'
                     : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
                 }`}
               >
-                <div className="font-semibold">{f.name}</div>
+                <div className="font-semibold" style={{ fontFamily: f.stack }}>{f.name}</div>
               </button>
             ))}
           </div>

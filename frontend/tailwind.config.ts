@@ -113,6 +113,8 @@ const config: Config = {
       },
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
+        // Default stack (Georgia/Times) lacks full Vietnamese glyphs
+        serif: ['Literata', 'Noto Serif', 'serif'],
       },
       // Tighter corners everywhere: images read as images, not as rounded bubbles
       borderRadius: {

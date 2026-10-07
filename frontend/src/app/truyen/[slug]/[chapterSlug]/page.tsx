@@ -21,7 +21,7 @@ import {
   Pencil,
   CheckCircle2
 } from 'lucide-react';
-import ReaderSettingsModal, { ReaderSettings } from '@/components/reader/ReaderSettingsModal';
+import ReaderSettingsModal, { ReaderSettings, READER_FONTS } from '@/components/reader/ReaderSettingsModal';
 import ChapterSelectorModal from '@/components/reader/ChapterSelectorModal';
 import FloatingReaderBar from '@/components/reader/FloatingReaderBar';
 import CommentSection from '@/components/comments/CommentSection';
@@ -222,7 +222,7 @@ export default function ChapterReaderPage() {
   // Reader Settings State
   const [settings, setSettings] = useState<ReaderSettings>({
     theme: 'dark',
-    fontFamily: 'Noto Serif',
+    fontFamily: 'Literata',
     fontSize: 18,
     lineHeight: 1.8,
     maxWidth: '860px',
@@ -344,13 +344,7 @@ export default function ChapterReaderPage() {
     light: 'bg-glass border-white/10 text-white',
   }[settings.theme];
 
-  const fontClass = {
-    'Noto Serif': 'font-serif',
-    'Inter': 'font-sans',
-    'Roboto': 'font-sans',
-    'Georgia': 'font-serif',
-    'Merriweather': 'font-serif',
-  }[settings.fontFamily];
+  const fontStack = (READER_FONTS[settings.fontFamily] || READER_FONTS.Literata).stack;
 
   const hasBlocks = Array.isArray(chapterData.content_blocks) && chapterData.content_blocks.length > 0;
 
@@ -534,8 +528,9 @@ export default function ChapterReaderPage() {
         ) : (
           /* 4. SMART NOVEL DISPLAY MODE (Line-by-Line with Translator Notes & Inline Images) */
           <div 
-            className={`space-y-6 ${fontClass}`}
+            className="reader-text space-y-6"
             style={{ 
+              fontFamily: fontStack,
               fontSize: `${settings.fontSize}px`, 
               lineHeight: settings.lineHeight,
               textAlign: settings.textAlign as any
@@ -547,7 +542,7 @@ export default function ChapterReaderPage() {
                 <div 
                   key={block.id || idx}
                   id={`line-${idx}`}
-                  className={`group relative rounded-xl p-2.5 transition-colors duration-200 space-y-3 ${
+                  className={`group relative rounded-xl p-2.5 pr-11 transition-colors duration-200 space-y-3 ${
                     highlightedLine === idx ? 'bg-amber-500/20 ring-2 ring-amber-400 border-l-4 border-amber-400 shadow-md' : bookmarkedLines.has(idx) ? 'bg-brand-500/15 border-l-4 border-brand-500' : 'hover:bg-white/5'
                   }`}
                 >
@@ -596,7 +591,7 @@ export default function ChapterReaderPage() {
                     className={`absolute right-2 top-2 p-1.5 rounded-lg transition-all cursor-pointer z-20 select-none active:scale-90 ${
                       bookmarkedLines.has(idx)
                         ? 'opacity-100 text-amber-400 bg-amber-500/25 border border-amber-400/50 shadow-sm ring-1 ring-amber-400/30'
-                        : 'opacity-35 hover:opacity-100 text-gray-400 hover:text-amber-400 hover:bg-white/10'
+                        : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-40 text-gray-400 hover:text-amber-400 hover:bg-white/10'
                     }`}
                     title={bookmarkedLines.has(idx) ? 'Bỏ đánh dấu đoạn này' : 'Đánh dấu đoạn đang đọc'}
                   >
@@ -630,7 +625,7 @@ export default function ChapterReaderPage() {
                   <div
                     key={idx}
                     id={`line-${idx}`}
-                    className={`group relative rounded-xl p-2 transition-colors duration-200 ${
+                    className={`group relative rounded-xl p-2 pr-11 transition-colors duration-200 ${
                       highlightedLine === idx ? 'bg-amber-500/20 ring-2 ring-amber-400 border-l-4 border-amber-400 shadow-md' : bookmarkedLines.has(idx) ? 'bg-brand-500/15 border-l-4 border-brand-500' : 'hover:bg-white/5'
                     }`}
                   >
@@ -639,7 +634,7 @@ export default function ChapterReaderPage() {
                     </p>
                     <button
                       onClick={() => handleToggleBookmarkLine(idx, p)}
-                      className={`absolute right-2 top-2 p-1.5 rounded-lg transition ${bookmarkedLines.has(idx) ? 'opacity-100 text-amber-400 bg-amber-500/15' : 'opacity-0 group-hover:opacity-100 text-gray-400 hover:text-amber-400 hover:bg-white/10'}`}
+                      className={`absolute right-2 top-2 p-1.5 rounded-lg transition ${bookmarkedLines.has(idx) ? 'opacity-100 text-amber-400 bg-amber-500/15' : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-40 text-gray-400 hover:text-amber-400 hover:bg-white/10'}`}
                       title={bookmarkedLines.has(idx) ? 'Bỏ đánh dấu đoạn này' : 'Đánh dấu đoạn này'}
                     >
                       <Bookmark className={`w-3.5 h-3.5 ${bookmarkedLines.has(idx) ? 'fill-amber-400 text-amber-400' : ''}`} />
