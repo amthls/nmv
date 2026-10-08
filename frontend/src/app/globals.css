@@ -33,9 +33,22 @@
 
 html { scroll-behavior: smooth; }
 
+/* Full-screen scenic wallpaper, pinned while the page scrolls; the tint keeps text readable */
+html {
+  background:
+    linear-gradient(rgb(255 255 255 / 0.5), rgb(255 255 255 / 0.7)),
+    url('/backgrounds/pixel-city.png') center / cover no-repeat fixed,
+    rgb(var(--c-surface));
+}
+html.dark {
+  background:
+    linear-gradient(rgb(0 0 0 / 0.15), rgb(0 0 0 / 0.45)),
+    url('/backgrounds/night-sky.jpg') center / cover no-repeat fixed,
+    rgb(var(--c-surface));
+}
 body {
   color: rgb(var(--c-white));
-  background: rgb(var(--c-surface));
+  background: transparent;
   font-family: 'Inter', sans-serif;
   overflow-x: hidden;
   transition: background-color 0.5s ease, color 0.5s ease;

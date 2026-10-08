@@ -28,7 +28,8 @@ function pickArtwork(story: Story, gallery: GalleryImage[]) {
 type Nav = { active: number; leaving: number | null; dir: 1 | -1 };
 
 /**
- * Full-bleed "featured this week" banner in the MangaDex layout: story art fills the banner,
+ * "Featured this week" banner card, aligned with the rows below so the page wallpaper shows around it:
+ * story art fills the card,
  * cover on the left, title / tags / description / author on the right. The whole slide is one link.
  * Slides turn in 3D; autoplay, ← / → keys, arrow buttons and swipe all navigate.
  */
@@ -104,7 +105,7 @@ export default function FeaturedCarousel({ stories, gallery = [] }: { stories: S
     <section
       aria-roledescription="carousel"
       aria-label="Truyện nổi bật tuần"
-      className={`relative isolate -mt-16 pt-16 overflow-hidden ${paused ? 'hero-paused' : ''}`}
+      className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 ${paused ? 'hero-paused' : ''}`}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
@@ -113,7 +114,10 @@ export default function FeaturedCarousel({ stories, gallery = [] }: { stories: S
       onPointerUp={onPointerUp}
       onClickCapture={onClickCapture}
     >
-      {/* Full-bleed banner image behind everything (also behind the navbar), fading into the page */}
+      <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">Truyện nổi bật tuần</h2>
+
+      <div className="relative isolate mt-3 overflow-hidden rounded-xl border border-white/10 bg-surface-3 shadow-[0_24px_60px_-28px_rgba(0,0,0,0.8)]">
+      {/* Story art fills the card */}
       <div className="pointer-events-none absolute inset-0 -z-10">
         {slides.map((s, i) => (
           <SmartImage
@@ -126,16 +130,15 @@ export default function FeaturedCarousel({ stories, gallery = [] }: { stories: S
             }`}
           />
         ))}
-        {/* the image stays clear: a dark wash only behind the text, a short fade into the page at the bottom */}
-        <div className="absolute inset-0 bg-[linear-gradient(68deg,rgba(0,0,0,0.66)_30%,rgba(0,0,0,0.12)_100%)]" />
-        <div className="absolute inset-x-0 bottom-0 h-14 bg-gradient-to-b from-transparent to-surface" />
+        {/* the image stays clear: a dark wash only behind the text */}
+        <div className="absolute inset-0 bg-[linear-gradient(68deg,rgba(0,0,0,0.7)_30%,rgba(0,0,0,0.15)_100%)]" />
+        {/* thin top highlight, like the glass panels */}
+        <div className="absolute inset-0 rounded-xl shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)]" />
       </div>
 
       {/* banner content always uses the dark palette (white text on the darkened image) */}
-      <div className="dark max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 pb-12">
-        <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">Truyện nổi bật tuần</h2>
-
-        <div className="hero-stage relative mt-4 h-[180px] sm:h-[260px] lg:h-[300px]">
+      <div className="dark p-4 sm:p-6">
+        <div className="hero-stage relative h-[180px] sm:h-[260px] lg:h-[300px]">
           {slides.map((story, i) => {
             const state =
               i === nav.active
@@ -202,6 +205,7 @@ export default function FeaturedCarousel({ stories, gallery = [] }: { stories: S
             />
           </div>
         </div>
+      </div>
       </div>
 
       <p className="sr-only" aria-live="polite">Đang hiển thị: {slides[nav.active].title}</p>
