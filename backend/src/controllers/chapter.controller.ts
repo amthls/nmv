@@ -9,7 +9,7 @@ import {
 import { InputError, isUuid, optionalUrl, requiredText } from '../utils/validation';
 import { insertWithUniqueSlug } from '../utils/ids';
 import { indexStory } from '../services/search.service';
-import { sanitizeRichText } from '../utils/richText';
+import { sanitizeRichText, sanitizeChapterHtml, richTextToPlain } from '../utils/richText';
 
 function slugify(text: string) {
   return text
@@ -28,6 +28,7 @@ export interface ContentBlock {
   text?: string;
   note?: string; // Translator Note on this line
   image_url?: string; // Inline illustration at this line (or one manga page)
+  html?: string; // formatted block from the chapter editor (sanitized); `text` is its plain text
   width?: number; // pixel size of image_url, when known
   height?: number;
 }
@@ -54,6 +55,21 @@ function normalizeContentBlocks(input: unknown): ContentBlock[] {
     };
     if (text) block.text = text;
     if (note && note.trim()) block.note = note.trim().slice(0, 5000);
+    if (raw.html !== undefined && raw.html !== null) {
+      if (typeof raw.html !== 'string' || raw.html.length > 100000) throw new InputError(`Đoạn ${idx + 1} không hợp lệ.`);
+      let html = sanitizeChapterHtml(raw.html);
+      if (/^<figure/i.test(html) && !/<img\s/i.test(html)) html = ''; // its image was not one of ours
+      if (html) {
+        block.html = html;
+        // the plain text always follows the formatted version (search, word count, bookmarks, exports)
+        const plain = /^<figure/i.test(html) ? '' : richTextToPlain(html);
+        if (plain) block.text = plain;
+        else delete block.text;
+        const tag = (html.match(/^<([a-z0-9]+)/i)?.[1] || '').toLowerCase();
+        block.type = tag === 'hr' ? 'separator' : tag === 'figure' ? 'image' : /^h[2-4]$/.test(tag) ? 'heading' : 'paragraph';
+        if (tag === 'figure' && raw.image_url === undefined) raw.image_url = html.match(/<img[^>]*\ssrc="([^"]+)"/i)?.[1];
+      }
+    }
     const imageUrl = optionalUrl(raw.image_url, `Ảnh minh họa đoạn ${idx + 1}`);
     if (imageUrl) {
       block.image_url = imageUrl;

@@ -43,6 +43,48 @@ export function sanitizeRichText(input: unknown): string | null {
   }).trim();
 }
 
+/**
+ * One block of a novel chapter (a paragraph, heading, quote, list, scene break or illustration)
+ * from the chapter editor. Formatting is expressed with classes only (no inline colours or fonts),
+ * so the reader can restyle it for every theme and font setting.
+ */
+const CHAPTER_TAGS = [
+  'p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'strike', 'sub', 'sup', 'mark', 'span',
+  'h2', 'h3', 'h4', 'ul', 'ol', 'li', 'blockquote', 'a', 'hr',
+  'figure', 'figcaption', 'img',
+];
+const ALIGN_CLASSES = ['nh-align-left', 'nh-align-center', 'nh-align-right', 'nh-align-justify'];
+
+export function sanitizeChapterHtml(input: unknown): string {
+  if (typeof input !== 'string' || !input.trim()) return '';
+  return sanitizeHtml(input.trim(), {
+    allowedTags: CHAPTER_TAGS,
+    allowedAttributes: {
+      a: ['href', 'target', 'rel'],
+      figure: ['class', 'style'],
+      img: ['src', 'alt', 'width', 'height'],
+      ol: ['start', 'reversed'],
+      '*': ['class'],
+    },
+    allowedClasses: {
+      p: ALIGN_CLASSES, h2: ALIGN_CLASSES, h3: ALIGN_CLASSES, h4: ALIGN_CLASSES, blockquote: ALIGN_CLASSES, li: ALIGN_CLASSES,
+      span: ['text-tiny', 'text-small', 'text-big', 'text-huge'],
+      mark: ['marker-yellow', 'marker-green', 'marker-pink', 'marker-blue', 'pen-red', 'pen-green'],
+      figure: ['image', 'image_resized', 'image-style-*'],
+    },
+    allowedStyles: { figure: { width: [/^\d{1,3}(\.\d+)?%$/] } },
+    exclusiveFilter: (frame) =>
+      (frame.tag === 'img' && !/^\/uploads\/(?!.*\.\.)[\w./%-]+$/.test(frame.attribs.src || ''))
+      // a <span>/<mark> left without its class carries no formatting
+      || ((frame.tag === 'span' || frame.tag === 'mark') && !frame.attribs.class && !frame.text.trim()),
+    allowedSchemes: ['http', 'https', 'mailto'],
+    allowProtocolRelative: false,
+    transformTags: {
+      a: sanitizeHtml.simpleTransform('a', { target: '_blank', rel: 'noopener noreferrer nofollow' }),
+    },
+  }).trim();
+}
+
 /** Visible text of stored content (HTML or plain), for validation and search indexing. */
 export function richTextToPlain(input: unknown): string {
   if (typeof input !== 'string') return '';

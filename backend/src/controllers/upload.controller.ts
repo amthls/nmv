@@ -86,6 +86,10 @@ export const uploadSingleImage = async (req: Request, res: Response) => {
 
 const MANGA_MAX_WIDTH = 1600; // wider pages are scaled down; readers pick smaller copies via ?w=
 const WEBP_MAX_SIDE = 16383; // WebP limit: very tall webtoon strips are kept as JPEG instead
+// Long webtoon strips are cut into parts (as MangaDex asks uploaders to do): one huge image
+// stalls weaker phones. Parts follow each other with no gap in the long-strip reader.
+const STRIP_SPLIT_ABOVE = 5000;
+const STRIP_PART_HEIGHT = 4000;
 
 /**
  * POST /upload/manga-pages  (multipart: story_id, then up to 20 "pages")
@@ -112,7 +116,8 @@ export const uploadMangaPages = async (req: AuthenticatedRequest, res: Response)
     const dir = path.resolve(process.cwd(), 'uploads', 'manga', storyId);
     fs.mkdirSync(dir, { recursive: true });
 
-    const pages: Array<{ originalName: string; url?: string; width?: number; height?: number; size?: number; error?: string }> = [];
+    type Part = { url: string; width: number; height: number; size: number };
+    const pages: Array<{ originalName: string; url?: string; width?: number; height?: number; size?: number; parts?: Part[]; error?: string }> = [];
     for (const file of files) {
       try {
         const image = sharp(file.path, { failOn: 'none', limitInputPixels: 200_000_000 }).rotate();
@@ -122,17 +127,29 @@ export const uploadMangaPages = async (req: AuthenticatedRequest, res: Response)
         const [srcW, srcH] = (meta.orientation || 1) >= 5 ? [meta.height, meta.width] : [meta.width, meta.height];
         const width = Math.min(srcW, MANGA_MAX_WIDTH);
         const height = Math.round(srcH * (width / srcW));
-        const asJpeg = height > WEBP_MAX_SIDE;
-        const name = `${Date.now()}-${crypto.randomBytes(5).toString('hex')}${asJpeg ? '.jpg' : '.webp'}`;
-        const target = path.join(dir, name);
-        const resized = image.resize({ width, withoutEnlargement: true });
-        await (asJpeg ? resized.jpeg({ quality: 85, mozjpeg: true }) : resized.webp({ quality: 85 })).toFile(target);
+        // equal slices, each at most STRIP_PART_HEIGHT tall
+        const count = height > STRIP_SPLIT_ABOVE ? Math.ceil(height / STRIP_PART_HEIGHT) : 1;
+        const sliceH = Math.ceil(height / count);
+        const parts: Part[] = [];
+        for (let i = 0; i < count; i++) {
+          const top = i * sliceH;
+          const partH = Math.min(sliceH, height - top);
+          const asJpeg = partH > WEBP_MAX_SIDE;
+          const name = `${Date.now()}-${crypto.randomBytes(5).toString('hex')}${asJpeg ? '.jpg' : '.webp'}`;
+          const target = path.join(dir, name);
+          let pipeline = sharp(file.path, { failOn: 'none', limitInputPixels: 200_000_000 }).rotate()
+            .resize({ width, withoutEnlargement: true });
+          if (count > 1) pipeline = pipeline.extract({ left: 0, top, width, height: partH });
+          await (asJpeg ? pipeline.jpeg({ quality: 85, mozjpeg: true }) : pipeline.webp({ quality: 85 })).toFile(target);
+          parts.push({ url: `/uploads/manga/${storyId}/${name}`, width, height: partH, size: fs.statSync(target).size });
+        }
         pages.push({
           originalName: file.originalname,
-          url: `/uploads/manga/${storyId}/${name}`,
+          url: parts[0].url,
           width,
-          height,
-          size: fs.statSync(target).size,
+          height: parts[0].height,
+          size: parts.reduce((s, p) => s + p.size, 0),
+          parts,
         });
       } catch {
         pages.push({ originalName: file.originalname, error: 'File không phải ảnh hợp lệ hoặc bị hỏng' });

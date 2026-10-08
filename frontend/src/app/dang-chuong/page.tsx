@@ -17,7 +17,9 @@ import {
   LogIn
 } from 'lucide-react';
 import SmartImage from '@/components/common/SmartImage';
-import ImageUploadDropzone from '@/components/common/ImageUploadDropzone';
+import ChapterEditor from '@/components/chapter/ChapterEditor';
+import { blocksToHtml, countWords, htmlToBlocks, plainTextToHtml } from '@/lib/chapterBlocks';
+import { rewriteHtmlImages, useImageQuality } from '@/lib/imageQuality';
 import { useAuth } from '@/context/AuthContext';
 import PageLoader from '@/components/common/PageLoader';
 import UploadModeSwitch from '@/components/story/UploadModeSwitch';
@@ -56,10 +58,10 @@ function ChapterEditorContent() {
   const [chapterNumber, setChapterNumber] = useState<number | string>(1);
   const [chapterTitle, setChapterTitle] = useState('');
 
-  // Plain-text chapter body. Paragraphs are separated by a blank line, the
-  // same way every writer already formats text in a word processor — no
-  // custom "block" UI to learn.
-  const [bodyText, setBodyText] = useState('');
+  // Chapter body as HTML from the chapter editor (headings, emphasis, alignment, highlights,
+  // scene breaks, illustrations...). It is saved as one block per top-level element.
+  const [bodyHtml, setBodyHtml] = useState('');
+  const [imageQuality] = useImageQuality();
   // Translator notes / inline illustrations are an optional, secondary
   // feature attached to a specific paragraph by number, not a mandatory
   // control shown on every single line.
@@ -77,15 +79,11 @@ function ChapterEditorContent() {
   const [mangaPages, setMangaPages] = useState<string[] | null>(null);
   const isMangaEdit = isEditMode && mangaPages !== null;
 
-  const paragraphs = useMemo(
-    () => bodyText.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean),
-    [bodyText]
-  );
-
-  const totalWords = useMemo(
-    () => bodyText.split(/\s+/).filter(Boolean).length,
-    [bodyText]
-  );
+  const editorBlocks = useMemo(() => htmlToBlocks(bodyHtml), [bodyHtml]);
+  // plain text of each block ('' for scene breaks / illustrations): notes attach to these by index
+  const paragraphs = useMemo(() => editorBlocks.map((b) => b.text), [editorBlocks]);
+  const hasText = paragraphs.some(Boolean);
+  const totalWords = useMemo(() => countWords(editorBlocks), [editorBlocks]);
   const readingTimeMin = Math.max(1, Math.ceil(totalWords / 220));
 
   const annotationEntries = [...activeAnnotationIndices].sort((a, b) => a - b);
@@ -130,7 +128,7 @@ function ChapterEditorContent() {
       const raw = window.localStorage.getItem(draftStorageKey(selectedStoryId));
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (parsed && (parsed.chapterTitle?.trim() || parsed.bodyText?.trim())) {
+        if (parsed && (parsed.chapterTitle?.trim() || parsed.bodyHtml?.trim() || parsed.bodyText?.trim())) {
           setRestorableDraft(parsed);
           return;
         }
@@ -141,7 +139,7 @@ function ChapterEditorContent() {
 
   useEffect(() => {
     if (!selectedStoryId || isEditMode) return;
-    const hasContent = chapterTitle.trim() || bodyText.trim();
+    const hasContent = chapterTitle.trim() || bodyHtml.trim();
     if (!hasContent) return;
 
     const timer = setTimeout(() => {
@@ -150,7 +148,7 @@ function ChapterEditorContent() {
           chapterTitle,
           chapterNumber,
           selectedVolumeId,
-          bodyText,
+          bodyHtml,
           annotations,
           activeAnnotationIndices,
           savedAt: new Date().toISOString(),
@@ -159,14 +157,14 @@ function ChapterEditorContent() {
     }, 1500);
 
     return () => clearTimeout(timer);
-  }, [selectedStoryId, chapterTitle, chapterNumber, selectedVolumeId, bodyText, annotations, activeAnnotationIndices]);
+  }, [selectedStoryId, chapterTitle, chapterNumber, selectedVolumeId, bodyHtml, annotations, activeAnnotationIndices]);
 
   const restoreDraft = () => {
     if (!restorableDraft) return;
     setChapterTitle(restorableDraft.chapterTitle || '');
     if (restorableDraft.chapterNumber !== undefined) setChapterNumber(restorableDraft.chapterNumber);
     if (restorableDraft.selectedVolumeId !== undefined) setSelectedVolumeId(restorableDraft.selectedVolumeId);
-    setBodyText(restorableDraft.bodyText || '');
+    setBodyHtml(restorableDraft.bodyHtml ?? plainTextToHtml(restorableDraft.bodyText || ''));
     setAnnotations(restorableDraft.annotations || {});
     setActiveAnnotationIndices(restorableDraft.activeAnnotationIndices || []);
     setRestorableDraft(null);
@@ -178,17 +176,19 @@ function ChapterEditorContent() {
     setRestorableDraft(null);
   };
 
-  // Warn before an accidental tab close / navigation away from unsaved work.
+  // Warn before an accidental tab close / navigation away from unsaved work. Compared on the
+  // visible text, since the editor normalises the HTML it is given.
+  const workKey = `${chapterTitle.trim()}\u0000${paragraphs.join('\n')}`;
+  const savedWorkKey = React.useRef(`\u0000`);
   useEffect(() => {
-    const hasContent = chapterTitle.trim() || bodyText.trim();
-    if (!hasContent) return;
+    if (workKey === savedWorkKey.current) return;
     const handler = (e: BeforeUnloadEvent) => {
       e.preventDefault();
       e.returnValue = '';
     };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [chapterTitle, bodyText]);
+  }, [workKey]);
 
   // Load stories the current user is actually allowed to manage
   // (uploader, translation-group member, or added collaborator) — resolved
@@ -232,7 +232,7 @@ function ChapterEditorContent() {
   const pickStory = (storyId: string) => {
     const story = stories.find((s) => s.id === storyId);
     if (story?.story_type === 'manga') {
-      if ((chapterTitle.trim() || bodyText.trim()) && !window.confirm('Đây là truyện tranh, sẽ chuyển sang trình đăng truyện tranh và bỏ nội dung đang soạn. Tiếp tục?')) return;
+      if ((chapterTitle.trim() || bodyHtml.trim()) && !window.confirm('Đây là truyện tranh, sẽ chuyển sang trình đăng truyện tranh và bỏ nội dung đang soạn. Tiếp tục?')) return;
       openMangaUploader(storyId);
       return;
     }
@@ -295,12 +295,17 @@ function ChapterEditorContent() {
           return;
         }
         const d = json.data;
-        const blocks: any[] = (d.content_blocks || []).filter((b: any) => b.text && b.text.trim());
+        const stored: any[] = d.content_blocks || [];
+        const loadedHtml = stored.length > 0 ? blocksToHtml(stored) : plainTextToHtml(d.content || '');
+        // notes follow their paragraph (older chapters split into paragraph + illustration blocks)
+        const converted = htmlToBlocks(loadedHtml);
         const nextAnnotations: Record<number, Annotation> = {};
         const nextActive: number[] = [];
-        blocks.forEach((b, idx) => {
-          if (b.note || b.image_url) {
-            nextAnnotations[idx] = { note: b.note || undefined, image_url: b.image_url || undefined };
+        stored.filter((b) => b.note).forEach((b) => {
+          const text = (b.text || '').replace(/\s+/g, ' ').trim();
+          const idx = converted.findIndex((c, i) => c.text === text && !nextActive.includes(i));
+          if (idx >= 0) {
+            nextAnnotations[idx] = { note: b.note };
             nextActive.push(idx);
           }
         });
@@ -325,7 +330,8 @@ function ChapterEditorContent() {
         setSelectedVolumeId(d.volume_id || '');
         setChapterNumber(Number(d.chapter_number));
         setChapterTitle(d.title || '');
-        setBodyText(blocks.length > 0 ? blocks.map((b) => b.text).join('\n\n') : (d.content || ''));
+        setBodyHtml(loadedHtml);
+        savedWorkKey.current = `${(d.title || '').trim()}\u0000${converted.map((c) => c.text).join('\n')}`;
         setAnnotations(nextAnnotations);
         setActiveAnnotationIndices(nextActive);
         setEditLoadState('ready');
@@ -378,7 +384,7 @@ function ChapterEditorContent() {
       return;
     }
 
-    if (!isMangaEdit && !isDraft && paragraphs.length === 0) {
+    if (!isMangaEdit && !isDraft && !hasText) {
       setErrorMsg('Nội dung chương đang trống.');
       return;
     }
@@ -386,11 +392,11 @@ function ChapterEditorContent() {
     setIsSubmitting(true);
     setErrorMsg(null);
     try {
-      const formattedBlocks = paragraphs.map((text, idx) => ({
-        block_order: idx + 1,
-        text,
+      const formattedBlocks = editorBlocks.map((b, idx) => ({
+        html: b.html,
+        text: b.text,
+        image_url: b.image_url || null,
         note: annotations[idx]?.note || null,
-        image_url: annotations[idx]?.image_url || null,
       }));
 
       if (isEditMode) {
@@ -407,6 +413,7 @@ function ChapterEditorContent() {
         });
         const editJson = await editRes.json();
         if (editRes.ok && editJson.success) {
+          savedWorkKey.current = workKey;
           setFeedback(editJson.message || 'Đã cập nhật chương');
           setTimeout(() => {
             const storySlug = editJson.data?.story_slug || selectedStory?.slug;
@@ -427,7 +434,7 @@ function ChapterEditorContent() {
           volume_id: selectedVolumeId || null,
           title: chapterTitle.trim(),
           chapter_number: parsedNumber,
-          content: paragraphs.join('\n\n'),
+          content: paragraphs.filter(Boolean).join('\n\n'),
           content_blocks: formattedBlocks,
           word_count: totalWords,
           is_draft: isDraft,
@@ -436,6 +443,7 @@ function ChapterEditorContent() {
 
       const json = await res.json();
       if (res.ok && json.success) {
+        savedWorkKey.current = workKey;
         setFeedback(json.message || 'Đăng chương thành công');
         clearDraftFromStorage();
         if (!isDraft) {
@@ -512,7 +520,7 @@ function ChapterEditorContent() {
               ? 'Chương truyện tranh: sửa tiêu đề, số chương hoặc tập. Các trang ảnh được giữ nguyên.'
               : isEditMode
               ? 'Chỉnh sửa chương đã xuất bản. Thay đổi có hiệu lực ngay và không gửi lại thông báo cho người theo dõi.'
-              : 'Viết nội dung chương, để trống một dòng giữa các đoạn văn để tách đoạn.'}
+              : 'Soạn chương như trong Word: tiêu đề, in đậm, căn lề, tô màu chữ, ngắt cảnh, chèn ảnh minh họa. Dán từ Word / Google Docs vẫn giữ định dạng.'}
           </p>
         </div>
 
@@ -745,15 +753,13 @@ function ChapterEditorContent() {
         {/* EDITOR TAB */}
         {activeTab === 'editor' && (
           <div className="space-y-4">
-            <textarea
-              rows={18}
-              placeholder={'Viết nội dung chương tại đây...\n\nĐể trống một dòng giữa các đoạn văn để tách thành đoạn riêng biệt.'}
-              value={bodyText}
-              onChange={(e) => setBodyText(e.target.value)}
-              className="w-full p-4 rounded-2xl bg-black/30 border border-white/10 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-brand-500 transition leading-relaxed font-serif"
+            <ChapterEditor
+              value={bodyHtml}
+              onChange={setBodyHtml}
+              placeholder="Viết nội dung chương tại đây... Gõ tắt: **đậm**, *nghiêng*, ### tiêu đề, > trích dẫn, --- ngắt cảnh."
             />
-            <div className="text-[11px] text-gray-500 flex items-center justify-between">
-              <span>{paragraphs.length} đoạn văn</span>
+            <div className="text-[11px] text-gray-500 flex flex-wrap items-center justify-between gap-2">
+              <span>{editorBlocks.length} khối nội dung · Ctrl+F tìm & thay thế · nút ⛶ để viết toàn màn hình</span>
               <span>{totalWords.toLocaleString()} chữ · ~{readingTimeMin} phút đọc</span>
             </div>
 
@@ -765,7 +771,7 @@ function ChapterEditorContent() {
                 className="text-xs font-bold text-gray-400 hover:text-white flex items-center gap-1.5 transition"
               >
                 <MessageSquare className="w-3.5 h-3.5" />
-                <span>Chú thích dịch giả & ảnh minh họa (tùy chọn)</span>
+                <span>Chú thích dịch giả theo đoạn (tùy chọn)</span>
                 <span className="text-[10px] font-normal text-gray-500">
                   {annotationEntries.length > 0 ? `— ${annotationEntries.length} mục` : ''}
                 </span>
@@ -773,8 +779,8 @@ function ChapterEditorContent() {
 
               {showAnnotations && (
                 <div className="mt-3 space-y-3 animate-in fade-in">
-                  {paragraphs.length === 0 ? (
-                    <p className="text-[11px] text-gray-500">Nhập nội dung chương trước để có thể chèn chú thích/ảnh vào từng đoạn.</p>
+                  {!hasText ? (
+                    <p className="text-[11px] text-gray-500">Nhập nội dung chương trước để có thể gắn chú thích vào từng đoạn. Ảnh minh họa chèn thẳng trong trình soạn thảo.</p>
                   ) : (
                     <>
                       <div className="flex items-center gap-2">
@@ -784,7 +790,7 @@ function ChapterEditorContent() {
                           className="h-9 px-3 rounded-xl bg-surface-3 border border-white/10 text-xs text-white"
                         >
                           <option value="">Chọn đoạn văn...</option>
-                          {paragraphs.map((p, idx) => (
+                          {paragraphs.map((p, idx) => p && (
                             <option key={idx} value={idx} disabled={activeAnnotationIndices.includes(idx)}>
                               Đoạn #{idx + 1}: {p.slice(0, 40)}{p.length > 40 ? '…' : ''}
                             </option>
@@ -826,12 +832,6 @@ function ChapterEditorContent() {
                             className="w-full px-3 py-1.5 rounded-lg bg-black/40 border border-amber-500/20 text-xs text-amber-200 placeholder-amber-500/40 focus:outline-none focus:border-amber-400"
                           />
 
-                          <ImageUploadDropzone
-                            images={annotations[idx]?.image_url ? [annotations[idx]!.image_url!] : []}
-                            onChange={(imgs) => setAnnotation(idx, { image_url: imgs[0] || undefined })}
-                            maxFiles={1}
-                            label={`Ảnh minh họa cho đoạn #${idx + 1}`}
-                          />
                         </div>
                       ))}
                     </>
@@ -863,13 +863,13 @@ function ChapterEditorContent() {
               </div>
             </div>
 
-            {paragraphs.length === 0 ? (
+            {editorBlocks.length === 0 ? (
               <p className="text-center text-gray-500 text-sm font-sans">Chưa có nội dung để xem trước.</p>
             ) : (
-              <div className="space-y-6">
-                {paragraphs.map((text, idx) => (
-                  <div key={idx} className="space-y-4">
-                    <p className="hover:bg-white/5 rounded-lg px-2 py-1 transition">{text}</p>
+              <div className="space-y-4">
+                {editorBlocks.map((block, idx) => (
+                  <div key={idx} className="space-y-3">
+                    <div className="chapter-rich px-2" dangerouslySetInnerHTML={{ __html: rewriteHtmlImages(block.html, imageQuality) }} />
 
                     {annotations[idx]?.note && (
                       <div className="p-3 rounded-xl bg-amber-500/10 border-l-4 border-amber-500 text-xs font-sans text-amber-200 italic space-y-0.5">
@@ -878,13 +878,6 @@ function ChapterEditorContent() {
                       </div>
                     )}
 
-                    {annotations[idx]?.image_url && (
-                      <div className="my-6 flex flex-col items-center">
-                        <div className="rounded-2xl overflow-hidden shadow-2xl border border-white/15 max-w-lg bg-black/40">
-                          <SmartImage src={annotations[idx]!.image_url!} alt={`Minh họa đoạn ${idx + 1}`} className="w-full h-auto" />
-                        </div>
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>

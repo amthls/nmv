@@ -29,6 +29,8 @@ import FloatingReaderBar from '@/components/reader/FloatingReaderBar';
 import CommentSection from '@/components/comments/CommentSection';
 import ReportButton from '@/components/common/ReportButton';
 import SmartImage from '@/components/common/SmartImage';
+import MangaReader from '@/components/reader/MangaReader';
+import { rewriteHtmlImages, useImageQuality } from '@/lib/imageQuality';
 import { useAuth } from '@/context/AuthContext';
 import { useReadingSession } from '@/context/ReadingSessionContext';
 import { logChapterRead } from '@/lib/readingHistory';
@@ -53,6 +55,7 @@ export default function ChapterReaderPage() {
   const [bookmarkedLines, setBookmarkedLines] = useState<Set<number>>(new Set());
   const [highlightedLine, setHighlightedLine] = useState<number | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [imageQuality] = useImageQuality();
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -286,6 +289,7 @@ export default function ChapterReaderPage() {
   // 2. Keyboard Navigation (Left / Right / A / D)
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+    if (e.defaultPrevented) return; // the manga reader turned a page instead
 
     if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
       if (chapterData?.prev_chapter) {
@@ -479,12 +483,13 @@ export default function ChapterReaderPage() {
       </header>
 
       {/* 2. Main Reader Canvas */}
-      <main 
+      <main
         className="mx-auto px-4 sm:px-6 py-10 transition-all duration-300"
-        style={{ maxWidth: settings.maxWidth }}
+        // manga pages size themselves (column width / wide strip); text keeps the reader's line width
+        style={{ maxWidth: isManga ? 'none' : settings.maxWidth }}
       >
         {/* Chapter Title & Publisher Meta Header */}
-        <div className="text-center pb-8 border-b border-white/10 space-y-3 mb-8">
+        <div className={`text-center pb-8 border-b border-white/10 space-y-3 mb-8 ${isManga ? 'max-w-4xl mx-auto' : ''}`}>
           {chapterData.volume_title && (
             <div className="text-xs uppercase font-bold tracking-wider text-brand-400">
               {chapterData.volume_title}
@@ -520,24 +525,12 @@ export default function ChapterReaderPage() {
 
         {/* 3. MANGA DISPLAY MODE */}
         {isManga && chapterData.pages && chapterData.pages.length > 0 ? (
-          <div className="flex flex-col items-center">
-            {chapterData.pages.map((page: any) => (
-              <div
-                key={page.page_number}
-                className="w-full max-w-3xl overflow-hidden bg-black/40"
-                // reserve the page's height before it loads so the reader does not jump while scrolling
-                style={page.width && page.height ? { aspectRatio: `${page.width} / ${page.height}` } : undefined}
-              >
-                <SmartImage
-                  src={page.image_url}
-                  adaptive
-                  alt={`Trang ${page.page_number}`}
-                  width={page.width || undefined}
-                  height={page.height || undefined}
-                  className="w-full h-auto"
-                />
-              </div>
-            ))}
+          <div className="-mx-4 sm:-mx-6">
+            <MangaReader
+              pages={chapterData.pages}
+              nextHref={chapterData.next_chapter ? `/truyen/${storySlug}/${chapterData.next_chapter.slug}` : null}
+              prevHref={chapterData.prev_chapter ? `/truyen/${storySlug}/${chapterData.prev_chapter.slug}` : null}
+            />
           </div>
         ) : (
           /* 4. SMART NOVEL DISPLAY MODE (Line-by-Line with Translator Notes & Inline Images) */
@@ -560,8 +553,10 @@ export default function ChapterReaderPage() {
                     highlightedLine === idx ? 'bg-amber-500/20 ring-2 ring-amber-400 border-l-4 border-amber-400 shadow-md' : bookmarkedLines.has(idx) ? 'bg-brand-500/15 border-l-4 border-brand-500' : 'hover:bg-white/5'
                   }`}
                 >
-                  {/* Paragraph text */}
-                  {block.text && (
+                  {/* Formatted block from the chapter editor (sanitized by the API), else plain paragraph text */}
+                  {block.html ? (
+                    <div className="chapter-rich" dangerouslySetInnerHTML={{ __html: rewriteHtmlImages(block.html, imageQuality) }} />
+                  ) : block.text && (
                     <p className="leading-relaxed">
                       {block.text}
                     </p>
@@ -578,7 +573,7 @@ export default function ChapterReaderPage() {
                   )}
 
                   {/* Inline Illustration at this exact line */}
-                  {block.image_url && block.image_url !== 'placeholder' && (
+                  {!block.html && block.image_url && block.image_url !== 'placeholder' && (
                     <div className="my-6 flex flex-col items-center not-prose">
                       <div className="rounded-3xl overflow-hidden shadow-2xl border border-white/15 max-w-xl bg-black/40">
                         <SmartImage
@@ -661,7 +656,7 @@ export default function ChapterReaderPage() {
         )}
 
         {/* 5. Navigation Buttons Bottom */}
-        <div className="mt-16 pt-8 border-t border-white/10 flex items-center justify-between gap-4">
+        <div className={`mt-16 pt-8 border-t border-white/10 flex items-center justify-between gap-4 ${isManga ? 'max-w-4xl mx-auto' : ''}`}>
           {chapterData.prev_chapter ? (
             <Link
               href={`/truyen/${storySlug}/${chapterData.prev_chapter.slug}`}
@@ -695,7 +690,7 @@ export default function ChapterReaderPage() {
         </div>
 
         {/* 6. Chapter Comment Section */}
-        <div className="mt-16">
+        <div className={`mt-16 ${isManga ? 'max-w-4xl mx-auto' : ''}`}>
           <CommentSection
             targetType="chapter"
             targetId={chapterData.id}

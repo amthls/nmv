@@ -11,6 +11,7 @@ import { useAuth } from '@/context/AuthContext';
 import PageLoader from '@/components/common/PageLoader';
 import UploadModeSwitch from '@/components/story/UploadModeSwitch';
 import { CHOSEN_PARAM, chapterUploadHref } from '@/lib/chapterUpload';
+import MangaReader from '@/components/reader/MangaReader';
 import {
   CollectResult, RejectedFile, UploadError, UploadedPage, filesFromDataTransfer, filesFromInput, formatBytes,
   groupByFolder, naturalCompare, readImageSize, sizeBatches, uploadPageBatch,
@@ -19,6 +20,8 @@ import {
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 const BATCH_SIZE = 5; // pages per request: small enough for a smooth progress bar
 const SMALL_WIDTH = 700; // narrower pages look blurry on most screens
+const SERVER_MAX_WIDTH = 1600; // the server scales wider pages down to this
+const STRIP_SPLIT_ABOVE = 5000; // ...and cuts strips taller than this (after scaling) into parts
 const SAMPLE_ZIP = '/samples/mau-dang-truyen-tranh.zip';
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -31,7 +34,7 @@ interface PageItem {
   height?: number;
   status: PageStatus;
   progress: number;
-  result?: { url: string; width?: number; height?: number };
+  result?: { url: string; width?: number; height?: number; parts?: { url: string; width: number; height: number }[] };
   error?: string;
   /** set when the browser itself cannot decode the file: it is not a usable image */
   invalid?: string;
@@ -346,7 +349,7 @@ function MangaUploadContent() {
       batch.forEach((p, idx) => {
         const r = results?.[idx];
         outcome.set(p.key, r?.url
-          ? { result: { url: r.url, width: r.width, height: r.height } }
+          ? { result: { url: r.url, width: r.width, height: r.height, parts: r.parts } }
           : { error: r?.error || failure || 'Tải lên thất bại' });
       });
       patchChapter(key, (c) => ({
@@ -384,10 +387,13 @@ function MangaUploadContent() {
           chapter_number: number,
           title: latest.title.trim() || `Chương ${fmtNum(number)}`,
           is_draft: asDraft,
-          content_blocks: ch.pages.map((p, i) => {
-            const r = outcome.get(p.key)!.result!;
-            return { id: `p${i + 1}`, type: 'image', image_url: r.url, ...(r.width && r.height ? { width: r.width, height: r.height } : {}) };
-          }),
+          // one image block per page; a long strip cut by the server adds one block per part
+          content_blocks: ch.pages
+            .flatMap((p) => {
+              const r = outcome.get(p.key)!.result!;
+              return r.parts?.length ? r.parts : [{ url: r.url, width: r.width, height: r.height }];
+            })
+            .map((r, i) => ({ id: `p${i + 1}`, type: 'image', image_url: r.url, ...(r.width && r.height ? { width: r.width, height: r.height } : {}) })),
         }),
       });
       const json = await res.json();
@@ -442,6 +448,7 @@ function MangaUploadContent() {
   const pages = active?.pages || [];
   const totalSize = pages.reduce((s, p) => s + p.file.size, 0);
   const smallPages = pages.filter((p) => p.width && p.width < SMALL_WIDTH).length;
+  const tallPages = pages.filter((p) => p.width && p.height && p.height * (Math.min(p.width, SERVER_MAX_WIDTH) / p.width) > STRIP_SPLIT_ABOVE).length;
   const dupNames = pages.length - new Set(pages.map((p) => `${p.file.name}|${p.file.size}`)).size;
   const editable = active && !['uploading', 'published'].includes(active.status) && !busy;
   const uploadedCount = pages.filter((p) => p.status === 'done').length;
@@ -716,6 +723,11 @@ function MangaUploadContent() {
                   </div>
                 </div>
 
+                {tallPages > 0 && (
+                  <p className="text-xs text-sky-500">
+                    {tallPages} trang là dải dài (webtoon): máy chủ sẽ tự cắt thành các đoạn cao tối đa 4000px để máy yếu đọc mượt. Trong chế độ cuộn dọc các đoạn nối liền, không lộ vết cắt.
+                  </p>
+                )}
                 {(smallPages > 0 || dupNames > 0) && (
                   <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-amber-500">
                     {smallPages > 0 && <span className="flex items-center gap-1"><AlertTriangle className="w-3.5 h-3.5" /> {smallPages} trang rộng dưới {SMALL_WIDTH}px, có thể bị mờ</span>}
@@ -775,8 +787,12 @@ function MangaUploadContent() {
                     ))}
                   </ol>
                 ) : (
-                  <div className="mx-auto max-w-3xl bg-black/40 rounded-[4px] overflow-hidden">
-                    {pages.map((p, i) => <img key={p.key} src={p.preview} alt={`Trang ${i + 1}`} className="w-full h-auto block" />)}
+                  // exactly the reader people will use, with the same layout / fit options
+                  <div className="rounded-[4px] bg-black/40 py-2">
+                    <MangaReader
+                      local
+                      pages={pages.map((p, i) => ({ page_number: i + 1, image_url: p.preview, width: p.width, height: p.height }))}
+                    />
                   </div>
                 )}
               </>

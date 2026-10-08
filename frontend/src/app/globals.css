@@ -317,3 +317,71 @@ body::before {
   overflow-wrap: break-word;
   hyphens: manual;
 }
+
+/* ---------- Novel chapter formatting: chapter editor (.chapter-ck) and reader (.chapter-rich) ----------
+   Only classes come from the editor, so every colour here follows the reader theme (light / sepia / dark). */
+.chapter-rich { overflow-wrap: anywhere; }
+.chapter-rich > * + *, .chapter-rich blockquote > * + * { margin-top: 0.75em; }
+.chapter-rich h2, .chapter-ck .ck-content h2 { font-size: 1.5em; font-weight: 800; line-height: 1.3; margin: 0.6em 0 0.2em; }
+.chapter-rich h3, .chapter-ck .ck-content h3 { font-size: 1.25em; font-weight: 700; line-height: 1.35; margin: 0.5em 0 0.2em; }
+.chapter-rich h4, .chapter-ck .ck-content h4 { font-size: 1.08em; font-weight: 700; margin: 0.4em 0 0.1em; }
+.chapter-rich strong, .chapter-rich b { font-weight: 700; }
+.chapter-rich em, .chapter-rich i { font-style: italic; }
+.chapter-rich u { text-decoration: underline; text-underline-offset: 3px; }
+.chapter-rich s, .chapter-rich strike { text-decoration: line-through; }
+.chapter-rich sub, .chapter-rich sup { font-size: 0.72em; line-height: 0; position: relative; }
+.chapter-rich sup { vertical-align: super; }
+.chapter-rich sub { vertical-align: sub; }
+.chapter-rich ul { list-style: disc; padding-left: 1.6em; }
+.chapter-rich ol { list-style: decimal; padding-left: 1.6em; }
+.chapter-rich li + li { margin-top: 0.3em; }
+.chapter-rich a { color: rgb(var(--c-brand-400)); text-decoration: underline; text-underline-offset: 2px; }
+.chapter-rich blockquote, .chapter-ck .ck-content blockquote {
+  border-left: 3px solid rgb(var(--c-brand-400) / 0.6);
+  padding: 0.2em 0 0.2em 1em;
+  font-style: italic;
+  opacity: 0.92;
+}
+/* scene break */
+.chapter-rich hr, .chapter-ck .ck-content hr {
+  border: 0; height: auto; background: none; margin: 1.6em 0; text-align: center; overflow: visible;
+}
+.chapter-rich hr::before, .chapter-ck .ck-content hr::before {
+  content: '✦ ✦ ✦'; letter-spacing: 0.6em; opacity: 0.5; font-size: 0.85em;
+}
+.nh-align-left { text-align: left !important; }
+.nh-align-center { text-align: center !important; }
+.nh-align-right { text-align: right !important; }
+.nh-align-justify { text-align: justify !important; }
+/* named font sizes, relative to the reader's own size */
+.chapter-rich .text-tiny, .chapter-ck .ck-content .text-tiny { font-size: 0.7em; }
+.chapter-rich .text-small, .chapter-ck .ck-content .text-small { font-size: 0.85em; }
+.chapter-rich .text-big, .chapter-ck .ck-content .text-big { font-size: 1.4em; }
+.chapter-rich .text-huge, .chapter-ck .ck-content .text-huge { font-size: 1.8em; }
+/* highlights: soft on light pages, translucent on dark ones so the text stays readable */
+.chapter-rich mark, .chapter-ck .ck-content mark { color: inherit; border-radius: 3px; padding: 0 0.12em; }
+.chapter-rich .marker-yellow, .chapter-ck .ck-content .marker-yellow { background: #fef08a; }
+.chapter-rich .marker-green, .chapter-ck .ck-content .marker-green { background: #bbf7d0; }
+.chapter-rich .marker-pink, .chapter-ck .ck-content .marker-pink { background: #fbcfe8; }
+.chapter-rich .marker-blue, .chapter-ck .ck-content .marker-blue { background: #bfdbfe; }
+.chapter-rich .pen-red, .chapter-ck .ck-content .pen-red { background: transparent; color: #dc2626; }
+.chapter-rich .pen-green, .chapter-ck .ck-content .pen-green { background: transparent; color: #16a34a; }
+.dark .chapter-rich .marker-yellow, .dark .chapter-ck .ck-content .marker-yellow { background: rgb(250 204 21 / 0.32); }
+.dark .chapter-rich .marker-green, .dark .chapter-ck .ck-content .marker-green { background: rgb(74 222 128 / 0.28); }
+.dark .chapter-rich .marker-pink, .dark .chapter-ck .ck-content .marker-pink { background: rgb(244 114 182 / 0.3); }
+.dark .chapter-rich .marker-blue, .dark .chapter-ck .ck-content .marker-blue { background: rgb(96 165 250 / 0.3); }
+.dark .chapter-rich .pen-red, .dark .chapter-ck .ck-content .pen-red { color: #fb7185; }
+.dark .chapter-rich .pen-green, .dark .chapter-ck .ck-content .pen-green { color: #4ade80; }
+/* illustrations */
+.chapter-rich figure.image { margin: 1.5em auto; text-align: center; max-width: 100%; }
+.chapter-rich figure.image img {
+  max-width: 100%; max-height: 85vh; width: auto; height: auto; margin: 0 auto; display: block;
+  border-radius: 10px; box-shadow: 0 18px 40px -20px rgb(0 0 0 / 0.6);
+}
+.chapter-rich figure.image_resized img { width: 100%; max-height: none; }
+.chapter-rich figure.image figcaption { margin-top: 0.6em; font-size: 0.8em; font-style: italic; opacity: 0.7; font-family: Inter, sans-serif; }
+/* the chapter editor reads like the page it produces */
+.chapter-ck .ck-content { font-family: 'Literata', 'Noto Serif', serif; font-size: 17px; line-height: 1.8; }
+.chapter-ck .ck-content p { margin: 0 0 0.9em; }
+.chapter-ck .ck.ck-editor__editable_inline { max-height: 75vh; overflow-y: auto; }
+.chapter-ck .ck-content ul, .chapter-ck .ck-content ol { padding-left: 1.6em; margin: 0 0 0.9em; }
