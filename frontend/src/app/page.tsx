@@ -48,10 +48,11 @@ export default function HomePage() {
 
   return (
     <div className="pb-24">
-      {/* 1. FEATURED THIS WEEK — full-bleed banner */}
+      {/* 1. FEATURED THIS WEEK — banner card */}
       {isLoading && trendingStories.length === 0 ? (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-14">
-          <div className="h-[220px] sm:h-[300px] lg:h-[340px] rounded-[4px] bg-white/5 animate-pulse" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+          <div className="h-7 sm:h-8 w-56 rounded-[4px] bg-white/5 animate-pulse" />
+          <div className="mt-3 h-[212px] sm:h-[308px] lg:h-[348px] rounded-xl bg-white/5 animate-pulse" />
         </div>
       ) : (
         <FeaturedCarousel stories={trendingStories} gallery={featuredIllustrations} />
