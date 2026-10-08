@@ -22,13 +22,22 @@ import {
   CheckCircle2,
   Download,
 } from 'lucide-react';
-import ReaderSettingsModal, { ReaderSettings, READER_FONTS } from '@/components/reader/ReaderSettingsModal';
+import ReaderSettingsModal, {
+  DEFAULT_READER_SETTINGS, ReaderSettings, READER_FONTS, loadReaderSettings, saveReaderSettings,
+} from '@/components/reader/ReaderSettingsModal';
+import ImageLightbox from '@/components/reader/ImageLightbox';
+import RichContent from '@/components/common/RichContent';
+import { enhanceChapterHtml, enhancePlainText, withFootnoteMarker } from '@/lib/chapterRender';
+
+const PARAGRAPH_GAP = { compact: '0rem', normal: '0.75rem', airy: '1.75rem' } as const;
 import ChapterSelectorModal from '@/components/reader/ChapterSelectorModal';
 import DownloadModal from '@/components/story/DownloadModal';
 import FloatingReaderBar from '@/components/reader/FloatingReaderBar';
 import CommentSection from '@/components/comments/CommentSection';
 import ReportButton from '@/components/common/ReportButton';
 import SmartImage from '@/components/common/SmartImage';
+import MangaReader from '@/components/reader/MangaReader';
+import { rewriteHtmlImages, useImageQuality } from '@/lib/imageQuality';
 import { useAuth } from '@/context/AuthContext';
 import { useReadingSession } from '@/context/ReadingSessionContext';
 import { logChapterRead } from '@/lib/readingHistory';
@@ -53,6 +62,7 @@ export default function ChapterReaderPage() {
   const [bookmarkedLines, setBookmarkedLines] = useState<Set<number>>(new Set());
   const [highlightedLine, setHighlightedLine] = useState<number | null>(null);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [imageQuality] = useImageQuality();
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -222,15 +232,43 @@ export default function ChapterReaderPage() {
     }
   };
 
-  // Reader Settings State
-  const [settings, setSettings] = useState<ReaderSettings>({
-    theme: 'dark',
-    fontFamily: 'Literata',
-    fontSize: 18,
-    lineHeight: 1.8,
-    maxWidth: '860px',
-    textAlign: 'left',
-  });
+  // Reader Settings State (remembered in this browser)
+  const [settings, setSettings] = useState<ReaderSettings>(DEFAULT_READER_SETTINGS);
+  useEffect(() => setSettings(loadReaderSettings()), []);
+  const updateSettings = (next: ReaderSettings) => {
+    setSettings(next);
+    saveReaderSettings(next);
+  };
+
+  // Numbered translator notes: the number opens the note under its paragraph
+  const [openNotes, setOpenNotes] = useState<Set<number>>(new Set());
+  const toggleNote = (n: number) =>
+    setOpenNotes((prev) => {
+      const next = new Set(prev);
+      if (next.has(n)) next.delete(n);
+      else next.add(n);
+      return next;
+    });
+
+  // Illustration viewer
+  const readerTextRef = React.useRef<HTMLDivElement>(null);
+  const [lightbox, setLightbox] = useState<{ images: { src: string; alt?: string }[]; index: number } | null>(null);
+  const handleReaderClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const fn = target.closest('[data-fn]');
+    if (fn) {
+      e.preventDefault();
+      toggleNote(Number(fn.getAttribute('data-fn')));
+      return;
+    }
+    const figure = target.closest('figure.image, .nh-illus');
+    const img = figure?.querySelector('img');
+    if (!img || !readerTextRef.current) return;
+    const all = Array.from(readerTextRef.current.querySelectorAll<HTMLImageElement>('figure.image img, .nh-illus img'));
+    // full-size file, not the resolution picked for the page
+    const full = (el: HTMLImageElement) => (el.getAttribute('src') || '').replace(/\?w=\d+$/, '');
+    setLightbox({ images: all.map((el) => ({ src: full(el), alt: el.getAttribute('alt') || undefined })), index: Math.max(0, all.indexOf(img)) });
+  };
 
   // 1. Fetch chapter details
   useEffect(() => {
@@ -286,6 +324,7 @@ export default function ChapterReaderPage() {
   // 2. Keyboard Navigation (Left / Right / A / D)
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+    if (e.defaultPrevented) return; // the manga reader turned a page instead
 
     if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
       if (chapterData?.prev_chapter) {
@@ -350,6 +389,17 @@ export default function ChapterReaderPage() {
   const fontStack = (READER_FONTS[settings.fontFamily] || READER_FONTS.Literata).stack;
 
   const hasBlocks = Array.isArray(chapterData.content_blocks) && chapterData.content_blocks.length > 0;
+  // translator notes numbered in reading order
+  const footnoteNumbers: Record<number, number> = {};
+  const footnoteList: { n: number; idx: number; note: string }[] = [];
+  if (hasBlocks) {
+    chapterData.content_blocks.forEach((b: any, idx: number) => {
+      if (b.note) {
+        footnoteNumbers[idx] = footnoteList.length + 1;
+        footnoteList.push({ n: footnoteList.length + 1, idx, note: b.note });
+      }
+    });
+  }
 
   // Fallback paragraphs
   const paragraphs = chapterData.content
@@ -479,12 +529,13 @@ export default function ChapterReaderPage() {
       </header>
 
       {/* 2. Main Reader Canvas */}
-      <main 
+      <main
         className="mx-auto px-4 sm:px-6 py-10 transition-all duration-300"
-        style={{ maxWidth: settings.maxWidth }}
+        // manga pages size themselves (column width / wide strip); text keeps the reader's line width
+        style={{ maxWidth: isManga ? 'none' : settings.maxWidth }}
       >
         {/* Chapter Title & Publisher Meta Header */}
-        <div className="text-center pb-8 border-b border-white/10 space-y-3 mb-8">
+        <div className={`text-center pb-8 border-b border-white/10 space-y-3 mb-8 ${isManga ? 'max-w-4xl mx-auto' : ''}`}>
           {chapterData.volume_title && (
             <div className="text-xs uppercase font-bold tracking-wider text-brand-400">
               {chapterData.volume_title}
@@ -520,78 +571,73 @@ export default function ChapterReaderPage() {
 
         {/* 3. MANGA DISPLAY MODE */}
         {isManga && chapterData.pages && chapterData.pages.length > 0 ? (
-          <div className="flex flex-col items-center">
-            {chapterData.pages.map((page: any) => (
-              <div
-                key={page.page_number}
-                className="w-full max-w-3xl overflow-hidden bg-black/40"
-                // reserve the page's height before it loads so the reader does not jump while scrolling
-                style={page.width && page.height ? { aspectRatio: `${page.width} / ${page.height}` } : undefined}
-              >
-                <SmartImage
-                  src={page.image_url}
-                  adaptive
-                  alt={`Trang ${page.page_number}`}
-                  width={page.width || undefined}
-                  height={page.height || undefined}
-                  className="w-full h-auto"
-                />
-              </div>
-            ))}
+          <div className="-mx-4 sm:-mx-6">
+            <MangaReader
+              pages={chapterData.pages}
+              nextHref={chapterData.next_chapter ? `/truyen/${storySlug}/${chapterData.next_chapter.slug}` : null}
+              prevHref={chapterData.prev_chapter ? `/truyen/${storySlug}/${chapterData.prev_chapter.slug}` : null}
+            />
           </div>
         ) : (
-          /* 4. SMART NOVEL DISPLAY MODE (Line-by-Line with Translator Notes & Inline Images) */
-          <div 
-            className="reader-text space-y-6"
-            style={{ 
+          /* 4. NOVEL DISPLAY: formatted blocks, numbered translator notes, translator messages, illustrations */
+          <div
+            ref={readerTextRef}
+            onClick={handleReaderClick}
+            className={`reader-text flex flex-col ${settings.indent ? 'nh-indent' : ''} ${settings.showImages ? '' : 'nh-hide-images'}`}
+            style={{
               fontFamily: fontStack,
-              fontSize: `${settings.fontSize}px`, 
+              fontSize: `${settings.fontSize}px`,
               lineHeight: settings.lineHeight,
-              textAlign: settings.textAlign as any
+              textAlign: settings.textAlign as any,
+              rowGap: PARAGRAPH_GAP[settings.paragraphSpacing] || PARAGRAPH_GAP.normal,
             }}
           >
+            {chapterData.intro_note && (
+              <aside className="nh-message mb-4">
+                <div className="nh-message__label"><MessageSquare className="w-3.5 h-3.5" /> Lời người dịch</div>
+                <RichContent content={chapterData.intro_note} />
+              </aside>
+            )}
+
             {hasBlocks ? (
               // RENDER SMART CONTENT BLOCKS
-              chapterData.content_blocks.map((block: any, idx: number) => (
-                <div 
+              chapterData.content_blocks.map((block: any, idx: number) => {
+                const noteNo = footnoteNumbers[idx];
+                const body = block.html
+                  ? enhanceChapterHtml(rewriteHtmlImages(block.html, imageQuality))
+                  : block.text ? `<p>${enhancePlainText(block.text)}</p>` : '';
+                return (
+                <div
                   key={block.id || idx}
                   id={`line-${idx}`}
                   className={`group relative rounded-xl p-2.5 pr-11 transition-colors duration-200 space-y-3 ${
                     highlightedLine === idx ? 'bg-amber-500/20 ring-2 ring-amber-400 border-l-4 border-amber-400 shadow-md' : bookmarkedLines.has(idx) ? 'bg-brand-500/15 border-l-4 border-brand-500' : 'hover:bg-white/5'
                   }`}
                 >
-                  {/* Paragraph text */}
-                  {block.text && (
-                    <p className="leading-relaxed">
-                      {block.text}
-                    </p>
+                  {/* Formatted block from the chapter editor (sanitized by the API), else plain paragraph text */}
+                  {body && (
+                    <div className="chapter-rich" dangerouslySetInnerHTML={{ __html: noteNo ? withFootnoteMarker(body, noteNo) : body }} />
+                  )}
+                  {!body && noteNo && (
+                    <sup className="nh-fn"><a href={`#fn-${noteNo}`} data-fn={noteNo}>[{noteNo}]</a></sup>
                   )}
 
-                  {/* Translator Annotation / Note at this line */}
-                  {block.note && (
-                    <div className="p-3.5 rounded-2xl bg-amber-500/10 border-l-4 border-amber-500 text-xs font-sans text-amber-200 italic space-y-1 shadow-sm">
-                      <span className="font-extrabold text-[11px] uppercase tracking-wider text-amber-400 not-italic flex items-center gap-1.5">
-                        <MessageSquare className="w-3.5 h-3.5" /> Lời Bình / Chú Thích Dịch Giả:
-                      </span>
-                      <div className="not-italic leading-relaxed">{block.note}</div>
-                    </div>
-                  )}
-
-                  {/* Inline Illustration at this exact line */}
-                  {block.image_url && block.image_url !== 'placeholder' && (
-                    <div className="my-6 flex flex-col items-center not-prose">
-                      <div className="rounded-3xl overflow-hidden shadow-2xl border border-white/15 max-w-xl bg-black/40">
-                        <SmartImage
-                          src={block.image_url}
-                          adaptive
-                          alt={`Minh họa đoạn ${idx + 1}`}
-                          className="w-full h-auto max-h-[85vh] object-contain"
-                        />
+                  {/* Translator note: its number [n] opens it here */}
+                  {noteNo && openNotes.has(noteNo) && (
+                    <div className="nh-note">
+                      <div className="nh-note__head">
+                        <span>Chú thích [{noteNo}]</span>
+                        <button type="button" onClick={() => toggleNote(noteNo)} className="opacity-70 hover:opacity-100">Đóng</button>
                       </div>
-                      <span className="text-xs opacity-60 mt-2.5 font-sans italic text-center">
-                        Ảnh minh họa Light Novel (Đoạn #{idx + 1})
-                      </span>
+                      <div className="whitespace-pre-line">{block.note}</div>
                     </div>
+                  )}
+
+                  {/* Illustration hung on a paragraph (older chapters) */}
+                  {!block.html && block.image_url && block.image_url !== 'placeholder' && (
+                    <figure className="nh-illus">
+                      <SmartImage src={block.image_url} adaptive alt={`Minh họa đoạn ${idx + 1}`} />
+                    </figure>
                   )}
 
                   {/* Bookmark line action button */}
@@ -612,26 +658,17 @@ export default function ChapterReaderPage() {
                     <Bookmark className={`w-4 h-4 transition-transform ${bookmarkedLines.has(idx) ? 'fill-amber-400 text-amber-400 scale-110' : ''}`} />
                   </button>
                 </div>
-              ))
+                );
+              })
             ) : (
               // RENDER REGULAR PARAGRAPHS
               paragraphs.map((p: string, idx: number) => {
                 if (isMarkdownImage(p)) {
                   const imgUrl = getImageUrl(p);
                   return (
-                    <div key={idx} className="my-8 flex flex-col items-center not-prose">
-                      <div className="rounded-3xl overflow-hidden shadow-2xl border border-white/15 max-w-xl bg-black/40">
-                        <SmartImage
-                          src={imgUrl}
-                          adaptive
-                          alt={`Minh họa ${chapterData.title}`}
-                          className="w-full h-auto max-h-[85vh] object-contain"
-                        />
-                      </div>
-                      <span className="text-xs opacity-60 mt-2.5 font-sans italic text-center">
-                        Ảnh minh họa Light Novel
-                      </span>
-                    </div>
+                    <figure key={idx} className="nh-illus">
+                      <SmartImage src={imgUrl} adaptive alt={`Minh họa ${chapterData.title}`} />
+                    </figure>
                   );
                 }
 
@@ -643,9 +680,7 @@ export default function ChapterReaderPage() {
                       highlightedLine === idx ? 'bg-amber-500/20 ring-2 ring-amber-400 border-l-4 border-amber-400 shadow-md' : bookmarkedLines.has(idx) ? 'bg-brand-500/15 border-l-4 border-brand-500' : 'hover:bg-white/5'
                     }`}
                   >
-                    <p className="leading-relaxed">
-                      {p}
-                    </p>
+                    <div className="chapter-rich" dangerouslySetInnerHTML={{ __html: `<p>${enhancePlainText(p)}</p>` }} />
                     <button
                       onClick={() => handleToggleBookmarkLine(idx, p)}
                       className={`absolute right-2 top-2 p-1.5 rounded-lg transition ${bookmarkedLines.has(idx) ? 'opacity-100 text-amber-400 bg-amber-500/15' : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-40 text-gray-400 hover:text-amber-400 hover:bg-white/10'}`}
@@ -657,11 +692,40 @@ export default function ChapterReaderPage() {
                 );
               })
             )}
+
+            {chapterData.outro_note && (
+              <aside className="nh-message mt-6">
+                <div className="nh-message__label"><MessageSquare className="w-3.5 h-3.5" /> Lời người dịch</div>
+                <RichContent content={chapterData.outro_note} />
+              </aside>
+            )}
+
+            {/* All notes at the end, like a book's notes page */}
+            {footnoteList.length > 0 && (
+              <section className="nh-footnotes mt-6" aria-label="Ghi chú">
+                <h2>Ghi chú</h2>
+                <ol>
+                  {footnoteList.map(({ n, idx, note }) => (
+                    <li key={n} id={`fn-${n}`}>
+                      <span className="whitespace-pre-line">{note}</span>{' '}
+                      <button
+                        type="button"
+                        onClick={() => document.getElementById(`line-${idx}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                        className="nh-footnotes__back"
+                        title="Về đoạn có chú thích"
+                      >
+                        ↩
+                      </button>
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            )}
           </div>
         )}
 
         {/* 5. Navigation Buttons Bottom */}
-        <div className="mt-16 pt-8 border-t border-white/10 flex items-center justify-between gap-4">
+        <div className={`mt-16 pt-8 border-t border-white/10 flex items-center justify-between gap-4 ${isManga ? 'max-w-4xl mx-auto' : ''}`}>
           {chapterData.prev_chapter ? (
             <Link
               href={`/truyen/${storySlug}/${chapterData.prev_chapter.slug}`}
@@ -695,7 +759,7 @@ export default function ChapterReaderPage() {
         </div>
 
         {/* 6. Chapter Comment Section */}
-        <div className="mt-16">
+        <div className={`mt-16 ${isManga ? 'max-w-4xl mx-auto' : ''}`}>
           <CommentSection
             targetType="chapter"
             targetId={chapterData.id}
@@ -722,8 +786,16 @@ export default function ChapterReaderPage() {
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         settings={settings}
-        onSettingsChange={setSettings}
+        onSettingsChange={updateSettings}
       />
+      {lightbox && (
+        <ImageLightbox
+          images={lightbox.images}
+          index={lightbox.index}
+          onIndex={(index) => setLightbox((lb) => (lb ? { ...lb, index } : lb))}
+          onClose={() => setLightbox(null)}
+        />
+      )}
 
       {chapterData.story?.allow_download && (
         <DownloadModal

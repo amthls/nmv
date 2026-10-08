@@ -171,12 +171,20 @@ export function readImageSize(url: string): Promise<{ width: number; height: num
   });
 }
 
+export interface UploadedPart {
+  url: string;
+  width: number;
+  height: number;
+}
+
 export interface UploadedPage {
   originalName: string;
   url?: string;
   width?: number;
   height?: number;
   size?: number;
+  /** a very tall webtoon strip comes back cut into several parts, in reading order */
+  parts?: UploadedPart[];
   error?: string;
 }
 

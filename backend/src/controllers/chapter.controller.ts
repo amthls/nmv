@@ -9,7 +9,7 @@ import {
 import { InputError, isUuid, optionalUrl, requiredText } from '../utils/validation';
 import { insertWithUniqueSlug } from '../utils/ids';
 import { indexStory } from '../services/search.service';
-import { sanitizeRichText } from '../utils/richText';
+import { sanitizeRichText, sanitizeChapterHtml, richTextToPlain } from '../utils/richText';
 
 function slugify(text: string) {
   return text
@@ -28,6 +28,7 @@ export interface ContentBlock {
   text?: string;
   note?: string; // Translator Note on this line
   image_url?: string; // Inline illustration at this line (or one manga page)
+  html?: string; // formatted block from the chapter editor (sanitized); `text` is its plain text
   width?: number; // pixel size of image_url, when known
   height?: number;
 }
@@ -54,6 +55,22 @@ function normalizeContentBlocks(input: unknown): ContentBlock[] {
     };
     if (text) block.text = text;
     if (note && note.trim()) block.note = note.trim().slice(0, 5000);
+    if (raw.html !== undefined && raw.html !== null) {
+      if (typeof raw.html !== 'string' || raw.html.length > 100000) throw new InputError(`Đoạn ${idx + 1} không hợp lệ.`);
+      let html = sanitizeChapterHtml(raw.html);
+      const isTable = /^<figure[^>]*>\s*<table/i.test(html);
+      if (/^<figure/i.test(html) && !isTable && !/<img\s/i.test(html)) html = ''; // its image was not one of ours
+      if (html) {
+        block.html = html;
+        // the plain text always follows the formatted version (search, word count, bookmarks, exports)
+        const plain = /^<figure/i.test(html) && !isTable ? '' : richTextToPlain(html);
+        if (plain) block.text = plain;
+        else delete block.text;
+        const tag = (html.match(/^<([a-z0-9]+)/i)?.[1] || '').toLowerCase();
+        block.type = tag === 'hr' ? 'separator' : tag === 'figure' && !isTable ? 'image' : /^h[2-4]$/.test(tag) ? 'heading' : 'paragraph';
+        if (tag === 'figure' && !isTable && raw.image_url === undefined) raw.image_url = html.match(/<img[^>]*\ssrc="([^"]+)"/i)?.[1];
+      }
+    }
     const imageUrl = optionalUrl(raw.image_url, `Ảnh minh họa đoạn ${idx + 1}`);
     if (imageUrl) {
       block.image_url = imageUrl;
@@ -96,6 +113,13 @@ function blocksToPlainText(blocks: ContentBlock[]): string {
     .join('\n\n');
 }
 
+/** Optional translator message shown before / after the chapter text (rich text, may be cleared). */
+function chapterMessage(value: unknown, label: string): string | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== 'string' || value.length > 50000) throw new InputError(`${label} không hợp lệ.`);
+  return sanitizeRichText(value) || null;
+}
+
 /** Chapter numbers may be decimal (e.g. 10.5 for an extra) but never negative. */
 function parseChapterNumber(value: unknown): number {
   const num = typeof value === 'string' && value.trim() ? Number(value) : value;
@@ -125,6 +149,8 @@ export const submitChapter = async (req: AuthenticatedRequest, res: Response) =>
     const numberGiven = !(body.chapter_number === undefined || body.chapter_number === null || body.chapter_number === '');
     let chapterNumber = numberGiven ? parseChapterNumber(body.chapter_number) : 0;
     const blocks = normalizeContentBlocks(body.content_blocks);
+    const introNote = chapterMessage(body.intro_note, 'Lời nhắn đầu chương');
+    const outroNote = chapterMessage(body.outro_note, 'Lời nhắn cuối chương');
     if (volume_id && !isUuid(volume_id)) throw new InputError('Tập không hợp lệ.');
 
     const uploaderId = req.user.id;
@@ -198,9 +224,9 @@ export const submitChapter = async (req: AuthenticatedRequest, res: Response) =>
         INSERT INTO chapter_submissions (
           story_id, volume_id, chapter_number, title, slug,
           content_blocks, raw_content, word_count,
-          uploader_id, group_id, approval_status, is_active
+          uploader_id, group_id, approval_status, is_active, intro_note, outro_note
         ) VALUES (
-          $1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10, $11, $12
+          $1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10, $11, $12, $13, $14
         ) RETURNING *;
       `, [
         story_id,
@@ -214,7 +240,9 @@ export const submitChapter = async (req: AuthenticatedRequest, res: Response) =>
         uploaderId,
         actualGroupId || null,
         initialApproval,
-        initialApproval === 'approved'
+        initialApproval === 'approved',
+        introNote,
+        outroNote,
       ]);
       submission = submissionRes.rows[0];
 
@@ -257,9 +285,9 @@ async function syncSubmissionToPublicChapter(db: Db, sub: any): Promise<string |
     INSERT INTO chapters (
       story_id, volume_id, chapter_number, title, slug,
       content, content_blocks, word_count, is_published,
-      approval_status, uploader_id, group_id, translator_notes, published_at
+      approval_status, uploader_id, group_id, translator_notes, intro_note, outro_note, published_at
     ) VALUES (
-      $1, $2, $3, $4, $5, $6, $7::jsonb, $8, true, 'approved', $9, $10, $11::jsonb, NOW()
+      $1, $2, $3, $4, $5, $6, $7::jsonb, $8, true, 'approved', $9, $10, $11::jsonb, $12, $13, NOW()
     )
     ON CONFLICT (story_id, chapter_number) DO UPDATE SET
       volume_id = EXCLUDED.volume_id,
@@ -271,6 +299,8 @@ async function syncSubmissionToPublicChapter(db: Db, sub: any): Promise<string |
       uploader_id = EXCLUDED.uploader_id,
       group_id = EXCLUDED.group_id,
       translator_notes = EXCLUDED.translator_notes,
+      intro_note = EXCLUDED.intro_note,
+      outro_note = EXCLUDED.outro_note,
       updated_at = NOW()
     RETURNING id;
   `, [
@@ -284,7 +314,9 @@ async function syncSubmissionToPublicChapter(db: Db, sub: any): Promise<string |
     sub.word_count,
     sub.uploader_id,
     sub.group_id,
-    JSON.stringify(translatorNotes)
+    JSON.stringify(translatorNotes),
+    sub.intro_note || null,
+    sub.outro_note || null,
   ]);
 
   const chapterId = chapterRes.rows[0]?.id;
@@ -849,6 +881,8 @@ export const getChapterForEdit = async (req: AuthenticatedRequest, res: Response
         title: chapter.title,
         content: chapter.content,
         content_blocks: chapter.content_blocks || [],
+        intro_note: chapter.intro_note || '',
+        outro_note: chapter.outro_note || '',
         pages: pagesRes.rows.map((r: any) => r.image_url),
       },
     });
@@ -871,6 +905,7 @@ export const updateChapter = async (req: AuthenticatedRequest, res: Response) =>
       return res.status(404).json({ success: false, message: 'Chương không tồn tại.' });
     }
     const { title, chapter_number, volume_id, content_blocks, raw_content } = req.body || {};
+    const body = req.body || {};
 
     const chRes = await pool.query(CHAPTER_WITH_OWNERS_SQL, [id]);
     if (chRes.rows.length === 0) {
@@ -906,6 +941,9 @@ export const updateChapter = async (req: AuthenticatedRequest, res: Response) =>
     const wordCount = plainText.split(/\s+/).filter(Boolean).length;
     const translatorNotes = blocks.filter((b: any) => b.note).map((b: any) => ({ text: b.text, note: b.note }));
     const newSlug = `chuong-${newNumber}-${slugify(newTitle)}`;
+    // messages are kept unless the request sends them ('' clears one)
+    const introNote = body.intro_note === undefined ? chapter.intro_note : chapterMessage(body.intro_note, 'Lời nhắn đầu chương');
+    const outroNote = body.outro_note === undefined ? chapter.outro_note : chapterMessage(body.outro_note, 'Lời nhắn cuối chương');
 
     const client = await pool.connect();
     try {
@@ -934,10 +972,10 @@ export const updateChapter = async (req: AuthenticatedRequest, res: Response) =>
         UPDATE chapters SET
           title = $1, chapter_number = $2, slug = $3, volume_id = $4,
           content = $5, content_blocks = $6::jsonb, word_count = $7, translator_notes = $8::jsonb,
-          updated_at = NOW()
+          intro_note = $10, outro_note = $11, updated_at = NOW()
         WHERE id = $9
         RETURNING id, title, chapter_number, slug, volume_id, word_count, updated_at;
-      `, [newTitle, newNumber, newSlug, newVolumeId, plainText, JSON.stringify(blocks), wordCount, JSON.stringify(translatorNotes), id]);
+      `, [newTitle, newNumber, newSlug, newVolumeId, plainText, JSON.stringify(blocks), wordCount, JSON.stringify(translatorNotes), id, introNote, outroNote]);
 
       // Rebuild inline-image pages, only when the content itself changed (a title edit keeps the pages as they are)
       if (blocksChanged) {
@@ -955,9 +993,10 @@ export const updateChapter = async (req: AuthenticatedRequest, res: Response) =>
       await client.query(`
         UPDATE chapter_submissions SET
           title = $1, chapter_number = $2, slug = $3, volume_id = $4,
-          content_blocks = $5::jsonb, raw_content = $6, word_count = $7, updated_at = NOW()
+          content_blocks = $5::jsonb, raw_content = $6, word_count = $7,
+          intro_note = $10, outro_note = $11, updated_at = NOW()
         WHERE story_id = $8 AND chapter_number = $9 AND is_active = true;
-      `, [newTitle, newNumber, newSlug, newVolumeId, JSON.stringify(blocks), plainText, wordCount, chapter.story_id, chapter.chapter_number]);
+      `, [newTitle, newNumber, newSlug, newVolumeId, JSON.stringify(blocks), plainText, wordCount, chapter.story_id, chapter.chapter_number, introNote, outroNote]);
 
       await client.query(`UPDATE stories SET updated_at = NOW() WHERE id = $1`, [chapter.story_id]);
 
