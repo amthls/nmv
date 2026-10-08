@@ -94,6 +94,13 @@ body::before {
   box-shadow: var(--glass-shadow), var(--glass-highlight);
 }
 .glass-panel { border: 1px solid var(--glass-border); }
+/* Pop-up menus (account, notifications) sit inside the frosted navbar; a blur nested in another blur
+   shows nothing, so they get a nearly solid surface to stay readable over any wallpaper */
+.glass-menu {
+  background-color: rgb(var(--c-surface-2) / 0.97);
+  border: 1px solid var(--glass-edge);
+  box-shadow: 0 24px 48px -16px rgb(0 0 0 / 0.55), var(--glass-highlight);
+}
 .glass-strong {
   background-color: var(--glass-bg-strong);
   backdrop-filter: blur(28px) saturate(180%);

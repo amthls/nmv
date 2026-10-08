@@ -261,8 +261,8 @@ export default function Navbar() {
 
                 {/* Notification Dropdown Popover */}
                 {isNotificationOpen && (
-                  <div className="absolute right-0 mt-3 w-80 sm:w-96 rounded-2xl bg-glass border border-white/15 shadow-2xl shadow-black/80 overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-150">
-                    <div className="p-3.5 px-4 border-b border-white/10 flex items-center justify-between bg-glass">
+                  <div className="absolute right-0 mt-3 w-80 sm:w-96 rounded-2xl glass-menu overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="p-3.5 px-4 border-b border-white/10 flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Bell className="w-4 h-4 text-brand-400" />
                         <span className="text-sm font-bold text-white">Thông báo</span>
@@ -283,9 +283,9 @@ export default function Navbar() {
                       )}
                     </div>
 
-                    <div className="max-h-[380px] overflow-y-auto divide-y divide-white/5 bg-glass">
+                    <div className="max-h-[380px] overflow-y-auto divide-y divide-white/5">
                       {notifications.length === 0 ? (
-                        <div className="p-8 text-center bg-glass">
+                        <div className="p-8 text-center">
                           <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-3 text-brand-400">
                             <Bell className="w-6 h-6" />
                           </div>
@@ -372,7 +372,7 @@ export default function Navbar() {
 
                 {/* Dropdown Menu */}
                 {isUserMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-56 rounded-2xl bg-glass border border-white/10 shadow-2xl py-2 z-50 animate-in fade-in slide-in-from-top-2">
+                  <div className="absolute right-0 mt-2 w-56 rounded-2xl glass-menu py-2 z-50 animate-in fade-in slide-in-from-top-2">
                     <div className="px-4 py-2.5 border-b border-white/10">
                       <p className="text-xs font-semibold text-white">{user.display_name || user.username}</p>
                       <p className="text-[11px] text-gray-400 font-mono truncate">@{user.username} • {user.email}</p>
