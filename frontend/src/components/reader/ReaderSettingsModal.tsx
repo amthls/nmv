@@ -24,6 +24,36 @@ export interface ReaderSettings {
   lineHeight: number; // 1.4 to 2.4
   maxWidth: string; // '700px' | '850px' | '1000px' | '100%'
   textAlign: 'left' | 'justify';
+  paragraphSpacing: 'compact' | 'normal' | 'airy';
+  indent: boolean; // first-line indent, like a printed book
+  showImages: boolean; // illustrations shown inline; hidden ones open on click
+}
+
+export const DEFAULT_READER_SETTINGS: ReaderSettings = {
+  theme: 'dark',
+  fontFamily: 'Literata',
+  fontSize: 18,
+  lineHeight: 1.8,
+  maxWidth: '860px',
+  textAlign: 'left',
+  paragraphSpacing: 'normal',
+  indent: false,
+  showImages: true,
+};
+
+const SETTINGS_KEY = 'novelhub_reader_settings';
+
+/** Settings saved in this browser (older saves are completed with the defaults). */
+export function loadReaderSettings(): ReaderSettings {
+  try {
+    const raw = window.localStorage.getItem(SETTINGS_KEY);
+    if (raw) return { ...DEFAULT_READER_SETTINGS, ...JSON.parse(raw) };
+  } catch (e) {}
+  return DEFAULT_READER_SETTINGS;
+}
+
+export function saveReaderSettings(settings: ReaderSettings) {
+  try { window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch (e) {}
 }
 
 interface ReaderSettingsModalProps {
@@ -215,6 +245,48 @@ export default function ReaderSettingsModal({
                 <AlignJustify className="w-3.5 h-3.5" />
               </button>
             </div>
+          </div>
+        </div>
+
+        {/* 5b. Paragraphs & illustrations */}
+        <div className="space-y-2 pt-1">
+          <label className="text-[11px] font-semibold text-gray-400 uppercase">Khoảng cách đoạn</label>
+          <div className="grid grid-cols-3 gap-1.5">
+            {([['compact', 'Sát'], ['normal', 'Vừa'], ['airy', 'Thoáng']] as const).map(([id, label]) => (
+              <button
+                key={id}
+                onClick={() => onSettingsChange({ ...settings, paragraphSpacing: id })}
+                className={`py-1.5 rounded-lg border text-xs font-semibold transition ${
+                  settings.paragraphSpacing === id
+                    ? 'bg-brand-600 text-snow border-brand-500 shadow-sm'
+                    : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              onClick={() => onSettingsChange({ ...settings, indent: !settings.indent })}
+              aria-pressed={settings.indent}
+              className={`py-1.5 rounded-lg border text-xs font-semibold transition ${
+                settings.indent ? 'bg-brand-600 text-snow border-brand-500' : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
+              }`}
+              title="Lùi đầu dòng mỗi đoạn như sách in"
+            >
+              Thụt đầu dòng
+            </button>
+            <button
+              onClick={() => onSettingsChange({ ...settings, showImages: !settings.showImages })}
+              aria-pressed={settings.showImages}
+              className={`py-1.5 rounded-lg border text-xs font-semibold transition ${
+                settings.showImages ? 'bg-brand-600 text-snow border-brand-500' : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
+              }`}
+              title="Tắt để đọc không bị lộ nội dung / tiết kiệm dữ liệu; vẫn bấm xem được từng ảnh"
+            >
+              Hiện ảnh minh họa
+            </button>
           </div>
         </div>
 

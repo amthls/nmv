@@ -37,6 +37,8 @@ import {
   TextTransformation,
   PasteFromOffice,
   Fullscreen,
+  Table,
+  TableToolbar,
 } from 'ckeditor5';
 import type { Editor } from 'ckeditor5';
 import viTranslations from 'ckeditor5/translations/vi.js';
@@ -117,7 +119,7 @@ export default function ChapterEditorImpl({ value, onChange, onStats, placeholde
             FontSize, Highlight, Alignment, RemoveFormat, Link, AutoLink, List, BlockQuote, HorizontalLine,
             Image, ImageCaption, ImageResize, ImageStyle, ImageTextAlternative, ImageToolbar, ImageUpload,
             SpecialCharacters, SpecialCharactersEssentials, FindAndReplace, WordCount, Autoformat, TextTransformation,
-            PasteFromOffice, Fullscreen,
+            PasteFromOffice, Fullscreen, Table, TableToolbar,
           ],
           extraPlugins: [uploadAdapterPlugin, StoryCharacters],
           toolbar: {
@@ -126,7 +128,7 @@ export default function ChapterEditorImpl({ value, onChange, onStats, placeholde
               'heading', 'fontSize', '|',
               'bold', 'italic', 'underline', 'strikethrough', 'superscript', 'subscript', 'highlight', 'removeFormat', '|',
               'alignment', '|',
-              'blockQuote', 'horizontalLine', 'bulletedList', 'numberedList', 'link', '|',
+              'blockQuote', 'horizontalLine', 'bulletedList', 'numberedList', 'insertTable', 'link', '|',
               'uploadImage', 'specialCharacters', '|',
               'findAndReplace', 'fullscreen',
             ],
@@ -161,6 +163,8 @@ export default function ChapterEditorImpl({ value, onChange, onStats, placeholde
             ],
           },
           link: { addTargetToExternalLinks: true, defaultProtocol: 'https://' },
+          // status windows, item / skill lists...
+          table: { contentToolbar: ['tableColumn', 'tableRow', 'mergeTableCells'] },
           wordCount: {
             onUpdate: (stats: { words: number; characters: number }) => onStatsRef.current?.(stats),
           },

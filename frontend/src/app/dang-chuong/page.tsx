@@ -18,6 +18,9 @@ import {
 } from 'lucide-react';
 import SmartImage from '@/components/common/SmartImage';
 import ChapterEditor from '@/components/chapter/ChapterEditor';
+import RichTextEditor from '@/components/common/RichTextEditor';
+import RichContent from '@/components/common/RichContent';
+import { enhanceChapterHtml, withFootnoteMarker } from '@/lib/chapterRender';
 import { blocksToHtml, countWords, htmlToBlocks, plainTextToHtml } from '@/lib/chapterBlocks';
 import { rewriteHtmlImages, useImageQuality } from '@/lib/imageQuality';
 import { useAuth } from '@/context/AuthContext';
@@ -108,6 +111,11 @@ function ChapterEditorContent() {
 
   // Local autosave: protects against losing a half-written chapter to an
   // accidental tab close / refresh / crash before it's submitted.
+  // Optional translator messages shown in a box before / after the chapter
+  const [introNote, setIntroNote] = useState('');
+  const [outroNote, setOutroNote] = useState('');
+  const [showMessages, setShowMessages] = useState(false);
+
   const [restorableDraft, setRestorableDraft] = useState<any>(null);
   const dismissedDraftStoryRef = React.useRef<string | null>(null);
 
@@ -151,13 +159,15 @@ function ChapterEditorContent() {
           bodyHtml,
           annotations,
           activeAnnotationIndices,
+          introNote,
+          outroNote,
           savedAt: new Date().toISOString(),
         }));
       } catch (e) {}
     }, 1500);
 
     return () => clearTimeout(timer);
-  }, [selectedStoryId, chapterTitle, chapterNumber, selectedVolumeId, bodyHtml, annotations, activeAnnotationIndices]);
+  }, [selectedStoryId, chapterTitle, chapterNumber, selectedVolumeId, bodyHtml, annotations, activeAnnotationIndices, introNote, outroNote]);
 
   const restoreDraft = () => {
     if (!restorableDraft) return;
@@ -167,6 +177,9 @@ function ChapterEditorContent() {
     setBodyHtml(restorableDraft.bodyHtml ?? plainTextToHtml(restorableDraft.bodyText || ''));
     setAnnotations(restorableDraft.annotations || {});
     setActiveAnnotationIndices(restorableDraft.activeAnnotationIndices || []);
+    setIntroNote(restorableDraft.introNote || '');
+    setOutroNote(restorableDraft.outroNote || '');
+    if (restorableDraft.introNote || restorableDraft.outroNote) setShowMessages(true);
     setRestorableDraft(null);
   };
 
@@ -334,6 +347,9 @@ function ChapterEditorContent() {
         savedWorkKey.current = `${(d.title || '').trim()}\u0000${converted.map((c) => c.text).join('\n')}`;
         setAnnotations(nextAnnotations);
         setActiveAnnotationIndices(nextActive);
+        setIntroNote(d.intro_note || '');
+        setOutroNote(d.outro_note || '');
+        if (d.intro_note || d.outro_note) setShowMessages(true);
         setEditLoadState('ready');
       } catch (e: any) {
         if (!cancelled) {
@@ -407,6 +423,8 @@ function ChapterEditorContent() {
             title: chapterTitle.trim(),
             chapter_number: parsedNumber,
             volume_id: selectedVolumeId || null,
+            intro_note: introNote,
+            outro_note: outroNote,
             // manga pages are left untouched (sending no content keeps them)
             ...(isMangaEdit ? {} : { content_blocks: formattedBlocks }),
           }),
@@ -436,6 +454,8 @@ function ChapterEditorContent() {
           chapter_number: parsedNumber,
           content: paragraphs.filter(Boolean).join('\n\n'),
           content_blocks: formattedBlocks,
+          intro_note: introNote,
+          outro_note: outroNote,
           word_count: totalWords,
           is_draft: isDraft,
         }),
@@ -759,8 +779,35 @@ function ChapterEditorContent() {
               placeholder="Viết nội dung chương tại đây... Gõ tắt: **đậm**, *nghiêng*, ### tiêu đề, > trích dẫn, --- ngắt cảnh."
             />
             <div className="text-[11px] text-gray-500 flex flex-wrap items-center justify-between gap-2">
-              <span>{editorBlocks.length} khối nội dung · Ctrl+F tìm & thay thế · nút ⛶ để viết toàn màn hình</span>
+              <span>{editorBlocks.length} khối nội dung · Ctrl+F tìm & thay thế · nút ⛶ viết toàn màn hình · tùy chọn: <code className="text-gray-400">｜Ma Vương《Demon Lord》</code> hiện chữ nhỏ phía trên, <code className="text-gray-400">《《từ》》</code> chấm nhấn mạnh</span>
               <span>{totalWords.toLocaleString()} chữ · ~{readingTimeMin} phút đọc</span>
+            </div>
+
+            {/* Translator messages before / after the chapter, opt-in */}
+            <div className="pt-3 border-t border-white/10">
+              <button
+                type="button"
+                onClick={() => setShowMessages(!showMessages)}
+                className="text-xs font-bold text-gray-400 hover:text-white flex items-center gap-1.5 transition"
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                <span>Lời người dịch đầu / cuối chương (tùy chọn)</span>
+                <span className="text-[10px] font-normal text-gray-500">
+                  {[introNote && 'đầu chương', outroNote && 'cuối chương'].filter(Boolean).join(', ')}
+                </span>
+              </button>
+              {showMessages && (
+                <div className="mt-3 grid gap-3 md:grid-cols-2 animate-in fade-in">
+                  <div className="space-y-1.5">
+                    <div className="text-[11px] font-semibold text-gray-400">Hiện trước nội dung chương</div>
+                    <RichTextEditor value={introNote} onChange={setIntroNote} minHeight={90} placeholder="Ví dụ: lịch ra chương, cảm ơn ủng hộ..." />
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="text-[11px] font-semibold text-gray-400">Hiện sau nội dung chương</div>
+                    <RichTextEditor value={outroNote} onChange={setOutroNote} minHeight={90} placeholder="Ví dụ: giải thích thuật ngữ, link nhóm..." />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Advanced: translator notes & inline images, opt-in */}
@@ -771,7 +818,7 @@ function ChapterEditorContent() {
                 className="text-xs font-bold text-gray-400 hover:text-white flex items-center gap-1.5 transition"
               >
                 <MessageSquare className="w-3.5 h-3.5" />
-                <span>Chú thích dịch giả theo đoạn (tùy chọn)</span>
+                <span>Chú thích đánh số [1] theo đoạn (tùy chọn)</span>
                 <span className="text-[10px] font-normal text-gray-500">
                   {annotationEntries.length > 0 ? `— ${annotationEntries.length} mục` : ''}
                 </span>
@@ -863,24 +910,45 @@ function ChapterEditorContent() {
               </div>
             </div>
 
+            {introNote && (
+              <aside className="nh-message">
+                <div className="nh-message__label"><MessageSquare className="w-3.5 h-3.5" /> Lời người dịch</div>
+                <RichContent content={introNote} />
+              </aside>
+            )}
+
             {editorBlocks.length === 0 ? (
               <p className="text-center text-gray-500 text-sm font-sans">Chưa có nội dung để xem trước.</p>
             ) : (
               <div className="space-y-4">
                 {editorBlocks.map((block, idx) => (
                   <div key={idx} className="space-y-3">
-                    <div className="chapter-rich px-2" dangerouslySetInnerHTML={{ __html: rewriteHtmlImages(block.html, imageQuality) }} />
+                    <div
+                      className="chapter-rich px-2"
+                      dangerouslySetInnerHTML={{ __html: (() => {
+                        const html = enhanceChapterHtml(rewriteHtmlImages(block.html, imageQuality));
+                        const n = annotations[idx]?.note ? annotationEntries.indexOf(idx) + 1 : 0;
+                        return n > 0 ? withFootnoteMarker(html, n) : html;
+                      })() }}
+                    />
 
                     {annotations[idx]?.note && (
-                      <div className="p-3 rounded-xl bg-amber-500/10 border-l-4 border-amber-500 text-xs font-sans text-amber-200 italic space-y-0.5">
-                        <span className="font-bold text-[10px] uppercase text-amber-400 block not-italic">Chú thích dịch giả:</span>
-                        {annotations[idx]?.note}
+                      <div className="nh-note">
+                        <div className="nh-note__head"><span>Chú thích [{annotationEntries.indexOf(idx) + 1}]</span></div>
+                        <div className="whitespace-pre-line">{annotations[idx]?.note}</div>
                       </div>
                     )}
 
                   </div>
                 ))}
               </div>
+            )}
+
+            {outroNote && (
+              <aside className="nh-message">
+                <div className="nh-message__label"><MessageSquare className="w-3.5 h-3.5" /> Lời người dịch</div>
+                <RichContent content={outroNote} />
+              </aside>
             )}
           </div>
         )}

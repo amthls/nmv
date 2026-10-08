@@ -332,6 +332,8 @@ CREATE TABLE chapters (
     uploader_id         UUID NOT NULL REFERENCES users(id),
     group_id            UUID REFERENCES translation_groups(id) ON DELETE SET NULL,
     translator_notes    JSONB,
+    intro_note          TEXT,           -- translator message before the chapter (sanitized rich text)
+    outro_note          TEXT,           -- ...and after it
     total_views         BIGINT DEFAULT 0,
     total_comments      BIGINT DEFAULT 0,
     published_at        TIMESTAMPTZ DEFAULT NOW(),
@@ -374,6 +376,8 @@ CREATE TABLE chapter_submissions (
     slug            VARCHAR(500) NOT NULL,
     content_blocks  JSONB,
     raw_content     TEXT,
+    intro_note      TEXT,
+    outro_note      TEXT,
     word_count      INTEGER DEFAULT 0,
     uploader_id     UUID NOT NULL REFERENCES users(id),
     group_id        UUID REFERENCES translation_groups(id) ON DELETE SET NULL,

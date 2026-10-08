@@ -52,6 +52,7 @@ const CHAPTER_TAGS = [
   'p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'strike', 'sub', 'sup', 'mark', 'span',
   'h2', 'h3', 'h4', 'ul', 'ol', 'li', 'blockquote', 'a', 'hr',
   'figure', 'figcaption', 'img',
+  'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'caption',
 ];
 const ALIGN_CLASSES = ['nh-align-left', 'nh-align-center', 'nh-align-right', 'nh-align-justify'];
 
@@ -64,13 +65,16 @@ export function sanitizeChapterHtml(input: unknown): string {
       figure: ['class', 'style'],
       img: ['src', 'alt', 'width', 'height'],
       ol: ['start', 'reversed'],
+      td: ['colspan', 'rowspan'],
+      th: ['colspan', 'rowspan', 'scope'],
       '*': ['class'],
     },
     allowedClasses: {
       p: ALIGN_CLASSES, h2: ALIGN_CLASSES, h3: ALIGN_CLASSES, h4: ALIGN_CLASSES, blockquote: ALIGN_CLASSES, li: ALIGN_CLASSES,
       span: ['text-tiny', 'text-small', 'text-big', 'text-huge'],
       mark: ['marker-yellow', 'marker-green', 'marker-pink', 'marker-blue', 'pen-red', 'pen-green'],
-      figure: ['image', 'image_resized', 'image-style-*'],
+      figure: ['image', 'image_resized', 'image-style-*', 'table'],
+      td: ALIGN_CLASSES, th: ALIGN_CLASSES,
     },
     allowedStyles: { figure: { width: [/^\d{1,3}(\.\d+)?%$/] } },
     exclusiveFilter: (frame) =>

@@ -385,3 +385,55 @@ body::before {
 .chapter-ck .ck-content p { margin: 0 0 0.9em; }
 .chapter-ck .ck.ck-editor__editable_inline { max-height: 75vh; overflow-y: auto; }
 .chapter-ck .ck-content ul, .chapter-ck .ck-content ol { padding-left: 1.6em; margin: 0 0 0.9em; }
+
+/* ---------- Reading extras: ruby, emphasis dots, tables, footnotes, translator messages, illustrations ---------- */
+.chapter-rich ruby { ruby-position: over; ruby-align: center; }
+.chapter-rich rt { font-size: 0.55em; opacity: 0.85; letter-spacing: 0.02em; }
+.chapter-rich .nh-dots { font-style: normal; text-emphasis: filled dot; -webkit-text-emphasis: filled dot; text-emphasis-position: over right; -webkit-text-emphasis-position: over; }
+/* tables (status windows, item lists...) */
+.chapter-rich figure.table, .chapter-ck .ck-content figure.table { margin: 1.2em auto; display: table; max-width: 100%; overflow-x: auto; }
+.chapter-rich table, .chapter-ck .ck-content table {
+  border-collapse: separate; border-spacing: 0; min-width: min(100%, 22em); font-size: 0.92em; line-height: 1.5;
+  border: 1px solid rgb(var(--c-brand-400) / 0.45); border-radius: 10px; overflow: hidden;
+  background: rgb(var(--c-brand-400) / 0.07);
+}
+.chapter-rich th, .chapter-rich td, .chapter-ck .ck-content th, .chapter-ck .ck-content td {
+  padding: 0.45em 0.8em; border-bottom: 1px solid rgb(var(--c-brand-400) / 0.18); text-align: left; vertical-align: top;
+}
+.chapter-rich tr:last-child > td, .chapter-rich tr:last-child > th { border-bottom: 0; }
+.chapter-rich th, .chapter-ck .ck-content th { font-weight: 700; background: rgb(var(--c-brand-400) / 0.14); }
+/* first-line indent (reader setting); centred / right lines, headings and lists are left alone */
+.nh-indent .chapter-rich p:not(.nh-align-center):not(.nh-align-right) { text-indent: 2em; }
+.nh-indent .chapter-rich blockquote p, .nh-indent .chapter-rich li p, .nh-indent .chapter-rich td p { text-indent: 0; }
+/* illustrations: click to enlarge; hidden by the reader -> a placeholder that still opens it */
+.chapter-rich figure.image img, .nh-illus img { cursor: zoom-in; }
+.nh-illus { margin: 1.5em auto; text-align: center; }
+.nh-illus img { max-width: 100%; max-height: 85vh; width: auto; height: auto; margin: 0 auto; display: block; border-radius: 10px; box-shadow: 0 18px 40px -20px rgb(0 0 0 / 0.6); }
+.nh-hide-images .chapter-rich figure.image img, .nh-hide-images .nh-illus img { display: none; }
+.nh-hide-images .chapter-rich figure.image, .nh-hide-images .nh-illus {
+  cursor: pointer; padding: 0.9em 1em; border: 1px dashed rgb(var(--c-white) / 0.25); border-radius: 10px;
+  font-family: Inter, sans-serif; font-size: 0.8em; opacity: 0.8;
+}
+.nh-hide-images .chapter-rich figure.image::before, .nh-hide-images .nh-illus::before { content: '🖼  Ảnh minh họa đã ẩn — bấm để xem'; }
+.nh-hide-images .chapter-rich figure.image figcaption { margin-top: 0.3em; }
+/* numbered translator notes */
+.nh-fn { font-size: 0.7em; line-height: 0; margin-left: 0.15em; font-family: Inter, sans-serif; }
+.nh-fn a { color: rgb(var(--c-amber-400)); text-decoration: none; font-weight: 700; cursor: pointer; }
+.nh-fn a:hover { text-decoration: underline; }
+.nh-note {
+  padding: 0.7em 0.9em; border-radius: 10px; border-left: 3px solid rgb(var(--c-amber-400));
+  background: rgb(var(--c-amber-400) / 0.1); font-family: Inter, sans-serif; font-size: 0.8em; line-height: 1.6; text-align: left;
+}
+.nh-note__head { display: flex; justify-content: space-between; font-weight: 700; color: rgb(var(--c-amber-400)); margin-bottom: 0.25em; font-size: 0.9em; }
+.nh-footnotes { padding-top: 1em; border-top: 1px solid rgb(var(--c-white) / 0.12); font-family: Inter, sans-serif; font-size: 0.8em; line-height: 1.6; text-align: left; }
+.nh-footnotes h2 { font-weight: 800; font-size: 1em; margin-bottom: 0.5em; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.8; }
+.nh-footnotes ol { list-style: decimal; padding-left: 1.6em; }
+.nh-footnotes li + li { margin-top: 0.4em; }
+.nh-footnotes li:target { background: rgb(var(--c-amber-400) / 0.12); border-radius: 6px; }
+.nh-footnotes__back { color: rgb(var(--c-amber-400)); font-weight: 700; padding: 0 0.3em; }
+/* translator message before / after the chapter */
+.nh-message {
+  padding: 0.9em 1.1em; border-radius: 12px; border: 1px solid rgb(var(--c-brand-400) / 0.3);
+  background: rgb(var(--c-brand-400) / 0.07); font-family: Inter, sans-serif; font-size: 0.85em; line-height: 1.65; text-align: left;
+}
+.nh-message__label { display: flex; align-items: center; gap: 0.4em; font-weight: 800; font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.05em; color: rgb(var(--c-brand-400)); margin-bottom: 0.35em; }
