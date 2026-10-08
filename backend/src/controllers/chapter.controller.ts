@@ -65,6 +65,25 @@ function normalizeContentBlocks(input: unknown): ContentBlock[] {
   });
 }
 
+/**
+ * A manga chapter is a list of page images; a novel chapter is text (illustrations hang off paragraphs).
+ * Stops a text chapter landing in a manga (the reader would show no pages) and the reverse.
+ */
+function checkBlocksMatchStoryType(storyType: string, blocks: ContentBlock[], isDraft: boolean, rawText = '') {
+  const hasText = (b: ContentBlock) => Boolean(b.text && b.text.trim());
+  if (storyType === 'manga') {
+    if (blocks.some((b) => !b.image_url || hasText(b))) {
+      throw new InputError('Đây là truyện tranh: chương chỉ gồm các trang ảnh. Hãy dùng trình đăng truyện tranh.');
+    }
+    if (!isDraft && blocks.length === 0) throw new InputError('Chương truyện tranh cần ít nhất một trang ảnh.');
+    return;
+  }
+  if (blocks.length > 0 && !blocks.some(hasText)) {
+    throw new InputError('Đây là truyện chữ: chương cần có nội dung văn bản. Chương chỉ gồm trang ảnh hãy đăng vào truyện tranh.');
+  }
+  if (!isDraft && blocks.length === 0 && !rawText.trim()) throw new InputError('Nội dung chương đang trống.');
+}
+
 /** Plain text of the blocks (inline images as markdown) for search, word count and the `content` column. */
 function blocksToPlainText(blocks: ContentBlock[]): string {
   return blocks
@@ -125,6 +144,7 @@ export const submitChapter = async (req: AuthenticatedRequest, res: Response) =>
       return res.status(404).json({ success: false, message: 'Bộ truyện không tồn tại' });
     }
     const story = storyRes.rows[0];
+    checkBlocksMatchStoryType(story.story_type, blocks, isDraft, typeof raw_content === 'string' ? raw_content : '');
 
     if (volume_id) {
       const volRes = await pool.query(`SELECT 1 FROM volumes WHERE id = $1 AND story_id = $2`, [volume_id, story_id]);
@@ -785,7 +805,7 @@ export const createVolume = async (req: AuthenticatedRequest, res: Response) => 
 
 
 const CHAPTER_WITH_OWNERS_SQL = `
-  SELECT c.*, s.uploader_id AS story_uploader_id, s.slug AS story_slug, s.title AS story_title,
+  SELECT c.*, s.uploader_id AS story_uploader_id, s.slug AS story_slug, s.title AS story_title, s.story_type,
          COALESCE(c.group_id, s.group_id) AS effective_group_id
   FROM chapters c
   JOIN stories s ON c.story_id = s.id
@@ -812,6 +832,10 @@ export const getChapterForEdit = async (req: AuthenticatedRequest, res: Response
     if (!(await canUserModifyChapter({ ...chapter, group_id: chapter.effective_group_id }, req.user.id, req.user.roles || []))) {
       return res.status(403).json({ success: false, message: 'Bạn không có quyền sửa chương này.' });
     }
+    // Manga pages live in chapter_pages (imported chapters may have no image blocks at all)
+    const pagesRes = chapter.story_type === 'manga'
+      ? await pool.query(`SELECT image_url FROM chapter_pages WHERE chapter_id = $1 ORDER BY page_number`, [id])
+      : { rows: [] };
     res.json({
       success: true,
       data: {
@@ -819,11 +843,13 @@ export const getChapterForEdit = async (req: AuthenticatedRequest, res: Response
         story_id: chapter.story_id,
         story_slug: chapter.story_slug,
         story_title: chapter.story_title,
+        story_type: chapter.story_type,
         volume_id: chapter.volume_id,
         chapter_number: chapter.chapter_number,
         title: chapter.title,
         content: chapter.content,
         content_blocks: chapter.content_blocks || [],
+        pages: pagesRes.rows.map((r: any) => r.image_url),
       },
     });
   } catch (error: any) {
@@ -868,10 +894,13 @@ export const updateChapter = async (req: AuthenticatedRequest, res: Response) =>
     // Content: blocks win over raw text; keep the old body when neither is sent.
     let blocks: ContentBlock[] = chapter.content_blocks || [];
     let plainText: string = chapter.content || '';
-    if (content_blocks !== undefined && content_blocks !== null) {
+    const blocksChanged = content_blocks !== undefined && content_blocks !== null;
+    if (blocksChanged) {
       blocks = normalizeContentBlocks(content_blocks);
+      checkBlocksMatchStoryType(chapter.story_type, blocks, false);
       plainText = blocksToPlainText(blocks);
     } else if (typeof raw_content === 'string') {
+      if (chapter.story_type === 'manga') throw new InputError('Chương truyện tranh không sửa được bằng văn bản.');
       plainText = raw_content;
     }
     const wordCount = plainText.split(/\s+/).filter(Boolean).length;
@@ -910,14 +939,16 @@ export const updateChapter = async (req: AuthenticatedRequest, res: Response) =>
         RETURNING id, title, chapter_number, slug, volume_id, word_count, updated_at;
       `, [newTitle, newNumber, newSlug, newVolumeId, plainText, JSON.stringify(blocks), wordCount, JSON.stringify(translatorNotes), id]);
 
-      // Rebuild inline-image pages
-      await client.query(`DELETE FROM chapter_pages WHERE chapter_id = $1`, [id]);
-      const inlineImages = blocks.filter((b: any) => b.image_url);
-      for (let i = 0; i < inlineImages.length; i++) {
-        await client.query(
-          `INSERT INTO chapter_pages (chapter_id, page_number, image_url, width, height) VALUES ($1, $2, $3, $4, $5)`,
-          [id, i + 1, inlineImages[i].image_url, inlineImages[i].width || null, inlineImages[i].height || null]
-        );
+      // Rebuild inline-image pages, only when the content itself changed (a title edit keeps the pages as they are)
+      if (blocksChanged) {
+        await client.query(`DELETE FROM chapter_pages WHERE chapter_id = $1`, [id]);
+        const inlineImages = blocks.filter((b: any) => b.image_url);
+        for (let i = 0; i < inlineImages.length; i++) {
+          await client.query(
+            `INSERT INTO chapter_pages (chapter_id, page_number, image_url, width, height) VALUES ($1, $2, $3, $4, $5)`,
+            [id, i + 1, inlineImages[i].image_url, inlineImages[i].width || null, inlineImages[i].height || null]
+          );
+        }
       }
 
       // Keep the active submission row in sync so a later re-approve does not resurrect old text

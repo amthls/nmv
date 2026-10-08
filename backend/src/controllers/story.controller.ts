@@ -892,8 +892,18 @@ export const updateStory = async (req: AuthenticatedRequest, res: Response) => {
     try {
       await client.query('BEGIN');
       await checkStoryReferences(client, input, currentUserId, userRoles);
-      const curRes = await client.query(`SELECT group_id, approval_status, source_name FROM stories WHERE id = $1`, [id]);
+      const curRes = await client.query(`SELECT group_id, approval_status, source_name, story_type FROM stories WHERE id = $1`, [id]);
       const current = curRes.rows[0];
+      // Chapters are stored as text or as page images depending on the type, so it is fixed once content exists
+      if (current && input.story_type !== undefined && input.story_type !== current.story_type) {
+        const usedRes = await client.query(`
+          SELECT EXISTS (SELECT 1 FROM chapters WHERE story_id = $1)
+              OR EXISTS (SELECT 1 FROM chapter_submissions WHERE story_id = $1) AS used
+        `, [id]);
+        if (usedRes.rows[0].used) {
+          throw new InputError('Truyện đã có chương nên không thể đổi giữa truyện chữ và truyện tranh.', 409);
+        }
+      }
       // Imported stories belong to their original site: they are never offered as downloads
       if (input.allow_download === true && current?.source_name) {
         throw new InputError('Truyện được nhập tự động từ trang khác nên không thể bật tải xuống.');

@@ -16,6 +16,7 @@ import ImageUploadDropzone from '@/components/common/ImageUploadDropzone';
 import { useAuth } from '@/context/AuthContext';
 import RichTextEditor from '@/components/common/RichTextEditor';
 import { stripHtml } from '@/lib/richText';
+import { chapterUploadHref } from '@/lib/chapterUpload';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -57,6 +58,7 @@ export interface StoryFormInitialValues {
   tags?: { id: string }[];
   allow_download?: boolean;
   source_name?: string | null; // imported stories can never be offered as downloads
+  total_chapters?: number; // once chapters exist the story type is fixed (text vs page images)
 }
 
 interface StoryFormProps {
@@ -76,6 +78,7 @@ export default function StoryForm({ mode, initialValues, preselectedGroupId }: S
   const [artistName, setArtistName] = useState(iv.artist_name || '');
   const [synopsis, setSynopsis] = useState(iv.synopsis || '');
   const [storyType, setStoryType] = useState<'novel' | 'manga'>(iv.story_type || 'novel');
+  const typeLocked = mode === 'edit' && (iv.total_chapters || 0) > 0;
   const [status, setStatus] = useState<'ongoing' | 'completed' | 'hiatus' | 'dropped'>(iv.status || 'ongoing');
   const [selectedGroupId, setSelectedGroupId] = useState(iv.group_id || preselectedGroupId || '');
   const [originalLanguage, setOriginalLanguage] = useState(iv.original_language || 'ja');
@@ -236,7 +239,7 @@ export default function StoryForm({ mode, initialValues, preselectedGroupId }: S
           refreshProfile().catch(() => {}); // the account just became an author/translator
           setFeedback('Đăng bộ truyện thành công! Đang chuyển hướng sang trang đăng chương...');
           setTimeout(() => {
-            router.push(`/dang-chuong?story_id=${json.data.id}`);
+            router.push(chapterUploadHref({ storyType: json.data.story_type, storyId: json.data.id }));
           }, 1500);
         }
       } else {
@@ -286,11 +289,15 @@ export default function StoryForm({ mode, initialValues, preselectedGroupId }: S
             <select
               value={storyType}
               onChange={(e) => setStoryType(e.target.value as any)}
-              className="w-full h-11 px-3 rounded-xl bg-surface border border-white/10 text-white text-xs focus:outline-none focus:border-brand-500 font-semibold"
+              disabled={typeLocked}
+              className="w-full h-11 px-3 rounded-xl bg-surface border border-white/10 text-white text-xs focus:outline-none focus:border-brand-500 font-semibold disabled:opacity-60"
             >
               <option value="novel">Light Novel / Web Novel</option>
               <option value="manga">Manga / Truyện Tranh</option>
             </select>
+            {typeLocked && (
+              <p className="text-[10px] text-gray-500">Truyện đã có chương nên không đổi được loại truyện.</p>
+            )}
           </div>
         </div>
 
