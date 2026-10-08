@@ -20,6 +20,8 @@ import SmartImage from '@/components/common/SmartImage';
 import ImageUploadDropzone from '@/components/common/ImageUploadDropzone';
 import { useAuth } from '@/context/AuthContext';
 import PageLoader from '@/components/common/PageLoader';
+import UploadModeSwitch from '@/components/story/UploadModeSwitch';
+import { CHOSEN_PARAM, chapterUploadHref } from '@/lib/chapterUpload';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -32,6 +34,9 @@ function ChapterEditorContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialStoryId = searchParams?.get('story_id') || '';
+  // ?group_id=<id> (from a group page) narrows the story list to that group
+  const groupId = searchParams?.get('group_id') || '';
+  const modeChosen = searchParams?.get(CHOSEN_PARAM) === '1';
   // ?edit=<chapterId> switches the editor to "edit a published chapter" mode
   const editId = searchParams?.get('edit') || '';
   const isEditMode = Boolean(editId);
@@ -68,6 +73,9 @@ function ChapterEditorContent() {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [editLoadState, setEditLoadState] = useState<'idle' | 'loading' | 'ready' | 'error'>(isEditMode ? 'loading' : 'idle');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  // Editing a manga chapter: its pages are images, so only title / number / volume are editable here
+  const [mangaPages, setMangaPages] = useState<string[] | null>(null);
+  const isMangaEdit = isEditMode && mangaPages !== null;
 
   const paragraphs = useMemo(
     () => bodyText.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean),
@@ -207,6 +215,43 @@ function ChapterEditorContent() {
     fetchManageableStories();
   }, [isAuthenticated]);
 
+  const shownStories = useMemo(
+    () => (groupId ? stories.filter((s) => s.group_id === groupId) : stories),
+    [stories, groupId]
+  );
+  const novelStories = shownStories.filter((s) => s.story_type !== 'manga');
+  const mangaStories = shownStories.filter((s) => s.story_type === 'manga');
+
+  // A manga is uploaded as page images, not written here: hand it to the manga uploader
+  const openMangaUploader = (storyId: string, replace = false) => {
+    const href = chapterUploadHref({ storyType: 'manga', storyId, groupId });
+    if (replace) router.replace(href);
+    else router.push(href);
+  };
+
+  const pickStory = (storyId: string) => {
+    const story = stories.find((s) => s.id === storyId);
+    if (story?.story_type === 'manga') {
+      if ((chapterTitle.trim() || bodyText.trim()) && !window.confirm('Đây là truyện tranh, sẽ chuyển sang trình đăng truyện tranh và bỏ nội dung đang soạn. Tiếp tục?')) return;
+      openMangaUploader(storyId);
+      return;
+    }
+    setSelectedStoryId(storyId);
+  };
+
+  // Pick the uploader automatically: a ?story_id= of a manga (old links, bookmarks), or only manga to choose from
+  useEffect(() => {
+    if (isEditMode || isLoadingStories) return;
+    if (initialStoryId) {
+      const story = stories.find((s) => s.id === initialStoryId);
+      if (story?.story_type === 'manga') openMangaUploader(initialStoryId, true);
+      return;
+    }
+    if (!modeChosen && novelStories.length === 0 && mangaStories.length > 0) {
+      router.replace(chapterUploadHref({ storyType: 'manga', groupId }));
+    }
+  }, [stories, isLoadingStories]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // When story changes, load story detail (volumes & latest chapter number)
   useEffect(() => {
     if (!selectedStoryId || isEditMode) return;
@@ -214,7 +259,7 @@ function ChapterEditorContent() {
     async function fetchStoryDetail() {
       try {
         const found = stories.find(s => s.id === selectedStoryId);
-        if (found) {
+        if (found && found.story_type !== 'manga') {
           const res = await fetch(`${API_BASE_URL}/stories/${found.slug}`);
           if (res.ok) {
             const json = await res.json();
@@ -268,6 +313,12 @@ function ChapterEditorContent() {
         }
         if (cancelled) return;
 
+        const storyType = d.story_type || storyDetail?.story_type;
+        setMangaPages(
+          storyType === 'manga'
+            ? (d.pages?.length ? d.pages : (d.content_blocks || []).filter((b: any) => b.image_url).map((b: any) => b.image_url as string))
+            : null
+        );
         setSelectedStoryId(d.story_id);
         setSelectedStory(storyDetail || { id: d.story_id, slug: d.story_slug, title: d.story_title });
         setVolumes(storyDetail?.volumes || []);
@@ -327,6 +378,11 @@ function ChapterEditorContent() {
       return;
     }
 
+    if (!isMangaEdit && !isDraft && paragraphs.length === 0) {
+      setErrorMsg('Nội dung chương đang trống.');
+      return;
+    }
+
     setIsSubmitting(true);
     setErrorMsg(null);
     try {
@@ -345,7 +401,8 @@ function ChapterEditorContent() {
             title: chapterTitle.trim(),
             chapter_number: parsedNumber,
             volume_id: selectedVolumeId || null,
-            content_blocks: formattedBlocks,
+            // manga pages are left untouched (sending no content keeps them)
+            ...(isMangaEdit ? {} : { content_blocks: formattedBlocks }),
           }),
         });
         const editJson = await editRes.json();
@@ -441,6 +498,8 @@ function ChapterEditorContent() {
         </Link>
       </div>
 
+      {!isEditMode && <UploadModeSwitch mode="novel" groupId={groupId} />}
+
       {/* Header */}
       <div className="rounded-3xl p-6 sm:p-7 glass-panel border border-white/10 bg-glass shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="space-y-1.5">
@@ -449,12 +508,15 @@ function ChapterEditorContent() {
             {isEditMode ? 'Sửa Chương' : 'Đăng Chương Mới'}
           </h1>
           <p className="text-xs sm:text-sm text-gray-400">
-            {isEditMode
+            {isMangaEdit
+              ? 'Chương truyện tranh: sửa tiêu đề, số chương hoặc tập. Các trang ảnh được giữ nguyên.'
+              : isEditMode
               ? 'Chỉnh sửa chương đã xuất bản. Thay đổi có hiệu lực ngay và không gửi lại thông báo cho người theo dõi.'
               : 'Viết nội dung chương, để trống một dòng giữa các đoạn văn để tách đoạn.'}
           </p>
         </div>
 
+        {!isMangaEdit && (
         <div className="p-3.5 rounded-2xl bg-black/40 border border-white/10 flex items-center gap-4 text-xs shrink-0">
           <div>
             <div className="text-gray-400 text-[10px] uppercase font-bold">Số Từ</div>
@@ -466,6 +528,7 @@ function ChapterEditorContent() {
             <div className="text-base font-extrabold text-cyan-300">~{readingTimeMin} phút</div>
           </div>
         </div>
+        )}
       </div>
 
       {feedback && (
@@ -511,28 +574,41 @@ function ChapterEditorContent() {
             <select
               value={selectedStoryId}
               disabled={isEditMode}
-              onChange={(e) => setSelectedStoryId(e.target.value)}
+              onChange={(e) => pickStory(e.target.value)}
               className="w-full h-10 px-3 rounded-xl bg-surface-3 border border-white/10 text-xs text-white focus:outline-none focus:border-brand-500 font-semibold"
               required
             >
               <option value="">-- Chọn bộ truyện để đăng chương --</option>
-              {stories.map((s) => (
-                <option key={s.id} value={s.id}>{s.title}{s.group_name ? ` (${s.group_name})` : ''}</option>
-              ))}
-              {isEditMode && selectedStory && !stories.some((s) => s.id === selectedStoryId) && (
+              {novelStories.length > 0 && (
+                <optgroup label="Truyện chữ">
+                  {novelStories.map((s) => (
+                    <option key={s.id} value={s.id}>{s.title}{s.group_name ? ` (${s.group_name})` : ''}</option>
+                  ))}
+                </optgroup>
+              )}
+              {!isEditMode && mangaStories.length > 0 && (
+                <optgroup label="Truyện tranh (mở trình đăng truyện tranh)">
+                  {mangaStories.map((s) => (
+                    <option key={s.id} value={s.id}>{s.title}{s.group_name ? ` (${s.group_name})` : ''}</option>
+                  ))}
+                </optgroup>
+              )}
+              {isEditMode && selectedStory && !novelStories.some((s) => s.id === selectedStoryId) && (
                 <option value={selectedStoryId}>{selectedStory.title}</option>
               )}
             </select>
             {isLoadingStories ? (
               <p className="text-[10px] text-gray-500 mt-1">Đang tải danh sách truyện bạn có quyền quản lý...</p>
-            ) : stories.length === 0 && (
+            ) : groupId && novelStories.length === 0 ? (
+              <p className="text-[10px] text-amber-400 mt-1">Nhóm dịch này chưa có truyện chữ nào bạn quản lý.</p>
+            ) : shownStories.length === 0 && (
               <p className="text-[10px] text-amber-400 mt-1">
                 Bạn chưa sở hữu, chưa là thành viên nhóm dịch, hoặc chưa là cộng tác viên của bộ truyện nào. Hãy <Link href="/dang-truyen" className="underline">Đăng truyện mới</Link> trước.
               </p>
             )}
-            {!isEditMode && selectedStory?.story_type === 'manga' && (
-              <p className="text-[11px] text-brand-500 mt-1.5">
-                Đây là truyện tranh. <Link href="/dang-truyen-tranh" className="font-semibold underline">Dùng trình đăng truyện tranh</Link> để kéo thả cả chương, tự xếp trang và nén ảnh.
+            {!isEditMode && groupId && (
+              <p className="text-[10px] text-gray-500 mt-1">
+                Đang lọc theo nhóm dịch. <Link href={chapterUploadHref()} className="underline">Xem mọi truyện bạn quản lý</Link>
               </p>
             )}
           </div>
@@ -615,8 +691,32 @@ function ChapterEditorContent() {
         </div>
       </div>
 
-      {/* 2. EDITOR & PREVIEW */}
+      {/* 2. EDITOR & PREVIEW (manga chapters: their pages, read-only here) */}
       <div className="p-6 rounded-3xl glass-panel border border-white/10 bg-glass space-y-4 shadow-2xl">
+
+        {isMangaEdit && (
+          <div className="space-y-3">
+            <h2 className="text-xs font-bold text-brand-400 uppercase tracking-wider">Trang ảnh ({mangaPages!.length} trang)</h2>
+            <div className="flex gap-2 overflow-x-auto pb-2">
+              {mangaPages!.slice(0, 12).map((url, i) => (
+                <div key={i} className="relative w-20 shrink-0 aspect-[2/3] rounded-lg overflow-hidden bg-black/40 border border-white/10">
+                  <SmartImage src={url} alt={`Trang ${i + 1}`} className="w-full h-full object-cover" />
+                  <span className="absolute bottom-0 inset-x-0 bg-black/60 text-[10px] text-snow text-center">{i + 1}</span>
+                </div>
+              ))}
+              {mangaPages!.length > 12 && (
+                <div className="w-20 shrink-0 aspect-[2/3] rounded-lg bg-white/5 border border-white/10 grid place-items-center text-xs text-gray-400">+{mangaPages!.length - 12}</div>
+              )}
+            </div>
+            <p className="text-[11px] text-gray-400">
+              Muốn thay trang ảnh, hãy đăng lại chương số {String(chapterNumber)} trong{' '}
+              <Link href={chapterUploadHref({ storyType: 'manga', storyId: selectedStoryId })} className="text-brand-400 font-semibold underline">trình đăng truyện tranh</Link>{' '}
+              (bản mới sẽ thay thế bản cũ).
+            </p>
+          </div>
+        )}
+
+        {!isMangaEdit && (<>
 
         <div className="flex items-center gap-1 p-1 rounded-xl bg-white/5 border border-white/10 text-xs font-bold w-fit">
           <button
@@ -791,6 +891,8 @@ function ChapterEditorContent() {
             )}
           </div>
         )}
+
+        </>)}
 
         {/* Action Toolbar */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-white/10">

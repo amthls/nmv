@@ -33,6 +33,7 @@ import { useAuth } from '@/context/AuthContext';
 import RichContent from '@/components/common/RichContent';
 import { stripHtml } from '@/lib/richText';
 import { getGuestHistory } from '@/lib/readingHistory';
+import { chapterUploadHref } from '@/lib/chapterUpload';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -674,7 +675,7 @@ export default function StoryDetailPage() {
                   <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 pt-3 border-t border-white/10">
                     <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mr-1">Quản lý</span>
                     <Link
-                      href={`/dang-chuong?story_id=${story.id}`}
+                      href={chapterUploadHref({ storyType: story.story_type, storyId: story.id })}
                       className="px-3 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold flex items-center gap-1.5 transition"
                     >
                       <PlusCircle className="w-3.5 h-3.5" />
@@ -735,7 +736,7 @@ export default function StoryDetailPage() {
               </span>
               {canManage && (
                 <Link
-                  href={`/dang-chuong?story_id=${story.id}`}
+                  href={chapterUploadHref({ storyType: story.story_type, storyId: story.id })}
                   className="px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow text-xs font-bold transition flex items-center gap-1"
                 >
                   <PlusCircle className="w-3.5 h-3.5" />

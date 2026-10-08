@@ -29,6 +29,7 @@ import SmartImage from '@/components/common/SmartImage';
 import { useAuth } from '@/context/AuthContext';
 import RichContent from '@/components/common/RichContent';
 import { stripHtml } from '@/lib/richText';
+import { chapterUploadHref } from '@/lib/chapterUpload';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -706,7 +707,7 @@ export default function GroupDetailPage() {
                     <div className="flex items-center justify-between text-[11px] text-gray-400 pt-2 border-t border-white/5">
                       <span className="text-brand-300 font-semibold">{story.total_chapters || 0} chương</span>
                       {isMember && (
-                        <Link href={`/dang-chuong?story_id=${story.id}`} className="text-cyan-400 hover:underline text-[10px] font-bold">
+                        <Link href={chapterUploadHref({ storyType: story.story_type, storyId: story.id, groupId: group.id })} className="text-cyan-400 hover:underline text-[10px] font-bold">
                           + Đăng chương
                         </Link>
                       )}

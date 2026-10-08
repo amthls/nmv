@@ -1,12 +1,16 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   AlertTriangle, ArrowDownAZ, BookOpenCheck, ChevronDown, Download, ArrowLeft, ArrowLeftRight, ArrowRight, CheckCircle2, ClipboardPaste, Eye,
   FileArchive, FolderOpen, Grid3x3, ImagePlus, Loader2, Plus, RotateCcw, Save, Send, Trash2, UploadCloud, X,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import PageLoader from '@/components/common/PageLoader';
+import UploadModeSwitch from '@/components/story/UploadModeSwitch';
+import { CHOSEN_PARAM, chapterUploadHref } from '@/lib/chapterUpload';
 import {
   CollectResult, RejectedFile, UploadError, UploadedPage, filesFromDataTransfer, filesFromInput, formatBytes,
   groupByFolder, naturalCompare, readImageSize, sizeBatches, uploadPageBatch,
@@ -43,14 +47,20 @@ interface ChapterDraft {
   message?: string;
   link?: string;
 }
-interface MangaStory { id: string; title: string; slug: string; total_chapters: number }
+interface MangaStory { id: string; title: string; slug: string; total_chapters: number; group_id?: string | null }
 interface StoryDetail { volumes: { id: string; title: string; volume_number: number; chapters: any[] }[]; unassigned_chapters: any[] }
 
 const uid = () => (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
 const fmtNum = (n: number) => String(Math.round(n * 100) / 100);
 
-export default function MangaUploadPage() {
+function MangaUploadContent() {
   const { isAuthenticated, isLoading: authLoading, openAuthModal, authFetch } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  // ?story_id= preselects a story, ?group_id= (from a group page) narrows the list to that group
+  const initialStoryId = searchParams?.get('story_id') || '';
+  const groupId = searchParams?.get('group_id') || '';
+  const modeChosen = searchParams?.get(CHOSEN_PARAM) === '1';
 
   const [stories, setStories] = useState<MangaStory[]>([]);
   const [storyId, setStoryId] = useState('');
@@ -80,9 +90,23 @@ export default function MangaUploadPage() {
     authFetch(`${API_BASE_URL}/stories/manageable`)
       .then((r) => r.json())
       .then((json) => {
-        const list = (json.data || []).filter((s: any) => s.story_type === 'manga');
+        const all: any[] = json.data || [];
+        // A novel is written in the text editor, not uploaded as pages: switch uploader
+        const wanted = all.find((s) => s.id === initialStoryId);
+        if (wanted && wanted.story_type !== 'manga') {
+          router.replace(chapterUploadHref({ storyType: wanted.story_type, storyId: wanted.id, groupId }));
+          return;
+        }
+        const inScope = all.filter((s) => !groupId || s.group_id === groupId);
+        const list = inScope.filter((s) => s.story_type === 'manga');
+        // Only novels to choose from: the text editor is the right place
+        if (!modeChosen && !wanted && list.length === 0 && inScope.length > 0) {
+          router.replace(chapterUploadHref({ storyType: 'novel', groupId }));
+          return;
+        }
         setStories(list);
-        if (list.length === 1) setStoryId(list[0].id);
+        if (wanted) setStoryId(wanted.id);
+        else if (list.length === 1) setStoryId(list[0].id);
       })
       .catch(() => setNotice({ kind: 'error', text: 'Không tải được danh sách truyện bạn quản lý.' }));
   }, [isAuthenticated]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -444,6 +468,10 @@ export default function MangaUploadPage() {
         </div>
       )}
 
+      <div className="mb-6 max-w-2xl">
+        <UploadModeSwitch mode="manga" groupId={groupId} />
+      </div>
+
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">Đăng truyện tranh</h1>
@@ -470,7 +498,7 @@ export default function MangaUploadPage() {
             <option key={s.id} value={s.id}>{s.title} ({s.total_chapters || 0} chương)</option>
           ))}
         </select>
-        {stories.length === 0 && <span className="text-xs text-gray-400">Bạn chưa quản lý truyện tranh nào.</span>}
+        {stories.length === 0 && <span className="text-xs text-gray-400">{groupId ? 'Nhóm dịch này chưa có truyện tranh nào bạn quản lý.' : 'Bạn chưa quản lý truyện tranh nào.'}</span>}
         {story && detail && (
           <span className="text-xs text-gray-400">
             Đã có {existingNumbers.size} chương{existingNumbers.size ? `, mới nhất: ${fmtNum(Math.max(...Array.from(existingNumbers)))}` : ''}
@@ -798,5 +826,13 @@ export default function MangaUploadPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function MangaUploadPage() {
+  return (
+    <Suspense fallback={<PageLoader label="Đang tải trình đăng truyện tranh..." />}>
+      <MangaUploadContent />
+    </Suspense>
   );
 }
