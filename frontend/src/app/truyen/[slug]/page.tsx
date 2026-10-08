@@ -395,8 +395,9 @@ export default function StoryDetailPage() {
   return (
     <div className="min-h-screen pb-20">
       
-      {/* 1. Hero header: sharp story art behind everything (also behind the navbar), like the home banner */}
-      <div className="relative isolate overflow-hidden -mt-16 pt-16">
+      {/* 1. Hero header: story art in a card aligned with the content below, like the home banner */}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+      <div className="relative isolate overflow-hidden rounded-xl border border-white/10 bg-surface-3 shadow-[0_24px_60px_-28px_rgba(0,0,0,0.8)]">
         <div className="pointer-events-none absolute inset-0 -z-10">
           <SmartImage
             src={story.banner_image_url || story.cover_image_url}
@@ -404,13 +405,14 @@ export default function StoryDetailPage() {
             aria-hidden
             className="w-full h-full object-cover object-[50%_25%]"
           />
-          {/* dark wash only behind the text, a short fade into the page at the bottom */}
+          {/* dark wash only behind the text */}
           <div className="absolute inset-0 bg-[linear-gradient(68deg,rgba(0,0,0,0.72)_30%,rgba(0,0,0,0.15)_100%)]" />
-          <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-b from-transparent to-surface" />
+          {/* thin top highlight, like the glass panels */}
+          <div className="absolute inset-0 rounded-xl shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)]" />
         </div>
 
         {/* header content always uses the dark palette: white text on the darkened art */}
-        <div className="dark relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-16 md:pt-12 md:pb-20 [text-shadow:0_1px_8px_rgba(0,0,0,0.45)]">
+        <div className="dark relative px-5 sm:px-8 lg:px-10 pt-6 pb-8 md:pt-8 md:pb-10 [text-shadow:0_1px_8px_rgba(0,0,0,0.45)]">
           
           {/* Breadcrumbs */}
           <div className="flex items-center gap-2 text-xs text-gray-400 mb-6">
@@ -705,6 +707,7 @@ export default function StoryDetailPage() {
           </div>
 
         </div>
+      </div>
       </div>
 
       {/* 2. Main Content Body: Synopsis, Chapter Tree & Comments */}

@@ -23,9 +23,11 @@ const nextConfig = {
     ];
   },
   async rewrites() {
+    // BACKEND_ORIGIN lets a local `next dev` reach the API outside docker (e.g. http://localhost:5000)
+    const backend = process.env.BACKEND_ORIGIN || 'http://backend:5000';
     return [
-      { source: '/api/v1/:path*', destination: 'http://backend:5000/api/v1/:path*' },
-      { source: '/uploads/:path*', destination: 'http://backend:5000/uploads/:path*' },
+      { source: '/api/v1/:path*', destination: `${backend}/api/v1/:path*` },
+      { source: '/uploads/:path*', destination: `${backend}/uploads/:path*` },
     ];
   },
 };
