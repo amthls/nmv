@@ -2,7 +2,7 @@
 
 - **Mục tiêu:** scripts/launch.py chạy launch.py ở gốc (bản cũ thiếu REDIS_PASSWORD)
 - **Tạo từ:** `origin/main` @ 5e25348, ngày 2026-10-09
-- **Trạng thái:** đang làm
+- **Trạng thái:** chờ review
 - **PR:** (chưa mở)
 - **Plan:** không có (sửa nhỏ)
 
@@ -19,6 +19,8 @@
 ## Đã kiểm tra
 - `python scripts/launch.py --help` in đúng tham số của `launch.py` ở gốc.
 - Bản sao `.env` bỏ dòng `REDIS_PASSWORD` (thư mục tạm): `ensure_env()` thêm `REDIS_PASSWORD` ngẫu nhiên.
+- Chạy thật trên Docker: xóa `REDIS_PASSWORD` khỏi `.env` rồi `python scripts/launch.py --no-crawl`: tự thêm mật khẩu,
+  build, 8 container chạy, 16 migration OK, tất cả kiểm tra API/gateway/search đạt, exit 0.
 
 ## Ghi chú cho người review
 - Ai quen `python scripts/launch.py` vẫn chạy được; lần chạy mặc định không còn reset mật khẩu mọi user nếu DB đã có truyện.
