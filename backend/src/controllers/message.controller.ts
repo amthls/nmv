@@ -8,7 +8,8 @@ const MAX_DIRECT_MESSAGE = 2000;
 const MAX_LABELS = 20;
 const MAX_LABEL_NAME = 30;
 const MAX_PINS = 10;
-// Label colors the UI knows how to draw (no indigo/purple/violet: the theme maps those to the brand blue)
+// Label colors the UI knows how to draw (no indigo/purple/violet: the theme maps those to the brand blue).
+// Must match LABEL_STYLES in frontend/src/components/messages/labels.ts
 export const LABEL_COLORS = ['sky', 'emerald', 'amber', 'rose', 'fuchsia', 'teal', 'orange', 'lime'];
 const BLOCKED_MESSAGE = 'Không thể gửi tin nhắn cho người này.';
 
@@ -63,6 +64,12 @@ export const getConversations = async (req: AuthenticatedRequest, res: Response)
         SELECT DISTINCT ON (partner_id) partner_id, message, sender_id, created_at
         FROM mine
         ORDER BY partner_id, created_at DESC
+      ), matches AS (
+        -- One pass over the messages, not one per conversation
+        SELECT DISTINCT ON (partner_id) partner_id, message
+        FROM mine
+        WHERE $3::text IS NOT NULL AND message ILIKE $3
+        ORDER BY partner_id, created_at DESC
       )
       SELECT
         l.partner_id, l.message AS last_message, l.sender_id AS last_sender_id, l.created_at AS last_at,
@@ -77,12 +84,7 @@ export const getConversations = async (req: AuthenticatedRequest, res: Response)
         mt.message AS match_message
       FROM latest l
       JOIN users u ON u.id = l.partner_id
-      LEFT JOIN LATERAL (
-        SELECT m.message FROM mine m
-        WHERE $3::text IS NOT NULL AND m.partner_id = l.partner_id AND m.message ILIKE $3
-        ORDER BY m.created_at DESC
-        LIMIT 1
-      ) mt ON true
+      LEFT JOIN matches mt ON mt.partner_id = l.partner_id
       WHERE ($2::uuid IS NULL OR EXISTS (
               SELECT 1 FROM dm_label_conversations lc JOIN dm_labels dl ON dl.id = lc.label_id
               WHERE dl.user_id = $1 AND lc.label_id = $2 AND lc.partner_id = l.partner_id))
@@ -209,7 +211,7 @@ export const getLabels = async (req: AuthenticatedRequest, res: Response) => {
       GROUP BY dl.id
       ORDER BY dl.created_at ASC;
     `, [req.user!.id]);
-    res.json({ success: true, data: { labels: result.rows, colors: LABEL_COLORS } });
+    res.json({ success: true, data: { labels: result.rows } });
   } catch (error: any) {
     sendError(res, error);
   }

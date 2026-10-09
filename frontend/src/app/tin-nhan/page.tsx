@@ -12,8 +12,8 @@ import LabelManager from '@/components/messages/LabelManager';
 import { DmLabel, labelStyle } from '@/components/messages/labels';
 import { useAuth } from '@/context/AuthContext';
 import { useRealtime } from '@/lib/realtime';
+import { apiJson } from '@/lib/apiJson';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100';
 
 function Avatar({ src, alt, size = 'w-10 h-10' }: { src?: string | null; alt: string; size?: string }) {
@@ -78,15 +78,7 @@ function MessagesInner() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const labelMenuRef = useRef<HTMLDivElement>(null);
 
-  const api = async (path: string, init?: RequestInit & { json?: unknown }) => {
-    const res = await authFetch(`${API_BASE_URL}${path}`, {
-      ...init,
-      headers: init?.json !== undefined ? { 'Content-Type': 'application/json' } : undefined,
-      body: init?.json !== undefined ? JSON.stringify(init.json) : init?.body,
-    });
-    const json = await res.json().catch(() => ({}));
-    return { ok: res.ok && json.success !== false, json };
-  };
+  const api = (path: string, init?: RequestInit & { json?: unknown }) => apiJson(authFetch, path, init);
 
   const fetchConversations = async () => {
     const params = new URLSearchParams();

@@ -3,7 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { KeyRound, LogOut, MailCheck, MailWarning } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { API_BASE_URL, Notice, PasswordInput, primaryButton } from '@/components/auth/AccountCard';
+import { Notice, PasswordInput, primaryButton } from '@/components/auth/AccountCard';
+import { API_BASE_URL, apiJson } from '@/lib/apiJson';
 
 type Result = { ok: boolean; message: string } | null;
 
@@ -31,13 +32,8 @@ export default function SecurityTab() {
 
   const post = async (path: string, body?: unknown) => {
     try {
-      const res = await authFetch(`${API_BASE_URL}${path}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body ?? {}),
-      });
-      const json = await res.json().catch(() => ({}));
-      return { ok: res.ok && json.success !== false, message: json.message || 'Có lỗi xảy ra.', data: json.data };
+      const { ok, json } = await apiJson(authFetch, path, { method: 'POST', json: body ?? {} });
+      return { ok, message: json.message || 'Có lỗi xảy ra.', data: json.data };
     } catch {
       return { ok: false, message: 'Không kết nối được máy chủ.', data: null };
     }

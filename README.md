@@ -171,7 +171,7 @@ Mục tiêu: chịu được vài nghìn đến vài chục nghìn người onli
 ## 🔁 CI/CD & migration
 
 - **Migration:** `sh scripts/migrate.sh` chạy các file mới trong `sql/migrations/` theo thứ tự tên, mỗi file một transaction, ghi vào bảng `schema_migrations`; file lỗi được rollback và script dừng với mã lỗi. Lần chạy đầu (chưa có bảng) chỉ **ghi nhận** các file hiện có là đã chạy (vì `sql/database.sql` và các DB cũ đã có chúng). Thêm migration mới: tạo file số tiếp theo, đồng thời thêm nội dung tương ứng vào `sql/database.sql` cho cài đặt mới.
-- **CI** (`.github/workflows/ci.yml`, mọi push/PR): typecheck backend + frontend → `docker compose build` → quét image bằng Trivy (lỗi **CRITICAL đã có bản vá** thì fail; ngoại lệ có lý do và hạn dùng ở `.trivyignore`) → khởi động cả stack → `migrate.sh` → kiểm tra `/api/v1/health`, trang chủ, `/stories/trending`.
+- **CI** (`.github/workflows/ci.yml`, mọi push/PR): typecheck backend + frontend, test backend (`yarn test`: `tsx --test src/**/*.test.ts`) → `docker compose build` → quét image bằng Trivy (lỗi **CRITICAL đã có bản vá** thì fail; ngoại lệ có lý do và hạn dùng ở `.trivyignore`) → khởi động cả stack → `migrate.sh` → kiểm tra `/api/v1/health`, trang chủ, `/stories/trending`.
 - **CD** (`.github/workflows/deploy.yml`, push lên `main`): build và đẩy `ghcr.io/<owner>/nmv-backend` và `nmv-frontend` (tag = commit SHA và `latest`). Bước deploy qua SSH **chỉ chạy khi** biến repo `DEPLOY_ENABLED=true` và có secrets `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_PATH`: `git pull` → `docker compose pull` → `migrate.sh` → `up -d` → kiểm tra health. Server cần `IMAGE_REGISTRY=ghcr.io/<owner>` trong `.env` và đã `docker login ghcr.io`.
 - **Dependabot** (`.github/dependabot.yml`): mỗi tuần mở PR cập nhật npm, Docker và GitHub Actions; CI chạy trên từng PR.
 
@@ -325,7 +325,7 @@ Ghi chú thực tế: bảng `users` **không có** cột `role`, `coins`, `exp_
 - `GET /auth/accounts`: danh sách tài khoản demo (công khai, chỉ nên dùng khi dev)
 - `POST /auth/change-password` (Auth; `current_password`, `new_password`): đổi mật khẩu, thu hồi token ở thiết bị khác, trả token mới cho thiết bị này
 - `POST /auth/logout-all` (Auth): thu hồi mọi token, đóng socket đang mở
-- `POST /auth/forgot-password` (`email`): luôn trả cùng một câu (không lộ email nào có tài khoản), gửi link `/dat-lai-mat-khau?token=` hiệu lực 1 giờ; `POST /auth/reset-password` (`token`, `new_password`): token dùng một lần, thu hồi mọi phiên
+- `POST /auth/forgot-password` (`email`): luôn trả cùng một câu (không lộ email nào có tài khoản), gửi link `/dat-lai-mat-khau?token=` hiệu lực 1 giờ (mỗi tài khoản tối đa 1 mail mỗi 2 phút, ngoài giới hạn theo IP); `POST /auth/reset-password` (`token`, `new_password`): token dùng một lần, thu hồi mọi phiên
 - `POST /auth/verify-email` (`token`, hiệu lực 24 giờ), `POST /auth/resend-verification` (Auth). Giới hạn: gửi mail 5 lần/giờ, thử token/mật khẩu hiện tại 20 lần/15 phút. DB chỉ lưu SHA-256 của token (bảng `auth_tokens`, migration `015_account_security.sql`)
 
 **Truyện**
@@ -370,7 +370,7 @@ Ghi chú thực tế: bảng `users` **không có** cột `role`, `coins`, `exp_
 - `GET /messages?label=&q=`: hộp thư (mỗi người một dòng, tin mới nhất, số chưa đọc, `label_ids`, `blocked`) và `unread_count` (luôn là tổng, bất kể bộ lọc). `label` lọc theo nhãn của mình; `q` tìm theo tên người và nội dung tin (trả `match_message` là tin khớp mới nhất)
 - `GET /messages/:username`: 100 tin gần nhất với người đó, mọi tin đã ghim (`pinned`, kể cả tin cũ hơn), `label_ids`, `blocked_by_me`, `can_message`; mở ra là đánh dấu đã đọc
 - `POST /messages/:username` (body `message`, tối đa 2000 ký tự; không tự nhắn cho mình, không nhắn tài khoản đã xóa; một trong hai đã chặn người kia → 403 "Không thể gửi tin nhắn cho người này", không lộ ai chặn ai)
-- Nhãn (riêng từng người, người kia không thấy): `GET /messages/labels` (kèm số cuộc trò chuyện và danh sách màu), `POST /messages/labels` (`name` ≤ 30 ký tự, không trùng tên; `color`: sky, emerald, amber, rose, fuchsia, teal, orange, lime; tối đa 20 nhãn), `PATCH|DELETE /messages/labels/:id` (xóa nhãn không xóa tin nhắn), `PUT /messages/:username/labels` (`label_ids`: thay toàn bộ nhãn của cuộc trò chuyện)
+- Nhãn (riêng từng người, người kia không thấy): `GET /messages/labels` (kèm số cuộc trò chuyện), `POST /messages/labels` (`name` ≤ 30 ký tự, không trùng tên; `color`: sky, emerald, amber, rose, fuchsia, teal, orange, lime; tối đa 20 nhãn), `PATCH|DELETE /messages/labels/:id` (xóa nhãn không xóa tin nhắn), `PUT /messages/:username/labels` (`label_ids`: thay toàn bộ nhãn của cuộc trò chuyện)
 - Chặn: `POST|DELETE /messages/:username/block`. Chặn hai chiều: không ai gửi được cho ai, tin cũ vẫn đọc được
 - Ghim: `POST|DELETE /messages/:username/pins/:messageId` (cả hai người đều ghim/bỏ ghim được và cùng thấy; tối đa 10 tin ghim mỗi cuộc trò chuyện)
 
@@ -403,7 +403,7 @@ Email có dạng `<tên ngắn>@novelhub.vn` (ví dụ `admin@novelhub.vn`, `sak
 - Báo cáo vi phạm chưa tự ẩn/xóa nội dung: Admin/Mod phải tự xử lý rồi đánh dấu báo cáo.
 - Các bảng `user_follows`, `broadcast_notifications` chưa được code sử dụng.
 - Tin nhắn riêng chưa có xóa/sửa tin, gửi ảnh hay báo cáo tin nhắn; chặn chỉ áp dụng cho tin nhắn (người bị chặn vẫn thấy bài viết, bình luận của bạn).
-- Chưa có test tự động.
+- Test tự động mới chỉ có `isTokenRevoked` (`backend/src/middlewares/auth.middleware.test.ts`).
 - Web miễn phí nên **không làm** hệ thống xu, nạp tiền, mua chương hay cấp độ.
 
 **Bảo mật (cần xử lý trước khi chạy thật)**

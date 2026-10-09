@@ -2,20 +2,13 @@
 
 import React from 'react';
 import { AlertCircle, CheckCircle2, KeyRound } from 'lucide-react';
-
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+import { apiJson } from '@/lib/apiJson';
 
 /** POST JSON to the auth API; returns { ok, message } and never throws. */
 export async function postAuth(path: string, body: unknown): Promise<{ ok: boolean; message: string }> {
   try {
-    const res = await fetch(`${API_BASE_URL}${path}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(body),
-    });
-    const data = await res.json().catch(() => ({}));
-    return { ok: res.ok && data.success !== false, message: data.message || (res.ok ? 'Xong.' : 'Có lỗi xảy ra.') };
+    const { ok, json } = await apiJson(fetch, path, { method: 'POST', credentials: 'include', json: body });
+    return { ok, message: json.message || (ok ? 'Xong.' : 'Có lỗi xảy ra.') };
   } catch {
     return { ok: false, message: 'Không kết nối được máy chủ.' };
   }
