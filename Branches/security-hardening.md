@@ -2,7 +2,7 @@
 
 - **Mục tiêu:** Vá bảo mật: mật khẩu ngẫu nhiên bắt buộc, thu hồi token, đổi/quên mật khẩu, xác thực email, HTTPS-ready, container không chạy root, CSP.
 - **Tạo từ:** `origin/main` @ 5e4dd41, ngày 2026-10-09 (cherry-pick commit `2f8a3af`, vốn bị push vào `feat/scale-phase1` sau khi PR #13 đã merge)
-- **Trạng thái:** chờ review
+- **Trạng thái:** đã gộp vào `chore/bundle-pending-work` (PR cũ đóng)
 - **PR:** https://github.com/amthls/nmv/pull/36
 - **Plan:** `Plan/security-hardening.md`
 

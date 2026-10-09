@@ -2,7 +2,7 @@
 
 - **Mục tiêu:** Quy trình nhánh/PR/plan rõ ràng và tự động: mỗi việc một nhánh mới từ `main`, mỗi nhánh có file thông tin, kế hoạch nằm trong `Plan/`.
 - **Tạo từ:** `origin/main` @ 5e4dd41, ngày 2026-10-09
-- **Trạng thái:** chờ review
+- **Trạng thái:** đã gộp vào `chore/bundle-pending-work` (PR cũ đóng)
 - **PR:** https://github.com/amthls/nmv/pull/35
 - **Plan:** `Plan/branch-workflow.md`
 
