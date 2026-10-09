@@ -16,7 +16,7 @@ export function visitorCookie(req: Request, res: Response, next: NextFunction) {
     res.cookie(COOKIE, vid, {
       httpOnly: true,
       sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production' && process.env.COOKIE_SECURE === 'true',
+      secure: req.secure || process.env.COOKIE_SECURE === 'true',
       maxAge: 365 * 86_400_000,
       path: '/',
     });

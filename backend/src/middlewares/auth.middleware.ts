@@ -33,6 +33,16 @@ export const extractToken = (req: Request): string | null => {
   return null;
 };
 
+/**
+ * Password change/reset and "log out everywhere" set users.tokens_valid_after; any token issued
+ * (JWT `iat`, whole seconds) before that second is no longer accepted.
+ */
+export const isTokenRevoked = (decoded: any, tokensValidAfter: Date | string | null | undefined): boolean => {
+  if (!tokensValidAfter) return false;
+  const cutoff = Math.floor(new Date(tokensValidAfter).getTime() / 1000);
+  return typeof decoded?.iat !== 'number' || decoded.iat < cutoff;
+};
+
 export const requireAuth = async (
   req: AuthenticatedRequest,
   res: Response,
@@ -65,7 +75,7 @@ export const requireAuth = async (
     }
 
     const userRes = await pool.query(
-      `SELECT u.id, u.username, u.email, u.display_name, u.avatar_url, u.is_banned,
+      `SELECT u.id, u.username, u.email, u.display_name, u.avatar_url, u.is_banned, u.tokens_valid_after,
         COALESCE(
           json_agg(ur.role) FILTER (WHERE ur.role IS NOT NULL), '[]'
         ) as roles
@@ -76,7 +86,7 @@ export const requireAuth = async (
       [decoded.id]
     );
 
-    if (userRes.rows.length === 0) {
+    if (userRes.rows.length === 0 || isTokenRevoked(decoded, userRes.rows[0].tokens_valid_after)) {
       return res.status(401).json({
         success: false,
         message: 'T\u00e0i kho\u1ea3n kh\u00f4ng t\u1ed3n t\u1ea1i tr\u00ean h\u1ec7 th\u1ed1ng.',
@@ -129,7 +139,7 @@ export const optionalAuth = async (
     if (!decoded || !decoded.id) return next();
 
     const userRes = await pool.query(
-      `SELECT u.id, u.username, u.email, u.display_name, u.avatar_url, u.is_banned,
+      `SELECT u.id, u.username, u.email, u.display_name, u.avatar_url, u.is_banned, u.tokens_valid_after,
         COALESCE(
           json_agg(ur.role) FILTER (WHERE ur.role IS NOT NULL), '[]'
         ) as roles
@@ -140,7 +150,7 @@ export const optionalAuth = async (
       [decoded.id]
     );
 
-    if (userRes.rows.length > 0 && !userRes.rows[0].is_banned) {
+    if (userRes.rows.length > 0 && !userRes.rows[0].is_banned && !isTokenRevoked(decoded, userRes.rows[0].tokens_valid_after)) {
       const dbUser = userRes.rows[0];
       req.user = {
         id: dbUser.id,

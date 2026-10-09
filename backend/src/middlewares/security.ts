@@ -92,6 +92,20 @@ export const registerLimiter = limiter({
   message: 'Bạn tạo tài khoản quá nhiều lần. Vui lòng thử lại sau.',
 });
 
+// Forgot password / resend verification send mail: keep them rare (mail bombing, provider quota)
+export const mailLimiter = limiter({
+  windowMs: 60 * 60_000,
+  limit: 5,
+  message: 'Bạn yêu cầu gửi email quá nhiều lần. Vui lòng thử lại sau 1 giờ.',
+});
+
+// Guessing a reset/verify token or the current password on the change-password form
+export const accountTokenLimiter = limiter({
+  windowMs: 15 * 60_000,
+  limit: 20,
+  message: 'Thử quá nhiều lần. Vui lòng thử lại sau 15 phút.',
+});
+
 export const uploadLimiter = limiter({
   windowMs: 10 * 60_000,
   limit: 30,

@@ -17,6 +17,7 @@ import {
   KeyRound,
   Users
 } from 'lucide-react';
+import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
@@ -213,6 +214,9 @@ export default function AuthModal() {
                 <label className="text-xs font-semibold text-gray-300">
                   Mật khẩu
                 </label>
+                <Link href="/quen-mat-khau" onClick={closeAuthModal} className="text-xs text-brand-400 hover:text-brand-300">
+                  Quên mật khẩu?
+                </Link>
               </div>
               <div className="relative">
                 <input

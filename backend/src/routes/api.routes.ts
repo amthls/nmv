@@ -4,7 +4,7 @@ import {
   markAllNotificationsAsRead,
   deleteNotification
 } from '../controllers/notification.controller';
-﻿import { Router } from 'express';
+﻿import express, { Router } from 'express';
 import { getTags } from '../controllers/tag.controller';
 import { 
   getStories, 
@@ -41,7 +41,13 @@ import {
   register, 
   getMe, 
   logout, 
-  getDemoAccounts 
+  getDemoAccounts,
+  logoutAll,
+  changePassword,
+  forgotPassword,
+  resetPassword,
+  verifyEmail,
+  resendVerification,
 } from '../controllers/auth.controller';
 import { requireAuth, optionalAuth, requireRole } from '../middlewares/auth.middleware';
 import { 
@@ -136,7 +142,7 @@ import { createExport, getExport, downloadExport } from '../controllers/export.c
 import { getConversations, getThread, sendDirectMessage } from '../controllers/message.controller';
 import { queueStatus } from '../services/queue.service';
 import { cacheJson } from '../middlewares/cache';
-import { loginLimiter, registerLimiter, uploadLimiter, mangaUploadLimiter, searchLimiter, perUserLimiter, exportLimiter } from '../middlewares/security';
+import { loginLimiter, registerLimiter, mailLimiter, accountTokenLimiter, uploadLimiter, mangaUploadLimiter, searchLimiter, perUserLimiter, exportLimiter } from '../middlewares/security';
 
 const router = Router();
 
@@ -166,6 +172,15 @@ router.post('/auth/register', registerLimiter, register);
 router.post('/auth/logout', logout);
 router.get('/auth/me', requireAuth, getMe);
 router.get('/auth/accounts', getDemoAccounts);
+// Express 4 does not catch rejected promises from handlers: forward them to the error handler
+const wrap = (fn: (req: any, res: express.Response) => Promise<unknown>) =>
+  (req: express.Request, res: express.Response, next: express.NextFunction) => { fn(req, res).catch(next); };
+router.post('/auth/logout-all', requireAuth, wrap(logoutAll));
+router.post('/auth/change-password', requireAuth, accountTokenLimiter, wrap(changePassword));
+router.post('/auth/forgot-password', mailLimiter, wrap(forgotPassword));
+router.post('/auth/reset-password', accountTokenLimiter, wrap(resetPassword));
+router.post('/auth/verify-email', accountTokenLimiter, wrap(verifyEmail));
+router.post('/auth/resend-verification', requireAuth, mailLimiter, wrap(resendVerification));
 
 // File & Image Uploads (Multipart/Form-Data)
 router.post('/upload/images', requireAuth, uploadLimiter, uploadImages.array('images', 10) as any, uploadMultipleImages);
