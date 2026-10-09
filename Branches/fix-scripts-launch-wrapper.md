@@ -3,7 +3,7 @@
 - **Mục tiêu:** scripts/launch.py chạy launch.py ở gốc (bản cũ thiếu REDIS_PASSWORD)
 - **Tạo từ:** `origin/main` @ 5e25348, ngày 2026-10-09
 - **Trạng thái:** chờ review
-- **PR:** (chưa mở)
+- **PR:** https://github.com/amthls/nmv/pull/46
 - **Plan:** không có (sửa nhỏ)
 
 ## Thay đổi
