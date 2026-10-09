@@ -63,9 +63,10 @@ Open **http://localhost:3000** and log in with **`admin` / `password123`**.
 
 | Command | What it does |
 |:---|:---|
-| `python scripts/launch.py` | Build, start, seed, check (same as `up`) |
+| `python scripts/launch.py` | Build, start, seed (only if the DB has no stories), check (same as `up`). Shortcut for `python launch.py` in the project root; both accept the same options |
 | `python scripts/launch.py --no-build` | Same, but reuse the images already built (faster) |
-| `python scripts/launch.py --no-seed` | Same, but **do not** run the seeders |
+| `python scripts/launch.py --no-seed` | Same, but **never** run the seeders |
+| `python scripts/launch.py --seed` | Same, but run the seeders even if the DB already has stories (resets all passwords!) |
 | `python scripts/launch.py check` | Only run the checks on a stack that is already running (no seeding) |
 | `python scripts/launch.py status` | Show the containers and their state |
 | `python scripts/launch.py logs` | Follow the logs of all containers (Ctrl+C to exit) |
@@ -77,7 +78,7 @@ The script exits with code `0` if all checks pass and `1` if any fail, so you ca
 
 ## 4. Sample data (seeders)
 
-On every launch the script runs these seeders from `backend/scripts/`, in order:
+When the database has no stories yet (or with `--seed`), the script runs these seeders from `backend/scripts/`, in order:
 
 | Seeder | Result |
 |:---|:---|
@@ -87,7 +88,7 @@ On every launch the script runs these seeders from `backend/scripts/`, in order:
 
 Running them again does **not** create duplicate stories. After seeding, the backend is restarted so the search engine indexes the new stories.
 
-> ⚠️ **Use `--no-seed` once real people use the site.** The password seeder resets *every* account (including real users) to `password123`, and the story seeder overwrites edits made to the sample stories.
+> ⚠️ **Never use `--seed` once real people use the site.** The password seeder resets *every* account (including real users) to `password123`, and the story seeder overwrites edits made to the sample stories.
 
 ## 5. What the checks mean
 
