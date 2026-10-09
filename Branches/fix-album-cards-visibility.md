@@ -18,3 +18,5 @@
 
 ## Đã kiểm tra
 - Typecheck backend + frontend.
+- Chrome `/bookmark`: tab "Album đã lưu" 4 thẻ khung ảnh cùng cao (194px), tên cùng hàng (trước đó lệch); tab "Album của tôi" tương tự.
+- Bấm nhãn trên 1 thẻ → chỉ album đó đổi (UI + DB), không chuyển trang; "Riêng tư tất cả" / "Công khai tất cả" đổi cả 2 album; đã trả về trạng thái ban đầu (cả 2 công khai).
