@@ -447,7 +447,7 @@ export default function StoryDetailPage() {
           )}
 
           {/* Main Story Hero Grid */}
-          <div className="flex flex-col md:flex-row gap-8 items-start">
+          <div className="flex flex-col md:flex-row gap-8 items-start md:items-stretch">
             
             {/* Left: Poster Cover */}
             <div className="w-48 sm:w-60 shrink-0 mx-auto md:mx-0 relative aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/20 bg-gray-900 group">
@@ -464,7 +464,7 @@ export default function StoryDetailPage() {
             </div>
 
             {/* Right: Story Info & Meta */}
-            <div className="flex-1 space-y-4 text-center md:text-left">
+            <div className="flex-1 w-full flex flex-col gap-4 text-center md:text-left">
               
               {/* Title & Original Title */}
               <div>
@@ -541,7 +541,7 @@ export default function StoryDetailPage() {
               </div>
 
               {/* Actions: 1) reading  2) reader tools */}
-              <div className="pt-3 space-y-3">
+              <div className="pt-3 space-y-3 md:mt-auto">{/* bottom of the cover, whatever the title length */}
                 {/* 1. Reading */}
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-2.5">
                   {lastReadChapter ? (
