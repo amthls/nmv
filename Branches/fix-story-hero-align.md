@@ -3,7 +3,7 @@
 - **Mục tiêu:** Trang truyện: hàng nút luôn sát đáy ảnh bìa dù tiêu đề ngắn
 - **Tạo từ:** `origin/main` @ 8fd95cd, ngày 2026-10-09
 - **Trạng thái:** xong, chủ dự án đã duyệt, chờ review PR
-- **PR:** (chưa mở)
+- **PR:** https://github.com/amthls/nmv/pull/49
 - **Plan:** không cần (sửa 3 dòng)
 
 ## Thay đổi
