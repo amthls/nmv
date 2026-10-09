@@ -14,4 +14,4 @@ Cần quy tắc rõ ràng, có công cụ và có CI nhắc để không lặp l
 - [x] `Branches/chore-branch-workflow.md` cho chính nhánh này
 - [x] Thử script trên máy (tên sai bị từ chối, tên đúng tạo nhánh + file), YAML hợp lệ
 - [x] Commit, push, mở PR
-- [ ] Đưa commit bảo mật `2f8a3af` sang nhánh mới `security/hardening` (dùng script), thêm file Branches, push, mở PR
+- [x] Đưa commit bảo mật `2f8a3af` sang nhánh mới `security/hardening` (dùng script), thêm file Branches, push, mở PR
