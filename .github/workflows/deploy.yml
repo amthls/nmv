@@ -34,7 +34,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: backend
           push: true
@@ -43,7 +43,7 @@ jobs:
             ${{ steps.reg.outputs.registry }}/nmv-backend:latest
           cache-from: type=gha,scope=backend
           cache-to: type=gha,scope=backend,mode=max
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: frontend
           push: true
