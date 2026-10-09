@@ -52,7 +52,7 @@ export default function DownloadModal({ isOpen, onClose, storySlug, story: story
   const [job, setJob] = useState<ExportJob | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const pollRef = useRef<ReturnType<typeof setTimeout>>();
+  const pollRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const autoDownloaded = useRef<string | null>(null);
   // Bumped whenever polling must stop (dialog closed, new request): stale responses are ignored
   const pollGen = useRef(0);

@@ -26,7 +26,7 @@ Nền tảng đọc **Light Novel (truyện chữ)** và **Manga (truyện tranh
 
 | Tầng | Công nghệ |
 |:---|:---|
-| Frontend | Next.js 14 (App Router), React 18, TypeScript, Tailwind CSS, Lucide Icons, CKEditor 5 (trình soạn thảo rich text) |
+| Frontend | Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS, Lucide Icons, CKEditor 5 (trình soạn thảo rich text) |
 | Backend | Node.js 22, Express, TypeScript, JWT (cookie + header), bcryptjs, multer (upload ảnh), sharp (đổi kích thước ảnh), sanitize-html |
 | Database | PostgreSQL 16 (khóa chính UUID), truy vấn bằng `pg` (raw SQL); Prisma chỉ dùng cho `db pull/generate/studio` |
 | Tìm kiếm | Elasticsearch 9.5 (1 node, đã tối ưu RAM; tùy chọn, có fallback về SQL `ILIKE`) |
@@ -174,11 +174,10 @@ Mục tiêu: chịu được vài nghìn đến vài chục nghìn người onli
 
 Đã có: một cổng vào duy nhất, 2 mạng Docker tách tầng, `no-new-privileges` cho các container app, mật khẩu bắt buộc cho RabbitMQ/Redis, rate limit dùng chung, quét lỗ hổng image trong CI, Dependabot. Bước tiếp theo, theo thứ tự nên làm:
 
-1. **Nâng Next.js 14 → 15 trước 2026-11-30**: hai CVE của Next 14 đang được chấp nhận tạm trong `.trivyignore` (một cái chỉ ảnh hưởng server Windows; cái kia nằm ở `/_next/image`, đã tắt bằng `images.unoptimized` và bị nginx chặn).
-2. HTTPS (Cloudflare tunnel hoặc chứng chỉ trên gateway), rồi bật `Secure` cho cookie và HSTS.
-3. Thu hồi token: lưu "token hết hiệu lực trước thời điểm X" của từng người trong Redis, kiểm tra trong `requireAuth` và khi kết nối socket (đăng xuất mọi thiết bị, đổi mật khẩu).
-4. Chạy container bằng user không phải root (`USER node`); cần `chown` volume `image_cache` cũ trước.
-5. Content-Security-Policy cho frontend; đổi mật khẩu mặc định Postgres và các tài khoản mẫu.
+1. HTTPS (Cloudflare tunnel hoặc chứng chỉ trên gateway), rồi bật `Secure` cho cookie và HSTS.
+2. Thu hồi token: lưu "token hết hiệu lực trước thời điểm X" của từng người trong Redis, kiểm tra trong `requireAuth` và khi kết nối socket (đăng xuất mọi thiết bị, đổi mật khẩu).
+3. Chạy container bằng user không phải root (`USER node`); cần `chown` volume `image_cache` cũ trước.
+4. Content-Security-Policy cho frontend; đổi mật khẩu mặc định Postgres và các tài khoản mẫu.
 
 ## 📬 Hàng đợi thông báo (RabbitMQ)
 
@@ -398,7 +397,6 @@ Email có dạng `<tên ngắn>@novelhub.vn` (ví dụ `admin@novelhub.vn`, `sak
 **Bảo mật (cần xử lý trước khi chạy thật)**
 - **Tài khoản mẫu vẫn dùng mật khẩu `password123`** (kể cả `admin`), bất kể danh sách demo đang tắt. Nếu website đang mở ra Internet (ví dụ qua tunnel), hãy đổi mật khẩu hoặc xóa các tài khoản này.
 - Đổi `JWT_SECRET` làm mọi phiên đăng nhập hiện có hết hiệu lực (người dùng phải đăng nhập lại). Token sống 30 ngày, chưa có cơ chế thu hồi.
-- Next.js 14 có 2 CVE mức CRITICAL chỉ được vá ở bản 15/16; đang chấp nhận tạm (xem [Lộ trình bảo mật](#-lộ-trình-bảo-mật)), hạn nâng cấp 2026-11-30.
 - Elasticsearch và RabbitMQ chạy trong mạng nội bộ Docker; Elasticsearch tắt xác thực (chỉ bind `127.0.0.1`).
 - Postgres còn dùng mật khẩu mặc định `postgres` (chỉ nghe `127.0.0.1` nên không truy cập từ ngoài; đổi mật khẩu trên volume đã có cần `ALTER USER`).
 - Cổng 3000 chạy HTTP thường; cần HTTPS (Cloudflare tunnel, hoặc chứng chỉ trên gateway) khi dùng thật.

@@ -3,7 +3,8 @@
 import React, { useState } from 'react';
 import { imageUrlForQuality, useImageQuality } from '@/lib/imageQuality';
 
-interface SmartImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
+interface SmartImageProps extends Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'src'> {
+  src?: string;
   fallbackSrc?: string;
   /** Request the resolution the reader picked in reader settings (uploaded images only) */
   adaptive?: boolean;

@@ -53,7 +53,7 @@ jobs:
         run: docker compose build
 
       - name: Scan images (critical, fixable)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: image
           image-ref: local/nmv-backend:latest
@@ -62,7 +62,7 @@ jobs:
           exit-code: '1'
           trivyignores: .trivyignore
       - name: Scan frontend image
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: image
           image-ref: local/nmv-frontend:latest

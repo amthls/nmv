@@ -111,7 +111,7 @@ Code: `backend/src/services/realtime.ts`, `frontend/src/lib/realtime.ts` (kết 
 - [x] `.github/dependabot.yml`: npm (backend, frontend), docker, github-actions — hằng tuần
 - [x] Trivy chạy thử local: bắt được CRITICAL thật → đã sửa: `apt-get upgrade` trong 2 Dockerfile (perl), `proxy-addr` 2.0.8 (backend), frontend Node 20 (hết hạn hỗ trợ) → 22 (hết `tar` cũ), tắt Next image optimizer (`images.unoptimized`) + nginx chặn `/_next/image`
 - [x] `.trivyignore`: 2 CVE của Next 14 (chỉ sửa ở Next 15/16), có hạn `exp:2026-11-30`
-- [ ] **Trước 2026-11-30: nâng Next.js 14 → 15** (việc riêng, cần test kỹ toàn site), rồi xóa 2 dòng trong `.trivyignore`
+- [x] **Trước 2026-11-30: nâng Next.js 14 → 15** (xong 2026-10-09, Next 15.5.27 + React 19, xem Plan/next15-and-push.md) (việc riêng, cần test kỹ toàn site), rồi xóa 2 dòng trong `.trivyignore`
 
 Đã thử local: YAML hợp lệ; `yarn install --frozen-lockfile` OK; Trivy 0 CRITICAL; `docker compose up -d --wait` exit 0; mọi trang 200. **Chưa chạy trên GitHub** (chưa commit/push). Deploy chỉ chạy khi đặt biến repo `DEPLOY_ENABLED=true` + secrets `DEPLOY_HOST/USER/SSH_KEY/PATH`.
 

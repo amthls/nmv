@@ -116,7 +116,7 @@ export default function StoryCaseOpening({ isOpen, onClose }: { isOpen: boolean;
   const viewportRef = useRef<HTMLDivElement>(null);
   const stripRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number>(0);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const mutedRef = useRef(muted);
   mutedRef.current = muted;
   const sound = useTick();
