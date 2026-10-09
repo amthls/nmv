@@ -78,6 +78,37 @@ export default function BookmarkPage() {
     }
   };
 
+  // Public/private: one album from its card, or all of mine at once
+  const handleToggleVisibility = async (album: AlbumSummary) => {
+    const next = !album.is_public;
+    setAlbums(prev => prev.map(a => (a.id === album.id ? { ...a, is_public: next } : a)));
+    try {
+      await readJson(await authFetch(`${API_BASE_URL}/albums/${album.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_public: next }),
+      }));
+      showFeedback(next ? `"${album.name}" đã công khai.` : `"${album.name}" đã chuyển riêng tư.`);
+    } catch (err: any) {
+      setAlbums(prev => prev.map(a => (a.id === album.id ? { ...a, is_public: album.is_public } : a)));
+      showFeedback(err.message);
+    }
+  };
+
+  const handleAllVisibility = async (isPublic: boolean) => {
+    try {
+      const json = await readJson(await authFetch(`${API_BASE_URL}/albums/me/visibility`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_public: isPublic }),
+      }));
+      showFeedback(json.message);
+      setAlbums(prev => prev.map(a => ({ ...a, is_public: isPublic })));
+    } catch (err: any) {
+      showFeedback(err.message);
+    }
+  };
+
   const handleShareAlbum = async (album: AlbumSummary) => {
     const url = albumShareUrl(album);
     if (await copyText(url)) showFeedback('Đã sao chép link chia sẻ album.');
@@ -313,11 +344,35 @@ export default function BookmarkPage() {
                     </Link>
                   </div>
                 ) : (
+                  <div className="space-y-4">
+                  {/* All albums at once; single albums switch from the badge on their card */}
+                  <div className="flex flex-wrap items-center gap-2 px-4 py-3 rounded-2xl bg-white/[0.03] border border-white/10">
+                    <span className="text-xs text-gray-400 mr-auto">
+                      <b className="text-emerald-400">{albums.filter(a => a.is_public).length}</b> công khai ·{' '}
+                      <b className="text-gray-200">{albums.filter(a => !a.is_public).length}</b> riêng tư
+                      <span className="hidden sm:inline text-gray-500"> · bấm nhãn trên từng album để đổi riêng album đó</span>
+                    </span>
+                    <button
+                      onClick={() => handleAllVisibility(true)}
+                      disabled={albums.every(a => a.is_public)}
+                      className="px-3 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1.5 bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 disabled:opacity-40 transition"
+                    >
+                      <Globe className="w-3.5 h-3.5" /> Công khai tất cả
+                    </button>
+                    <button
+                      onClick={() => handleAllVisibility(false)}
+                      disabled={albums.every(a => !a.is_public)}
+                      className="px-3 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1.5 bg-white/5 text-gray-200 hover:bg-white/10 disabled:opacity-40 transition"
+                    >
+                      <Lock className="w-3.5 h-3.5" /> Riêng tư tất cả
+                    </button>
+                  </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                     {albums.map((album) => (
                       <AlbumCard
                         key={album.id}
                         album={album}
+                        onToggleVisibility={() => handleToggleVisibility(album)}
                         actions={
                           <button
                             onClick={() => handleShareAlbum(album)}
@@ -328,6 +383,7 @@ export default function BookmarkPage() {
                         }
                       />
                     ))}
+                  </div>
                   </div>
                 )
               )}

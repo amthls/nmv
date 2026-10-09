@@ -174,13 +174,13 @@ function AlbumPageInner() {
       <div className="rounded-3xl p-5 sm:p-8 glass-panel border border-brand-500/20 bg-gradient-to-r from-brand-900/30 via-indigo-900/20 to-surface shadow-xl flex flex-col md:flex-row gap-6">
         <div className="w-40 h-40 sm:w-48 sm:h-48 shrink-0 mx-auto md:mx-0 rounded-2xl overflow-hidden bg-gray-900 ring-1 ring-white/15">
           {covers.length > 0 ? (
-            <div className={`grid h-full w-full gap-0.5 ${covers.length > 1 ? 'grid-cols-2' : ''} ${covers.length > 2 ? 'grid-rows-2' : ''}`}>
+            <div className={`grid h-full w-full gap-0.5 ${covers.length > 1 ? 'grid-cols-2' : 'grid-cols-1'} ${covers.length > 2 ? 'grid-rows-2' : 'grid-rows-1'}`}>
               {covers.map((s, i) => (
                 <SmartImage
                   key={s.id}
                   src={s.cover_image_url || undefined}
                   alt={s.title}
-                  className={`w-full h-full object-cover ${covers.length === 3 && i === 0 ? 'row-span-2' : ''}`}
+                  className={`w-full h-full min-h-0 object-cover ${covers.length === 3 && i === 0 ? 'row-span-2' : ''}`}
                 />
               ))}
             </div>
