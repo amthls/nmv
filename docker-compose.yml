@@ -66,7 +66,7 @@ services:
   #    Real client IP, rate limits, connection caps, slow-client timeouts, image cache.
   # ============================================================================
   gateway:
-    image: nginx:1.27-alpine
+    image: nginx:1.31-alpine
     container_name: novel_gateway
     restart: unless-stopped
     ports:
@@ -280,7 +280,7 @@ services:
   # Create a tunnel in the Cloudflare dashboard pointing at http://gateway:8080 and put its token in .env.
   # ============================================================================
   cloudflared:
-    image: cloudflare/cloudflared:2026.9.0
+    image: cloudflare/cloudflared:2026.10.0
     container_name: novel_cloudflared
     restart: unless-stopped
     command: ["tunnel", "--no-autoupdate", "run"]
