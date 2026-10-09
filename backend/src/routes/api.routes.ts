@@ -123,6 +123,7 @@ import {
   getAlbum,
   createAlbum,
   updateAlbum,
+  setAllAlbumsVisibility,
   deleteAlbum,
   resetShareLink,
   addStoryToAlbum,
@@ -257,6 +258,7 @@ router.get('/albums/me', requireAuth, getMyAlbums);
 router.get('/albums/saved', requireAuth, getSavedAlbums);
 router.get('/albums/by-story/:storyId', optionalAuth, getAlbumsByStory);
 router.post('/albums', requireAuth, albumLimiter, createAlbum);
+router.put('/albums/me/visibility', requireAuth, setAllAlbumsVisibility); // before /albums/:id
 router.get('/albums/:id', optionalAuth, getAlbum);
 router.put('/albums/:id', requireAuth, updateAlbum);
 router.delete('/albums/:id', requireAuth, deleteAlbum);

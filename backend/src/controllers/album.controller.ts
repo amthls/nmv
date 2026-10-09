@@ -278,6 +278,25 @@ export const updateAlbum = async (req: AuthenticatedRequest, res: Response) => {
   }
 };
 
+/** PUT /albums/me/visibility {is_public} : make every album of mine public, or every one private. */
+export const setAllAlbumsVisibility = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = requireUser(req);
+    if (typeof req.body?.is_public !== 'boolean') throw new InputError('Thiếu chế độ công khai/riêng tư.');
+    const result = await pool.query(
+      `UPDATE albums SET is_public = $2, updated_at = NOW() WHERE user_id = $1 AND is_public <> $2`,
+      [userId, req.body.is_public]
+    );
+    return res.json({
+      success: true,
+      data: { changed: result.rowCount },
+      message: req.body.is_public ? 'Đã công khai tất cả album.' : 'Đã chuyển tất cả album sang riêng tư.',
+    });
+  } catch (error: any) {
+    return fail(res, error, 'updating album visibility');
+  }
+};
+
 /** DELETE /albums/:id */
 export const deleteAlbum = async (req: AuthenticatedRequest, res: Response) => {
   try {
