@@ -11,6 +11,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Every PR branch documents itself in Branches/<branch with / replaced by ->.md (see CLAUDE.md)
+  branch-info:
+    if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Branches/<branch>.md exists
+        env:
+          BRANCH: ${{ github.head_ref }}
+        run: |
+          f="Branches/$(printf '%s' "$BRANCH" | tr '/' '-').md"
+          if [ ! -f "$f" ]; then
+            echo "::error::Missing $f. Create the branch with: sh scripts/new-branch.sh <type>/<name> \"goal\""
+            exit 1
+          fi
+          echo "found $f"
+
   typecheck:
     runs-on: ubuntu-latest
     steps:
