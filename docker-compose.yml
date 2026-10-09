@@ -140,7 +140,7 @@ services:
   #     Losing it is safe: the app falls back to direct DB writes / memory limits / polling.
   # ============================================================================
   redis:
-    image: redis:7.4-alpine
+    image: redis:8.10-alpine
     container_name: novel_redis
     restart: unless-stopped
     command: >
