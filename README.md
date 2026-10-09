@@ -274,7 +274,7 @@ Các trang danh sách/chi tiết vẫn giữ khung xám nhấp nháy (skeleton) 
 | `/dang-chuong` | Soạn và nộp chương (văn bản hoặc ảnh), lưu nháp. Thêm `?edit=<chapterId>` để **sửa chương đã đăng** (tiêu đề, số chương, tập, nội dung) |
 | `/nhom-dich`, `/nhom-dich/[slug]` | Danh sách nhóm dịch, tạo nhóm, thành viên và vai trò, kênh chat nhóm, duyệt chương nộp |
 | `/fandom`, `/fandom/[slug]` | Diễn đàn: đăng/sửa/xóa bài, phản ứng cảm xúc, bình luận, kiểm duyệt bài (đơn lẻ và hàng loạt) |
-| `/tin-nhan` | Tin nhắn riêng giữa hai người (kiểu Reddit chat): hộp thư bên trái, cuộc trò chuyện bên phải (`?u=<username>`), tin mới được đẩy ngay qua Socket.IO, đánh dấu "Đã xem". Mở từ nút **Nhắn tin** ở trang cá nhân hoặc biểu tượng cạnh tên tác giả bài Fandom |
+| `/tin-nhan` | Tin nhắn riêng giữa hai người (kiểu Reddit chat): hộp thư bên trái, cuộc trò chuyện bên phải (`?u=<username>`), tin mới được đẩy ngay qua Socket.IO, đánh dấu "Đã xem". **Nhãn** riêng của mỗi người để phân loại cuộc trò chuyện (lọc bằng hàng chip, quản lý ở nút "Nhãn"), ô **tìm kiếm** theo tên và nội dung tin trong phạm vi nhãn đang chọn, **ghim** tin (cả hai người cùng thấy, thanh "Đã ghim" ở đầu khung chat), **chặn** người dùng. Mở từ nút **Nhắn tin** ở trang cá nhân hoặc biểu tượng cạnh tên tác giả bài Fandom |
 | `/quen-mat-khau`, `/dat-lai-mat-khau`, `/xac-thuc-email` | Quên mật khẩu (link "Quên mật khẩu?" trong form đăng nhập), đặt mật khẩu mới từ link trong email, xác thực email |
 | `/bao-cao` | Danh sách báo cáo vi phạm cho Admin/Mod: lọc theo trạng thái, mở nội dung bị báo cáo, đánh dấu "đã xử lý" hoặc "bỏ qua" |
 | `/tai-khoan` | Hồ sơ, avatar, cài đặt đọc truyện, thông báo; tab quản lý vai trò (admin) |
@@ -303,7 +303,7 @@ Schema thật gồm 31 bảng và 2 view (`sql/database.sql`). Nhóm chính:
 | Người dùng | `users`, `user_roles`, `user_settings`, `user_follows`*, `user_favorites`, `auth_tokens` (link đặt lại mật khẩu / xác thực email) |
 | Truyện | `stories`, `volumes`, `chapters`, `chapter_pages`, `chapter_submissions`, `story_tags`, `tags`, `tag_categories`, `story_ratings`, `story_collaborators`, `story_views`, `story_views_daily` |
 | Nhóm dịch | `translation_groups`, `group_members`, `group_join_requests`, `group_messages` |
-| Tin nhắn riêng | `direct_messages` (migration `014_direct_messages.sql`) |
+| Tin nhắn riêng | `direct_messages` (migration `014_direct_messages.sql`; cột `pinned_at`, `pinned_by`), `dm_labels`, `dm_label_conversations`, `user_blocks` (migration `016_dm_labels_block_pin.sql`) |
 | Tương tác | `bookmarks`, `reading_history`, `comments`, `comment_likes`, `notifications`, `broadcast_notifications`* |
 | Fandom | `posts`, `post_tags`, `post_reactions` |
 | Kiểm duyệt | `reports` |
@@ -367,9 +367,12 @@ Ghi chú thực tế: bảng `users` **không có** cột `role`, `coins`, `exp_
 - `GET|POST /groups/:id/messages`, `DELETE /groups/:id/messages/:messageId` (chỉ thành viên nhóm và Admin)
 
 **Tin nhắn riêng** (Auth)
-- `GET /messages`: hộp thư (mỗi người một dòng, tin mới nhất, số chưa đọc) và `unread_count`
-- `GET /messages/:username`: 100 tin gần nhất với người đó; mở ra là đánh dấu đã đọc
-- `POST /messages/:username` (body `message`, tối đa 2000 ký tự; không tự nhắn cho mình, không nhắn tài khoản đã xóa)
+- `GET /messages?label=&q=`: hộp thư (mỗi người một dòng, tin mới nhất, số chưa đọc, `label_ids`, `blocked`) và `unread_count` (luôn là tổng, bất kể bộ lọc). `label` lọc theo nhãn của mình; `q` tìm theo tên người và nội dung tin (trả `match_message` là tin khớp mới nhất)
+- `GET /messages/:username`: 100 tin gần nhất với người đó, mọi tin đã ghim (`pinned`, kể cả tin cũ hơn), `label_ids`, `blocked_by_me`, `can_message`; mở ra là đánh dấu đã đọc
+- `POST /messages/:username` (body `message`, tối đa 2000 ký tự; không tự nhắn cho mình, không nhắn tài khoản đã xóa; một trong hai đã chặn người kia → 403 "Không thể gửi tin nhắn cho người này", không lộ ai chặn ai)
+- Nhãn (riêng từng người, người kia không thấy): `GET /messages/labels` (kèm số cuộc trò chuyện và danh sách màu), `POST /messages/labels` (`name` ≤ 30 ký tự, không trùng tên; `color`: sky, emerald, amber, rose, fuchsia, teal, orange, lime; tối đa 20 nhãn), `PATCH|DELETE /messages/labels/:id` (xóa nhãn không xóa tin nhắn), `PUT /messages/:username/labels` (`label_ids`: thay toàn bộ nhãn của cuộc trò chuyện)
+- Chặn: `POST|DELETE /messages/:username/block`. Chặn hai chiều: không ai gửi được cho ai, tin cũ vẫn đọc được
+- Ghim: `POST|DELETE /messages/:username/pins/:messageId` (cả hai người đều ghim/bỏ ghim được và cùng thấy; tối đa 10 tin ghim mỗi cuộc trò chuyện)
 
 **Người dùng & Upload**
 - `GET /profile/me`, `PUT /profile/me`, `PUT /profile/me/settings`
@@ -399,7 +402,7 @@ Email có dạng `<tên ngắn>@novelhub.vn` (ví dụ `admin@novelhub.vn`, `sak
 - Sửa chương chưa có lịch sử phiên bản (sửa là ghi đè).
 - Báo cáo vi phạm chưa tự ẩn/xóa nội dung: Admin/Mod phải tự xử lý rồi đánh dấu báo cáo.
 - Các bảng `user_follows`, `broadcast_notifications` chưa được code sử dụng.
-- Tin nhắn riêng chưa có chặn người dùng, xóa/sửa tin, gửi ảnh hay báo cáo tin nhắn.
+- Tin nhắn riêng chưa có xóa/sửa tin, gửi ảnh hay báo cáo tin nhắn; chặn chỉ áp dụng cho tin nhắn (người bị chặn vẫn thấy bài viết, bình luận của bạn).
 - Chưa có test tự động.
 - Web miễn phí nên **không làm** hệ thống xu, nạp tiền, mua chương hay cấp độ.
 

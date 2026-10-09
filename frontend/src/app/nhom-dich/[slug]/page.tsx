@@ -427,7 +427,7 @@ export default function GroupDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-16 space-y-6 animate-pulse">
+      <div className="max-w-[1600px] mx-auto px-4 py-16 space-y-6 animate-pulse">
         <div className="h-48 rounded-3xl bg-white/5" />
         <div className="h-12 w-1/3 bg-white/5 rounded-2xl" />
         <div className="h-64 rounded-3xl bg-white/5" />
@@ -448,7 +448,7 @@ export default function GroupDetailPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 pb-24">
+    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 pb-24">
       
       {/* 1. Header Banner & Profile */}
       <div className="rounded-3xl overflow-hidden glass-panel border border-white/10 bg-glass shadow-2xl relative">

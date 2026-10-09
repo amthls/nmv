@@ -234,6 +234,8 @@ CREATE TABLE direct_messages (
     recipient_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     message      TEXT NOT NULL,
     read_at      TIMESTAMPTZ,
+    pinned_at    TIMESTAMPTZ,                  -- tin đã ghim (cả hai người đều thấy)
+    pinned_by    UUID REFERENCES users(id) ON DELETE SET NULL,
     created_at   TIMESTAMPTZ DEFAULT NOW(),
     CHECK (sender_id <> recipient_id)
 );
@@ -241,6 +243,33 @@ CREATE TABLE direct_messages (
 CREATE INDEX idx_direct_messages_sender ON direct_messages(sender_id, created_at DESC);
 CREATE INDEX idx_direct_messages_recipient ON direct_messages(recipient_id, created_at DESC);
 CREATE INDEX idx_direct_messages_unread ON direct_messages(recipient_id) WHERE read_at IS NULL;
+CREATE INDEX idx_direct_messages_pinned ON direct_messages(sender_id, recipient_id) WHERE pinned_at IS NOT NULL;
+
+-- Nhãn riêng của từng người cho cuộc trò chuyện, chặn người dùng (sql/migrations/016_dm_labels_block_pin.sql)
+CREATE TABLE dm_labels (
+    id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name       VARCHAR(30) NOT NULL,
+    color      VARCHAR(20) NOT NULL DEFAULT 'sky',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE UNIQUE INDEX uq_dm_labels_user_name ON dm_labels(user_id, LOWER(name));
+
+CREATE TABLE dm_label_conversations (
+    label_id   UUID NOT NULL REFERENCES dm_labels(id) ON DELETE CASCADE,
+    partner_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (label_id, partner_id)
+);
+
+CREATE TABLE user_blocks (
+    blocker_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    blocked_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (blocker_id, blocked_id),
+    CHECK (blocker_id <> blocked_id)
+);
+CREATE INDEX idx_user_blocks_blocked ON user_blocks(blocked_id);
 
 -- Link một lần gửi qua email: đặt lại mật khẩu, xác thực email (sql/migrations/015_account_security.sql).
 -- Chỉ lưu SHA-256 của token.
