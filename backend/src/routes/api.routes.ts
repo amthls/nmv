@@ -139,7 +139,11 @@ import {
   getRecStatus
 } from '../controllers/recommendation.controller';
 import { createExport, getExport, downloadExport } from '../controllers/export.controller';
-import { getConversations, getThread, sendDirectMessage } from '../controllers/message.controller';
+import {
+  getConversations, getThread, sendDirectMessage,
+  getLabels, createLabel, updateLabel, deleteLabel, setConversationLabels,
+  blockUser, unblockUser, pinMessage, unpinMessage,
+} from '../controllers/message.controller';
 import { queueStatus } from '../services/queue.service';
 import { cacheJson } from '../middlewares/cache';
 import { loginLimiter, registerLimiter, mailLimiter, accountTokenLimiter, uploadLimiter, mangaUploadLimiter, searchLimiter, perUserLimiter, exportLimiter } from '../middlewares/security';
@@ -336,7 +340,17 @@ router.delete('/groups/:id/messages/:messageId', requireAuth, deleteGroupMessage
 
 // Direct messages between two users
 router.get('/messages', requireAuth, getConversations);
+// Labels first: otherwise "labels" would be taken for a username
+router.get('/messages/labels', requireAuth, getLabels);
+router.post('/messages/labels', requireAuth, createLabel);
+router.patch('/messages/labels/:id', requireAuth, updateLabel);
+router.delete('/messages/labels/:id', requireAuth, deleteLabel);
 router.get('/messages/:username', requireAuth, getThread);
 router.post('/messages/:username', requireAuth, chatLimiter, sendDirectMessage);
+router.put('/messages/:username/labels', requireAuth, setConversationLabels);
+router.post('/messages/:username/block', requireAuth, blockUser);
+router.delete('/messages/:username/block', requireAuth, unblockUser);
+router.post('/messages/:username/pins/:messageId', requireAuth, pinMessage);
+router.delete('/messages/:username/pins/:messageId', requireAuth, unpinMessage);
 
 export default router;
