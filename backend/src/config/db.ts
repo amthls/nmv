@@ -11,7 +11,7 @@ const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:post
 // Raw PostgreSQL pool configured for high concurrency and crash prevention
 export const pool = new Pool({
   connectionString,
-  max: 50, // Allow up to 50 concurrent connections
+  max: Number(process.env.DB_POOL_MAX || 50), // per process; behind PgBouncer this can be large
   idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
   connectionTimeoutMillis: 5000, // Return an error after 5s if acquiring connection fails
 });

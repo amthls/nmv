@@ -23,12 +23,16 @@ import {
   Pencil,
   ArrowUp,
   ArrowDown,
-  Download
+  Download,
+  Library
 } from 'lucide-react';
 import SmartImage from '@/components/common/SmartImage';
 import CommentSection from '@/components/comments/CommentSection';
 import ReportButton from '@/components/common/ReportButton';
 import DownloadModal from '@/components/story/DownloadModal';
+import SaveToAlbumModal from '@/components/album/SaveToAlbumModal';
+import StoryAlbumsSection from '@/components/album/StoryAlbumsSection';
+import RecommendationRail from '@/components/home/RecommendationRail';
 import { useAuth } from '@/context/AuthContext';
 import RichContent from '@/components/common/RichContent';
 import { stripHtml } from '@/lib/richText';
@@ -48,6 +52,9 @@ export default function StoryDetailPage() {
   const [isFollowing, setIsFollowing] = useState(false);
   const [isRatingOpen, setIsRatingOpen] = useState(false);
   const [isDownloadOpen, setIsDownloadOpen] = useState(false);
+  const [isAlbumOpen, setIsAlbumOpen] = useState(false);
+  const [showAllTags, setShowAllTags] = useState(false);
+  const [albumsChanged, setAlbumsChanged] = useState(0); // reloads the albums section
   const [selectedRating, setSelectedRating] = useState(10);
   const [isDeleting, setIsDeleting] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -147,7 +154,7 @@ export default function StoryDetailPage() {
       const removed = json.action === 'removed';
       if (removed === nextStatus) applyStatus(!removed); // server ended in a different state than we guessed
       setStory((prev: any) => prev ? { ...prev, favorite_category: removed ? null : (prev.favorite_category || 'reading') } : prev);
-      showToast(removed ? 'Đã hủy theo dõi truyện.' : 'Đã thêm truyện vào Tủ sách đã lưu!');
+      showToast(removed ? 'Đã hủy theo dõi truyện.' : 'Đã theo dõi truyện, bạn sẽ được báo khi có chương mới!');
     } catch (err) {
       console.error('Failed to update follow state:', err);
       applyStatus(!nextStatus);
@@ -572,16 +579,25 @@ export default function StoryDetailPage() {
 
               {/* Tag Badges */}
               {story.tags && story.tags.length > 0 && (
-                <div className="flex flex-wrap items-center justify-center md:justify-start gap-1.5 pt-1">
-                  {story.tags.map((tag: any) => (
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-1 max-w-lg mx-auto md:mx-0">
+                  {(showAllTags ? story.tags : story.tags.slice(0, 6)).map((tag: any) => (
                     <Link
                       key={tag.id}
                       href={`/kham-pha?tags=${tag.slug}`}
-                      className="px-2.5 py-1 rounded-lg text-xs font-medium bg-white/5 hover:bg-brand-600/30 text-gray-300 hover:text-brand-300 border border-white/10 transition"
+                      className="px-2 py-0.5 rounded-full text-[11px] leading-5 text-gray-300 bg-black/30 hover:bg-white/10 hover:text-white border border-white/10 transition"
                     >
                       {tag.name}
                     </Link>
                   ))}
+                  {story.tags.length > 6 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAllTags((v) => !v)}
+                      className="px-2 py-0.5 rounded-full text-[11px] leading-5 font-semibold text-brand-300 hover:text-white transition"
+                    >
+                      {showAllTags ? 'Thu gọn' : `+${story.tags.length - 6}`}
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -641,6 +657,25 @@ export default function StoryDetailPage() {
                       <Heart className={`w-3.5 h-3.5 ${isFollowing ? 'fill-rose-500 text-rose-500' : ''}`} />
                       <span>{isFollowing ? 'Đang theo dõi' : 'Theo dõi'}</span>
                     </button>
+
+                    <button
+                      type="button"
+                      onClick={() => (isAuthenticated ? setIsAlbumOpen(true) : openAuthModal('login'))}
+                      className="px-3.5 py-2 flex items-center gap-1.5 text-gray-300 hover:text-white hover:bg-white/10 transition"
+                      title="Lưu truyện vào một hoặc nhiều album của bạn"
+                    >
+                      <Library className="w-3.5 h-3.5 text-brand-400" />
+                      <span>Lưu vào album</span>
+                    </button>
+
+                    <Link
+                      href={`/fandom?story=${story.slug}`}
+                      className="px-3.5 py-2 flex items-center gap-1.5 text-gray-300 hover:text-white hover:bg-white/10 transition"
+                      title="Review, fanart và thảo luận về truyện này trên Fandom"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Thảo luận</span>
+                    </Link>
 
                     {story.allow_download && (story.total_chapters || story.first_chapter) ? (
                       <button
@@ -843,6 +878,22 @@ export default function StoryDetailPage() {
           )}
         </section>
 
+        {/* Related stories: people who read this also read / usually read next (trained model) */}
+        <RecommendationRail
+          key={story.id}
+          title="Truyện liên quan"
+          subtitle="Người đọc truyện này cũng hay đọc, sắp theo gu của bạn"
+          endpoint={`/recommendations/related/${story.id}`}
+          source="related"
+        />
+
+        {/* Albums holding this story: mine, then other users' public albums */}
+        <StoryAlbumsSection
+          storyId={story.id}
+          refreshKey={albumsChanged}
+          onOpenSave={() => setIsAlbumOpen(true)}
+        />
+
         {/* 3. Story Comments Section */}
         <CommentSection
           targetType="story"
@@ -899,6 +950,19 @@ export default function StoryDetailPage() {
           <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
           <span className="text-xs font-semibold">{toastMsg}</span>
         </div>
+      )}
+
+      {story && (
+        <SaveToAlbumModal
+          isOpen={isAlbumOpen}
+          onClose={() => setIsAlbumOpen(false)}
+          storyId={story.id}
+          storyTitle={story.title}
+          onChange={(_, message) => {
+            showToast(message);
+            setAlbumsChanged((n) => n + 1);
+          }}
+        />
       )}
 
       {story && (

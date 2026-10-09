@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Star, Eye, BookOpen } from 'lucide-react';
+import { Star, Eye, BookOpen, PlayCircle } from 'lucide-react';
 import SmartImage from '@/components/common/SmartImage';
 
 export interface Story {
@@ -34,6 +34,11 @@ export interface Story {
     slug: string;
     published_at: string;
   };
+  /** recommendation rows: why this story is shown */
+  rec_reason?: string;
+  rec_label?: string;
+  /** "continue reading" cards open this chapter directly */
+  continue_slug?: string;
 }
 
 export function formatRating(value: Story['rating_avg']) {
@@ -69,7 +74,11 @@ export default function StoryCardGrid({ story, rank, meta = 'stats' }: { story: 
   const isNovel = story.story_type === 'novel';
 
   return (
-    <Link href={`/truyen/${story.slug}`} className="group block min-w-0" title={story.title}>
+    <Link
+      href={story.continue_slug ? `/truyen/${story.slug}/${story.continue_slug}` : `/truyen/${story.slug}`}
+      className="group block min-w-0"
+      title={story.title}
+    >
       <div className="tile aspect-[2/3]">
         <SmartImage src={story.cover_image_url} alt={story.title} className="tile__img w-full h-full object-cover" />
         <span className={`absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-[3px] text-[9.5px] font-extrabold uppercase tracking-wider text-snow shadow ${
@@ -77,6 +86,11 @@ export default function StoryCardGrid({ story, rank, meta = 'stats' }: { story: 
         }`}>
           {isNovel ? 'Novel' : 'Manga'}
         </span>
+        {story.continue_slug && (
+          <span className="absolute bottom-1.5 left-1.5 flex items-center gap-1 px-1.5 py-0.5 rounded-[3px] bg-black/70 text-[10px] font-bold text-white">
+            <PlayCircle className="w-3 h-3" /> Đọc tiếp
+          </span>
+        )}
         {rank !== undefined && (
           <span className="absolute bottom-0 left-0 min-w-[30px] px-2 py-1 bg-brand-500 text-snow text-sm font-black text-center rounded-tr-[4px]">
             {rank}

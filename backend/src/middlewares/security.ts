@@ -2,7 +2,9 @@ import { Express, Request, Response, NextFunction } from 'express';
 import helmet from 'helmet';
 import rateLimit, { ipKeyGenerator, Options } from 'express-rate-limit';
 import crypto from 'crypto';
+import { RedisStore } from 'rate-limit-redis';
 import { IS_PROD } from '../config/env';
+import { redis } from '../config/redis';
 import type { AuthenticatedRequest } from './auth.middleware';
 
 /**
@@ -25,9 +27,24 @@ export function clientIp(req: Request): string {
 
 const ipKey = (req: Request) => ipKeyGenerator(clientIp(req));
 
+/**
+ * Counters live in Redis when it is configured, so they survive restarts and are shared by every
+ * backend copy. Each limiter needs its own key prefix; derive it from its settings (stable across
+ * deploys and replicas). If Redis fails, requests pass instead of the whole API returning errors.
+ */
+function redisStore(options: Partial<Options> & { message: string }) {
+  if (!redis) return {};
+  const id = crypto.createHash('sha1').update(`${options.message}|${options.windowMs}|${options.limit}`).digest('hex').slice(0, 10);
+  return {
+    store: new RedisStore({ prefix: `rl:${id}:`, sendCommand: (command: string, ...args: string[]) => redis!.call(command, ...args) as any }),
+    passOnStoreError: true,
+  };
+}
+
 function limiter(options: Partial<Options> & { message: string }) {
   const { message, ...rest } = options;
   return rateLimit({
+    ...redisStore(options),
     standardHeaders: 'draft-7',
     legacyHeaders: false,
     keyGenerator: ipKey,

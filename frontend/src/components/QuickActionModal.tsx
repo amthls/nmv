@@ -41,17 +41,10 @@ export default function QuickActionModal({ isOpen, onClose }: QuickActionModalPr
     },
     {
       icon: FileText,
-      title: 'Đăng & Soạn chương theo dòng',
-      desc: 'Chèn chú thích dịch giả & ảnh minh họa tại dòng',
+      title: 'Đăng chương mới',
+      desc: 'Truyện chữ: soạn văn bản · Truyện tranh: kéo thả ảnh, thư mục, ZIP/CBZ',
       href: '/dang-chuong',
       color: 'from-amber-500/20 to-amber-600/10 text-amber-400 border-amber-500/30',
-    },
-    {
-      icon: FileText,
-      title: 'Đăng truyện tranh',
-      desc: 'Kéo thả cả chương: ảnh, thư mục, ZIP/CBZ',
-      href: '/dang-truyen-tranh',
-      color: 'from-rose-500/20 to-rose-600/10 text-rose-400 border-rose-500/30',
     },
     {
       icon: MessageSquare,

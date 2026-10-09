@@ -2,46 +2,110 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { 
-  Bookmark, 
-  BookOpen, 
-  Clock, 
-  Trash2, 
-  ArrowRight, 
-  CheckCircle2, 
-  AlertCircle,
-  Layers,
-  Star,
-  Eye,
+import {
+  Bookmark,
+  BookOpen,
+  Trash2,
+  ArrowRight,
+  CheckCircle2,
   Lock,
   LogIn,
-  Sparkles
+  Library,
+  Heart,
+  Plus,
+  Link2,
+  Globe,
+  Loader2
 } from 'lucide-react';
 import SmartImage from '@/components/common/SmartImage';
+import AlbumCard from '@/components/album/AlbumCard';
 import { useAuth } from '@/context/AuthContext';
+import { AlbumSummary, albumShareUrl, copyText, readJson } from '@/lib/albums';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+
+type Tab = 'albums' | 'saved_albums' | 'favorites' | 'line_bookmarks';
 
 export default function BookmarkPage() {
   const { isAuthenticated, isLoading: isAuthLoading, openAuthModal, authFetch } = useAuth();
 
-  const [mainTab, setMainTab] = useState<'favorites' | 'line_bookmarks'>('favorites');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  
+  const [mainTab, setMainTab] = useState<Tab>('albums');
+
+  const [albums, setAlbums] = useState<AlbumSummary[]>([]);
+  const [savedAlbums, setSavedAlbums] = useState<AlbumSummary[]>([]);
+  const [newAlbumName, setNewAlbumName] = useState('');
+  const [newAlbumPublic, setNewAlbumPublic] = useState(false);
+  const [isCreatingAlbum, setIsCreatingAlbum] = useState(false);
   const [favorites, setFavorites] = useState<any[]>([]);
   const [lineBookmarks, setLineBookmarks] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [feedback, setFeedback] = useState<string | null>(null);
 
-  // Followed stories belong to the signed-in account and live only on the server
+  const showFeedback = (msg: string) => {
+    setFeedback(msg);
+    setTimeout(() => setFeedback(null), 2800);
+  };
+
+  // Albums ("Truyện Đã Lưu" upgraded): mine, and other people's that I saved
+  const fetchAlbums = async (which: 'me' | 'saved') => {
+    setIsLoading(true);
+    try {
+      const json = await readJson(await authFetch(`${API_BASE_URL}/albums/${which}`));
+      (which === 'me' ? setAlbums : setSavedAlbums)(json.data);
+    } catch (e) {
+      console.error('Failed to load albums:', e);
+    }
+    setIsLoading(false);
+  };
+
+  const handleCreateAlbum = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAlbumName.trim() || isCreatingAlbum) return;
+    setIsCreatingAlbum(true);
+    try {
+      const json = await readJson(await authFetch(`${API_BASE_URL}/albums`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newAlbumName.trim(), is_public: newAlbumPublic }),
+      }));
+      setNewAlbumName('');
+      showFeedback(json.message);
+      fetchAlbums('me');
+    } catch (err: any) {
+      showFeedback(err.message);
+    } finally {
+      setIsCreatingAlbum(false);
+    }
+  };
+
+  const handleShareAlbum = async (album: AlbumSummary) => {
+    const url = albumShareUrl(album);
+    if (await copyText(url)) showFeedback('Đã sao chép link chia sẻ album.');
+    else window.prompt('Sao chép link album:', url);
+  };
+
+  const handleUnsaveAlbum = async (album: AlbumSummary) => {
+    setSavedAlbums(prev => prev.filter(a => a.id !== album.id));
+    try {
+      const json = await readJson(await authFetch(`${API_BASE_URL}/albums/${album.id}/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: album.share_key || undefined }),
+      }));
+      // the endpoint toggles: if it saved again (stale list), reload
+      if (json.action !== 'removed') fetchAlbums('saved');
+    } catch (err) {
+      fetchAlbums('saved');
+    }
+  };
+
+  // Followed stories (chapter update notifications) belong to the signed-in account
   const fetchFavorites = async () => {
     setIsLoading(true);
     let list: any[] = [];
     if (isAuthenticated) {
       try {
-        let url = `${API_BASE_URL}/favorites?`;
-        if (categoryFilter !== 'all') url += `category=${categoryFilter}&`;
-        const res = await authFetch(url);
+        const res = await authFetch(`${API_BASE_URL}/favorites`);
         if (res.ok) {
           const json = await res.json();
           if (json.success && Array.isArray(json.data)) list = json.data;
@@ -82,25 +146,15 @@ export default function BookmarkPage() {
   }, []);
 
   useEffect(() => {
-    if (mainTab === 'favorites') {
-      fetchFavorites();
-    } else {
-      fetchLineBookmarks();
+    if (!isAuthenticated) {
+      setIsLoading(false);
+      return;
     }
-  }, [mainTab, categoryFilter, isAuthenticated]);
-
-  const handleUpdateCategory = async (storyId: string, newCat: string) => {
-    try {
-      const res = await authFetch(`${API_BASE_URL}/favorites/toggle`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ story_id: storyId, category: newCat }),
-      });
-      if (res.ok) {
-        fetchFavorites();
-      }
-    } catch (e) {}
-  };
+    if (mainTab === 'albums') fetchAlbums('me');
+    else if (mainTab === 'saved_albums') fetchAlbums('saved');
+    else if (mainTab === 'favorites') fetchFavorites();
+    else fetchLineBookmarks();
+  }, [mainTab, isAuthenticated]);
 
   const handleDeleteFavorite = async (storyId: string, e: React.MouseEvent) => {
     e.preventDefault();
@@ -149,72 +203,45 @@ export default function BookmarkPage() {
     );
   }
 
+  const tabs: { id: Tab; label: string; count: number; icon: any }[] = [
+    { id: 'albums', label: 'Album của tôi', count: albums.length, icon: Library },
+    { id: 'saved_albums', label: 'Album đã lưu', count: savedAlbums.length, icon: Bookmark },
+    { id: 'favorites', label: 'Đang theo dõi', count: favorites.length, icon: Heart },
+    { id: 'line_bookmarks', label: 'Đoạn Bookmark', count: lineBookmarks.length, icon: BookOpen },
+  ];
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 pb-24">
-      
+
       {/* 1. Header Banner */}
       <div className="rounded-3xl p-6 sm:p-8 glass-panel border border-brand-500/20 bg-gradient-to-r from-brand-900/30 via-indigo-900/20 to-surface shadow-xl space-y-2">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-500/20 text-brand-300 border border-brand-500/30 text-xs font-bold">
-          <Bookmark className="w-3.5 h-3.5 text-brand-400" /> Tủ Sách & Đánh Dấu Cá Nhân
+          <Library className="w-3.5 h-3.5 text-brand-400" /> Tủ Sách & Đánh Dấu Cá Nhân
         </div>
         <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-wide">
-          Danh Sách Đã Lưu & Bookmark
+          Album & Bookmark
         </h1>
         <p className="text-xs sm:text-sm text-gray-300">
-          Quản lý tủ sách truyện theo trạng thái đọc và lưu trữ các đoạn văn tâm đắc để đọc lại bất kỳ lúc nào!
+          Xếp truyện vào các album tự đặt tên (một truyện nằm được trong nhiều album), chia sẻ album bằng link, lưu hoặc sao chép album của người khác.
         </p>
       </div>
 
       {/* 2. Main Tab Switcher */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-white/5 border border-white/10 w-full sm:w-auto">
+      <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-white/5 border border-white/10 w-full sm:w-fit overflow-x-auto">
+        {tabs.map(({ id, label, count, icon: Icon }) => (
           <button
-            onClick={() => setMainTab('favorites')}
-            className={`px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
-              mainTab === 'favorites'
+            key={id}
+            onClick={() => setMainTab(id)}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap ${
+              mainTab === id
                 ? 'bg-brand-600 text-snow shadow-md shadow-brand-500/25'
                 : 'text-gray-400 hover:text-white'
             }`}
           >
-            <BookOpen className="w-4 h-4" />
-            Truyện Đã Lưu ({favorites.length})
+            <Icon className="w-4 h-4" />
+            {label}{mainTab === id && !isLoading ? ` (${count})` : ''}
           </button>
-          <button
-            onClick={() => setMainTab('line_bookmarks')}
-            className={`px-5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
-              mainTab === 'line_bookmarks'
-                ? 'bg-brand-600 text-snow shadow-md shadow-brand-500/25'
-                : 'text-gray-400 hover:text-white'
-            }`}
-          >
-            <Bookmark className="w-4 h-4" />
-            Đoạn Bookmark ({lineBookmarks.length})
-          </button>
-        </div>
-
-        {mainTab === 'favorites' && (
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 w-full sm:w-auto">
-            {[
-              { id: 'all', name: 'Tất cả' },
-              { id: 'reading', name: 'Đang đọc' },
-              { id: 'completed', name: 'Đã đọc xong' },
-              { id: 'on_hold', name: 'Tạm dừng' },
-              { id: 'plan_to_read', name: 'Dự định đọc' },
-            ].map((c) => (
-              <button
-                key={c.id}
-                onClick={() => setCategoryFilter(c.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition ${
-                  categoryFilter === c.id
-                    ? 'bg-white/15 text-white border border-white/20'
-                    : 'bg-white/5 text-gray-400 hover:text-white'
-                }`}
-              >
-                {c.name}
-              </button>
-            ))}
-          </div>
-        )}
+        ))}
       </div>
 
       {/* 3. Content */}
@@ -225,7 +252,7 @@ export default function BookmarkPage() {
           </div>
           <h3 className="text-lg font-bold text-white">Đăng nhập để xem tủ sách của bạn</h3>
           <p className="text-xs text-gray-400 max-w-sm mx-auto">
-            Truyện đang theo dõi và bookmark được lưu theo tài khoản của bạn.
+            Album, truyện đang theo dõi và bookmark được lưu theo tài khoản của bạn.
           </p>
           <button
             onClick={() => openAuthModal('login')}
@@ -234,45 +261,132 @@ export default function BookmarkPage() {
             <LogIn className="w-4 h-4" /> Đăng nhập
           </button>
         </div>
-      ) : isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
-          <div className="h-64 rounded-3xl bg-white/5" />
-          <div className="h-64 rounded-3xl bg-white/5" />
-          <div className="h-64 rounded-3xl bg-white/5" />
-        </div>
       ) : (
         <>
-          {mainTab === 'favorites' && (
-            <div>
-              {favorites.length === 0 ? (
-                <div className="text-center py-20 glass-panel rounded-3xl border border-white/10 bg-glass space-y-4">
-                  <div className="w-16 h-16 rounded-full bg-brand-500/10 text-brand-400 flex items-center justify-center mx-auto">
-                    <BookOpen className="w-8 h-8" />
-                  </div>
-                  <h3 className="text-lg font-bold text-white">Chưa có truyện nào trong danh sách này</h3>
-                  <p className="text-xs text-gray-400 max-w-sm mx-auto">
-                    Khi xem bất kỳ truyện nào, bấm nút "Lưu truyện" hoặc "Yêu thích" để đưa vào danh mục theo dõi của bạn.
-                  </p>
-                  <Link
-                    href="/kham-pha"
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow text-xs font-semibold shadow-lg shadow-brand-500/25 transition"
-                  >
-                    Khám phá truyện mới ngay
-                  </Link>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {favorites.map((fav) => (
-                    <div
-                      key={fav.id}
-                      className="group rounded-3xl overflow-hidden glass-panel border border-white/10 bg-glass hover:border-brand-500/40 transition duration-300 flex flex-col justify-between"
+          {mainTab === 'albums' && (
+            <form onSubmit={handleCreateAlbum} className="p-4 rounded-2xl glass-panel border border-white/10 flex flex-col sm:flex-row sm:items-center gap-3">
+              <input
+                value={newAlbumName}
+                onChange={(e) => setNewAlbumName(e.target.value)}
+                maxLength={100}
+                placeholder="Tên album mới, ví dụ: Isekai hay nhất, Đọc cuối tuần..."
+                className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-brand-500"
+              />
+              <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer select-none">
+                <input type="checkbox" checked={newAlbumPublic} onChange={(e) => setNewAlbumPublic(e.target.checked)} className="accent-brand-500" />
+                <Globe className="w-3.5 h-3.5" /> Công khai
+              </label>
+              <button
+                type="submit"
+                disabled={!newAlbumName.trim() || isCreatingAlbum}
+                className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-50"
+              >
+                {isCreatingAlbum ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                Tạo album
+              </button>
+            </form>
+          )}
+
+          {isLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
+              <div className="h-64 rounded-3xl bg-white/5" />
+              <div className="h-64 rounded-3xl bg-white/5" />
+              <div className="h-64 rounded-3xl bg-white/5" />
+            </div>
+          ) : (
+            <>
+              {mainTab === 'albums' && (
+                albums.length === 0 ? (
+                  <div className="text-center py-16 glass-panel rounded-3xl border border-white/10 bg-glass space-y-4">
+                    <div className="w-16 h-16 rounded-full bg-brand-500/10 text-brand-400 flex items-center justify-center mx-auto">
+                      <Library className="w-8 h-8" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white">Bạn chưa có album nào</h3>
+                    <p className="text-xs text-gray-400 max-w-sm mx-auto">
+                      Tạo album ở trên, hoặc mở một truyện và bấm "Lưu vào album".
+                    </p>
+                    <Link
+                      href="/kham-pha"
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow text-xs font-semibold shadow-lg shadow-brand-500/25 transition"
                     >
-                      <div className="p-5 flex gap-4">
-                        <Link href={`/truyen/${fav.slug}`} className="w-24 h-32 rounded-2xl overflow-hidden flex-shrink-0 bg-gray-900 border border-white/10 relative">
-                          <SmartImage src={fav.cover_image_url} alt={fav.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
-                        </Link>
-                        <div className="min-w-0 flex-1 flex flex-col justify-between">
-                          <div>
+                      Khám phá truyện mới ngay
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {albums.map((album) => (
+                      <AlbumCard
+                        key={album.id}
+                        album={album}
+                        actions={
+                          <button
+                            onClick={() => handleShareAlbum(album)}
+                            className="flex-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 bg-white/5 hover:bg-white/10 text-gray-300 transition"
+                          >
+                            <Link2 className="w-3 h-3" /> Chia sẻ link
+                          </button>
+                        }
+                      />
+                    ))}
+                  </div>
+                )
+              )}
+
+              {mainTab === 'saved_albums' && (
+                savedAlbums.length === 0 ? (
+                  <div className="text-center py-16 glass-panel rounded-3xl border border-white/10 bg-glass space-y-4">
+                    <div className="w-16 h-16 rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center mx-auto">
+                      <Bookmark className="w-8 h-8" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white">Chưa lưu album nào của người khác</h3>
+                    <p className="text-xs text-gray-400 max-w-sm mx-auto">
+                      Cuối mỗi trang truyện có mục "Album khác có truyện này". Bấm "Lưu" để theo dõi album: khi chủ album thêm truyện, bạn cũng thấy ngay.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {savedAlbums.map((album) => (
+                      <AlbumCard
+                        key={album.id}
+                        album={album}
+                        showOwner
+                        actions={
+                          <button
+                            onClick={() => handleUnsaveAlbum(album)}
+                            className="flex-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-rose-300 transition"
+                          >
+                            <Trash2 className="w-3 h-3" /> Bỏ lưu
+                          </button>
+                        }
+                      />
+                    ))}
+                  </div>
+                )
+              )}
+
+              {mainTab === 'favorites' && (
+                favorites.length === 0 ? (
+                  <div className="text-center py-20 glass-panel rounded-3xl border border-white/10 bg-glass space-y-4">
+                    <div className="w-16 h-16 rounded-full bg-brand-500/10 text-brand-400 flex items-center justify-center mx-auto">
+                      <Heart className="w-8 h-8" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white">Chưa theo dõi truyện nào</h3>
+                    <p className="text-xs text-gray-400 max-w-sm mx-auto">
+                      Bấm "Theo dõi" trên trang truyện để nhận thông báo khi có chương mới.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {favorites.map((fav) => (
+                      <div
+                        key={fav.id}
+                        className="group rounded-3xl overflow-hidden glass-panel border border-white/10 bg-glass hover:border-brand-500/40 transition duration-300 flex flex-col justify-between"
+                      >
+                        <div className="p-5 flex gap-4">
+                          <Link href={`/truyen/${fav.slug}`} className="w-24 h-32 rounded-2xl overflow-hidden flex-shrink-0 bg-gray-900 border border-white/10 relative">
+                            <SmartImage src={fav.cover_image_url} alt={fav.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+                          </Link>
+                          <div className="min-w-0 flex-1">
                             <span className="text-[10px] font-bold uppercase tracking-wider text-brand-400">
                               {fav.story_type}
                             </span>
@@ -283,114 +397,106 @@ export default function BookmarkPage() {
                             </Link>
                             <p className="text-xs text-gray-400 line-clamp-1 mt-1">{fav.author_name}</p>
                           </div>
+                        </div>
 
-                          <div className="pt-2">
-                            <select
-                              value={fav.category}
-                              onChange={(e) => handleUpdateCategory(fav.story_id, e.target.value)}
-                              className="text-[11px] font-medium bg-white/5 border border-white/10 text-brand-300 rounded-lg px-2 py-1 focus:outline-none"
+                        <div className="px-5 py-3 border-t border-white/5 bg-black/20 flex items-center justify-between text-xs">
+                          <span className="text-gray-400 text-[11px]">
+                            {fav.total_chapters || 0} chương
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={(e) => handleDeleteFavorite(fav.story_id, e)}
+                              className="p-1.5 text-gray-400 hover:text-red-400 transition"
+                              title="Bỏ theo dõi"
                             >
-                              <option value="reading" className="bg-glass text-white">Đang đọc</option>
-                              <option value="completed" className="bg-glass text-white">Đã đọc xong</option>
-                              <option value="on_hold" className="bg-glass text-white">Tạm dừng</option>
-                              <option value="plan_to_read" className="bg-glass text-white">Dự định đọc</option>
-                            </select>
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                            <Link
+                              href={`/truyen/${fav.slug}`}
+                              className="flex items-center gap-1 text-brand-400 hover:text-brand-300 font-semibold"
+                            >
+                              Đọc <ArrowRight className="w-3.5 h-3.5" />
+                            </Link>
                           </div>
                         </div>
                       </div>
+                    ))}
+                  </div>
+                )
+              )}
 
-                      <div className="px-5 py-3 border-t border-white/5 bg-black/20 flex items-center justify-between text-xs">
-                        <span className="text-gray-400 text-[11px]">
-                          {fav.total_chapters || 0} chương
-                        </span>
-                        <div className="flex items-center gap-2">
+              {mainTab === 'line_bookmarks' && (
+                lineBookmarks.length === 0 ? (
+                  <div className="text-center py-20 glass-panel rounded-3xl border border-white/10 bg-glass space-y-4">
+                    <div className="w-16 h-16 rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center mx-auto">
+                      <Bookmark className="w-8 h-8" />
+                    </div>
+                    <h3 className="text-lg font-bold text-white">Chưa có bookmark đánh dấu dòng nào</h3>
+                    <p className="text-xs text-gray-400 max-w-sm mx-auto">
+                      Khi đang đọc một chương truyện, bạn có thể click vào bất kỳ đoạn văn nào để ghim lại làm bookmark riêng.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {lineBookmarks.map((bm) => (
+                      <div
+                        key={bm.id}
+                        className="p-5 rounded-3xl glass-panel border border-white/10 bg-glass hover:border-brand-500/30 transition flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                      >
+                        <Link
+                          href={`/truyen/${bm.story_slug}/${bm.chapter_slug}?line=${bm.line_index}#line-${bm.line_index}`}
+                          className="space-y-1.5 min-w-0 flex-1 block group/item cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-bold text-brand-400 group-hover/item:underline">{bm.story_title}</span>
+                            <span className="text-xs text-gray-500">•</span>
+                            <span className="text-xs text-gray-300 font-medium group-hover/item:text-white">Chương {bm.chapter_number}: {bm.chapter_title}</span>
+                          </div>
+
+                          {bm.line_text && (
+                            <p className="text-sm text-gray-200 italic pl-3 border-l-2 border-brand-500/50 py-1 bg-white/[0.02] rounded-r-xl group-hover/item:text-brand-200 transition">
+                              "{bm.line_text}"
+                            </p>
+                          )}
+
+                          {bm.note && (
+                            <p className="text-xs text-amber-300 flex items-center gap-1 pt-1">
+                              <Bookmark className="w-3 h-3" />
+                              Ghi chú: {bm.note}
+                            </p>
+                          )}
+                        </Link>
+
+                        <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
                           <button
-                            onClick={(e) => handleDeleteFavorite(fav.story_id, e)}
-                            className="p-1.5 text-gray-400 hover:text-red-400 transition"
-                            title="Xóa khỏi danh sách"
+                            onClick={(e) => handleDeleteBookmark(bm.id, e)}
+                            className="p-2 text-gray-400 hover:text-red-400 transition"
+                            title="Xóa bookmark"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
                           <Link
-                            href={`/truyen/${fav.slug}`}
-                            className="flex items-center gap-1 text-brand-400 hover:text-brand-300 font-semibold"
+                            href={`/truyen/${bm.story_slug}/${bm.chapter_slug}?line=${bm.line_index}#line-${bm.line_index}`}
+                            className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow text-xs font-semibold shadow transition flex items-center gap-1.5"
                           >
-                            Đọc <ArrowRight className="w-3.5 h-3.5" />
+                            Đến chương <ArrowRight className="w-3.5 h-3.5" />
                           </Link>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {mainTab === 'line_bookmarks' && (
-            <div>
-              {lineBookmarks.length === 0 ? (
-                <div className="text-center py-20 glass-panel rounded-3xl border border-white/10 bg-glass space-y-4">
-                  <div className="w-16 h-16 rounded-full bg-amber-500/10 text-amber-400 flex items-center justify-center mx-auto">
-                    <Bookmark className="w-8 h-8" />
+                    ))}
                   </div>
-                  <h3 className="text-lg font-bold text-white">Chưa có bookmark đánh dấu dòng nào</h3>
-                  <p className="text-xs text-gray-400 max-w-sm mx-auto">
-                    Khi đang đọc một chương truyện, bạn có thể click vào bất kỳ đoạn văn nào để ghim lại làm bookmark riêng.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {lineBookmarks.map((bm) => (
-                    <div
-                      key={bm.id}
-                      className="p-5 rounded-3xl glass-panel border border-white/10 bg-glass hover:border-brand-500/30 transition flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-                    >
-                      <Link 
-                        href={`/truyen/${bm.story_slug}/${bm.chapter_slug}?line=${bm.line_index}#line-${bm.line_index}`}
-                        className="space-y-1.5 min-w-0 flex-1 block group/item cursor-pointer"
-                      >
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-xs font-bold text-brand-400 group-hover/item:underline">{bm.story_title}</span>
-                          <span className="text-xs text-gray-500">•</span>
-                          <span className="text-xs text-gray-300 font-medium group-hover/item:text-white">Chương {bm.chapter_number}: {bm.chapter_title}</span>
-                        </div>
-
-                        {bm.line_text && (
-                          <p className="text-sm text-gray-200 italic pl-3 border-l-2 border-brand-500/50 py-1 bg-white/[0.02] rounded-r-xl group-hover/item:text-brand-200 transition">
-                            "{bm.line_text}"
-                          </p>
-                        )}
-
-                        {bm.note && (
-                          <p className="text-xs text-amber-300 flex items-center gap-1 pt-1">
-                            <Bookmark className="w-3 h-3" />
-                            Ghi chú: {bm.note}
-                          </p>
-                        )}
-                      </Link>
-
-                      <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-                        <button
-                          onClick={(e) => handleDeleteBookmark(bm.id, e)}
-                          className="p-2 text-gray-400 hover:text-red-400 transition"
-                          title="Xóa bookmark"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                        <Link
-                          href={`/truyen/${bm.story_slug}/${bm.chapter_slug}?line=${bm.line_index}#line-${bm.line_index}`}
-                          className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow text-xs font-semibold shadow transition flex items-center gap-1.5"
-                        >
-                          Đến chương <ArrowRight className="w-3.5 h-3.5" />
-                        </Link>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                )
               )}
-            </div>
+            </>
           )}
         </>
+      )}
+
+      {feedback && (
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-zinc-900/95 border border-white/20 text-white shadow-2xl backdrop-blur-md">
+          <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+          <span className="text-xs font-semibold">{feedback}</span>
+        </div>
       )}
     </div>
   );

@@ -6,12 +6,14 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import StoryCardGrid, { CardMeta, Story } from '@/components/explore/StoryCardGrid';
 
 /** One horizontal row of poster cards with scroll buttons. */
-export default function StoryRail({ title, href, stories, meta, ranked = false }: {
+export default function StoryRail({ title, subtitle, href, stories, meta, ranked = false, onItemClick }: {
   title: string;
+  subtitle?: string;
   href?: string;
   stories: Story[];
   meta: CardMeta;
   ranked?: boolean;
+  onItemClick?: (story: Story) => void;
 }) {
   const scroller = useRef<HTMLDivElement>(null);
   const [edge, setEdge] = useState({ start: true, end: false });
@@ -45,6 +47,7 @@ export default function StoryRail({ title, href, stories, meta, ranked = false }
               <ChevronRight className="w-5 h-5 transition-transform group-hover:translate-x-0.5" />
             </Link>
           ) : title}
+          {subtitle && <span className="block text-xs font-normal text-gray-400 mt-0.5">{subtitle}</span>}
         </h2>
         <div className="flex items-center gap-1.5">
           <button
@@ -74,7 +77,7 @@ export default function StoryRail({ title, href, stories, meta, ranked = false }
         className="scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0 flex gap-3 sm:gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-2"
       >
         {stories.map((story, idx) => (
-          <div key={story.id} className="snap-start shrink-0 w-[132px] sm:w-[156px] lg:w-[172px]">
+          <div key={story.id} className="snap-start shrink-0 w-[132px] sm:w-[156px] lg:w-[172px]" onClickCapture={onItemClick ? () => onItemClick(story) : undefined}>
             <StoryCardGrid story={story} meta={meta} rank={ranked ? idx + 1 : undefined} />
           </div>
         ))}

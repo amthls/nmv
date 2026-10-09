@@ -16,7 +16,8 @@ FROM node:22-slim AS runner
 WORKDIR /app
 
 # fonts-noto-cjk + fonts-dejavu-core: fallback glyphs (【】, CJK, symbols) for the EPUB/PDF export worker
-RUN apt-get -o Acquire::Check-Date=false update -y     && apt-get install -y --no-install-recommends openssl ca-certificates fonts-noto-cjk fonts-dejavu-core     && rm -rf /var/lib/apt/lists/*
+# upgrade: pick up Debian security fixes newer than the base image (CI scans the result)
+RUN apt-get -o Acquire::Check-Date=false update -y     && apt-get upgrade -y     && apt-get install -y --no-install-recommends openssl ca-certificates fonts-noto-cjk fonts-dejavu-core     && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production
 

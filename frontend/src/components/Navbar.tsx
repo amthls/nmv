@@ -22,12 +22,13 @@ import {
   LogIn,
   UserPlus,
   Flag,
-  ImagePlus,
-  Dices
+  Dices,
+  MessageCircle
 } from 'lucide-react';
 import QuickActionModal from './QuickActionModal';
 import AuthModal from './auth/AuthModal';
 import { useAuth } from '@/context/AuthContext';
+import { useRealtime } from '@/lib/realtime';
 import ThemeToggle from './common/ThemeToggle';
 import StoryCaseOpening from './random/StoryCaseOpening';
 
@@ -54,6 +55,7 @@ export default function Navbar() {
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const notificationRef = useRef<HTMLDivElement>(null);
 
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -73,18 +75,27 @@ export default function Navbar() {
     } catch (e) {
       console.error('Failed to fetch notifications:', e);
     }
+    try {
+      const res = await authFetch(`${API_BASE_URL}/messages`);
+      const json = await res.json();
+      if (res.ok && json.success) setUnreadMessages(json.data.unread_count || 0);
+    } catch (e) {}
   };
 
   useEffect(() => {
     if (isAuthenticated) {
       fetchNotifications();
-      const timer = setInterval(fetchNotifications, 25000);
+      const timer = setInterval(fetchNotifications, 120000); // fallback; pushes arrive over the socket
       return () => clearInterval(timer);
     } else {
       setNotifications([]);
       setUnreadCount(0);
+      setUnreadMessages(0);
     }
   }, [isAuthenticated]);
+
+  useRealtime('notification', () => fetchNotifications());
+  useRealtime('dm', () => fetchNotifications());
 
   // Handle clicking outside
   useEffect(() => {
@@ -234,6 +245,21 @@ export default function Navbar() {
             </button>
 
             {/* Notifications Menu (if authenticated) */}
+            {isAuthenticated && (
+              <Link
+                href="/tin-nhan"
+                className="relative p-2 rounded-xl border transition text-gray-300 hover:text-white bg-white/5 border-white/10 hover:bg-white/10"
+                title="Tin nhắn"
+              >
+                <MessageCircle className="w-5 h-5" />
+                {unreadMessages > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-[10px] font-bold text-snow flex items-center justify-center ring-2 ring-surface">
+                    {unreadMessages > 9 ? '9+' : unreadMessages}
+                  </span>
+                )}
+              </Link>
+            )}
+
             {isAuthenticated && (
               <div className="relative" ref={notificationRef}>
                 <button
@@ -393,7 +419,7 @@ export default function Navbar() {
                         className="flex items-center gap-2.5 px-4 py-2 text-xs text-gray-300 hover:text-white hover:bg-white/5 transition"
                       >
                         <Bookmark className="w-4 h-4 text-amber-400" />
-                        <span>Đã lưu & Yêu thích</span>
+                        <span>Album & Bookmark</span>
                       </Link>
                       <Link
                         href="/lich-su"
@@ -426,14 +452,6 @@ export default function Navbar() {
                         >
                           <BookOpen className="w-4 h-4 text-indigo-400" />
                           <span>Đăng chương mới</span>
-                        </Link>
-                        <Link
-                          href="/dang-truyen-tranh"
-                          onClick={() => setIsUserMenuOpen(false)}
-                          className="flex items-center gap-2.5 px-4 py-1.5 text-xs text-gray-300 hover:text-white hover:bg-white/5 transition"
-                        >
-                          <ImagePlus className="w-4 h-4 text-rose-400" />
-                          <span>Đăng truyện tranh</span>
                         </Link>
                       </div>
                     )}
@@ -539,7 +557,7 @@ export default function Navbar() {
               onClick={() => setIsMobileMenuOpen(false)}
               className="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-white/5"
             >
-              Đã lưu & Yêu thích
+              Album & Bookmark
             </Link>
             <Link 
               href="/fandom" 

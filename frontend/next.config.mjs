@@ -2,12 +2,9 @@
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false, // do not advertise the framework
-  images: {
-    remotePatterns: [
-      { protocol: 'https', hostname: '**' },
-      { protocol: 'http', hostname: '**' },
-    ],
-  },
+  // next/image is not used (SmartImage is a plain <img>), so the /_next/image optimizer stays off:
+  // with open remotePatterns it was a public image proxy and has had critical CVEs.
+  images: { unoptimized: true },
   async headers() {
     return [
       {

@@ -25,3 +25,7 @@ if (!IS_PROD && JWT_SECRET === KNOWN_DEFAULT_JWT_SECRET) {
 export const ENABLE_DEMO_ACCOUNTS = process.env.ENABLE_DEMO_ACCOUNTS === 'true';
 
 export const RABBITMQ_URL = process.env.RABBITMQ_URL || '';
+
+if (IS_PROD && !process.env.REDIS_URL) {
+  console.warn('[Config] REDIS_URL is not set: no API cache, per-process rate limits, direct view writes, no realtime push.');
+}

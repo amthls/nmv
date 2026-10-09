@@ -1,6 +1,7 @@
 ﻿'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { connectRealtime, disconnectRealtime } from '@/lib/realtime';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -246,6 +247,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setToken(null);
     setUser(null);
   };
+
+  // Realtime pushes only for signed-in users
+  useEffect(() => {
+    if (user) connectRealtime(token);
+    else disconnectRealtime();
+  }, [user?.id, token]);
 
   const hasRole = (...roles: string[]): boolean => {
     if (!user || !user.roles) return false;

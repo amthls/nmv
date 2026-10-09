@@ -1,6 +1,7 @@
 ﻿import { Response } from 'express';
 import { pool } from '../config/db';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
+import { isUuid } from '../utils/validation';
 
 /**
  * Lấy danh sách thông báo của người dùng hiện tại
@@ -74,6 +75,9 @@ export const markNotificationAsRead = async (req: AuthenticatedRequest, res: Res
 
     const { id } = req.params;
     const currentUserId = req.user.id;
+    if (!isUuid(id)) {
+      return res.status(404).json({ success: false, message: 'Thông báo không tồn tại.' });
+    }
 
     await pool.query(`
       UPDATE notifications SET is_read = true, read_at = NOW()
@@ -119,6 +123,9 @@ export const deleteNotification = async (req: AuthenticatedRequest, res: Respons
 
     const { id } = req.params;
     const currentUserId = req.user.id;
+    if (!isUuid(id)) {
+      return res.status(404).json({ success: false, message: 'Thông báo không tồn tại.' });
+    }
 
     await pool.query(`
       DELETE FROM notifications WHERE id = $1::uuid AND user_id = $2::uuid;

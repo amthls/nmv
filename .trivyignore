@@ -1,0 +1,8 @@
+# Accepted findings for the CI image scan (.github/workflows/ci.yml). Each entry needs a reason and
+# an expiry date (exp:), after which CI fails again and the decision must be revisited.
+
+# next 14.2.x: fixed only in Next 15/16 (major upgrade, tracked in Plan/scale-phase1.md).
+# Windows-hosted servers only; we run Linux containers.
+CVE-2026-75604 exp:2026-11-30
+# Image Optimization API RCE: optimizer disabled (images.unoptimized) and /_next/image blocked in nginx.
+GHSA-2xp9-vwfh-vxw4 exp:2026-11-30

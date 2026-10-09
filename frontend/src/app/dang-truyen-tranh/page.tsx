@@ -438,7 +438,7 @@ function MangaUploadContent() {
   if (!isAuthenticated) {
     return (
       <div className="max-w-xl mx-auto px-4 py-24 text-center space-y-4">
-        <h1 className="text-2xl font-bold text-white">Đăng truyện tranh</h1>
+        <h1 className="text-2xl font-bold text-white">Đăng chương mới</h1>
         <p className="text-sm text-gray-400">Bạn cần đăng nhập để đăng truyện.</p>
         <button onClick={() => openAuthModal('login')} className="px-5 py-2.5 rounded-lg bg-brand-600 hover:bg-brand-500 text-snow text-sm font-semibold">Đăng nhập</button>
       </div>
@@ -481,7 +481,7 @@ function MangaUploadContent() {
 
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">Đăng truyện tranh</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">Đăng chương mới</h1>
           <p className="mt-1 text-sm text-gray-400">Kéo thả cả chương (ảnh, thư mục, ZIP/CBZ). Trang tự xếp theo tên file, ảnh được nén và thu nhỏ trên máy chủ.</p>
         </div>
         <Link href="/dang-truyen" className="text-xs font-semibold text-brand-500 hover:underline">+ Tạo bộ truyện tranh mới</Link>
@@ -847,7 +847,7 @@ function MangaUploadContent() {
 
 export default function MangaUploadPage() {
   return (
-    <Suspense fallback={<PageLoader label="Đang tải trình đăng truyện tranh..." />}>
+    <Suspense fallback={<PageLoader label="Đang tải trình đăng chương..." />}>
       <MangaUploadContent />
     </Suspense>
   );

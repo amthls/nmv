@@ -106,6 +106,12 @@ def ensure_env():
             problems.append("JWT_SECRET (needs >= 32 random chars)")
         if not env.get("RABBITMQ_PASSWORD") or env["RABBITMQ_PASSWORD"] == "change-me":
             problems.append("RABBITMQ_PASSWORD")
+        if not env.get("REDIS_PASSWORD") or env["REDIS_PASSWORD"] == "change-me":
+            # Added after many installs already had a .env: fill it in instead of refusing to start
+            with open(ENV_FILE, "a", encoding="utf-8") as f:
+                f.write(f"\n# Redis (cache, view counters, shared rate limits, realtime)\nREDIS_PASSWORD={secrets.token_hex(24)}\n")
+            info("Added a random REDIS_PASSWORD to .env")
+            env = read_env(ENV_FILE)
         if problems:
             die(f".env exists but these values are missing/placeholder: {', '.join(problems)}.\n"
                 f"       Fix them, or delete .env and rerun to generate a fresh one.")
@@ -120,6 +126,7 @@ def ensure_env():
         "JWT_SECRET": secrets.token_hex(32),
         "RABBITMQ_PASSWORD": rabbit_pw,
         "RABBITMQ_URL": f"amqp://novel:{rabbit_pw}@localhost:5672",
+        "REDIS_PASSWORD": secrets.token_hex(24),
     }
     seen = set()
     out = []
@@ -136,7 +143,7 @@ def ensure_env():
     with open(ENV_FILE, "w", encoding="utf-8") as f:
         f.writelines(out)
     os.chmod(ENV_FILE, 0o600)
-    info("Created .env with random JWT_SECRET and RABBITMQ_PASSWORD")
+    info("Created .env with random JWT_SECRET, RABBITMQ_PASSWORD and REDIS_PASSWORD")
     return read_env(ENV_FILE)
 
 

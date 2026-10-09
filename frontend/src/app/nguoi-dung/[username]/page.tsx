@@ -9,6 +9,7 @@ import {
   CalendarDays,
   Ban,
   FileText,
+  MessageCircle,
   MessageSquare,
   Shield,
   ShieldCheck,
@@ -191,6 +192,14 @@ export default function UserProfilePage() {
               </span>
               {isSelf && (
                 <Link href="/tai-khoan" className="text-brand-400 hover:underline font-semibold">Sửa hồ sơ của bạn</Link>
+              )}
+              {!isSelf && !mod?.deleted_at && (
+                <Link
+                  href={`/tin-nhan?u=${encodeURIComponent(profile.username)}`}
+                  className="px-3 py-1 rounded-lg bg-brand-600 hover:bg-brand-500 text-snow font-bold flex items-center gap-1.5 transition"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" /> Nhắn tin
+                </Link>
               )}
             </div>
             <p className="text-sm text-gray-300 leading-relaxed whitespace-pre-line max-w-2xl">

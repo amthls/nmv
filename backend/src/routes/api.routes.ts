@@ -73,7 +73,10 @@ import {
   rejectPost,
   bulkApprovePosts,
   bulkRejectPosts,
-  reactToPost 
+  reactToPost,
+  getFandomSidebar,
+  togglePinPost,
+  togglePostMute
 } from '../controllers/post.controller';
 import { getComments, createComment, likeComment, updateComment, deleteComment } from '../controllers/comment.controller';
 import { createReport, getReports, resolveReport } from '../controllers/report.controller';
@@ -107,9 +110,32 @@ import {
   toggleFavorite,
   checkFavoriteStatus
 } from '../controllers/bookmark.controller';
+import {
+  getMyAlbums,
+  getSavedAlbums,
+  getAlbumsByStory,
+  getAlbum,
+  createAlbum,
+  updateAlbum,
+  deleteAlbum,
+  resetShareLink,
+  addStoryToAlbum,
+  removeStoryFromAlbum,
+  toggleSaveAlbum,
+  copyAlbum
+} from '../controllers/album.controller';
 
+import {
+  getHomeRecommendations,
+  getRelatedStories,
+  postRecEvents,
+  trainNow,
+  getRecStatus
+} from '../controllers/recommendation.controller';
 import { createExport, getExport, downloadExport } from '../controllers/export.controller';
+import { getConversations, getThread, sendDirectMessage } from '../controllers/message.controller';
 import { queueStatus } from '../services/queue.service';
+import { cacheJson } from '../middlewares/cache';
 import { loginLimiter, registerLimiter, uploadLimiter, mangaUploadLimiter, searchLimiter, perUserLimiter, exportLimiter } from '../middlewares/security';
 
 const router = Router();
@@ -120,6 +146,7 @@ const postLimiter = perUserLimiter({ windowMs: 60 * 60_000, limit: 20, message: 
 const reactLimiter = perUserLimiter({ windowMs: 60_000, limit: 60, message: 'Bạn thả cảm xúc quá nhanh.' });
 const reportLimiter = perUserLimiter({ windowMs: 60 * 60_000, limit: 10, message: 'Bạn gửi quá nhiều báo cáo. Vui lòng thử lại sau.' });
 const chatLimiter = perUserLimiter({ windowMs: 60_000, limit: 30, message: 'Bạn nhắn quá nhanh.' });
+const albumLimiter = perUserLimiter({ windowMs: 60 * 60_000, limit: 60, message: 'Bạn tạo/sao chép album quá nhiều. Vui lòng thử lại sau.' });
 const joinRequestLimiter = perUserLimiter({ windowMs: 60 * 60_000, limit: 10, message: 'Bạn gửi quá nhiều yêu cầu gia nhập. Vui lòng thử lại sau.' });
 
 // Health Check
@@ -146,14 +173,14 @@ router.post('/upload/image', requireAuth, uploadLimiter, uploadImages.single('im
 router.post('/upload/manga-pages', requireAuth, mangaUploadLimiter, uploadMangaPageFiles.array('pages', 20) as any, uploadMangaPages as any);
 
 // Tags & Categories
-router.get('/tags', getTags);
+router.get('/tags', cacheJson(600), getTags);
 
 // Stories
 router.get('/stories', searchLimiter, getStories);
 router.get('/stories/explore', searchLimiter, exploreStories);
-router.get('/stories/trending', getTrendingStories);
-router.get('/stories/recently-updated', getRecentlyUpdatedStories);
-router.get('/stories/illustrations', getFeaturedIllustrations);
+router.get('/stories/trending', cacheJson(120), getTrendingStories);
+router.get('/stories/recently-updated', cacheJson(60), getRecentlyUpdatedStories);
+router.get('/stories/illustrations', cacheJson(300), getFeaturedIllustrations);
 router.get('/stories/manageable', requireAuth, getManageableStories);
 router.get('/stories/:slug', optionalAuth, getStoryBySlug);
 router.get('/stories/:slug/chapters/:chapterSlug', optionalAuth, getChapterBySlug);
@@ -206,6 +233,28 @@ router.get('/favorites', requireAuth, getFavorites);
 router.post('/favorites/toggle', requireAuth, toggleFavorite);
 router.get('/favorites/status/:storyId', optionalAuth, checkFavoriteStatus);
 
+// Albums: named story lists, shareable by link, saveable and copyable by other users
+router.get('/albums/me', requireAuth, getMyAlbums);
+router.get('/albums/saved', requireAuth, getSavedAlbums);
+router.get('/albums/by-story/:storyId', optionalAuth, getAlbumsByStory);
+router.post('/albums', requireAuth, albumLimiter, createAlbum);
+router.get('/albums/:id', optionalAuth, getAlbum);
+router.put('/albums/:id', requireAuth, updateAlbum);
+router.delete('/albums/:id', requireAuth, deleteAlbum);
+router.post('/albums/:id/share-link/reset', requireAuth, resetShareLink);
+router.post('/albums/:id/stories', requireAuth, addStoryToAlbum);
+router.delete('/albums/:id/stories/:storyId', requireAuth, removeStoryFromAlbum);
+router.post('/albums/:id/save', requireAuth, toggleSaveAlbum);
+router.post('/albums/:id/copy', requireAuth, albumLimiter, copyAlbum);
+
+// Recommendations (trained by the worker; see services/recommender)
+const recEventLimiter = perUserLimiter({ windowMs: 60_000, limit: 120, message: 'Quá nhiều yêu cầu.' });
+router.get('/recommendations/home', optionalAuth, getHomeRecommendations);
+router.get('/recommendations/related/:storyId', optionalAuth, getRelatedStories);
+router.post('/recommendations/events', optionalAuth, recEventLimiter, postRecEvents);
+router.post('/recommendations/train', requireAuth, requireRole('admin'), trainNow);
+router.get('/recommendations/status', requireAuth, requireRole('admin'), getRecStatus);
+
 // Comments
 router.get('/comments', getComments);
 router.post('/comments', requireAuth, commentLimiter, createComment);
@@ -220,6 +269,7 @@ router.put('/reports/:id/resolve', requireAuth, resolveReport);
 
 // Fandom / Community Posts
 router.get('/posts', optionalAuth, getPosts);
+router.get('/posts/sidebar', optionalAuth, getFandomSidebar);
 router.get('/posts/:slug', optionalAuth, getPostBySlug);
 router.post('/posts', requireAuth, postLimiter, createPost);
 router.put('/posts/:id', requireAuth, updatePost);
@@ -229,6 +279,8 @@ router.post('/posts/:id/reject', requireAuth, rejectPost);
 router.post('/posts/bulk-approve', requireAuth, bulkApprovePosts);
 router.post('/posts/bulk-reject', requireAuth, bulkRejectPosts);
 router.post('/posts/:id/react', requireAuth, reactLimiter, reactToPost);
+router.post('/posts/:id/pin', requireAuth, togglePinPost);
+router.post('/posts/:id/mute', requireAuth, togglePostMute);
 
 // Users & Profile Settings
 router.get('/profile/me', requireAuth, getCurrentUserProfile);
@@ -266,5 +318,10 @@ router.post('/groups/:id/join-requests/:requestId/reject', requireAuth, rejectJo
 router.get('/groups/:id/messages', optionalAuth, getGroupMessages);
 router.post('/groups/:id/messages', requireAuth, chatLimiter, sendGroupMessage);
 router.delete('/groups/:id/messages/:messageId', requireAuth, deleteGroupMessage);
+
+// Direct messages between two users
+router.get('/messages', requireAuth, getConversations);
+router.get('/messages/:username', requireAuth, getThread);
+router.post('/messages/:username', requireAuth, chatLimiter, sendDirectMessage);
 
 export default router;

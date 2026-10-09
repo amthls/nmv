@@ -22,7 +22,7 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - novel_network
+      - data
 
   # ============================================================================
   # 1b. Search Service: Elasticsearch (story search, optional).
@@ -59,7 +59,7 @@ services:
       timeout: 5s
       retries: 18
     networks:
-      - novel_network
+      - data
 
   # ============================================================================
   # 0. Gateway: nginx, the ONLY public entry point (port 3000 on the host).
@@ -77,8 +77,10 @@ services:
     depends_on:
       - frontend
       - backend
+    security_opt:
+      - no-new-privileges:true
     networks:
-      - novel_network
+      - edge
 
   # ============================================================================
   # 1c. Message broker: RabbitMQ (notification queue). Management UI on localhost only.
@@ -101,12 +103,72 @@ services:
       timeout: 10s
       retries: 12
     networks:
-      - novel_network
+      - data
+
+  # ============================================================================
+  # 1e. PgBouncer: connection pooler in front of Postgres for the API (transaction pooling).
+  #     Many backend copies x their pools share a small, fixed number of real DB connections.
+  #     Workers connect to Postgres directly (long batches, advisory locks).
+  # ============================================================================
+  pgbouncer:
+    image: edoburu/pgbouncer:v1.26.0-p0
+    container_name: novel_pgbouncer
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-novel_platform}
+      AUTH_TYPE: scram-sha-256
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: ${PGBOUNCER_MAX_CLIENT_CONN:-1000}
+      DEFAULT_POOL_SIZE: ${PGBOUNCER_POOL_SIZE:-20}
+      MAX_DB_CONNECTIONS: ${PGBOUNCER_MAX_DB_CONN:-60}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    depends_on:
+      postgres:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - data
+
+  # ============================================================================
+  # 1d. Redis: response cache, buffered view counters, shared rate-limit counters and the
+  #     Socket.IO pub/sub that lets several backend copies push realtime events.
+  #     Losing it is safe: the app falls back to direct DB writes / memory limits / polling.
+  # ============================================================================
+  redis:
+    image: redis:7.4-alpine
+    container_name: novel_redis
+    restart: unless-stopped
+    command: >
+      redis-server --requirepass ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
+      --appendonly yes --maxmemory 256mb --maxmemory-policy volatile-lru
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6380}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
+    mem_limit: 384m
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - data
 
   # ============================================================================
   # 2. Backend RESTful API Service (Node.js / Express / Prisma)
   # ============================================================================
   backend:
+    # Local: built from source. CI/CD: pulled from the registry (IMAGE_REGISTRY / IMAGE_TAG), see .github/workflows
+    image: ${IMAGE_REGISTRY:-local}/nmv-backend:${IMAGE_TAG:-latest}
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -118,7 +180,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 5000
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-novel_platform}?schema=public
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@pgbouncer:5432/${POSTGRES_DB:-novel_platform}?schema=public
       CORS_ORIGIN: http://localhost:3000
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (openssl rand -hex 32)}
       ENABLE_DEMO_ACCOUNTS: ${ENABLE_DEMO_ACCOUNTS:-false}
@@ -126,19 +188,25 @@ services:
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       SEARCH_URL: http://search:9200
       SEARCH_INDEX: ${SEARCH_INDEX:-novel_stories}
+      REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}@redis:6379
     volumes:
       - ./uploads:/app/uploads
       - ./exports:/app/exports # built EPUB/PDF files (served only by the download endpoint)
       - image_cache:/app/.cache # resized copies of uploaded images (safe to delete)
     depends_on:
-      postgres:
+      pgbouncer:
         condition: service_healthy
       rabbitmq:
         condition: service_started # the API still works (inline fallback) if the broker is down
       search:
         condition: service_started # search falls back to SQL ILIKE if this isn't ready yet
+      redis:
+        condition: service_started # cache/counters/realtime degrade gracefully without it
+    security_opt:
+      - no-new-privileges:true
     networks:
-      - novel_network
+      - edge
+      - data
 
   # ============================================================================
   # 2b. Queue worker: same image as the API, consumes notification jobs from RabbitMQ
@@ -146,6 +214,7 @@ services:
   #     (remove container_name first).
   # ============================================================================
   worker:
+    image: ${IMAGE_REGISTRY:-local}/nmv-backend:${IMAGE_TAG:-latest}
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -157,19 +226,23 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-novel_platform}?schema=public
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (openssl rand -hex 32)}
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672
+      REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}@redis:6379
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
     networks:
-      - novel_network
+      - data
 
   # ============================================================================
   # 2c. Export worker: builds EPUB/PDF downloads (queue novel.exports). Separate from the
   #     notification worker so a big manga export never delays notifications.
   # ============================================================================
   export-worker:
+    image: ${IMAGE_REGISTRY:-local}/nmv-backend:${IMAGE_TAG:-latest}
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -192,13 +265,16 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
     networks:
-      - novel_network
+      - data
 
   # ============================================================================
   # 3. Frontend Service (Next.js 14 App Router)
   # ============================================================================
   frontend:
+    image: ${IMAGE_REGISTRY:-local}/nmv-frontend:${IMAGE_TAG:-latest}
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -217,8 +293,10 @@ services:
       - ./uploads:/app/public/uploads
     depends_on:
       - backend
+    security_opt:
+      - no-new-privileges:true
     networks:
-      - novel_network
+      - edge
 
   # ============================================================================
   # Optional: pgAdmin 4 for Database Web GUI Management
@@ -235,7 +313,7 @@ services:
     depends_on:
       - postgres
     networks:
-      - novel_network
+      - data
     profiles:
       - tools
 
@@ -250,7 +328,14 @@ volumes:
     driver: local
   gateway_cache:
     driver: local
+  redis_data:
+    driver: local
 
 networks:
-  novel_network:
+  # Public-facing tier: only what serves browsers (gateway -> frontend/backend)
+  edge:
+    driver: bridge
+  # Data tier: databases, queues, cache, workers. gateway and frontend are NOT on it, so a bug in
+  # either can't reach Postgres/Redis/RabbitMQ directly. Only backend sits on both.
+  data:
     driver: bridge

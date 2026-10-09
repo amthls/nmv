@@ -1,0 +1,77 @@
+# Push to main: build the images and publish them to GitHub Container Registry (ghcr.io).
+# Then, only if the repository variable DEPLOY_ENABLED is "true", update the server over SSH.
+#
+# Server setup (once): clone the repo, create .env (python3 launch.py does it), add
+#   IMAGE_REGISTRY=ghcr.io/<owner>   to .env, `docker login ghcr.io` with a read:packages token,
+# then set repository secrets DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY, DEPLOY_PATH
+# and the repository variable DEPLOY_ENABLED=true.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  images:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      registry: ${{ steps.reg.outputs.registry }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: reg
+        run: echo "registry=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: backend
+          push: true
+          tags: |
+            ${{ steps.reg.outputs.registry }}/nmv-backend:${{ github.sha }}
+            ${{ steps.reg.outputs.registry }}/nmv-backend:latest
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,scope=backend,mode=max
+      - uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          push: true
+          build-args: NEXT_PUBLIC_API_URL=/api/v1
+          tags: |
+            ${{ steps.reg.outputs.registry }}/nmv-frontend:${{ github.sha }}
+            ${{ steps.reg.outputs.registry }}/nmv-frontend:latest
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,scope=frontend,mode=max
+
+  deploy:
+    needs: images
+    if: vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -e
+            cd "${{ secrets.DEPLOY_PATH }}"
+            git pull --ff-only
+            export IMAGE_TAG="${{ github.sha }}"
+            docker compose pull backend worker export-worker frontend
+            sh scripts/migrate.sh   # schema first: the new code may need it (Postgres is already running)
+            docker compose up -d --no-build
+            for i in $(seq 1 30); do curl -fsS http://localhost:3000/api/v1/health >/dev/null && exit 0; sleep 5; done
+            echo "health check failed" && docker compose logs --tail 100 backend && exit 1

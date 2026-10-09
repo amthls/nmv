@@ -8,6 +8,7 @@ import ImageUploadDropzone from '@/components/common/ImageUploadDropzone';
 import { useAuth } from '@/context/AuthContext';
 import RichTextEditor from '@/components/common/RichTextEditor';
 import { hasRichContent } from '@/lib/richText';
+import { CATEGORIES, PostCategory } from '@/lib/fandom';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -16,6 +17,8 @@ interface CreatePostModalProps {
   onClose: () => void;
   onSuccess: () => void;
   editPostData?: any | null;
+  /** new post about this story (e.g. opened from a story's discussion filter) */
+  presetStory?: { id: string; title: string; slug?: string; cover_image_url?: string; story_type?: string; author_name?: string } | null;
 }
 
 export default function CreatePostModal({
@@ -23,6 +26,7 @@ export default function CreatePostModal({
   onClose,
   onSuccess,
   editPostData,
+  presetStory,
 }: CreatePostModalProps) {
   const { user, isAuthenticated, authFetch, openAuthModal, hasRole } = useAuth();
 
@@ -30,6 +34,7 @@ export default function CreatePostModal({
   const [content, setContent] = useState('');
   const [images, setImages] = useState<string[]>([]);
   const [selectedStoryId, setSelectedStoryId] = useState('');
+  const [category, setCategory] = useState<PostCategory>('discussion');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -51,6 +56,7 @@ export default function CreatePostModal({
       setTitle(editPostData.title || '');
       setContent(editPostData.content || '');
       setSelectedStoryId(editPostData.story_id || '');
+      setCategory((editPostData.category as PostCategory) || 'discussion');
       
       const loadedImages = editPostData.images && Array.isArray(editPostData.images) && editPostData.images.length > 0
         ? editPostData.images
@@ -61,10 +67,19 @@ export default function CreatePostModal({
       setTitle('');
       setContent('');
       setImages([]);
-      setSelectedStoryId('');
+      setSelectedStoryId(presetStory?.id || '');
+      setCategory('discussion');
     }
     setErrorMsg(null);
   }, [editPostData, isOpen]);
+
+  // Esc closes the composer
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !isSubmitting) onClose(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, isSubmitting, onClose]);
 
   if (!isOpen || !mounted) return null;
 
@@ -91,6 +106,7 @@ export default function CreatePostModal({
           cover_image_url: images.length > 0 ? images[0] : null,
           images: images,
           story_id: selectedStoryId || null,
+          category,
           is_draft: isDraft,
         }),
       });
@@ -132,7 +148,7 @@ export default function CreatePostModal({
                 {editPostData ? 'Chỉnh Sửa Bài Viết' : 'Tạo Bài Viết / Thảo Luận Mới'}
               </h3>
               <p className="text-[11px] text-gray-400">
-                Tải ảnh từ máy tính (kéo thả hoặc chọn nhiều ảnh) và gắn liên kết truyện thông minh
+                Chọn chuyên mục, gắn truyện và thêm ảnh nếu muốn
               </p>
             </div>
           </div>
@@ -174,12 +190,31 @@ export default function CreatePostModal({
             />
           </div>
 
+          {/* Category */}
+          <div className="flex flex-wrap gap-1.5">
+            {CATEGORIES.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setCategory(c.id)}
+                className={`px-3 py-1.5 rounded-full border text-xs font-semibold transition ${
+                  category === c.id ? c.cls : 'border-white/10 text-gray-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                {c.emoji} {c.label}
+              </button>
+            ))}
+          </div>
+
           {/* Smart Story Search Dropdown */}
           <SmartStorySearch
             selectedStoryId={selectedStoryId}
             onSelectStory={(story) => setSelectedStoryId(story ? story.id : '')}
             initialStory={
-              editPostData && editPostData.story_id && editPostData.story_title
+              !editPostData && presetStory
+                ? { id: presetStory.id, title: presetStory.title, slug: presetStory.slug || '', cover_image_url: presetStory.cover_image_url,
+                    story_type: presetStory.story_type || 'novel', author_name: presetStory.author_name, total_chapters: 0 } as any
+                : editPostData && editPostData.story_id && editPostData.story_title
                 ? {
                     id: editPostData.story_id,
                     title: editPostData.story_title,
@@ -214,7 +249,7 @@ export default function CreatePostModal({
           {/* Action Toolbar */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-white/10">
             <span className="text-[11px] text-gray-500">
-              * Hỗ trợ tải nhiều ảnh cùng lúc và tự động sắp xếp bố cục đẹp mắt
+              Bài viết hiện công khai ngay khi đăng. Lưu nháp nếu chưa viết xong.
             </span>
 
             <div className="flex items-center gap-2 w-full sm:w-auto justify-end">

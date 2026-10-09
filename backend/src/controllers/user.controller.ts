@@ -182,6 +182,7 @@ export const getCurrentUserProfile = async (req: AuthenticatedRequest, res: Resp
     const userRes = await pool.query(`
       SELECT 
         u.id, u.username, u.email, u.display_name, u.avatar_url, u.banner_url, u.bio, u.created_at,
+        u.last_login_at, u.email_verified,
         COALESCE(
           json_agg(
             json_build_object('role', ur.role, 'is_visible', ur.is_visible)
@@ -211,23 +212,101 @@ export const getCurrentUserProfile = async (req: AuthenticatedRequest, res: Resp
     };
 
     // 3. User Statistics
-    const [readRes, favRes, bmRes, postRes, cmtRes, grpRes] = await Promise.all([
-      pool.query(`SELECT count(DISTINCT story_id) as count FROM reading_history WHERE user_id = $1::uuid`, [currentUserId]),
-      pool.query(`SELECT count(*) as count FROM user_favorites WHERE user_id = $1::uuid`, [currentUserId]),
-      pool.query(`SELECT count(*) as count FROM bookmarks WHERE user_id = $1::uuid`, [currentUserId]),
-      pool.query(`SELECT count(*) as count FROM posts WHERE user_id = $1::uuid AND is_deleted = false`, [currentUserId]),
-      pool.query(`SELECT count(*) as count FROM comments WHERE user_id = $1::uuid AND is_deleted = false`, [currentUserId]),
-      pool.query(`SELECT count(*) as count FROM group_members WHERE user_id = $1::uuid`, [currentUserId]),
+    const count = (sql: string) => pool.query(sql, [currentUserId]).then((r) => parseInt(r.rows[0]?.n || '0'));
+    const [
+      storiesRead, chaptersRead, readingSeconds, favorites, bookmarks, posts, comments, groups,
+      albums, savedAlbums, albumSaves, ratings, followers, following, storiesUploaded, chaptersUploaded, commentLikes,
+    ] = await Promise.all([
+      count(`SELECT count(DISTINCT story_id) AS n FROM reading_history WHERE user_id = $1`),
+      count(`SELECT count(*) AS n FROM reading_history WHERE user_id = $1`),
+      count(`SELECT COALESCE(sum(time_spent_seconds), 0) AS n FROM reading_history WHERE user_id = $1`),
+      count(`SELECT count(*) AS n FROM user_favorites WHERE user_id = $1`),
+      count(`SELECT count(*) AS n FROM bookmarks WHERE user_id = $1`),
+      count(`SELECT count(*) AS n FROM posts WHERE user_id = $1 AND is_deleted = false`),
+      count(`SELECT count(*) AS n FROM comments WHERE user_id = $1 AND is_deleted = false`),
+      count(`SELECT count(*) AS n FROM group_members WHERE user_id = $1`),
+      count(`SELECT count(*) AS n FROM albums WHERE user_id = $1`),
+      count(`SELECT count(*) AS n FROM album_saves WHERE user_id = $1`),
+      count(`SELECT count(*) AS n FROM album_saves sv JOIN albums a ON a.id = sv.album_id WHERE a.user_id = $1`),
+      count(`SELECT count(*) AS n FROM story_ratings WHERE user_id = $1`),
+      count(`SELECT count(*) AS n FROM user_follows WHERE following_id = $1`),
+      count(`SELECT count(*) AS n FROM user_follows WHERE follower_id = $1`),
+      count(`SELECT count(*) AS n FROM stories WHERE uploader_id = $1`),
+      count(`SELECT count(*) AS n FROM chapters WHERE uploader_id = $1`),
+      count(`SELECT COALESCE(sum(like_count), 0) AS n FROM comments WHERE user_id = $1 AND is_deleted = false`),
     ]);
 
     user.stats = {
-      stories_read: parseInt(readRes.rows[0]?.count || '0'),
-      favorites_count: parseInt(favRes.rows[0]?.count || '0'),
-      bookmarks_count: parseInt(bmRes.rows[0]?.count || '0'),
-      posts_count: parseInt(postRes.rows[0]?.count || '0'),
-      comments_count: parseInt(cmtRes.rows[0]?.count || '0'),
-      groups_count: parseInt(grpRes.rows[0]?.count || '0'),
+      stories_read: storiesRead,
+      chapters_read: chaptersRead,
+      reading_minutes: Math.round(readingSeconds / 60),
+      favorites_count: favorites,
+      bookmarks_count: bookmarks,
+      posts_count: posts,
+      comments_count: comments,
+      groups_count: groups,
+      albums_count: albums,
+      saved_albums_count: savedAlbums,
+      album_saves_received: albumSaves,
+      ratings_count: ratings,
+      followers_count: followers,
+      following_count: following,
+      stories_uploaded: storiesUploaded,
+      chapters_uploaded: chaptersUploaded,
+      comment_likes_received: commentLikes,
     };
+
+    // 4. Overview blocks for the account page
+    const [recentRes, albumsRes, groupsRes, myStoriesRes, tagsRes] = await Promise.all([
+      // last chapter read in each of the latest stories
+      pool.query(`
+        SELECT * FROM (
+          SELECT DISTINCT ON (rh.story_id)
+            s.id AS story_id, s.title, s.slug, s.cover_image_url, s.story_type, s.total_chapters,
+            c.title AS chapter_title, c.slug AS chapter_slug, c.chapter_number, rh.read_at
+          FROM reading_history rh
+          JOIN stories s ON s.id = rh.story_id
+          JOIN chapters c ON c.id = rh.chapter_id
+          WHERE rh.user_id = $1
+          ORDER BY rh.story_id, rh.read_at DESC
+        ) t ORDER BY read_at DESC LIMIT 6
+      `, [currentUserId]),
+      pool.query(`
+        SELECT a.id, a.name, a.is_public, a.share_token, a.updated_at,
+          (SELECT count(*)::int FROM album_stories x WHERE x.album_id = a.id) AS story_count,
+          (SELECT count(*)::int FROM album_saves sv WHERE sv.album_id = a.id) AS save_count,
+          COALESCE((SELECT json_agg(p) FROM (
+            SELECT s.id, s.cover_image_url, s.title FROM album_stories x JOIN stories s ON s.id = x.story_id
+            WHERE x.album_id = a.id ORDER BY x.added_at DESC LIMIT 4) p), '[]'::json) AS preview
+        FROM albums a WHERE a.user_id = $1
+        ORDER BY a.updated_at DESC LIMIT 6
+      `, [currentUserId]),
+      pool.query(`
+        SELECT g.name, g.slug, g.avatar_url, gm.role, gm.joined_at
+        FROM group_members gm JOIN translation_groups g ON g.id = gm.group_id
+        WHERE gm.user_id = $1
+        ORDER BY gm.joined_at ASC
+      `, [currentUserId]),
+      pool.query(`
+        SELECT id, title, slug, cover_image_url, story_type, approval_status, total_chapters, total_views
+        FROM stories WHERE uploader_id = $1
+        ORDER BY created_at DESC LIMIT 6
+      `, [currentUserId]),
+      // genres read most, from the stories in the reading history
+      pool.query(`
+        SELECT t.name, t.slug, count(DISTINCT rh.story_id)::int AS n
+        FROM reading_history rh
+        JOIN story_tags st ON st.story_id = rh.story_id
+        JOIN tags t ON t.id = st.tag_id
+        WHERE rh.user_id = $1
+        GROUP BY t.id ORDER BY n DESC, t.name LIMIT 8
+      `, [currentUserId]),
+    ]);
+    user.recent_reads = recentRes.rows;
+    user.albums = albumsRes.rows;
+    user.groups = groupsRes.rows;
+    user.my_stories = myStoriesRes.rows;
+    user.top_tags = tagsRes.rows;
 
     res.json({
       success: true,
@@ -603,7 +682,7 @@ export const updateUserSettings = async (req: AuthenticatedRequest, res: Respons
     if (primaryColor && !/^#[0-9a-fA-F]{6}$/.test(primaryColor)) throw new InputError('Màu chủ đạo phải có dạng #RRGGBB.');
     const fontSize = optionalNumber(body.font_size, 10, 40, 'Cỡ chữ');
     const lineHeight = optionalNumber(body.line_height, 1, 3, 'Giãn dòng');
-    for (const key of ['notify_chapter_update', 'notify_group_events', 'notify_comments', 'notify_system']) {
+    for (const key of ['notify_chapter_update', 'notify_group_events', 'notify_comments', 'notify_system', 'notify_post_comments', 'notify_post_reactions']) {
       if (body[key] !== undefined && typeof body[key] !== 'boolean') throw new InputError('Cài đặt thông báo không hợp lệ.');
     }
 
@@ -619,6 +698,8 @@ export const updateUserSettings = async (req: AuthenticatedRequest, res: Respons
       ['notify_group_events', body.notify_group_events],
       ['notify_comments', body.notify_comments],
       ['notify_system', body.notify_system],
+      ['notify_post_comments', body.notify_post_comments],
+      ['notify_post_reactions', body.notify_post_reactions],
     ];
 
     const columns: string[] = ['user_id'];
