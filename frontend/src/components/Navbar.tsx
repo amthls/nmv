@@ -2,10 +2,10 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { 
   Search, 
-  Plus, 
+  LayoutGrid,
   Bell, 
   BookOpen, 
   Menu, 
@@ -15,12 +15,10 @@ import {
   ShieldCheck,
   User,
   LogOut,
-  ChevronDown,
   FilePlus,
   Settings,
   Sparkles,
   LogIn,
-  UserPlus,
   Flag,
   Dices,
   MessageCircle
@@ -34,9 +32,37 @@ import StoryCaseOpening from './random/StoryCaseOpening';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
+// The logo already links home, so the bar only lists the other sections
+const NAV_LINKS = [
+  { href: '/kham-pha', label: 'Khám phá' },
+  { href: '/fandom', label: 'Fandom' },
+  { href: '/nhom-dich', label: 'Nhóm dịch' },
+];
+
+// One look for every icon action in the bar: borderless, same size
+const ICON_BUTTON =
+  'relative w-9 h-9 rounded-lg flex items-center justify-center bg-white/[0.04] border border-white/[0.08] text-gray-300 hover:text-white hover:bg-white/[0.09] hover:border-white/20 hover:-translate-y-px transition';
+const BADGE =
+  'absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 text-[9px] font-bold text-snow flex items-center justify-center ring-2 ring-surface';
+
 export default function Navbar() {
   const router = useRouter();
+  const pathname = usePathname() || '/';
   const { user, isAuthenticated, logout, openAuthModal, hasRole, authFetch } = useAuth();
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Ctrl/Cmd + K jumps to search (the bar field on wide screens, the explore page otherwise)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() !== 'k' || !(e.ctrlKey || e.metaKey)) return;
+      e.preventDefault();
+      const input = searchInputRef.current;
+      if (input && input.offsetParent !== null) input.focus();
+      else router.push('/kham-pha');
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [router]);
   
   const [isQuickActionOpen, setIsQuickActionOpen] = useState(false);
   const [isCaseOpen, setIsCaseOpen] = useState(false);
@@ -167,95 +193,88 @@ export default function Navbar() {
 
   return (
     <>
+      {/* Full-width bar; inner width matches the listing pages (max-w-[1600px]) */}
       <header className="sticky top-0 z-30 w-full glass-strong !border-x-0 !border-t-0 !rounded-none">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-          
-          {/* Logo & Brand */}
-          <div className="flex items-center gap-6">
-            <Link href="/" className="flex items-center gap-2.5 group">
-              <div className="w-10 h-10 rounded-lg bg-gradient-to-tr from-brand-600 via-brand-500 to-indigo-400 flex items-center justify-center text-snow shadow-lg shadow-brand-500/25 group-hover:scale-105 transition-transform">
-                <BookOpen className="w-5 h-5" />
-              </div>
-              <div className="hidden sm:block">
-                <span className="text-lg font-extrabold bg-gradient-to-r from-brand-600 to-cyan-500 bg-clip-text text-transparent">
-                  NovelHub
-                </span>
-                <span className="block text-[10px] text-brand-400 font-semibold tracking-wider uppercase -mt-1">
-                  Light Novel & Manga
-                </span>
-              </div>
-            </Link>
+        {/* Accent line along the bottom edge */}
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-fuchsia-500/70 to-transparent" />
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-brand-500/0 via-brand-400/80 to-cyan-400/0 blur-[2px]" />
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center gap-2 sm:gap-3 lg:gap-5">
 
-            {/* Desktop Navigation Links */}
-            <nav className="hidden md:flex items-center gap-1 text-sm font-medium text-gray-300">
-              <Link href="/" className="px-3 py-2 rounded-lg hover:text-white hover:bg-white/5 transition">
-                Trang chủ
-              </Link>
-              <Link href="/kham-pha" className="px-3 py-2 rounded-lg hover:text-white hover:bg-white/5 transition">
-                Khám phá
-              </Link>
-              <Link href="/fandom" className="px-3 py-2 rounded-lg hover:text-white hover:bg-white/5 transition">
-                Fandom / Blog
-              </Link>
-              <Link href="/nhom-dich" className="px-3 py-2 rounded-lg hover:text-white hover:bg-white/5 transition">
-                Nhóm dịch
-              </Link>
-            </nav>
-          </div>
+          {/* Logo & Brand (also the way back to the home page) */}
+          <Link href="/" className="flex items-center gap-3 shrink-0 group" aria-label="NovelHub - Trang chủ">
+            <div className="relative w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 via-cyan-500 to-emerald-400 flex items-center justify-center text-snow shadow-sm shadow-cyan-500/30 group-hover:rotate-[-8deg] group-hover:scale-105 transition-transform">
+              <BookOpen className="w-4 h-4" strokeWidth={2.4} />
+            </div>
+            <span className="hidden sm:block leading-none">
+              <span className="block text-lg font-bold tracking-tight text-white">
+                Novel<span className="bg-gradient-to-r from-brand-400 via-fuchsia-400 to-cyan-300 bg-clip-text text-transparent">Hub</span>
+              </span>
+            </span>
+          </Link>
 
-          {/* Search Bar */}
-          <div className="flex-1 max-w-md hidden sm:block">
-            <form onSubmit={handleSearchSubmit} role="search" className="relative">
-              <input
-                type="text"
-                enterKeyHint="search"
-                placeholder="Tìm truyện chữ, manga, tác giả, thể loại..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-10 pl-10 pr-4 rounded-full bg-black/40 border border-white/10 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition"
-              />
-              <button type="submit" aria-label="Tìm kiếm" className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white">
-                <Search className="w-4 h-4" />
-              </button>
-            </form>
-          </div>
+          {/* Desktop Navigation Links: the current section gets a bright gradient pill */}
+          <nav className="hidden lg:flex items-center gap-0.5 text-sm font-medium">
+            {NAV_LINKS.map(({ href, label }) => {
+              const active = pathname === href || pathname.startsWith(`${href}/`);
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  aria-current={active ? 'page' : undefined}
+                  className={`px-3 py-1 rounded-md transition ${
+                    active
+                      ? 'bg-gradient-to-r from-brand-600 via-brand-500 to-fuchsia-500 text-snow shadow-md shadow-fuchsia-500/20'
+                      : 'text-gray-300 hover:text-white hover:bg-white/[0.06]'
+                  }`}
+                >
+                  {label}
+                </Link>
+              );
+            })}
+          </nav>
+
+          {/* Search Bar (Ctrl/Cmd + K focuses it) */}
+          <form onSubmit={handleSearchSubmit} role="search" className="relative flex-1 max-w-md ml-auto hidden lg:block group">
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-brand-400 transition pointer-events-none" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              enterKeyHint="search"
+              aria-label="Tìm kiếm"
+              placeholder="Tìm truyện, tác giả..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-9 pl-10 pr-16 rounded-lg bg-white/[0.06] border border-white/10 text-sm text-white placeholder-gray-400 focus:outline-none focus:bg-white/[0.1] focus:border-brand-400 focus:ring-2 focus:ring-brand-500/30 transition"
+            />
+            <kbd className="absolute right-3 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded-md border border-white/10 bg-white/[0.05] text-[10px] font-semibold text-gray-400 pointer-events-none group-focus-within:opacity-0 transition">
+              Ctrl K
+            </kbd>
+          </form>
 
           {/* Actions & User Auth Section */}
-          <div className="flex items-center gap-2.5">
-            <ThemeToggle />
+          <div className="flex items-center gap-1.5 sm:gap-2 ml-auto lg:ml-0">
+            <Link href="/kham-pha" className={`${ICON_BUTTON} lg:hidden`} title="Tìm kiếm" aria-label="Tìm kiếm">
+              <Search className="w-[18px] h-[18px]" />
+            </Link>
+
+            <ThemeToggle className="hidden sm:block" />
 
             {/* Random story case (CS2-style) */}
             <button
               onClick={() => setIsCaseOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-snow text-xs font-semibold shadow-md shadow-orange-500/20 hover:scale-105 transition-all"
+              className={`${ICON_BUTTON} hidden sm:flex`}
               title="Mở hòm truyện ngẫu nhiên"
+              aria-label="Mở hòm truyện ngẫu nhiên"
             >
-              <Dices className="w-4 h-4" />
-              <span className="hidden lg:inline">Random</span>
+              <Dices className="w-[18px] h-[18px] text-amber-400" />
             </button>
 
-            {/* Quick Action Popup Button (+) */}
-            <button
-              onClick={() => setIsQuickActionOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-snow text-xs font-semibold shadow-md shadow-brand-500/20 hover:scale-105 transition-all"
-              title="Mở menu tiện ích"
-            >
-              <Plus className="w-4 h-4" />
-              <span className="hidden lg:inline">Tiện ích</span>
-            </button>
-
-            {/* Notifications Menu (if authenticated) */}
+            {/* Messages (if authenticated) */}
             {isAuthenticated && (
-              <Link
-                href="/tin-nhan"
-                className="relative p-2 rounded-xl border transition text-gray-300 hover:text-white bg-white/5 border-white/10 hover:bg-white/10"
-                title="Tin nhắn"
-              >
-                <MessageCircle className="w-5 h-5" />
+              <Link href="/tin-nhan" className={ICON_BUTTON} title="Tin nhắn" aria-label="Tin nhắn">
+                <MessageCircle className="w-[18px] h-[18px] text-sky-400" />
                 {unreadMessages > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-[10px] font-bold text-snow flex items-center justify-center ring-2 ring-surface">
-                    {unreadMessages > 9 ? '9+' : unreadMessages}
-                  </span>
+                  <span className={BADGE}>{unreadMessages > 9 ? '9+' : unreadMessages}</span>
                 )}
               </Link>
             )}
@@ -268,20 +287,13 @@ export default function Navbar() {
                     setIsNotificationOpen(!isNotificationOpen);
                     setIsUserMenuOpen(false);
                   }}
-                  className={`relative p-2 rounded-xl border transition cursor-pointer select-none active:scale-95 ${
-                    isNotificationOpen
-                      ? 'bg-brand-600/20 border-brand-500/50 text-white'
-                      : 'text-gray-300 hover:text-white bg-white/5 border-white/10 hover:bg-white/10'
-                  }`}
+                  className={`${ICON_BUTTON} select-none active:scale-95 ${isNotificationOpen ? 'bg-white/10 text-white' : ''}`}
                   title="Thông báo"
+                  aria-label="Thông báo"
                 >
-                  <Bell className="w-5 h-5" />
-                  {unreadCount > 0 ? (
-                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-[10px] font-bold text-snow flex items-center justify-center ring-2 ring-surface animate-pulse">
-                      {unreadCount > 9 ? '9+' : unreadCount}
-                    </span>
-                  ) : (
-                    <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-brand-500/40"></span>
+                  <Bell className="w-[18px] h-[18px] text-rose-400" />
+                  {unreadCount > 0 && (
+                    <span className={BADGE}>{unreadCount > 9 ? '9+' : unreadCount}</span>
                   )}
                 </button>
 
@@ -369,39 +381,46 @@ export default function Navbar() {
               </div>
             )}
 
+
+            {/* Utilities menu: apps-grid icon, the one accent-colored button */}
+            <button
+              onClick={() => setIsQuickActionOpen(true)}
+              className="group w-9 h-9 rounded-lg bg-gradient-to-br from-fuchsia-500 via-brand-500 to-cyan-400 text-snow flex items-center justify-center shadow-md shadow-fuchsia-500/30 hover:brightness-110 hover:-translate-y-px transition"
+              title="Tiện ích"
+              aria-label="Mở menu tiện ích"
+            >
+              <LayoutGrid className="w-[18px] h-[18px] group-hover:rotate-90 transition-transform duration-300" strokeWidth={2.2} />
+            </button>
+
             {/* Authenticated User Menu or Login/Register Buttons */}
             {isAuthenticated && user ? (
               <div className="relative" ref={userMenuRef}>
                 <button
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                  className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-white/5 transition border border-transparent hover:border-white/10"
+                  className="block p-[2px] rounded-full bg-gradient-to-br from-brand-400 via-fuchsia-400 to-cyan-300 hover:scale-105 transition"
+                  title={user.display_name || user.username}
+                  aria-label="Menu tài khoản"
                 >
-                  <div className="relative w-8 h-8 rounded-full overflow-hidden bg-gradient-to-tr from-brand-600 to-indigo-500 flex items-center justify-center text-snow text-xs font-bold ring-1 ring-white/20">
+                  <div className="relative w-8 h-8 rounded-full overflow-hidden bg-gradient-to-tr from-brand-600 to-cyan-500 flex items-center justify-center text-snow text-sm font-bold ring-2 ring-surface-2">
                     {user.avatar_url ? (
                       <img src={user.avatar_url} alt={user.username} className="w-full h-full object-cover" />
                     ) : (
                       user.username.slice(0, 2).toUpperCase()
                     )}
                   </div>
-                  <div className="hidden xl:block text-left">
-                    <div className="text-xs font-semibold text-white leading-tight flex items-center gap-1">
-                      <span>{user.display_name || user.username}</span>
-                      <ChevronDown className="w-3 h-3 text-gray-400" />
-                    </div>
-                    <div className="flex items-center gap-1 mt-0.5">
-                      <span className={`text-[9px] px-1.5 py-0.2 rounded font-semibold ${getRoleBadgeStyle(getPrimaryRole())}`}>
-                        {getPrimaryRole()}
-                      </span>
-                    </div>
-                  </div>
                 </button>
 
                 {/* Dropdown Menu */}
                 {isUserMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-56 rounded-2xl glass-menu py-2 z-50 animate-in fade-in slide-in-from-top-2">
+                  <div className="absolute right-0 mt-2 w-60 rounded-2xl glass-menu py-2 z-50 animate-in fade-in slide-in-from-top-2">
                     <div className="px-4 py-2.5 border-b border-white/10">
-                      <p className="text-xs font-semibold text-white">{user.display_name || user.username}</p>
-                      <p className="text-[11px] text-gray-400 font-mono truncate">@{user.username} • {user.email}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs font-semibold text-white truncate">{user.display_name || user.username}</p>
+                        <span className={`text-[9px] px-1.5 rounded font-semibold shrink-0 ${getRoleBadgeStyle(getPrimaryRole())}`}>
+                          {getPrimaryRole()}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-gray-400 font-mono truncate">@{user.username}</p>
                     </div>
 
                     <div className="py-1">
@@ -487,37 +506,29 @@ export default function Navbar() {
                 )}
               </div>
             ) : (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => openAuthModal('login')}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-gray-300 hover:text-white hover:bg-white/5 transition border border-white/10"
-                >
-                  <LogIn className="w-4 h-4 text-brand-400" />
-                  <span>Đăng nhập</span>
-                </button>
-                <button
-                  onClick={() => openAuthModal('register')}
-                  className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow text-xs font-semibold shadow-md shadow-brand-500/20 transition"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  <span>Đăng ký</span>
-                </button>
-              </div>
+              <button
+                onClick={() => openAuthModal('login')}
+                className="flex items-center gap-2 h-9 px-3.5 rounded-lg text-sm font-medium text-gray-100 hover:text-white bg-white/[0.06] border border-white/10 hover:bg-white/10 transition"
+              >
+                <LogIn className="w-4 h-4" />
+                <span>Đăng nhập</span>
+              </button>
             )}
 
             {/* Mobile Hamburger */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden p-2 rounded-xl text-gray-300 hover:text-white hover:bg-white/5 transition"
+              className={`${ICON_BUTTON} lg:hidden`}
+              aria-label="Menu"
             >
-              {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              {isMobileMenuOpen ? <X className="w-[18px] h-[18px]" /> : <Menu className="w-[18px] h-[18px]" />}
             </button>
           </div>
         </div>
 
         {/* Mobile Navigation Drawer */}
         {isMobileMenuOpen && (
-          <div className="md:hidden border-t border-white/10 px-4 py-4 space-y-2 animate-in slide-in-from-top-2">
+          <div className="lg:hidden border-t border-white/10 px-4 py-4 space-y-1 animate-in slide-in-from-top-2">
             <form onSubmit={handleSearchSubmit} role="search" className="relative mb-3">
               <input
                 type="text"
@@ -531,48 +542,30 @@ export default function Navbar() {
                 <Search className="w-4 h-4" />
               </button>
             </form>
-            <Link 
-              href="/" 
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-white/5"
-            >
-              Trang chủ
-            </Link>
-            <Link 
-              href="/kham-pha" 
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-white/5"
-            >
-              Khám phá
-            </Link>
-            <Link 
-              href="/lich-su" 
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-white/5"
-            >
-              Lịch sử đọc
-            </Link>
-            <Link 
-              href="/bookmark" 
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-white/5"
-            >
-              Album & Bookmark
-            </Link>
-            <Link 
-              href="/fandom" 
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-white/5"
-            >
-              Fandom / Blog
-            </Link>
-            <Link 
-              href="/nhom-dich" 
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-white/5"
-            >
-              Nhóm dịch
-            </Link>
+            {[{ href: '/', label: 'Trang chủ' }, ...NAV_LINKS, { href: '/lich-su', label: 'Lịch sử đọc' }, { href: '/bookmark', label: 'Album & Bookmark' }].map(({ href, label }) => (
+              <Link
+                key={href}
+                href={href}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="block px-3 py-2 rounded-lg text-sm text-gray-300 hover:text-white hover:bg-white/5"
+              >
+                {label}
+              </Link>
+            ))}
+
+            {/* Hidden from the bar on small screens */}
+            <div className="sm:hidden pt-2 mt-2 border-t border-white/10 flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  setIsCaseOpen(true);
+                }}
+                className="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg bg-white/5 text-sm text-gray-200"
+              >
+                <Dices className="w-4 h-4" /> Hòm truyện ngẫu nhiên
+              </button>
+              <ThemeToggle />
+            </div>
 
             {!isAuthenticated && (
               <div className="pt-2 border-t border-white/10 flex gap-2">

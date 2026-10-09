@@ -456,7 +456,7 @@ function MangaUploadContent() {
 
   return (
     <div
-      className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-32"
+      className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-32"
       onDragOver={(e) => { if (dragIndex === null && storyId) { e.preventDefault(); setDragOver(true); } }}
       onDragLeave={(e) => { if (e.currentTarget === e.target) setDragOver(false); }}
       onDrop={storyId ? onDrop : undefined}
@@ -804,7 +804,7 @@ function MangaUploadContent() {
       {/* Sticky publish bar */}
       {storyId && chapters.some((c) => c.pages.length > 0) && (
         <div className="fixed bottom-0 inset-x-0 z-40 glass-strong !rounded-none !border-x-0 !border-b-0">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center gap-3">
+          <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center gap-3">
             <div className="text-xs text-gray-400">
               {readyKeys.length > 0 ? `${readyKeys.length} chương sẵn sàng · ${chapters.reduce((s, c) => s + c.pages.length, 0)} trang` : 'Không còn chương nào chờ đăng'}
             </div>

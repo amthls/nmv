@@ -94,7 +94,7 @@ export default function GroupsPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 pb-24">
+    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 pb-24">
       
       {/* 1. Header Banner */}
       <div className="relative rounded-3xl overflow-hidden glass-panel border border-brand-500/20 p-6 sm:p-8 bg-gradient-to-r from-brand-900/30 via-indigo-900/20 to-surface shadow-xl">

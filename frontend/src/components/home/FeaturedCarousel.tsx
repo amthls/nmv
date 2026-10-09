@@ -105,7 +105,7 @@ export default function FeaturedCarousel({ stories, gallery = [] }: { stories: S
     <section
       aria-roledescription="carousel"
       aria-label="Truyện nổi bật tuần"
-      className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 ${paused ? 'hero-paused' : ''}`}
+      className={`max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pt-6 ${paused ? 'hero-paused' : ''}`}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onFocus={() => setPaused(true)}
@@ -114,7 +114,7 @@ export default function FeaturedCarousel({ stories, gallery = [] }: { stories: S
       onPointerUp={onPointerUp}
       onClickCapture={onClickCapture}
     >
-      <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">Truyện nổi bật tuần</h2>
+      <h2 className="text-lg sm:text-xl font-semibold tracking-tight text-white">Truyện nổi bật tuần</h2>
 
       <div className="relative isolate mt-3 overflow-hidden rounded-xl border border-white/10 bg-surface-3 shadow-[0_24px_60px_-28px_rgba(0,0,0,0.8)]">
       {/* Story art fills the card */}
@@ -162,7 +162,7 @@ export default function FeaturedCarousel({ stories, gallery = [] }: { stories: S
 
                 {/* Title, tags, description, author */}
                 <div className="flex-1 min-w-0 h-full flex flex-col pr-0 sm:pr-4">
-                  <h3 className="rise rise-1 text-lg sm:text-3xl lg:text-[2.5rem] font-bold leading-tight tracking-tight text-white line-clamp-2 group-hover:text-brand-500 transition-colors">
+                  <h3 className="rise rise-1 text-base sm:text-2xl lg:text-[1.75rem] font-semibold leading-snug tracking-tight text-white line-clamp-2 group-hover:text-brand-500 transition-colors">
                     {story.title}
                   </h3>
 

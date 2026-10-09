@@ -40,7 +40,7 @@ export default function StoryRail({ title, subtitle, href, stories, meta, ranked
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between gap-4">
-        <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
+        <h2 className="text-lg sm:text-xl font-semibold tracking-tight text-white">
           {href ? (
             <Link href={href} className="group inline-flex items-center gap-1 hover:text-brand-500 transition-colors">
               {title}
