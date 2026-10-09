@@ -30,6 +30,7 @@ import { API_BASE_URL, REACTIONS, ROLE_BADGES, categoryOf, readJson, timeAgo, to
 
 export interface PostItem {
   id: string;
+  code: string;
   user_id: string;
   title: string;
   slug: string;

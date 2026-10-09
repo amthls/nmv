@@ -72,7 +72,7 @@ export const getReports = async (req: AuthenticatedRequest, res: Response) => {
 
     const total = await pool.query(`SELECT count(*) FROM reports r ${where}`, params);
     const rows = await pool.query(`
-      SELECT r.id, r.target_type, r.target_id, r.reason, r.description, r.status,
+      SELECT r.id, r.code, r.target_type, r.target_id, r.reason, r.description, r.status,
              r.resolution_note, r.resolved_at, r.created_at,
              u.username AS reporter_username, u.display_name AS reporter_name,
              CASE r.target_type

@@ -23,6 +23,7 @@ import SmartImage from '@/components/common/SmartImage';
 import CopyAlbumModal from '@/components/album/CopyAlbumModal';
 import { useAuth } from '@/context/AuthContext';
 import { API_BASE_URL, AlbumDetail, albumShareUrl, copyText, readJson } from '@/lib/albums';
+import CodeBadge from '@/components/common/CodeBadge';
 
 const btn = 'px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition disabled:opacity-50';
 
@@ -226,7 +227,10 @@ function AlbumPageInner() {
             </form>
           ) : (
             <>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-white break-words">{album.name}</h1>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-2xl sm:text-3xl font-extrabold text-white break-words">{album.name}</h1>
+                <CodeBadge code={album.code} />
+              </div>
               {album.description && <p className="text-sm text-gray-300 whitespace-pre-line">{album.description}</p>}
             </>
           )}

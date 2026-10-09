@@ -181,7 +181,7 @@ export const getCurrentUserProfile = async (req: AuthenticatedRequest, res: Resp
     // 1. User base and roles
     const userRes = await pool.query(`
       SELECT 
-        u.id, u.username, u.email, u.display_name, u.avatar_url, u.banner_url, u.bio, u.created_at,
+        u.id, u.code, u.username, u.email, u.display_name, u.avatar_url, u.banner_url, u.bio, u.created_at,
         u.last_login_at, u.email_verified,
         COALESCE(
           json_agg(
@@ -215,7 +215,7 @@ export const getCurrentUserProfile = async (req: AuthenticatedRequest, res: Resp
     const count = (sql: string) => pool.query(sql, [currentUserId]).then((r) => parseInt(r.rows[0]?.n || '0'));
     const [
       storiesRead, chaptersRead, readingSeconds, favorites, bookmarks, posts, comments, groups,
-      albums, savedAlbums, albumSaves, ratings, followers, following, storiesUploaded, chaptersUploaded, commentLikes,
+      albums, savedAlbums, albumSaves, followers, following, storiesUploaded, chaptersUploaded, commentLikes,
     ] = await Promise.all([
       count(`SELECT count(DISTINCT story_id) AS n FROM reading_history WHERE user_id = $1`),
       count(`SELECT count(*) AS n FROM reading_history WHERE user_id = $1`),
@@ -228,7 +228,6 @@ export const getCurrentUserProfile = async (req: AuthenticatedRequest, res: Resp
       count(`SELECT count(*) AS n FROM albums WHERE user_id = $1`),
       count(`SELECT count(*) AS n FROM album_saves WHERE user_id = $1`),
       count(`SELECT count(*) AS n FROM album_saves sv JOIN albums a ON a.id = sv.album_id WHERE a.user_id = $1`),
-      count(`SELECT count(*) AS n FROM story_ratings WHERE user_id = $1`),
       count(`SELECT count(*) AS n FROM user_follows WHERE following_id = $1`),
       count(`SELECT count(*) AS n FROM user_follows WHERE follower_id = $1`),
       count(`SELECT count(*) AS n FROM stories WHERE uploader_id = $1`),
@@ -248,7 +247,6 @@ export const getCurrentUserProfile = async (req: AuthenticatedRequest, res: Resp
       albums_count: albums,
       saved_albums_count: savedAlbums,
       album_saves_received: albumSaves,
-      ratings_count: ratings,
       followers_count: followers,
       following_count: following,
       stories_uploaded: storiesUploaded,
@@ -368,7 +366,7 @@ export const getUserProfile = async (req: AuthenticatedRequest, res: Response) =
 
     const result = await pool.query(`
       SELECT 
-        u.id, u.username, u.email, u.display_name, u.avatar_url, u.banner_url, u.bio, u.created_at,
+        u.id, u.code, u.username, u.email, u.display_name, u.avatar_url, u.banner_url, u.bio, u.created_at,
         u.is_banned, u.ban_reason, u.banned_at, u.deleted_at,
         COALESCE(
           json_agg(
@@ -405,6 +403,7 @@ export const getUserProfile = async (req: AuthenticatedRequest, res: Response) =
     const allRoles: string[] = row.roles.map((r: any) => r.role);
     const data: any = {
       id: row.id,
+      code: row.code,
       username: row.username,
       display_name: row.display_name,
       avatar_url: row.avatar_url,

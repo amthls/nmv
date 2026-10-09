@@ -324,7 +324,7 @@ class ParagraphParser(HTMLParser):
 #
 # Each source yields candidates and, for one candidate, returns a normalised story:
 #   {source_id, url, title, original_title, synopsis, cover, author, artist, status, year, tags,
-#    rating, follows, original_language, story_type, referer,
+#    follows, original_language, story_type, referer,
 #    chapters: [{number, title, group, ref}]}
 # and for one chapter either {"images": [url, ...]} (manga) or {"paragraphs": [text, ...]} (novel).
 
@@ -371,10 +371,10 @@ class MangaDex:
         tags = [t["attributes"]["name"].get("en", "") for t in a.get("tags", [])]
         tags += [{"shounen": "Shounen", "shoujo": "Shoujo", "seinen": "Seinen", "josei": "Josei"}.get(a.get("publicationDemographic") or "", ""),
                  {"ja": "Manga", "ko": "Manhwa", "zh": "Manhua"}.get(a.get("originalLanguage") or "", "")]
-        rating = follows = None
+        follows = None
         try:
             s = HTTP.json(f"{self.API}/statistics/manga/{m['id']}")["statistics"][m["id"]]
-            rating, follows = (s.get("rating") or {}).get("bayesian"), s.get("follows")
+            follows = s.get("follows")
         except Exception:
             pass
         feed = HTTP.json(f"{self.API}/manga/{m['id']}/feed?" + self._q({
@@ -401,7 +401,7 @@ class MangaDex:
             "artist": ", ".join(r["attributes"]["name"] for r in rel if r["type"] == "artist" and r.get("attributes")),
             "cover": f"https://uploads.mangadex.org/covers/{m['id']}/{cover['attributes']['fileName']}.512.jpg" if cover else None,
             "status": {"completed": "completed", "hiatus": "hiatus", "cancelled": "dropped"}.get(a.get("status"), "ongoing"),
-            "year": a.get("year"), "tags": tags, "rating": rating, "follows": follows,
+            "year": a.get("year"), "tags": tags, "follows": follows,
             "original_language": a.get("originalLanguage") or "ja", "story_type": "manga", "referer": None,
             "chapters": chapters, "all_titles": list(titles.values()) + [v for t in a.get("altTitles", []) for v in t.values()],
         }
@@ -463,7 +463,7 @@ class TopTruyen:
             "source_id": cand["source_id"], "url": cand["url"], "title": title, "original_title": None,
             "synopsis": synopsis, "author": None if not author or "không rõ" in author.lower() else author, "artist": None,
             "cover": absolute(meta(page, "og:image"), self.BASE), "status": status_of(status_m.group(1) if status_m else ""),
-            "year": None, "tags": tags, "rating": None, "follows": None, "original_language": "zh" if "Manhua" in tags else "ko" if "Manhwa" in tags else "ja",
+            "year": None, "tags": tags, "follows": None, "original_language": "zh" if "Manhua" in tags else "ko" if "Manhwa" in tags else "ja",
             "story_type": "manga", "referer": self.BASE + "/", "chapters": chapters, "all_titles": [title],
         }
 
@@ -513,7 +513,7 @@ class NetTruyen:
             "source_id": cand["source_id"], "url": cand["url"], "title": title, "original_title": None,
             "synopsis": synopsis, "author": None if not author or "cập nhật" in author.lower() else author, "artist": None,
             "cover": absolute(meta(page, "og:image"), self.BASE), "status": status_of(status_m.group(1) if status_m else ""),
-            "year": None, "tags": [t for t in tags if t and t != "Tất cả"], "rating": None, "follows": None,
+            "year": None, "tags": [t for t in tags if t and t != "Tất cả"], "follows": None,
             "original_language": "zh" if "Manhua" in tags else "ko" if "Manhwa" in tags else "ja",
             "story_type": "manga", "referer": self.BASE + "/", "chapters": chapters, "all_titles": [title],
         }
@@ -561,7 +561,7 @@ class Valvrare:
             "synopsis": text_of(desc.group(1)) if desc else None, "author": author.group(1) if author and author.group(1) else None,
             "artist": illustrator.group(1) if illustrator and illustrator.group(1) else None,
             "cover": absolute(meta(page, "og:image"), self.BASE), "status": status_of(status.group(1) if status else ""),
-            "year": None, "tags": tags, "rating": None, "follows": None, "original_language": "ja",
+            "year": None, "tags": tags, "follows": None, "original_language": "ja",
             "story_type": "novel", "referer": self.BASE + "/", "chapters": chapters, "all_titles": [title] + ([alt.group(1)] if alt else []),
         }
 
@@ -605,7 +605,7 @@ class TruyenYY:
             "cover": absolute(meta(page, "og:image"), self.BASE),
             "status": "completed" if ("hoàn" in st or "full" in st) else "ongoing",
             "year": None, "tags": [t.strip() for t in genre.group(1).split(",")] if genre else [],
-            "rating": None, "follows": None, "original_language": "zh",
+            "follows": None, "original_language": "zh",
             "story_type": "novel", "referer": self.BASE + "/", "chapters": chapters, "all_titles": [title],
         }
 
@@ -892,11 +892,10 @@ class Importer:
             key = TAG_ALIASES.get(key, key)
             if key and key in self.tags:
                 tag_ids.add(self.tags[key])
-        rating = story.get("rating")
         sql = ["BEGIN;", f"""
             INSERT INTO stories (title, slug, original_title, synopsis, cover_image_url, story_type, status,
                 approval_status, approved_by, approved_at, uploader_id, original_language, translated_language,
-                author_name, artist_name, year_published, total_chapters, rating_avg, total_favorites,
+                author_name, artist_name, year_published, total_chapters, total_favorites,
                 total_views, last_chapter_at, source_name, source_id, source_url)
             VALUES ({q(story['title'][:500])}, {q(slug)}, {q((story.get('original_title') or '')[:500] or None)},
                 {q((story.get('synopsis') or '')[:4000] or None)},
@@ -904,7 +903,7 @@ class Importer:
                 {q(story.get('status') or 'ongoing')}, 'approved', {q(self.admin_id)}, NOW(), {q(self.admin_id)},
                 {q((story.get('original_language') or 'ja')[:10])}, 'vi', {q((story.get('author') or '')[:200] or None)},
                 {q((story.get('artist') or '')[:200] or None)}, {q(story.get('year'))}, {len(fetched)},
-                {q(round(min(float(rating), 9.99), 2) if rating else 0)}, {q(int(story.get('follows') or 0))},
+                {q(int(story.get('follows') or 0))},
                 {starting_views()}, NOW(),
                 {q(source.name)}, {q(str(story['source_id'])[:100])}, {q(story['url'])});"""]
         sid = f"(SELECT id FROM stories WHERE source_name = {q(source.name)} AND source_id = {q(str(story['source_id'])[:100])})"

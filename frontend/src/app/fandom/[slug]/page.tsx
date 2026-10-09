@@ -35,6 +35,7 @@ import ImageLightbox from '@/components/reader/ImageLightbox';
 import { useAuth } from '@/context/AuthContext';
 import { PostItem } from '@/components/fandom/PostCard';
 import { API_BASE_URL, REACTIONS, ROLE_BADGES, categoryOf, readJson, timeAgo, topRole } from '@/lib/fandom';
+import CodeBadge from '@/components/common/CodeBadge';
 
 export default function PostDetailPage() {
   const params = useParams();
@@ -221,6 +222,7 @@ export default function PostDetailPage() {
                     {category.emoji} {category.label}
                   </Link>
                   {post.is_pinned && <span className="flex items-center gap-1 text-xs font-semibold text-amber-300"><Pin className="w-3.5 h-3.5" /> Đã ghim</span>}
+                  <CodeBadge code={post.code} className="ml-auto" />
                 </div>
                 <h1 className="text-2xl sm:text-[2rem] font-extrabold text-white leading-tight break-words">{post.title}</h1>
 

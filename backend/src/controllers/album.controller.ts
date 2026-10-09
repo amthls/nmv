@@ -24,7 +24,7 @@ const ACTIVE_OWNER = `u.deleted_at IS NULL AND COALESCE(u.is_banned, false) = fa
  * preview, so "other albums with this story" previews what else is inside.
  */
 const summaryColumns = (excludeStory?: string) => `
-  a.id, a.name, a.description, a.is_public, a.copied_from, a.created_at, a.updated_at,
+  a.id, a.code, a.name, a.description, a.is_public, a.copied_from, a.created_at, a.updated_at,
   u.id AS owner_id, u.username AS owner_username, u.display_name AS owner_name, u.avatar_url AS owner_avatar,
   (SELECT count(*)::int FROM album_stories x JOIN stories s ON s.id = x.story_id
     WHERE x.album_id = a.id AND ${VISIBLE_STORY}) AS story_count,
@@ -205,7 +205,7 @@ export const getAlbum = async (req: AuthenticatedRequest, res: Response) => {
 
     const storiesRes = await pool.query(
       `SELECT s.id, s.title, s.slug, s.cover_image_url, s.author_name, s.story_type, s.status,
-              s.total_chapters, s.total_views, s.rating_avg, x.added_at
+              s.total_chapters, s.total_views, x.added_at
        FROM album_stories x JOIN stories s ON s.id = x.story_id
        WHERE x.album_id = $1 AND ${VISIBLE_STORY}
        ORDER BY x.added_at DESC`,

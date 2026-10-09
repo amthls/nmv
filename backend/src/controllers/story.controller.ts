@@ -236,7 +236,7 @@ export const getTrendingStories = async (req: Request, res: Response) => {
         s.original_language, s.translated_language, s.author_name, s.artist_name,
         s.total_chapters, s.total_volumes,
         s.total_views, s.total_favorites, s.total_bookmarks, s.total_comments,
-        s.rating_avg, s.rating_count, s.last_chapter_at, s.created_at,
+        s.last_chapter_at, s.created_at,
         u.username as uploader_username,
         u.display_name as uploader_name,
         g.name as group_name,
@@ -266,7 +266,7 @@ export const getTrendingStories = async (req: Request, res: Response) => {
       LEFT JOIN tags t ON st.tag_id = t.id
       WHERE s.approval_status = 'approved'
       GROUP BY s.id, u.id, g.id
-      ORDER BY s.total_views DESC, s.rating_avg DESC
+      ORDER BY s.total_views DESC, s.total_favorites DESC
       LIMIT 12;
     `);
 
@@ -288,7 +288,7 @@ export const getRecentlyUpdatedStories = async (req: Request, res: Response) => 
         s.original_language, s.translated_language, s.author_name, s.artist_name,
         s.total_chapters, s.total_volumes,
         s.total_views, s.total_favorites, s.total_bookmarks, s.total_comments,
-        s.rating_avg, s.rating_count, s.last_chapter_at, s.created_at,
+        s.last_chapter_at, s.created_at,
         u.username as uploader_username,
         u.display_name as uploader_name,
         g.name as group_name,
@@ -476,10 +476,7 @@ export const exploreStories = async (req: Request, res: Response) => {
           : 's.last_chapter_at DESC NULLS LAST, s.created_at DESC';
         break;
       case 'views':
-        orderBy = 's.total_views DESC, s.rating_avg DESC';
-        break;
-      case 'rating':
-        orderBy = 's.rating_avg DESC, s.rating_count DESC';
+        orderBy = 's.total_views DESC, s.total_favorites DESC';
         break;
       case 'favorites':
         orderBy = 's.total_favorites DESC, s.total_views DESC';
@@ -511,7 +508,7 @@ export const exploreStories = async (req: Request, res: Response) => {
         s.original_language, s.translated_language, s.author_name, s.artist_name,
         s.year_published, s.total_chapters, s.total_volumes,
         s.total_views, s.total_favorites, s.total_bookmarks, s.total_comments,
-        s.rating_avg, s.rating_count, s.last_chapter_at, s.created_at,
+        s.last_chapter_at, s.created_at,
         u.username as uploader_username,
         u.display_name as uploader_name,
         g.name as group_name,
@@ -701,7 +698,7 @@ export const getChapterBySlug = async (req: Request, res: Response) => {
 
     const storyRes = await pool.query(`
       SELECT 
-        s.id, s.title, s.slug, s.story_type, s.cover_image_url, s.author_name, s.allow_download,
+        s.id, s.code, s.title, s.slug, s.story_type, s.cover_image_url, s.author_name, s.allow_download,
         g.name as group_name, g.slug as group_slug
       FROM stories s
       LEFT JOIN translation_groups g ON s.group_id = g.id
@@ -732,6 +729,7 @@ export const getChapterBySlug = async (req: Request, res: Response) => {
     }
 
     const chapter = chapterRes.rows[0];
+    chapter.code = `${story.code}-C${Number(chapter.chapter_number)}`; // LN-JA-G03-0042-C12 (C12.5 for half chapters)
 
     if (story.story_type === 'manga') {
       const pagesRes = await pool.query(`
@@ -790,48 +788,6 @@ export const getChapterBySlug = async (req: Request, res: Response) => {
     res.json({
       success: true,
       data: chapter,
-    });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-export const rateStory = async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    if (!req.user || !req.user.id) {
-      return res.status(401).json({ success: false, message: 'Vui lòng đăng nhập để đánh giá truyện.' });
-    }
-
-    const { slug } = req.params;
-    const { rating, review } = req.body;
-
-    if (!rating || rating < 1 || rating > 10) {
-      return res.status(400).json({ success: false, message: 'Đánh giá phải từ 1 đến 10 sao.' });
-    }
-
-    const storyRes = await pool.query(`SELECT id FROM stories WHERE slug = $1`, [slug]);
-    if (storyRes.rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy truyện' });
-    }
-
-    const storyId = storyRes.rows[0].id;
-    const userId = req.user.id;
-
-    await pool.query(`
-      INSERT INTO story_ratings (story_id, user_id, rating, review)
-      VALUES ($1, $2, $3, $4)
-      ON CONFLICT (story_id, user_id) DO UPDATE SET
-        rating = EXCLUDED.rating,
-        review = EXCLUDED.review,
-        updated_at = NOW();
-    `, [storyId, userId, rating, review || null]);
-
-    const updatedStoryRes = await pool.query(`SELECT rating_avg, rating_count FROM stories WHERE id = $1`, [storyId]);
-
-    res.json({
-      success: true,
-      message: 'Đã gửi đánh giá thành công!',
-      data: updatedStoryRes.rows[0],
     });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -1002,11 +958,10 @@ export const deleteStory = async (req: AuthenticatedRequest, res: Response) => {
     try {
       await client.query('BEGIN');
 
-      // 1. Delete reading history, bookmarks, favorites, ratings
+      // 1. Delete reading history, bookmarks, favorites
       await client.query(`DELETE FROM reading_history WHERE story_id = $1`, [id]);
       await client.query(`DELETE FROM bookmarks WHERE story_id = $1`, [id]);
       await client.query(`DELETE FROM user_favorites WHERE story_id = $1`, [id]);
-      await client.query(`DELETE FROM story_ratings WHERE story_id = $1`, [id]);
       await client.query(`DELETE FROM story_views WHERE story_id = $1`, [id]);
       await client.query(`DELETE FROM story_tags WHERE story_id = $1`, [id]);
       await client.query(`DELETE FROM story_collaborators WHERE story_id = $1`, [id]);

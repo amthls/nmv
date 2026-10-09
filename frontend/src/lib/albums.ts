@@ -9,6 +9,7 @@ export interface AlbumPreviewStory {
 
 export interface AlbumSummary {
   id: string;
+  code: string;
   name: string;
   description: string | null;
   is_public: boolean;

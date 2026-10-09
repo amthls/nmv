@@ -14,7 +14,6 @@ import {
   getFeaturedIllustrations,
   getStoryBySlug,
   getChapterBySlug,
-  rateStory,
   updateStory,
   deleteStory,
   getStoryCollaborators,
@@ -86,6 +85,7 @@ import {
 } from '../controllers/post.controller';
 import { getComments, createComment, likeComment, updateComment, deleteComment } from '../controllers/comment.controller';
 import { createReport, getReports, resolveReport } from '../controllers/report.controller';
+import { resolveCode } from '../controllers/code.controller';
 import { uploadMultipleImages, uploadSingleImage, uploadMangaPages } from '../controllers/upload.controller';
 import { uploadImages, uploadMangaPageFiles } from '../middlewares/upload.middleware';
 import { 
@@ -204,7 +204,6 @@ router.get('/stories/illustrations', cacheJson(300), getFeaturedIllustrations);
 router.get('/stories/manageable', requireAuth, getManageableStories);
 router.get('/stories/:slug', optionalAuth, getStoryBySlug);
 router.get('/stories/:slug/chapters/:chapterSlug', optionalAuth, getChapterBySlug);
-router.post('/stories/:slug/rate', requireAuth, rateStory);
 router.post('/stories', requireAuth, createStory);
 router.put('/stories/:id', requireAuth, updateStory);
 router.delete('/stories/:id', requireAuth, deleteStory);
@@ -310,6 +309,7 @@ router.put('/profile/me/settings', requireAuth, updateUserSettings);
 router.get('/users', getUsers);
 router.get('/users/admin/all', requireAuth, getAdminUserList);
 router.post('/users/:userId/roles', requireAuth, manageUserRole);
+router.get('/codes/:code', optionalAuth, resolveCode);
 router.get('/users/:username', optionalAuth, getUserProfile);
 // Site moderation (admin/mod, rules in moderationRights): ban/unban, soft-delete an account
 const requireStaff = requireRole('admin', 'mod');

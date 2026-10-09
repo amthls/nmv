@@ -31,6 +31,7 @@ import RichContent from '@/components/common/RichContent';
 import { stripHtml } from '@/lib/richText';
 import { chapterUploadHref } from '@/lib/chapterUpload';
 import { useRealtime } from '@/lib/realtime';
+import CodeBadge from '@/components/common/CodeBadge';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -481,6 +482,7 @@ export default function GroupDetailPage() {
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-brand-500/20 text-brand-300 border border-brand-500/30">
                 Nhóm Dịch Chính Thức
               </span>
+              <CodeBadge code={group.code} />
             </div>
 
             <div className="text-xs sm:text-sm text-gray-300 max-w-2xl leading-relaxed">

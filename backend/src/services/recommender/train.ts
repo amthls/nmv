@@ -31,7 +31,6 @@ interface Pair {
   favorite: boolean;
   album: boolean;
   bookmarks: number;
-  rating: number | null;
   last: number;
 }
 
@@ -58,7 +57,6 @@ function preference(p: Pair, totalChapters: number, now: number): number {
   if (p.favorite) r += 2.5;
   if (p.album) r += 2;
   r += Math.min(p.bookmarks * 0.5, 1.5);
-  if (p.rating !== null) r += (p.rating - 5) * 0.5; // 1..10 stars: low ratings pull it down
   if (r <= 0) return 0;
   const ageDays = (now - p.last) / 86_400_000;
   return r * Math.max(0.25, Math.pow(0.5, ageDays / HALF_LIFE_DAYS));
@@ -91,13 +89,13 @@ async function loadDataset(): Promise<Dataset> {
     let m = pairs.get(actor);
     if (!m) pairs.set(actor, (m = new Map()));
     let p = m.get(item);
-    if (!p) m.set(item, (p = { readChapters: 0, readSeconds: 0, views: 0, favorite: false, album: false, bookmarks: 0, rating: null, last: 0 }));
+    if (!p) m.set(item, (p = { readChapters: 0, readSeconds: 0, views: 0, favorite: false, album: false, bookmarks: 0, last: 0 }));
     return p;
   };
   const touch = (p: Pair, t: any) => { p.last = Math.max(p.last, new Date(t).getTime() || 0); };
 
   const since = `NOW() - INTERVAL '${HISTORY_DAYS} days'`;
-  const [reads, events, favs, albums, bms, ratings, timelineRes] = await Promise.all([
+  const [reads, events, favs, albums, bms, timelineRes] = await Promise.all([
     pool.query(`SELECT user_id, story_id, count(*)::int AS n, COALESCE(sum(time_spent_seconds), 0)::int AS secs, max(read_at) AS last
                 FROM reading_history WHERE read_at > ${since} GROUP BY 1, 2`),
     // signed-in reads are already in reading_history; from events take their views, and everything for guests
@@ -110,7 +108,6 @@ async function loadDataset(): Promise<Dataset> {
     pool.query(`SELECT DISTINCT ON (a.user_id, x.story_id) a.user_id, x.story_id, x.added_at
                 FROM album_stories x JOIN albums a ON a.id = x.album_id`),
     pool.query(`SELECT user_id, story_id, count(*)::int AS n, max(created_at) AS last FROM bookmarks GROUP BY 1, 2`),
-    pool.query(`SELECT user_id, story_id, rating, COALESCE(updated_at, created_at) AS last FROM story_ratings`),
     pool.query(`
       SELECT actor, story_id, t FROM (
         SELECT 'u:' || user_id::text AS actor, story_id, read_at AS t FROM reading_history WHERE read_at > ${since}
@@ -134,7 +131,6 @@ async function loadDataset(): Promise<Dataset> {
   for (const r of favs.rows) { const p = pairOf(`u:${r.user_id}`, r.story_id); if (p) { p.favorite = true; touch(p, r.created_at); } }
   for (const r of albums.rows) { const p = pairOf(`u:${r.user_id}`, r.story_id); if (p) { p.album = true; touch(p, r.added_at); } }
   for (const r of bms.rows) { const p = pairOf(`u:${r.user_id}`, r.story_id); if (p) { p.bookmarks += r.n; touch(p, r.last); } }
-  for (const r of ratings.rows) { const p = pairOf(`u:${r.user_id}`, r.story_id); if (p) { p.rating = Number(r.rating); touch(p, r.last); } }
 
   const now = Date.now();
   const actors: string[] = [];

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Star, Eye, BookOpen, PlayCircle } from 'lucide-react';
+import { Eye, BookOpen, PlayCircle } from 'lucide-react';
 import SmartImage from '@/components/common/SmartImage';
 
 export interface Story {
@@ -21,8 +21,6 @@ export interface Story {
   total_chapters: number;
   total_views: string | number;
   total_favorites: string | number;
-  rating_avg: number | string;
-  rating_count: number;
   last_chapter_at?: string;
   created_at?: string;
   group_name?: string;
@@ -39,10 +37,6 @@ export interface Story {
   rec_label?: string;
   /** "continue reading" cards open this chapter directly */
   continue_slug?: string;
-}
-
-export function formatRating(value: Story['rating_avg']) {
-  return typeof value === 'number' ? value.toFixed(1) : parseFloat(value || '0').toFixed(1);
 }
 
 export function formatCount(value: Story['total_views']) {
@@ -64,7 +58,7 @@ export function formatTimeAgo(dateStr?: string) {
   return 'Vừa xong';
 }
 
-export type CardMeta = 'stats' | 'updated' | 'views' | 'rating';
+export type CardMeta = 'stats' | 'updated' | 'views';
 
 /**
  * Poster card: the cover is shown clean (no dark overlay), title and one line of
@@ -110,14 +104,8 @@ export default function StoryCardGrid({ story, rank, meta = 'stats' }: { story: 
           </>
         ) : meta === 'views' ? (
           <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{formatCount(story.total_views)} lượt xem</span>
-        ) : meta === 'rating' ? (
-          <>
-            <span className="flex items-center gap-1 font-semibold text-amber-500"><Star className="w-3 h-3 fill-current" />{formatRating(story.rating_avg)}</span>
-            <span className="truncate">{story.author_name || 'Chưa rõ tác giả'}</span>
-          </>
         ) : (
           <>
-            <span className="flex items-center gap-1 font-semibold text-amber-500"><Star className="w-3 h-3 fill-current" />{formatRating(story.rating_avg)}</span>
             <span className="flex items-center gap-1"><Eye className="w-3 h-3" />{formatCount(story.total_views)}</span>
             <span className="flex items-center gap-1"><BookOpen className="w-3 h-3" />{story.total_chapters || 0}</span>
           </>
