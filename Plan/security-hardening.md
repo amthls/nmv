@@ -1,7 +1,7 @@
 # Kế hoạch: Vá bảo mật (mục 2–8 trong báo cáo 2026-10-09)
 
 > Làm xong mục nào đổi `[ ]` → `[x]`. Phiên mới: đọc file này, làm tiếp mục `[ ]` đầu tiên.
-> Nhánh: `feat/scale-phase1` (đã push). Mục 1 (mật khẩu `password123` của tài khoản mẫu) **chưa làm, chờ chủ dự án quyết**.
+> Nhánh: `security/hardening` (cherry-pick từ `feat/scale-phase1`, vì commit ở đó bị push sau khi PR #13 đã merge). Mục 1 (mật khẩu `password123` của tài khoản mẫu) **chưa làm, chờ chủ dự án quyết**.
 
 ## Checklist
 
