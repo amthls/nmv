@@ -29,10 +29,10 @@
 - [x] Bị chặn / đã chặn: thay ô soạn tin bằng thông báo
 
 ### Hoàn tất
-- [ ] Typecheck 2 bên, migrate, build, thử bằng 2 tài khoản test (nhãn, tìm, chặn 2 chiều, ghim, realtime)
+- [x] Typecheck 2 bên, migrate, build, thử bằng 2 tài khoản test (nhãn, tìm, chặn 2 chiều, ghim, realtime)
 - [x] README (bảng, API, trang `/tin-nhan`, hạn chế đã biết)
-- [ ] Nhánh xem thử `local/preview` (chỉ ở máy) = `main` + `fix/navbar-compact` + nhánh này → build cho chủ dự án xem
-- [ ] Chờ duyệt → commit, push, mở PR
+- [x] Nhánh xem thử `local/preview` (chỉ ở máy) = `main` + `fix/navbar-compact` + nhánh này → build cho chủ dự án xem
+- [x] Chờ duyệt → gộp vào `feat/header-and-dm-features`, chủ dự án tự push
 
 ## Ghi chú
 - Express 4: handler mới bọc `wrap()` hoặc try/catch.

@@ -2,7 +2,7 @@
 
 - **Mục tiêu:** Thanh header gọn và đẹp hơn: bớt thứ hiển thị cùng lúc, mọi nút cùng một kiểu, chức năng phụ vào menu.
 - **Tạo từ:** `origin/main` @ 24cc99a, ngày 2026-10-09
-- **Trạng thái:** chờ chủ dự án duyệt giao diện (chưa push bản thiết kế lại)
+- **Trạng thái:** đã gộp vào `feat/header-and-dm-features`
 - **PR:** (điền sau khi mở)
 - **Plan:** không cần (việc nhỏ)
 

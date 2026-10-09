@@ -2,7 +2,7 @@
 
 - **Mục tiêu:** Tin nhắn: nhãn phân loại cuộc trò chuyện, tìm theo nhãn, chặn người dùng, ghim tin nhắn.
 - **Tạo từ:** `origin/main` @ 24cc99a, ngày 2026-10-09
-- **Trạng thái:** chờ chủ dự án duyệt giao diện (chưa push)
+- **Trạng thái:** đã gộp vào `feat/header-and-dm-features`
 - **PR:** (điền sau khi mở)
 - **Plan:** `Plan/dm-labels-block-pin.md`
 
