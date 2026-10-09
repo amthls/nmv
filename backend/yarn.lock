@@ -519,6 +519,13 @@
   dependencies:
     undici-types "~6.21.0"
 
+"@types/nodemailer@^8.0.2":
+  version "8.0.2"
+  resolved "https://registry.yarnpkg.com/@types/nodemailer/-/nodemailer-8.0.2.tgz#0f57798b2753dbad314f1ad9952713a4a9954f12"
+  integrity sha512-c7M5ox8p0nEOfbJ2E9Qcmt8/QCu/VzsiAhzBiZbvky2PhKZDHpKB3sQHBM5MEZNkCfBOaS6S9//AGPRTNB7IaA==
+  dependencies:
+    "@types/node" "*"
+
 "@types/pdfkit@^0.17.6":
   version "0.17.6"
   resolved "https://registry.yarnpkg.com/@types/pdfkit/-/pdfkit-0.17.6.tgz#b0a4b728b1d0bfb7ec6e574efebba7dc6bf4cca1"
@@ -1375,6 +1382,11 @@ negotiator@0.6.3:
   version "0.6.3"
   resolved "https://registry.yarnpkg.com/negotiator/-/negotiator-0.6.3.tgz#58e323a72fedc0d6f9cd4d31fe49f51479590ccd"
   integrity sha512-+EUsqGPLsM+j/zdChZjsnX51g4XrHFOIXwfnCVPGlQk/k5giakcKsuxCObBRu6DSm9opw/O6slWbJdghQM4bBg==
+
+nodemailer@~7.0.13:
+  version "7.0.13"
+  resolved "https://registry.yarnpkg.com/nodemailer/-/nodemailer-7.0.13.tgz#74acaa55f0c6f9476384c29f27f53e467e8483cd"
+  integrity sha512-PNDFSJdP+KFgdsG3ZzMXCgquO7I6McjY2vlqILjtJd0hy8wEvtugS9xKRF2NWlPNGxvLCXlTNIae4serI7dinw==
 
 notepack.io@~3.0.1:
   version "3.0.1"

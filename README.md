@@ -47,7 +47,7 @@ mạng "edge": gateway, frontend, backend
 mạng "data": backend, postgres, pgbouncer, redis, rabbitmq, search, worker, export-worker
 ```
 
-**10 container** (`docker compose ps`): `gateway`, `frontend`, `backend`, `worker`, `export-worker`, `postgres`, `pgbouncer`, `redis`, `search`, `rabbitmq`, cộng `pgadmin` khi bật profile `tools`. Chỉ `gateway` (cổng 3000) mở ra mạng; backend, Postgres, Redis, Elasticsearch và giao diện quản trị RabbitMQ chỉ nghe trên `127.0.0.1`, còn frontend, pgbouncer và các worker không mở cổng nào. Gateway và frontend **không** nằm trong mạng `data`, nên không chạm được tới Postgres/Redis/RabbitMQ.
+**10 container** (`docker compose ps`): `gateway`, `frontend`, `backend`, `worker`, `export-worker`, `postgres`, `pgbouncer`, `redis`, `search`, `rabbitmq`, cộng `pgadmin` khi bật profile `tools` và `cloudflared` (HTTPS qua Cloudflare Tunnel) khi bật profile `tunnel`. Chỉ `gateway` (cổng 3000) mở ra mạng; backend, Postgres, Redis, Elasticsearch và giao diện quản trị RabbitMQ chỉ nghe trên `127.0.0.1`, còn frontend, pgbouncer và các worker không mở cổng nào. Gateway và frontend **không** nằm trong mạng `data`, nên không chạm được tới Postgres/Redis/RabbitMQ.
 
 Trình duyệt gọi `/api/v1/...` và `/uploads/...` cùng origin; qua gateway các đường dẫn này đi thẳng tới backend. Khi chạy frontend riêng (không có gateway), `frontend/next.config.mjs` vẫn chuyển tiếp sang `http://backend:5000` (địa chỉ **viết cứng**, biến `API_URL` không được dùng).
 
@@ -84,11 +84,11 @@ Trình duyệt gọi `/api/v1/...` và `/uploads/...` cùng origin; qua gateway 
 ## 🚀 Khởi chạy
 
 ```bash
-cp .env.example .env         # BẮT BUỘC đặt JWT_SECRET, RABBITMQ_PASSWORD, REDIS_PASSWORD (openssl rand -hex 32); compose không chạy nếu thiếu
+cp .env.example .env         # BẮT BUỘC đặt JWT_SECRET, POSTGRES_PASSWORD, RABBITMQ_PASSWORD, REDIS_PASSWORD, PGADMIN_DEFAULT_PASSWORD (openssl rand -hex 24); compose không chạy nếu thiếu
 docker compose up -d --build # toàn bộ 10 container
 sh scripts/migrate.sh        # chạy các migration mới (xem mục CI/CD & migration)
 ```
-`python3 launch.py` làm tất cả các bước trên (tự sinh `.env`, và tự thêm `REDIS_PASSWORD` vào `.env` cũ).
+`python3 launch.py` làm tất cả các bước trên (tự sinh `.env` với mật khẩu ngẫu nhiên; `.env` cũ còn mật khẩu mặc định `postgres`/`admin` thì tự đổi sang mật khẩu ngẫu nhiên và áp luôn vào volume Postgres đang có bằng `ALTER USER`).
 
 | Dịch vụ | Địa chỉ | Ghi chú |
 |:---|:---|:---|
@@ -98,7 +98,7 @@ sh scripts/migrate.sh        # chạy các migration mới (xem mục CI/CD & mi
 | RabbitMQ quản trị | http://127.0.0.1:15673 | Chỉ máy chủ; đăng nhập bằng `RABBITMQ_USER` / `RABBITMQ_PASSWORD` |
 | Redis | `127.0.0.1:6380` | Chỉ máy chủ; cần mật khẩu `REDIS_PASSWORD` (`redis-cli -p 6380 -a ...`) |
 | Elasticsearch (search) | `127.0.0.1:9201` | **chỉ bind localhost**; tắt xác thực (`xpack.security.enabled=false`) nên tuyệt đối không mở ra ngoài |
-| pgAdmin | http://localhost:5050 | tùy chọn: `docker compose --profile tools up -d pgadmin` |
+| pgAdmin | http://localhost:5050 | Chỉ máy chủ (`127.0.0.1`); tùy chọn: `docker compose --profile tools up -d pgadmin`, mật khẩu `PGADMIN_DEFAULT_PASSWORD` trong `.env` |
 
 Lần đầu tạo volume, Postgres tự nạp `sql/database.sql`. Backend tự tạo index trong Elasticsearch và đồng bộ toàn bộ truyện khi khởi động.
 
@@ -108,13 +108,18 @@ Chạy không qua Docker (cần Postgres sẵn): `yarn dev:local` (backend + fro
 
 | Biến | Mặc định | Ý nghĩa |
 |:---|:---|:---|
-| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` / `POSTGRES_PORT` | `postgres` / `postgres` / `novel_platform` / `5432` | Cấu hình Postgres |
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` / `POSTGRES_PORT` | `postgres` / *(không có)* / `novel_platform` / `5432` | **Bắt buộc** `POSTGRES_PASSWORD` (hex ngẫu nhiên). Volume giữ mật khẩu lúc tạo: đổi trong `.env` thì phải `ALTER USER` (launch.py tự làm) |
 | `PORT` | `5000` | Cổng backend |
 | `JWT_SECRET` | *(không có)* | **Bắt buộc**, tối thiểu 32 ký tự. Ở production backend từ chối khởi động nếu thiếu hoặc còn là giá trị mặc định cũ |
 | `JWT_EXPIRES_IN` | `7d` | Có trong compose, nhưng code hiện ký token 30 ngày cố định |
 | `CORS_ORIGIN` | `http://localhost:3000` | Đổi thành domain thật khi đưa lên tunnel/domain |
 | `RABBITMQ_URL` / `RABBITMQ_USER` / `RABBITMQ_PASSWORD` | compose tự ghép URL từ hai biến sau | **Bắt buộc** `RABBITMQ_PASSWORD`. Để trống `RABBITMQ_URL` (chạy ngoài Docker) thì thông báo được xử lý trực tiếp, không qua hàng đợi |
 | `ENABLE_DEMO_ACCOUNTS` | `false` | `true` mới hiện danh sách tài khoản demo và gợi ý mật khẩu trên form đăng nhập |
+| `PGADMIN_DEFAULT_PASSWORD` | *(không có)* | **Bắt buộc** (kể cả khi không bật pgAdmin, vì compose đọc cả file) |
+| `SMTP_URL` / `MAIL_FROM` | *(trống)* / `NovelHub <no-reply@novelhub.local>` | Gửi mail quên mật khẩu, xác thực email, ví dụ `smtps://user:app-password@smtp.gmail.com:465`. Để trống: không gửi, link được ghi vào log backend (`docker compose logs backend \| grep mail`) |
+| `SITE_URL` | `http://localhost:3000` | Địa chỉ công khai của web, dùng để tạo link trong email |
+| `COOKIE_SECURE` | `false` | `true` ép cờ `Secure` cho cookie. Không cần khi đi qua Cloudflare/HTTPS proxy: cookie tự `Secure` khi `X-Forwarded-Proto: https` |
+| `CLOUDFLARE_TUNNEL_TOKEN` | *(trống)* | Token của Cloudflare Tunnel cho service `cloudflared` (profile `tunnel`), xem [Lộ trình bảo mật](#-lộ-trình-bảo-mật) |
 | `NOTIFY_*`, `WORKER_*` | xem bên dưới | Tinh chỉnh hàng đợi và worker |
 | `SEARCH_URL` | `http://search:9200` (trong compose) | **Để trống để tắt Elasticsearch** và dùng SQL `ILIKE` |
 | `SEARCH_INDEX` | `novel_stories` | Tên index |
@@ -172,12 +177,12 @@ Mục tiêu: chịu được vài nghìn đến vài chục nghìn người onli
 
 ## 🔐 Lộ trình bảo mật
 
-Đã có: một cổng vào duy nhất, 2 mạng Docker tách tầng, `no-new-privileges` cho các container app, mật khẩu bắt buộc cho RabbitMQ/Redis, rate limit dùng chung, quét lỗ hổng image trong CI, Dependabot. Bước tiếp theo, theo thứ tự nên làm:
+Đã có: một cổng vào duy nhất, 2 mạng Docker tách tầng, `no-new-privileges`, **container app chạy bằng user `node`** (backend khởi động bằng root chỉ để sửa quyền thư mục `uploads`/`exports`/`.cache` khi cần rồi hạ quyền, xem `backend/docker-entrypoint.sh`), mật khẩu ngẫu nhiên bắt buộc cho Postgres/RabbitMQ/Redis/pgAdmin, rate limit dùng chung, lỗi 5xx bị che ở production (`maskServerErrors`: chỉ trả câu chung kèm mã tra log), **thu hồi token** (đổi/đặt lại mật khẩu, "đăng xuất mọi thiết bị": cột `users.tokens_valid_after`, áp cho cả API và socket), **Content-Security-Policy** (`frontend/next.config.mjs`), cookie tự `Secure` + HSTS khi truy cập qua HTTPS, quét lỗ hổng image trong CI, Dependabot.
 
-1. HTTPS (Cloudflare tunnel hoặc chứng chỉ trên gateway), rồi bật `Secure` cho cookie và HSTS.
-2. Thu hồi token: lưu "token hết hiệu lực trước thời điểm X" của từng người trong Redis, kiểm tra trong `requireAuth` và khi kết nối socket (đăng xuất mọi thiết bị, đổi mật khẩu).
-3. Chạy container bằng user không phải root (`USER node`); cần `chown` volume `image_cache` cũ trước.
-4. Content-Security-Policy cho frontend; đổi mật khẩu mặc định Postgres và các tài khoản mẫu.
+1. **Bật HTTPS khi đưa lên mạng**: tạo tunnel trong Cloudflare Zero Trust, trỏ hostname về `http://gateway:8080`, đặt `CLOUDFLARE_TUNNEL_TOKEN` và `SITE_URL=https://<tên miền>` trong `.env`, rồi `docker compose --profile tunnel up -d`. Không cần mở cổng nào trên router.
+2. Cấu hình `SMTP_URL` để mail quên mật khẩu/xác thực email gửi thật (chưa cấu hình thì link chỉ nằm trong log backend).
+3. CSP chặt hơn: hiện còn `'unsafe-inline'` cho script/style (Next chèn script inline, CKEditor dùng style inline); bỏ được khi chuyển sang nonce.
+4. Đổi hoặc khóa các tài khoản mẫu (`password123`), kể cả `admin`.
 
 ## 📬 Hàng đợi thông báo (RabbitMQ)
 
@@ -270,6 +275,7 @@ Các trang danh sách/chi tiết vẫn giữ khung xám nhấp nháy (skeleton) 
 | `/nhom-dich`, `/nhom-dich/[slug]` | Danh sách nhóm dịch, tạo nhóm, thành viên và vai trò, kênh chat nhóm, duyệt chương nộp |
 | `/fandom`, `/fandom/[slug]` | Diễn đàn: đăng/sửa/xóa bài, phản ứng cảm xúc, bình luận, kiểm duyệt bài (đơn lẻ và hàng loạt) |
 | `/tin-nhan` | Tin nhắn riêng giữa hai người (kiểu Reddit chat): hộp thư bên trái, cuộc trò chuyện bên phải (`?u=<username>`), tin mới được đẩy ngay qua Socket.IO, đánh dấu "Đã xem". Mở từ nút **Nhắn tin** ở trang cá nhân hoặc biểu tượng cạnh tên tác giả bài Fandom |
+| `/quen-mat-khau`, `/dat-lai-mat-khau`, `/xac-thuc-email` | Quên mật khẩu (link "Quên mật khẩu?" trong form đăng nhập), đặt mật khẩu mới từ link trong email, xác thực email |
 | `/bao-cao` | Danh sách báo cáo vi phạm cho Admin/Mod: lọc theo trạng thái, mở nội dung bị báo cáo, đánh dấu "đã xử lý" hoặc "bỏ qua" |
 | `/tai-khoan` | Hồ sơ, avatar, cài đặt đọc truyện, thông báo; tab quản lý vai trò (admin) |
 | Navbar | Tìm nhanh, biểu tượng tin nhắn kèm số tin chưa đọc, chuông thông báo (đánh dấu đã đọc, xóa), đăng nhập/đăng ký, tài khoản demo, lối vào `/bao-cao` cho Admin/Mod |
@@ -294,7 +300,7 @@ Schema thật gồm 31 bảng và 2 view (`sql/database.sql`). Nhóm chính:
 
 | Nhóm | Bảng |
 |:---|:---|
-| Người dùng | `users`, `user_roles`, `user_settings`, `user_follows`*, `user_favorites` |
+| Người dùng | `users`, `user_roles`, `user_settings`, `user_follows`*, `user_favorites`, `auth_tokens` (link đặt lại mật khẩu / xác thực email) |
 | Truyện | `stories`, `volumes`, `chapters`, `chapter_pages`, `chapter_submissions`, `story_tags`, `tags`, `tag_categories`, `story_ratings`, `story_collaborators`, `story_views`, `story_views_daily` |
 | Nhóm dịch | `translation_groups`, `group_members`, `group_join_requests`, `group_messages` |
 | Tin nhắn riêng | `direct_messages` (migration `014_direct_messages.sql`) |
@@ -315,8 +321,12 @@ Ghi chú thực tế: bảng `users` **không có** cột `role`, `coins`, `exp_
 
 **Hệ thống & Auth**
 - `GET /health`
-- `POST /auth/login` (body: `identifier`, `password`), `POST /auth/register`, `POST /auth/logout`, `GET /auth/me` (Auth)
+- `POST /auth/login` (body: `identifier`, `password`), `POST /auth/register` (gửi kèm mail xác thực), `POST /auth/logout`, `GET /auth/me` (có `email_verified`)
 - `GET /auth/accounts`: danh sách tài khoản demo (công khai, chỉ nên dùng khi dev)
+- `POST /auth/change-password` (Auth; `current_password`, `new_password`): đổi mật khẩu, thu hồi token ở thiết bị khác, trả token mới cho thiết bị này
+- `POST /auth/logout-all` (Auth): thu hồi mọi token, đóng socket đang mở
+- `POST /auth/forgot-password` (`email`): luôn trả cùng một câu (không lộ email nào có tài khoản), gửi link `/dat-lai-mat-khau?token=` hiệu lực 1 giờ; `POST /auth/reset-password` (`token`, `new_password`): token dùng một lần, thu hồi mọi phiên
+- `POST /auth/verify-email` (`token`, hiệu lực 24 giờ), `POST /auth/resend-verification` (Auth). Giới hạn: gửi mail 5 lần/giờ, thử token/mật khẩu hiện tại 20 lần/15 phút. DB chỉ lưu SHA-256 của token (bảng `auth_tokens`, migration `015_account_security.sql`)
 
 **Truyện**
 - `GET /stories`, `GET /stories/explore` (cùng một handler; hỗ trợ `q, type, status, tags, exclude_tags, language, min_chapters, sort, page, limit`; `sort` = `relevance | updated | views | rating | favorites | newest | title_asc | title_desc`)
@@ -386,7 +396,6 @@ Email có dạng `<tên ngắn>@novelhub.vn` (ví dụ `admin@novelhub.vn`, `sak
 ## ⚠️ Hạn chế đã biết
 
 **Chưa có chức năng**
-- Quên/đặt lại mật khẩu, đổi mật khẩu, xác thực email (cột `email_verified` có nhưng chưa dùng).
 - Sửa chương chưa có lịch sử phiên bản (sửa là ghi đè).
 - Báo cáo vi phạm chưa tự ẩn/xóa nội dung: Admin/Mod phải tự xử lý rồi đánh dấu báo cáo.
 - Các bảng `user_follows`, `broadcast_notifications` chưa được code sử dụng.
@@ -396,7 +405,6 @@ Email có dạng `<tên ngắn>@novelhub.vn` (ví dụ `admin@novelhub.vn`, `sak
 
 **Bảo mật (cần xử lý trước khi chạy thật)**
 - **Tài khoản mẫu vẫn dùng mật khẩu `password123`** (kể cả `admin`), bất kể danh sách demo đang tắt. Nếu website đang mở ra Internet (ví dụ qua tunnel), hãy đổi mật khẩu hoặc xóa các tài khoản này.
-- Đổi `JWT_SECRET` làm mọi phiên đăng nhập hiện có hết hiệu lực (người dùng phải đăng nhập lại). Token sống 30 ngày, chưa có cơ chế thu hồi.
+- Đổi `JWT_SECRET` làm mọi phiên đăng nhập hiện có hết hiệu lực (người dùng phải đăng nhập lại). Token sống 30 ngày; thu hồi được qua đổi mật khẩu hoặc "Đăng xuất khỏi mọi thiết bị" (tab Bảo mật ở `/tai-khoan`). Frontend vẫn lưu một bản token trong `localStorage` (ngoài cookie `httpOnly`), nên XSS vẫn đọc được token; CSP giảm rủi ro này.
 - Elasticsearch và RabbitMQ chạy trong mạng nội bộ Docker; Elasticsearch tắt xác thực (chỉ bind `127.0.0.1`).
-- Postgres còn dùng mật khẩu mặc định `postgres` (chỉ nghe `127.0.0.1` nên không truy cập từ ngoài; đổi mật khẩu trên volume đã có cần `ALTER USER`).
-- Cổng 3000 chạy HTTP thường; cần HTTPS (Cloudflare tunnel, hoặc chứng chỉ trên gateway) khi dùng thật.
+- Cổng 3000 chạy HTTP thường; bật HTTPS bằng service `cloudflared` (xem [Lộ trình bảo mật](#-lộ-trình-bảo-mật)) trước khi dùng thật.

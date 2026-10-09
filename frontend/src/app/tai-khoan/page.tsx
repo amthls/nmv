@@ -20,6 +20,7 @@ import {
   ShieldAlert,
   Search,
   LayoutDashboard,
+  KeyRound,
   Calendar,
   Mail,
   BadgeCheck,
@@ -43,12 +44,13 @@ import SmartImage from '@/components/common/SmartImage';
 import ImageUploadDropzone from '@/components/common/ImageUploadDropzone';
 import AlbumCard from '@/components/album/AlbumCard';
 import RecommenderPanel from '@/components/admin/RecommenderPanel';
+import SecurityTab from '@/components/account/SecurityTab';
 import { useAuth } from '@/context/AuthContext';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200';
 
-type Tab = 'overview' | 'profile' | 'reader_settings' | 'admin_roles';
+type Tab = 'overview' | 'profile' | 'reader_settings' | 'security' | 'admin_roles';
 
 const ROLE_INFO: Record<string, { label: string; cls: string }> = {
   admin: { label: 'Quản trị viên', cls: 'bg-rose-500/20 text-rose-300 border-rose-500/40' },
@@ -389,6 +391,7 @@ export default function UserProfilePage() {
     { id: 'overview', label: 'Tổng quan', icon: LayoutDashboard },
     { id: 'profile', label: 'Chỉnh sửa hồ sơ', icon: User },
     { id: 'reader_settings', label: 'Cài đặt đọc truyện', icon: Sliders },
+    { id: 'security', label: 'Bảo mật', icon: KeyRound },
     ...(isAdmin ? [{ id: 'admin_roles' as Tab, label: 'Phân quyền (Admin)', icon: Shield, admin: true }] : []),
   ];
 
@@ -850,6 +853,8 @@ export default function UserProfilePage() {
           </div>
         </form>
       )}
+
+      {activeTab === 'security' && <SecurityTab />}
 
       {/* Tab: Admin Role Assignment */}
       {isAdmin && activeTab === 'admin_roles' && (

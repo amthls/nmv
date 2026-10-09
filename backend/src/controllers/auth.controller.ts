@@ -1,11 +1,81 @@
 ﻿import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { pool } from '../config/db';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
+import { sendLinkMail, SITE_URL } from '../services/mailer';
+import { disconnectUser } from '../services/realtime';
 
 import { JWT_SECRET, ENABLE_DEMO_ACCOUNTS } from '../config/env';
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000; // 30 days = 1 month
+
+/**
+ * Login cookie. `Secure` when the visitor reached us over HTTPS (Cloudflare/proxy sets X-Forwarded-Proto,
+ * trusted via `trust proxy`) or when COOKIE_SECURE=true; plain-http localhost keeps working.
+ */
+const setSessionCookie = (req: Request, res: Response, token: string) => {
+  res.cookie('token', token, {
+    httpOnly: true,
+    secure: req.secure || process.env.COOKIE_SECURE === 'true',
+    sameSite: 'lax',
+    maxAge: THIRTY_DAYS_MS,
+    path: '/',
+  });
+};
+
+/** Returns an error message, or null when the password is acceptable. */
+const passwordProblem = (password: unknown): string | null => {
+  if (typeof password !== 'string' || password.length < 6 || !password.trim()) return 'Mật khẩu phải có ít nhất 6 ký tự.';
+  // bcrypt only uses the first 72 bytes; longer passwords would be silently truncated
+  if (Buffer.byteLength(password, 'utf8') > 72) return 'Mật khẩu quá dài (tối đa 72 byte).';
+  return null;
+};
+
+const sha256 = (s: string) => crypto.createHash('sha256').update(s).digest('hex');
+
+type AccountTokenPurpose = 'reset_password' | 'verify_email';
+const TOKEN_TTL_MINUTES: Record<AccountTokenPurpose, number> = { reset_password: 60, verify_email: 24 * 60 };
+
+/** New one-time token (only its hash is stored); older unused tokens for the same purpose stop working. */
+async function createAccountToken(userId: string, purpose: AccountTokenPurpose): Promise<string> {
+  const token = crypto.randomBytes(32).toString('hex');
+  await pool.query(`DELETE FROM auth_tokens WHERE user_id = $1 AND purpose = $2 AND used_at IS NULL`, [userId, purpose]);
+  await pool.query(
+    `INSERT INTO auth_tokens (token_hash, user_id, purpose, expires_at)
+     VALUES ($1, $2, $3, NOW() + make_interval(mins => $4))`,
+    [sha256(token), userId, purpose, TOKEN_TTL_MINUTES[purpose]]
+  );
+  return token;
+}
+
+/** Marks the token used and returns its user id, or null if unknown, expired or already used. */
+async function consumeAccountToken(token: unknown, purpose: AccountTokenPurpose): Promise<string | null> {
+  if (typeof token !== 'string' || !/^[0-9a-f]{64}$/.test(token)) return null;
+  const r = await pool.query(
+    `UPDATE auth_tokens SET used_at = NOW()
+     WHERE token_hash = $1 AND purpose = $2 AND used_at IS NULL AND expires_at > NOW()
+     RETURNING user_id`,
+    [sha256(token), purpose]
+  );
+  return r.rows[0]?.user_id ?? null;
+}
+
+async function sendVerificationMail(userId: string, email: string) {
+  const token = await createAccountToken(userId, 'verify_email');
+  await sendLinkMail(email, 'Xác thực email NovelHub',
+    'Nhấn vào liên kết dưới đây để xác thực email cho tài khoản NovelHub của bạn (hiệu lực 24 giờ).',
+    'Xác thực email', `${SITE_URL}/xac-thuc-email?token=${token}`);
+}
+
+/** Revoke every login token of the user issued before now (all devices). */
+async function revokeSessions(userId: string, client: { query: typeof pool.query } = pool) {
+  await client.query(`UPDATE users SET tokens_valid_after = NOW(), updated_at = NOW() WHERE id = $1`, [userId]);
+  disconnectUser(userId);
+}
+
+const signSession = (user: { id: string; username: string; email: string }, roles: string[]) =>
+  jwt.sign({ id: user.id, username: user.username, email: user.email, roles }, JWT_SECRET, { expiresIn: '30d' });
 
 export const login = async (req: Request, res: Response) => {
   try {
@@ -58,25 +128,9 @@ export const login = async (req: Request, res: Response) => {
 
     await pool.query('UPDATE users SET last_login_at = NOW() WHERE id = $1', [user.id]);
 
-    const rawRoles = user.roles.map((r: any) => r.role);
-    const tokenPayload = {
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      roles: rawRoles,
-    };
-
-    // 30 days token
-    const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '30d' });
-
-    // Set 30-day persistent cookie
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: THIRTY_DAYS_MS,
-      path: '/',
-    });
+    // 30-day token in a persistent cookie
+    const token = signSession(user, user.roles.map((r: any) => r.role));
+    setSessionCookie(req, res, token);
 
     const userResponse = {
       id: user.id,
@@ -135,13 +189,8 @@ export const register = async (req: Request, res: Response) => {
     if (displayName.length > 100) {
       return fail('Tên hiển thị tối đa 100 ký tự.');
     }
-    if (password.length < 6 || !password.trim()) {
-      return fail('Mật khẩu phải có ít nhất 6 ký tự.');
-    }
-    // bcrypt only uses the first 72 bytes; longer passwords would be silently truncated
-    if (Buffer.byteLength(password, 'utf8') > 72) {
-      return fail('Mật khẩu quá dài (tối đa 72 byte).');
-    }
+    const pwProblem = passwordProblem(password);
+    if (pwProblem) return fail(pwProblem);
 
     const checkRes = await pool.query(
       'SELECT username FROM users WHERE LOWER(username) = LOWER($1) OR LOWER(email) = $2',
@@ -188,22 +237,9 @@ export const register = async (req: Request, res: Response) => {
       client.release();
     }
 
-    const tokenPayload = {
-      id: newUser.id,
-      username: newUser.username,
-      email: newUser.email,
-      roles: ['reader'],
-    };
-
-    const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '30d' });
-
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: THIRTY_DAYS_MS,
-      path: '/',
-    });
+    const token = signSession(newUser, ['reader']);
+    setSessionCookie(req, res, token);
+    sendVerificationMail(newUser.id, newUser.email).catch((e) => console.error('[mail] verification:', e.message));
 
     return res.status(201).json({
       success: true,
@@ -236,6 +272,7 @@ export const getMe = async (req: AuthenticatedRequest, res: Response) => {
 
     const userRes = await pool.query(
       `SELECT u.id, u.username, u.email, u.display_name, u.avatar_url, u.banner_url, u.bio, u.created_at,
+        COALESCE(u.email_verified, false) AS email_verified,
         COALESCE(
           json_agg(
             json_build_object('role', ur.role, 'is_visible', ur.is_visible)
@@ -274,6 +311,94 @@ export const logout = async (_req: Request, res: Response) => {
     success: true,
     message: '\u0110\u0103ng xu\u1ea5t th\u00e0nh c\u00f4ng!',
   });
+};
+
+/** Log out of every device: all existing tokens stop working, open sockets are closed. */
+export const logoutAll = async (req: AuthenticatedRequest, res: Response) => {
+  await revokeSessions(req.user!.id);
+  res.clearCookie('token', { path: '/' });
+  res.clearCookie('auth_token', { path: '/' });
+  return res.json({ success: true, message: 'Đã đăng xuất khỏi mọi thiết bị.' });
+};
+
+/** Change password while signed in (needs the current one). Other devices are logged out, this one stays. */
+export const changePassword = async (req: AuthenticatedRequest, res: Response) => {
+  const { current_password, new_password } = req.body || {};
+  if (typeof current_password !== 'string' || !current_password) {
+    return res.status(400).json({ success: false, message: 'Vui lòng nhập mật khẩu hiện tại.' });
+  }
+  const problem = passwordProblem(new_password);
+  if (problem) return res.status(400).json({ success: false, message: problem });
+  if (new_password === current_password) {
+    return res.status(400).json({ success: false, message: 'Mật khẩu mới phải khác mật khẩu hiện tại.' });
+  }
+
+  const r = await pool.query(`SELECT password_hash FROM users WHERE id = $1`, [req.user!.id]);
+  if (!r.rows[0] || !(await bcrypt.compare(current_password, r.rows[0].password_hash))) {
+    return res.status(400).json({ success: false, message: 'Mật khẩu hiện tại không đúng.' });
+  }
+
+  await pool.query(`UPDATE users SET password_hash = $2 WHERE id = $1`, [req.user!.id, await bcrypt.hash(new_password, 10)]);
+  await revokeSessions(req.user!.id);
+  const token = signSession(req.user!, req.user!.roles);
+  setSessionCookie(req, res, token);
+  return res.json({ success: true, message: 'Đã đổi mật khẩu. Các thiết bị khác đã bị đăng xuất.', data: { token } });
+};
+
+const FORGOT_REPLY = 'Nếu email này có tài khoản, chúng tôi đã gửi liên kết đặt lại mật khẩu (hiệu lực 1 giờ). Hãy kiểm tra hộp thư, kể cả mục spam.';
+
+/** Always the same answer, so the form cannot be used to find out which emails have accounts. */
+export const forgotPassword = async (req: Request, res: Response) => {
+  const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+  if (!EMAIL_RE.test(email) || email.length > 255) {
+    return res.status(400).json({ success: false, message: 'Email không đúng định dạng.' });
+  }
+  const r = await pool.query(
+    `SELECT id, email FROM users WHERE LOWER(email) = $1 AND deleted_at IS NULL AND COALESCE(is_banned, false) = false`,
+    [email]
+  );
+  const user = r.rows[0];
+  if (user) {
+    // Not awaited: answering faster for existing accounts would tell them apart
+    createAccountToken(user.id, 'reset_password')
+      .then((token) => sendLinkMail(user.email, 'Đặt lại mật khẩu NovelHub',
+        'Có người (hy vọng là bạn) vừa yêu cầu đặt lại mật khẩu NovelHub. Liên kết có hiệu lực 1 giờ và chỉ dùng được một lần.',
+        'Đặt mật khẩu mới', `${SITE_URL}/dat-lai-mat-khau?token=${token}`))
+      .catch((e) => console.error('[mail] reset:', e.message));
+  }
+  return res.json({ success: true, message: FORGOT_REPLY });
+};
+
+/** Set a new password from the emailed link. Logs out every device; the user then signs in again. */
+export const resetPassword = async (req: Request, res: Response) => {
+  const { token, new_password } = req.body || {};
+  const problem = passwordProblem(new_password);
+  if (problem) return res.status(400).json({ success: false, message: problem });
+
+  const userId = await consumeAccountToken(token, 'reset_password');
+  if (!userId) {
+    return res.status(400).json({ success: false, message: 'Liên kết không hợp lệ, đã hết hạn hoặc đã được dùng. Hãy yêu cầu liên kết mới.' });
+  }
+  // Clicking a link sent to the address also proves the address belongs to them
+  await pool.query(`UPDATE users SET password_hash = $2, email_verified = true WHERE id = $1`, [userId, await bcrypt.hash(new_password, 10)]);
+  await revokeSessions(userId);
+  return res.json({ success: true, message: 'Đã đặt mật khẩu mới. Hãy đăng nhập lại.' });
+};
+
+export const verifyEmail = async (req: Request, res: Response) => {
+  const userId = await consumeAccountToken(req.body?.token, 'verify_email');
+  if (!userId) {
+    return res.status(400).json({ success: false, message: 'Liên kết xác thực không hợp lệ, đã hết hạn hoặc đã được dùng.' });
+  }
+  await pool.query(`UPDATE users SET email_verified = true, updated_at = NOW() WHERE id = $1`, [userId]);
+  return res.json({ success: true, message: 'Email đã được xác thực.' });
+};
+
+export const resendVerification = async (req: AuthenticatedRequest, res: Response) => {
+  const r = await pool.query(`SELECT email, COALESCE(email_verified, false) AS verified FROM users WHERE id = $1`, [req.user!.id]);
+  if (r.rows[0]?.verified) return res.json({ success: true, message: 'Email của bạn đã được xác thực rồi.' });
+  await sendVerificationMail(req.user!.id, r.rows[0].email);
+  return res.json({ success: true, message: `Đã gửi email xác thực tới ${r.rows[0].email}.` });
 };
 
 export const getDemoAccounts = async (_req: Request, res: Response) => {
