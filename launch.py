@@ -31,6 +31,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import secrets
 import shutil
 import socket
@@ -112,6 +113,14 @@ def ensure_env():
                 f.write(f"\n# Redis (cache, view counters, shared rate limits, realtime)\nREDIS_PASSWORD={secrets.token_hex(24)}\n")
             info("Added a random REDIS_PASSWORD to .env")
             env = read_env(ENV_FILE)
+        # Old installs used the public defaults postgres/admin: replace them (sync_postgres_password
+        # then applies the new Postgres password to the existing volume)
+        weak = {"POSTGRES_PASSWORD": ("", "postgres", "change-me"), "PGADMIN_DEFAULT_PASSWORD": ("", "admin", "change-me")}
+        changed = [k for k, bad in weak.items() if env.get(k, "") in bad or env.get(k, "").startswith("change-me")]
+        if changed:
+            set_env_values({k: secrets.token_hex(24) for k in changed})
+            info(f"Replaced default {', '.join(changed)} in .env with random values")
+            env = read_env(ENV_FILE)
         if problems:
             die(f".env exists but these values are missing/placeholder: {', '.join(problems)}.\n"
                 f"       Fix them, or delete .env and rerun to generate a fresh one.")
@@ -122,11 +131,15 @@ def ensure_env():
         die(".env.example not found; cannot create .env")
 
     rabbit_pw = secrets.token_hex(24)
+    pg_pw = secrets.token_hex(24)
     overrides = {
         "JWT_SECRET": secrets.token_hex(32),
         "RABBITMQ_PASSWORD": rabbit_pw,
         "RABBITMQ_URL": f"amqp://novel:{rabbit_pw}@localhost:5672",
         "REDIS_PASSWORD": secrets.token_hex(24),
+        "POSTGRES_PASSWORD": pg_pw,
+        "DATABASE_URL": f"postgresql://postgres:{pg_pw}@localhost:5432/novel_platform?schema=public",
+        "PGADMIN_DEFAULT_PASSWORD": secrets.token_hex(16),
     }
     seen = set()
     out = []
@@ -143,8 +156,32 @@ def ensure_env():
     with open(ENV_FILE, "w", encoding="utf-8") as f:
         f.writelines(out)
     os.chmod(ENV_FILE, 0o600)
-    info("Created .env with random JWT_SECRET, RABBITMQ_PASSWORD and REDIS_PASSWORD")
+    info("Created .env with random JWT_SECRET and Postgres/RabbitMQ/Redis/pgAdmin passwords")
     return read_env(ENV_FILE)
+
+
+def set_env_values(values):
+    """Set KEY=value lines in .env (replacing existing ones, appending missing ones)."""
+    if "POSTGRES_PASSWORD" in values:  # keep the host-side connection string in step
+        old = read_env(ENV_FILE).get("DATABASE_URL", "")
+        if old:
+            new_url = re.sub(r"(://[^:/@]+:)[^@]*@", lambda m: m.group(1) + values["POSTGRES_PASSWORD"] + "@", old)
+            values = {**values, "DATABASE_URL": new_url}
+    with open(ENV_FILE, encoding="utf-8") as f:
+        lines = f.readlines()
+    todo = dict(values)
+    out = []
+    for line in lines:
+        key = line.split("=", 1)[0].strip() if "=" in line and not line.lstrip().startswith("#") else None
+        if key in todo:
+            out.append(f"{key}={todo.pop(key)}\n")
+        elif key in values:
+            continue  # later duplicate of a key we already set
+        else:
+            out.append(line)
+    out += [f"{k}={v}\n" for k, v in todo.items()]
+    with open(ENV_FILE, "w", encoding="utf-8") as f:
+        f.writelines(out)
 
 
 # ------------------------------------------------------------------------ docker
@@ -195,6 +232,25 @@ def check_ports(env):
     busy = [f"{name}:{p}" for name, p in ports.items() if port_busy(p)]
     if busy:
         die(f"ports already in use: {', '.join(busy)}. Stop whatever uses them or change the port in .env")
+
+
+def sync_postgres_password(env, timeout):
+    """Make the Postgres volume use the password in .env. A volume keeps the password it was created
+    with, so changing .env alone would lock the app out. psql over the container's local socket needs
+    no password, so this works whatever the old password was."""
+    compose("up", "-d", "postgres")
+    healthy, last = wait_until("postgres", lambda: (container_states().get("postgres", ("", ""))[1] == "healthy", None), timeout)
+    if not healthy:
+        die(last)
+    user = env.get("POSTGRES_USER", "postgres")
+    pw = env["POSTGRES_PASSWORD"].replace("'", "''")
+    res = subprocess.run(
+        ["docker", "compose", "exec", "-T", "postgres", "psql", "-q", "-U", user,
+         "-d", env.get("POSTGRES_DB", "novel_platform"), "-c", f"ALTER USER \"{user}\" PASSWORD '{pw}'"],
+        cwd=ROOT, capture_output=True, text=True,
+    )
+    if res.returncode != 0:
+        die(f"could not set the Postgres password: {res.stderr.strip()[:300]}")
 
 
 def container_states():
@@ -585,6 +641,7 @@ def main():
         ensure_manga_dir()
         if a.command == "update":
             pull_latest()
+        sync_postgres_password(env, a.timeout)
         fingerprint = source_fingerprint()
         state, reason = build_state(fingerprint)
         if state == "old":

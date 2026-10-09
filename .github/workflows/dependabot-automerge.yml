@@ -1,0 +1,52 @@
+# Merge Dependabot patch/minor PRs after CI passes. Free alternative to GitHub's auto-merge, which needs
+# a paid plan on private repositories. Runs from the default branch only (workflow_run), with a token
+# that can write even though Dependabot-triggered CI runs are read-only.
+name: Dependabot auto-merge
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  merge:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.actor.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Merge if the update is patch/minor
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -eu
+          pr=$(gh pr list -R "$REPO" --state open --head "$HEAD_BRANCH" --json number,author -q '.[] | select(.author.login == "app/dependabot") | .number')
+          if [ -z "$pr" ]; then echo "No open Dependabot PR for $HEAD_BRANCH"; exit 0; fi
+          title=$(gh pr view "$pr" -R "$REPO" --json title -q .title)
+          echo "PR #$pr: $title"
+
+          # Grouped PRs only ever contain minor/patch updates (see dependabot.yml).
+          # Single updates: "bump X from 1.2.3 to 1.4.0" -> compare the leading number (major).
+          case "$title" in
+            *"minor-and-patch group"*) ok=1 ;;
+            *" from "*" to "*)
+              from=$(printf '%s' "$title" | sed -E 's/.* from v?([0-9]+).* to .*/\1/')
+              to=$(printf '%s' "$title" | sed -E 's/.* to v?([0-9]+).*/\1/')
+              if [ -n "$from" ] && [ "$from" = "$to" ]; then ok=1; else ok=0; fi ;;
+            *) ok=0 ;;
+          esac
+          if [ "$ok" != 1 ]; then
+            echo "Major or unknown update: leaving PR #$pr for a human."
+            exit 0
+          fi
+
+          # --match-head-commit: do not merge if the PR changed after this CI run
+          gh pr merge "$pr" -R "$REPO" --squash --delete-branch --match-head-commit "$HEAD_SHA"
