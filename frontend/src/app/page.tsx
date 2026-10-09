@@ -48,7 +48,7 @@ export default function HomePage() {
     <div className="pb-24">
       {/* 1. FEATURED THIS WEEK — banner card */}
       {isLoading && trendingStories.length === 0 ? (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pt-6">
           <div className="h-7 sm:h-8 w-56 rounded-[4px] bg-white/5 animate-pulse" />
           <div className="mt-3 h-[212px] sm:h-[308px] lg:h-[348px] rounded-xl bg-white/5 animate-pulse" />
         </div>
@@ -56,7 +56,7 @@ export default function HomePage() {
         <FeaturedCarousel stories={trendingStories} gallery={featuredIllustrations} />
       )}
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-10 space-y-12">
+      <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 mt-10 space-y-12">
         {/* 2. Rows */}
         <StoryRail title="Mới cập nhật" href="/kham-pha?sort=updated" stories={recentlyUpdated} meta="updated" />
         <StoryRail title="Nhiều người xem" href="/kham-pha?sort=views" stories={trendingStories} meta="views" ranked />
@@ -70,16 +70,16 @@ export default function HomePage() {
         {/* 3. Illustration gallery (only when chapters have illustrations) */}
         {featuredIllustrations.length > 0 && (
           <section className="space-y-3">
-            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">Ảnh minh họa mới</h2>
-            <div className="columns-2 sm:columns-3 lg:columns-5 gap-3 [&>*]:mb-3">
-              {featuredIllustrations.slice(0, 15).map((illust, idx) => (
+            <h2 className="text-lg sm:text-xl font-semibold tracking-tight text-white">Ảnh minh họa mới</h2>
+            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 2xl:grid-cols-8 gap-3">
+              {featuredIllustrations.slice(0, 16).map((illust, idx) => (
                 <Link
                   key={idx}
                   href={`/truyen/${illust.story_slug}/${illust.chapter_slug}`}
-                  className="tile group block break-inside-avoid"
+                  className="tile group block aspect-[3/4] overflow-hidden"
                   title={`${illust.story_title} — ${illust.chapter_title}`}
                 >
-                  <SmartImage src={illust.image_url} alt={illust.chapter_title} className="tile__img w-full h-auto block" />
+                  <SmartImage src={illust.image_url} alt={illust.chapter_title} className="tile__img w-full h-full object-cover object-top block" />
                 </Link>
               ))}
             </div>
