@@ -14,7 +14,7 @@ import { rng } from '../services/recommender/algorithms';
  * Accounts are `sim_reader_###` with an unknown random password (nobody can sign in as them).
  * Each has a taste (1-2 genre families + manga/novel preference) and reads in sessions: after a
  * story they often pick a similar one next, which is the pattern co-visitation should find.
- * Re-running replaces the previous simulation. Their favorites/ratings update story counters
+ * Re-running replaces the previous simulation. Their favorites update story counters
  * through the usual triggers, and --clear rolls those back the same way.
  */
 
@@ -90,7 +90,6 @@ async function simulate(nUsers: number, nGuests: number) {
 
   const hist: [string, string, string, Date, number][] = []; // user, story, chapter, read_at, seconds
   const favs: [string, string, Date][] = [];
-  const rates: [string, string, number, Date][] = [];
   const events: [string | null, string | null, string, string | null, string, Date][] = [];
 
   /** One reader's sessions: returns the stories read, in order. */
@@ -155,7 +154,6 @@ async function simulate(nUsers: number, nGuests: number) {
       chapters.forEach((c, i) => hist.push([userId, s.id, c.id, new Date(t + i * 12 * 60_000), Math.round(240 + rand() * 900)]));
       const aff = affinity(p, s);
       if (aff > 1.5 && rand() < 0.35) favs.push([userId, s.id, new Date(t)]);
-      if (rand() < 0.3) rates.push([userId, s.id, Math.max(1, Math.min(10, Math.round(6 + aff * 1.4 + (rand() - 0.5) * 3))), new Date(t)]);
     });
     // browsing: opened a few story pages without reading
     for (let b = 0; b < 2; b++) {
@@ -187,15 +185,12 @@ async function simulate(nUsers: number, nGuests: number) {
   await bulk(`INSERT INTO user_favorites (user_id, story_id, category, created_at)
               SELECT u, s, 'reading', t FROM unnest($1::uuid[], $2::uuid[], $3::timestamptz[]) AS x(u, s, t) ON CONFLICT DO NOTHING`,
     favs, ['uuid', 'uuid', 'timestamptz']);
-  await bulk(`INSERT INTO story_ratings (user_id, story_id, rating, created_at)
-              SELECT * FROM unnest($1::uuid[], $2::uuid[], $3::smallint[], $4::timestamptz[]) ON CONFLICT DO NOTHING`,
-    rates, ['uuid', 'uuid', 'smallint', 'timestamptz']);
   await bulk(`INSERT INTO rec_events (user_id, visitor_id, story_id, chapter_id, kind, created_at)
               SELECT * FROM unnest($1::uuid[], $2::varchar[], $3::uuid[], $4::uuid[], $5::varchar[], $6::timestamptz[])`,
     events, ['uuid', 'varchar', 'uuid', 'uuid', 'varchar', 'timestamptz']);
 
   console.log(`Simulated ${nUsers} readers + ${nGuests} guests over ${stories.length} stories: ` +
-    `${hist.length} chapter reads, ${favs.length} follows, ${rates.length} ratings, ${events.length} events.`);
+    `${hist.length} chapter reads, ${favs.length} follows, ${events.length} events.`);
 }
 
 (async () => {

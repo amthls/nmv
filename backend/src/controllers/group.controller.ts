@@ -261,7 +261,7 @@ export const getGroupBySlug = async (req: AuthenticatedRequest, res: Response) =
     const storiesRes = await pool.query(`
       SELECT
         s.id, s.title, s.slug, s.cover_image_url, s.story_type, s.status,
-        s.total_chapters, s.total_views, s.rating_avg, s.rating_count,
+        s.total_chapters, s.total_views,
         s.last_chapter_at, s.author_name
       FROM stories s
       WHERE s.group_id = $1 AND s.approval_status = 'approved'

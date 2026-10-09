@@ -176,7 +176,6 @@ export const getFavorites = async (req: Request, res: Response) => {
         s.total_chapters,
         s.total_views,
         s.total_favorites,
-        s.rating_avg,
         lc.title AS latest_chapter_title,
         lc.slug AS latest_chapter_slug,
         lc.chapter_number AS latest_chapter_number

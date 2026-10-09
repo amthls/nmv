@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Flag, Check, X, Lock, ExternalLink } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import PageLoader from '@/components/common/PageLoader';
+import CodeBadge from '@/components/common/CodeBadge';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -160,6 +161,7 @@ export default function ReportsPage() {
             return (
               <div key={r.id} className="p-4 rounded-2xl glass-panel border border-white/10 space-y-2.5">
                 <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                  <CodeBadge code={r.code} />
                   <span className="px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-bold uppercase">
                     {TARGET_LABELS[r.target_type] || r.target_type}
                   </span>

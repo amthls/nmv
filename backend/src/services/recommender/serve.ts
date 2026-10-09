@@ -10,7 +10,7 @@ export interface Viewer { userId: string | null; visitorId: string | null }
 /** Columns the story cards need (same shape as the explore/trending lists). */
 const CARD_SQL = `
   SELECT s.id, s.title, s.slug, s.cover_image_url, s.story_type, s.status, s.author_name,
-    s.total_chapters, s.total_views, s.total_favorites, s.rating_avg, s.rating_count, s.last_chapter_at, s.created_at
+    s.total_chapters, s.total_views, s.total_favorites, s.last_chapter_at, s.created_at
   FROM stories s
   WHERE s.id = ANY ($1::uuid[]) AND s.approval_status = 'approved'`;
 

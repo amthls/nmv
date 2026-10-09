@@ -2,8 +2,8 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Star, Eye, BookOpen, Heart } from 'lucide-react';
-import { Story, formatCount, formatRating, formatTimeAgo } from './StoryCardGrid';
+import { Eye, BookOpen, Heart } from 'lucide-react';
+import { Story, formatCount, formatTimeAgo } from './StoryCardGrid';
 import SmartImage from '@/components/common/SmartImage';
 import { stripHtml } from '@/lib/richText';
 
@@ -83,7 +83,6 @@ export default function StoryCardList({ story }: { story: Story }) {
 
           <div className="mt-auto pt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-300">
             <span className="italic font-medium text-white truncate max-w-[45%] pr-1">{story.author_name || 'Chưa rõ tác giả'}</span>
-            <span className="flex items-center gap-1 font-semibold text-amber-400"><Star className="w-3.5 h-3.5 fill-current" />{formatRating(story.rating_avg)}</span>
             <span className="flex items-center gap-1"><Eye className="w-3.5 h-3.5" />{formatCount(story.total_views)}</span>
             <span className="hidden sm:flex items-center gap-1"><Heart className="w-3.5 h-3.5" />{formatCount(story.total_favorites)}</span>
             <span className="flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" />{story.total_chapters || 0} chương</span>

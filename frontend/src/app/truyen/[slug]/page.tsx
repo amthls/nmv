@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { 
   BookOpen, 
-  Star, 
   Eye, 
   Heart, 
   User, 
@@ -17,7 +16,6 @@ import {
   AlertCircle,
   Trash2,
   PlusCircle,
-  Shield,
   Clock,
   CheckCircle2,
   Pencil,
@@ -38,6 +36,7 @@ import RichContent from '@/components/common/RichContent';
 import { stripHtml } from '@/lib/richText';
 import { getGuestHistory } from '@/lib/readingHistory';
 import { chapterUploadHref } from '@/lib/chapterUpload';
+import CodeBadge from '@/components/common/CodeBadge';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -50,12 +49,10 @@ export default function StoryDetailPage() {
   const [story, setStory] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
-  const [isRatingOpen, setIsRatingOpen] = useState(false);
   const [isDownloadOpen, setIsDownloadOpen] = useState(false);
   const [isAlbumOpen, setIsAlbumOpen] = useState(false);
   const [showAllTags, setShowAllTags] = useState(false);
   const [albumsChanged, setAlbumsChanged] = useState(0); // reloads the albums section
-  const [selectedRating, setSelectedRating] = useState(10);
   const [isDeleting, setIsDeleting] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [lastReadChapter, setLastReadChapter] = useState<{ slug: string; title?: string; chapter_number?: number } | null>(null);
@@ -355,26 +352,6 @@ export default function StoryDetailPage() {
     }
   };
 
-  const handleRate = async () => {
-    if (!isAuthenticated) {
-      openAuthModal('login');
-      return;
-    }
-    try {
-      const res = await authFetch(`${API_BASE_URL}/stories/${slug}/rate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rating: selectedRating }),
-      });
-      if (res.ok) {
-        setIsRatingOpen(false);
-        fetchStory();
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="max-w-6xl mx-auto px-4 py-12 space-y-8 animate-pulse">
@@ -397,7 +374,6 @@ export default function StoryDetailPage() {
   }
 
   const isNovel = story.story_type === 'novel';
-  const ratingAvg = typeof story.rating_avg === 'number' ? story.rating_avg.toFixed(1) : parseFloat(story.rating_avg || '0').toFixed(1);
 
   return (
     <div className="min-h-screen pb-20">
@@ -413,7 +389,7 @@ export default function StoryDetailPage() {
             className="w-full h-full object-cover object-[50%_25%]"
           />
           {/* dark wash only behind the text */}
-          <div className="absolute inset-0 bg-[linear-gradient(68deg,rgba(0,0,0,0.72)_30%,rgba(0,0,0,0.15)_100%)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(68deg,rgba(0,0,0,0.75)_30%,rgba(0,0,0,0.4)_100%)]" />
           {/* thin top highlight, like the glass panels */}
           <div className="absolute inset-0 rounded-xl shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)]" />
         </div>
@@ -535,27 +511,14 @@ export default function StoryDetailPage() {
                   </a>
                 )}
 
-                {canManage && (
-                  <div className="px-2.5 py-1 rounded-full bg-amber-500/20 border border-amber-500/40 text-[11px] font-bold text-amber-300 flex items-center gap-1">
-                    <Shield className="w-3 h-3" /> Chủ thầu / Quản lý
-                  </div>
-                )}
               </div>
 
-              {/* Stats Bar (Views, Rating, Favorites, Chapters) */}
-              <div className="grid grid-cols-4 gap-2 p-3 rounded-2xl bg-white/5 border border-white/10 max-w-lg mx-auto md:mx-0 text-center">
+              {/* Stats Bar (Views, Followers, Chapters) */}
+              <div className="grid grid-cols-3 gap-2 p-3 rounded-2xl bg-white/5 border border-white/10 max-w-lg mx-auto md:mx-0 text-center">
                 <div className="space-y-0.5">
-                  <div className="flex items-center justify-center gap-1 text-amber-300 font-extrabold text-sm">
-                    <Star className="w-4 h-4 fill-amber-300" />
-                    <span>{ratingAvg}</span>
-                  </div>
-                  <div className="text-[10px] text-gray-400">{story.rating_count || 0} đánh giá</div>
-                </div>
-
-                <div className="space-y-0.5 border-l border-white/10">
                   <div className="flex items-center justify-center gap-1 text-cyan-300 font-extrabold text-sm">
                     <Eye className="w-4 h-4" />
-                    <span>{typeof story.total_views === 'number' ? story.total_views.toLocaleString() : story.total_views}</span>
+                    <span>{Number(story.total_views || 0).toLocaleString('vi-VN')}</span>
                   </div>
                   <div className="text-[10px] text-gray-400">Lượt xem</div>
                 </div>
@@ -563,9 +526,9 @@ export default function StoryDetailPage() {
                 <div className="space-y-0.5 border-l border-white/10">
                   <div className="flex items-center justify-center gap-1 text-rose-300 font-extrabold text-sm">
                     <Heart className="w-4 h-4 text-rose-400 fill-rose-400" />
-                    <span>{typeof story.total_favorites === 'number' ? story.total_favorites.toLocaleString() : story.total_favorites}</span>
+                    <span>{Number(story.total_favorites || 0).toLocaleString('vi-VN')}</span>
                   </div>
-                  <div className="text-[10px] text-gray-400">Yêu thích</div>
+                  <div className="text-[10px] text-gray-400">Người theo dõi</div>
                 </div>
 
                 <div className="space-y-0.5 border-l border-white/10">
@@ -577,31 +540,7 @@ export default function StoryDetailPage() {
                 </div>
               </div>
 
-              {/* Tag Badges */}
-              {story.tags && story.tags.length > 0 && (
-                <div className="flex flex-wrap items-center justify-center md:justify-start gap-1 max-w-lg mx-auto md:mx-0">
-                  {(showAllTags ? story.tags : story.tags.slice(0, 6)).map((tag: any) => (
-                    <Link
-                      key={tag.id}
-                      href={`/kham-pha?tags=${tag.slug}`}
-                      className="px-2 py-0.5 rounded-full text-[11px] leading-5 text-gray-300 bg-black/30 hover:bg-white/10 hover:text-white border border-white/10 transition"
-                    >
-                      {tag.name}
-                    </Link>
-                  ))}
-                  {story.tags.length > 6 && (
-                    <button
-                      type="button"
-                      onClick={() => setShowAllTags((v) => !v)}
-                      className="px-2 py-0.5 rounded-full text-[11px] leading-5 font-semibold text-brand-300 hover:text-white transition"
-                    >
-                      {showAllTags ? 'Thu gọn' : `+${story.tags.length - 6}`}
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {/* Actions: 1) reading  2) reader tools  3) management (team only) */}
+              {/* Actions: 1) reading  2) reader tools */}
               <div className="pt-3 space-y-3">
                 {/* 1. Reading */}
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-2.5">
@@ -689,16 +628,6 @@ export default function StoryDetailPage() {
                       </button>
                     ) : null}
 
-                    <button
-                      type="button"
-                      onClick={() => setIsRatingOpen(true)}
-                      className="px-3.5 py-2 flex items-center gap-1.5 text-gray-300 hover:text-white hover:bg-white/10 transition"
-                      title="Đánh giá truyện"
-                    >
-                      <Star className="w-3.5 h-3.5 text-amber-400" />
-                      <span>Đánh giá</span>
-                    </button>
-
                     <ReportButton
                       targetType="story"
                       targetId={story.id}
@@ -707,34 +636,6 @@ export default function StoryDetailPage() {
                   </div>
                 </div>
 
-                {/* 3. Management, only for the story's team / Admin / Mod */}
-                {canManage && (
-                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 pt-3 border-t border-white/10">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mr-1">Quản lý</span>
-                    <Link
-                      href={chapterUploadHref({ storyType: story.story_type, storyId: story.id })}
-                      className="px-3 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold flex items-center gap-1.5 transition"
-                    >
-                      <PlusCircle className="w-3.5 h-3.5" />
-                      <span>Thêm chương</span>
-                    </Link>
-                    <Link
-                      href={`/dang-truyen/sua/${story.slug}`}
-                      className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-200 border border-white/15 text-xs font-bold flex items-center gap-1.5 transition"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                      <span>Sửa truyện</span>
-                    </Link>
-                    <button
-                      onClick={handleDeleteStory}
-                      disabled={isDeleting}
-                      className="px-3 py-1.5 rounded-lg bg-rose-600/15 hover:bg-rose-600/25 text-rose-300 border border-rose-500/30 text-xs font-bold flex items-center gap-1.5 transition"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>{isDeleting ? 'Đang xóa...' : 'Xóa truyện'}</span>
-                    </button>
-                  </div>
-                )}
               </div>
 
             </div>
@@ -748,8 +649,61 @@ export default function StoryDetailPage() {
       {/* 2. Main Content Body: Synopsis, Chapter Tree & Comments */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
         
-        {/* Synopsis / Summary */}
+        {/* Management, only for the story's team / Admin / Mod (outside the banner: same banner for everyone) */}
+        {canManage && (
+          <div className="flex flex-wrap items-center gap-2 px-4 py-3 rounded-2xl glass-panel border border-white/10">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mr-1">Quản lý</span>
+            <CodeBadge code={story.code} />
+            <Link
+              href={chapterUploadHref({ storyType: story.story_type, storyId: story.id })}
+              className="px-3 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold flex items-center gap-1.5 transition"
+            >
+              <PlusCircle className="w-3.5 h-3.5" />
+              <span>Thêm chương</span>
+            </Link>
+            <Link
+              href={`/dang-truyen/sua/${story.slug}`}
+              className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-200 border border-white/15 text-xs font-bold flex items-center gap-1.5 transition"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              <span>Sửa truyện</span>
+            </Link>
+            <button
+              onClick={handleDeleteStory}
+              disabled={isDeleting}
+              className="px-3 py-1.5 rounded-lg bg-rose-600/15 hover:bg-rose-600/25 text-rose-300 border border-rose-500/30 text-xs font-bold flex items-center gap-1.5 transition"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>{isDeleting ? 'Đang xóa...' : 'Xóa truyện'}</span>
+            </button>
+          </div>
+        )}
+
+        {/* Synopsis / Summary, genre tags first */}
         <section className="p-6 rounded-3xl glass-panel border border-white/10 space-y-3">
+          {story.tags && story.tags.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 pb-3 border-b border-white/10">
+              <span className="text-xs font-semibold text-gray-400 mr-1">Thể loại</span>
+              {(showAllTags ? story.tags : story.tags.slice(0, 12)).map((tag: any) => (
+                <Link
+                  key={tag.id}
+                  href={`/kham-pha?tags=${tag.slug}`}
+                  className="px-2.5 py-0.5 rounded-full text-xs leading-5 text-gray-300 bg-white/5 hover:bg-white/10 hover:text-white border border-white/10 transition"
+                >
+                  {tag.name}
+                </Link>
+              ))}
+              {story.tags.length > 12 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllTags((v) => !v)}
+                  className="px-2 py-0.5 text-xs font-semibold text-brand-400 hover:text-brand-300 transition"
+                >
+                  {showAllTags ? 'Thu gọn' : `+${story.tags.length - 12}`}
+                </button>
+              )}
+            </div>
+          )}
           <h3 className="text-base font-bold text-white uppercase tracking-wider flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-brand-400" />
             <span>Tóm Tắt Nội Dung</span>
@@ -903,47 +857,6 @@ export default function StoryDetailPage() {
 
       </div>
 
-      {/* 4. Rating Modal */}
-      {isRatingOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-sm bg-glass border border-white/10 rounded-2xl p-6 shadow-2xl space-y-4">
-            <h3 className="text-base font-bold text-white text-center">Đánh Giá Bộ Truyện</h3>
-            <p className="text-xs text-gray-400 text-center">Chọn số điểm từ 1 đến 10 cho bộ truyện này</p>
-
-            <div className="flex items-center justify-center gap-1.5 py-4">
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => (
-                <button
-                  key={star}
-                  onClick={() => setSelectedRating(star)}
-                  className={`p-1 transition-transform hover:scale-125 ${
-                    selectedRating >= star ? 'text-amber-400' : 'text-gray-600'
-                  }`}
-                >
-                  <Star className={`w-5 h-5 ${selectedRating >= star ? 'fill-amber-400' : ''}`} />
-                </button>
-              ))}
-            </div>
-            <div className="text-center font-bold text-lg text-amber-400">{selectedRating} / 10 Điểm</div>
-
-            <div className="flex items-center gap-2 pt-2">
-              <button
-                onClick={() => setIsRatingOpen(false)}
-                className="flex-1 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 text-xs font-semibold transition"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleRate}
-                className="flex-1 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow text-xs font-semibold shadow-md transition"
-              >
-                Gửi Đánh Giá
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-    
       {/* Floating Instant Toast Notification */}
       {toastMsg && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-zinc-900/95 border border-white/20 text-white shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-5">

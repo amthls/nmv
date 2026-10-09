@@ -2,9 +2,9 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { X, Dices, Volume2, VolumeX, BookOpen, RotateCcw, Eye, Star } from 'lucide-react';
+import { X, Dices, Volume2, VolumeX, BookOpen, RotateCcw, Eye } from 'lucide-react';
 import SmartImage from '@/components/common/SmartImage';
-import { Story, formatCount, formatRating } from '@/components/explore/StoryCardGrid';
+import { Story, formatCount } from '@/components/explore/StoryCardGrid';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -355,7 +355,6 @@ export default function StoryCaseOpening({ isOpen, onClose }: { isOpen: boolean;
                 <h3 className="mt-1 text-xl font-extrabold leading-snug line-clamp-2">{winner.story.title}</h3>
                 <p className="text-xs text-gray-400 mt-1">{winner.story.author_name || 'Chưa rõ tác giả'}</p>
                 <div className="mt-2 flex items-center justify-center sm:justify-start gap-3 text-xs text-gray-300">
-                  <span className="flex items-center gap-1 text-amber-400 font-semibold"><Star className="w-3.5 h-3.5 fill-current" />{formatRating(winner.story.rating_avg)}</span>
                   <span className="flex items-center gap-1"><Eye className="w-3.5 h-3.5" />{formatCount(winner.story.total_views)}</span>
                   <span className="flex items-center gap-1"><BookOpen className="w-3.5 h-3.5" />{winner.story.total_chapters || 0} chương</span>
                 </div>

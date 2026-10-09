@@ -41,6 +41,7 @@ import { rewriteHtmlImages, useImageQuality } from '@/lib/imageQuality';
 import { useAuth } from '@/context/AuthContext';
 import { useReadingSession } from '@/context/ReadingSessionContext';
 import { logChapterRead } from '@/lib/readingHistory';
+import CodeBadge from '@/components/common/CodeBadge';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -572,6 +573,7 @@ export default function ChapterReaderPage() {
 
           {/* Publisher & Group Info */}
           <div className="flex flex-wrap items-center justify-center gap-3 text-xs opacity-75 pt-1">
+            <CodeBadge code={chapterData.code} />
             {chapterData.story?.group_name && (
               <span className="flex items-center gap-1 font-bold text-brand-300">
                 <Users className="w-3.5 h-3.5" /> Nhóm: {chapterData.story.group_name}

@@ -27,7 +27,6 @@ import {
   AtSign,
   Heart,
   Library,
-  Star,
   ThumbsUp,
   UserPlus,
   PenSquare,
@@ -505,7 +504,7 @@ export default function UserProfilePage() {
             <StatCard icon={Heart} color="bg-rose-500/15 text-rose-300" value={fmtNumber(stats.favorites_count)} label="Đang theo dõi" sub="Truyện nhận thông báo chương mới" href="/bookmark" />
             <StatCard icon={Bookmark} color="bg-amber-500/15 text-amber-300" value={fmtNumber(stats.bookmarks_count)} label="Đoạn bookmark" sub="Đoạn văn đã ghim" href="/bookmark" />
             <StatCard icon={MessageSquare} color="bg-emerald-500/15 text-emerald-300" value={fmtNumber(stats.comments_count)} label="Bình luận" sub={`${fmtNumber(stats.comment_likes_received)} lượt thích nhận được`} />
-            <StatCard icon={Star} color="bg-yellow-500/15 text-yellow-300" value={fmtNumber(stats.ratings_count)} label="Đánh giá" sub="Truyện bạn đã chấm điểm" />
+            <StatCard icon={Users} color="bg-yellow-500/15 text-yellow-300" value={fmtNumber(stats.followers_count)} label="Người theo dõi" sub={`Bạn theo dõi ${fmtNumber(stats.following_count)} người`} />
             <StatCard icon={Newspaper} color="bg-sky-500/15 text-sky-300" value={fmtNumber(stats.posts_count)} label="Bài viết Fandom" sub={`Thành viên ${fmtNumber(stats.groups_count)} nhóm dịch`} href="/fandom" />
           </div>
 

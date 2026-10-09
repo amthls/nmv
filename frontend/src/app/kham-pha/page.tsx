@@ -32,7 +32,7 @@ export default function ExplorePage() {
 // Must match the grid classes below: grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5
 const GRID_BREAKPOINTS: [string, number][] = [['(min-width: 1280px)', 5], ['(min-width: 1024px)', 4], ['(min-width: 640px)', 3]];
 const BASE_PAGE_SIZE = 24;
-const SORT_VALUES = ['relevance', 'updated', 'views', 'rating', 'favorites', 'newest', 'title_asc', 'title_desc'];
+const SORT_VALUES = ['relevance', 'updated', 'views', 'favorites', 'newest', 'title_asc', 'title_desc'];
 
 /** Columns the story grid currently shows, following the viewport. */
 function useGridColumns() {
@@ -303,7 +303,6 @@ function ExplorePageContent() {
                   <option value="relevance">Liên quan / Mới cập nhật</option>
                   <option value="updated">Mới cập nhật</option>
                   <option value="views">Lượt xem nhiều nhất</option>
-                  <option value="rating">Đánh giá cao nhất</option>
                   <option value="favorites">Yêu thích nhiều nhất</option>
                   <option value="newest">Mới đăng tải</option>
                   <option value="title_asc">Tên A → Z</option>

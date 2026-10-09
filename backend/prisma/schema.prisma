@@ -107,7 +107,6 @@ model User {
   group_members  GroupMember[]
   stories        Story[]            @relation("StoryUploader")
   chapters       Chapter[]          @relation("ChapterUploader")
-  ratings        StoryRating[]
   favorites      UserFavorite[]
   history        ReadingHistory[]
   bookmarks      Bookmark[]
@@ -253,8 +252,6 @@ model Story {
   total_favorites     BigInt?           @default(0)
   total_bookmarks     BigInt?           @default(0)
   total_comments      BigInt?           @default(0)
-  rating_avg          Decimal?          @default(0) @db.Decimal(4, 2)
-  rating_count        Int?              @default(0)
   last_chapter_at     DateTime?         @db.Timestamptz(6)
   created_at          DateTime?         @default(now()) @db.Timestamptz(6)
   updated_at          DateTime?         @default(now()) @db.Timestamptz(6)
@@ -264,7 +261,6 @@ model Story {
   tags                StoryTag[]
   volumes             Volume[]
   chapters            Chapter[]
-  ratings             StoryRating[]
   favorites           UserFavorite[]
   history             ReadingHistory[]
   bookmarks           Bookmark[]
@@ -379,22 +375,6 @@ model StoryViewsDaily {
 
   @@unique([story_id, view_date])
   @@map("story_views_daily")
-}
-
-model StoryRating {
-  id         String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  story_id   String    @db.Uuid
-  user_id    String    @db.Uuid
-  rating     Int       @db.SmallInt
-  review     String?
-  created_at DateTime? @default(now()) @db.Timestamptz(6)
-  updated_at DateTime? @default(now()) @db.Timestamptz(6)
-
-  story      Story     @relation(fields: [story_id], references: [id], onDelete: Cascade)
-  user       User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
-  @@unique([story_id, user_id])
-  @@map("story_ratings")
 }
 
 model UserFavorite {

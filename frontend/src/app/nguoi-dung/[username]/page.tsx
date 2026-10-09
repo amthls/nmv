@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import SmartImage from '@/components/common/SmartImage';
 import { useAuth } from '@/context/AuthContext';
+import CodeBadge from '@/components/common/CodeBadge';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -174,6 +175,7 @@ export default function UserProfilePage() {
           <div className="sm:ml-32 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-2xl font-extrabold text-white">{profile.display_name || profile.username}</h1>
+              <CodeBadge code={profile.code} everyone />
               {profile.roles.map((r: string) => ROLE_BADGES[r] && (
                 <span key={r} className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase border ${ROLE_BADGES[r].className}`}>
                   {ROLE_BADGES[r].label}
