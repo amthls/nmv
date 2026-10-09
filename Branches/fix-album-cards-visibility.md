@@ -2,8 +2,8 @@
 
 - **Mục tiêu:** Thẻ album đều nhau ở mọi nơi; đổi công khai/riêng tư cho từng album ngay trên thẻ, và cho tất cả album cùng lúc.
 - **Tạo từ:** `origin/main` @ d48105e, ngày 2026-10-09
-- **Trạng thái:** chờ chủ dự án duyệt giao diện (chưa push)
-- **PR:** (điền sau khi mở)
+- **Trạng thái:** chờ review
+- **PR:** https://github.com/amthls/nmv/pull/45
 - **Plan:** không cần (việc nhỏ)
 
 ## Thay đổi
