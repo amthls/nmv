@@ -3,7 +3,7 @@
 - **Mục tiêu:** Tự merge PR Dependabot bản vá/nhỏ khi CI xanh, hoàn toàn miễn phí; gom PR cho đỡ loạn; bản lớn để người duyệt.
 - **Tạo từ:** `origin/main` @ 5e4dd41, ngày 2026-10-09
 - **Trạng thái:** chờ review
-- **PR:** (điền sau khi mở)
+- **PR:** https://github.com/amthls/nmv/pull/37
 - **Plan:** không cần (việc nhỏ)
 
 ## Thay đổi
