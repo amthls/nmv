@@ -2,8 +2,8 @@
 
 - **Mục tiêu:** Gộp header mới + bố cục rộng hơn và tính năng tin nhắn (nhãn, tìm theo nhãn, chặn, ghim) thành một PR.
 - **Tạo từ:** `origin/main` @ d48105e, ngày 2026-10-09
-- **Trạng thái:** chờ push (chủ dự án tự push)
-- **PR:** (điền sau khi mở)
+- **Trạng thái:** chờ review
+- **PR:** https://github.com/amthls/nmv/pull/43
 - **Plan:** `Plan/dm-labels-block-pin.md`
 
 ## Gồm những gì (merge nguyên nhánh, giữ lịch sử commit)
