@@ -3,7 +3,7 @@
 - **Mục tiêu:** Mã định danh thông minh; trang truyện gọn lại; bỏ hẳn chức năng đánh giá truyện
 - **Tạo từ:** `origin/main` @ 6f9d881, ngày 2026-10-09
 - **Trạng thái:** xong, chủ dự án đã duyệt giao diện, chờ review PR
-- **PR:** (chưa mở)
+- **PR:** https://github.com/amthls/nmv/pull/48
 - **Plan:** `Plan/smart-codes.md`, `Plan/remove-ratings.md`
 
 ## Thay đổi
