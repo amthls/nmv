@@ -16,7 +16,7 @@
     "prisma:migrate": "prisma migrate dev"
   },
   "dependencies": {
-    "@prisma/client": "^5.22.0",
+    "@prisma/client": "^7.10.0",
     "@socket.io/redis-adapter": "^8",
     "@socket.io/redis-emitter": "^5",
     "amqplib": "^2.0.1",
