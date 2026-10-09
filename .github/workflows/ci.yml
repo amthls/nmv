@@ -48,6 +48,7 @@ jobs:
           yarn install --frozen-lockfile
           npx prisma generate
           npx tsc --noEmit -p .
+          yarn test
       - name: Frontend
         working-directory: frontend
         run: |

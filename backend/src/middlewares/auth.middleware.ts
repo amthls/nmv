@@ -86,10 +86,16 @@ export const requireAuth = async (
       [decoded.id]
     );
 
-    if (userRes.rows.length === 0 || isTokenRevoked(decoded, userRes.rows[0].tokens_valid_after)) {
+    if (userRes.rows.length === 0) {
       return res.status(401).json({
         success: false,
         message: 'T\u00e0i kho\u1ea3n kh\u00f4ng t\u1ed3n t\u1ea1i tr\u00ean h\u1ec7 th\u1ed1ng.',
+      });
+    }
+    if (isTokenRevoked(decoded, userRes.rows[0].tokens_valid_after)) {
+      return res.status(401).json({
+        success: false,
+        message: 'Phi\u00ean \u0111\u0103ng nh\u1eadp \u0111\u00e3 h\u1ebft h\u1ea1n, vui l\u00f2ng \u0111\u0103ng nh\u1eadp l\u1ea1i.',
       });
     }
 

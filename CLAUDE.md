@@ -3,6 +3,9 @@
 Web đọc light novel + manga + Fandom (Next.js 15 / Express / Postgres, chạy bằng Docker Compose).
 **README.md là nguồn sự thật** về kiến trúc, route, bảng, biến môi trường, hạn chế. Sửa code thì sửa README cho khớp.
 
+**Bắt buộc: nạp skill `ponytail` (plugin ponytail) trước khi viết, sửa hay review code** trong dự án này
+(thay đổi nhỏ nhất đủ giải quyết, không thêm thứ chưa cần).
+
 ## Quy trình git (bắt buộc)
 
 1. **Mỗi việc một nhánh mới, tạo từ `origin/main` mới nhất.** Không commit thẳng vào `main`.

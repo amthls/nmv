@@ -359,9 +359,14 @@ export const forgotPassword = async (req: Request, res: Response) => {
   );
   const user = r.rows[0];
   if (user) {
-    // Not awaited: answering faster for existing accounts would tell them apart
-    createAccountToken(user.id, 'reset_password')
-      .then((token) => sendLinkMail(user.email, 'Đặt lại mật khẩu NovelHub',
+    // Not awaited: answering faster for existing accounts would tell them apart.
+    // At most one mail per 2 minutes per account: mailLimiter counts per IP only.
+    pool.query(
+      `SELECT EXISTS (SELECT 1 FROM auth_tokens WHERE user_id = $1 AND purpose = 'reset_password' AND created_at > NOW() - INTERVAL '2 minutes') AS recent`,
+      [user.id]
+    )
+      .then((q) => q.rows[0].recent ? null : createAccountToken(user.id, 'reset_password'))
+      .then((token) => token === null ? undefined : sendLinkMail(user.email, 'Đặt lại mật khẩu NovelHub',
         'Có người (hy vọng là bạn) vừa yêu cầu đặt lại mật khẩu NovelHub. Liên kết có hiệu lực 1 giờ và chỉ dùng được một lần.',
         'Đặt mật khẩu mới', `${SITE_URL}/dat-lai-mat-khau?token=${token}`))
       .catch((e) => console.error('[mail] reset:', e.message));
