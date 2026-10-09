@@ -17,7 +17,7 @@ export default function ThemeToggle({ className = '' }: { className?: string }) 
       }}
       aria-label={isDark ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'}
       title={isDark ? 'Giao diện sáng' : 'Giao diện tối'}
-      className={`relative w-10 h-10 rounded-full overflow-hidden border border-white/10 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white transition ${className}`}
+      className={`relative w-9 h-9 rounded-lg overflow-hidden hover:bg-white/10 text-gray-300 hover:text-white transition ${className}`}
     >
       <Sun
         className={`absolute inset-0 m-auto w-[18px] h-[18px] text-amber-500 transition-all duration-500 ease-silk ${
