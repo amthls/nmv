@@ -3,7 +3,7 @@
 - **Mục tiêu:** Sửa các mục từ ponytail-review của #38, #43, #45
 - **Tạo từ:** `origin/main` @ a9a751a, ngày 2026-10-09
 - **Trạng thái:** xong, chờ review
-- **PR:** (điền sau khi mở)
+- **PR:** https://github.com/amthls/nmv/pull/47
 - **Plan:** `Plan/review-followups.md`
 
 ## Thay đổi
