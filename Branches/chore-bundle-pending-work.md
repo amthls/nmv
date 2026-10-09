@@ -3,7 +3,7 @@
 - **Mục tiêu:** Gom mọi thay đổi chưa lên `main` thành một PR duy nhất.
 - **Tạo từ:** `origin/main` @ 5e4dd41, ngày 2026-10-09
 - **Trạng thái:** chờ review
-- **PR:** (điền sau khi mở)
+- **PR:** https://github.com/amthls/nmv/pull/38
 - **Plan:** `Plan/branch-workflow.md`, `Plan/security-hardening.md`
 
 ## Gồm những gì (merge nguyên nhánh, giữ lịch sử commit)
