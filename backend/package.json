@@ -8,6 +8,7 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "db:check": "tsx scripts/check-db.ts",
+    "sim:readers": "tsx src/scripts/simulateReaders.ts",
     "db:import": "tsx scripts/import-sql.ts",
     "db:pull": "prisma db pull",
     "db:generate": "prisma generate",
@@ -16,6 +17,8 @@
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
+    "@socket.io/redis-adapter": "^8",
+    "@socket.io/redis-emitter": "^5",
     "amqplib": "^2.0.1",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
@@ -24,13 +27,16 @@
     "express-rate-limit": "^8.7.0",
     "fontkit": "^2.0.4",
     "helmet": "^8.3.0",
+    "ioredis": "^5",
     "jsonwebtoken": "^9.0.3",
     "morgan": "^1.10.0",
     "multer": "^2.3.0",
     "pdfkit": "^0.20.2",
     "pg": "^8.13.1",
+    "rate-limit-redis": "^4",
     "sanitize-html": "^2.17.7",
     "sharp": "^0.35.4",
+    "socket.io": "^4.8",
     "zod": "^3.23.8"
   },
   "devDependencies": {

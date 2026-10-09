@@ -8,6 +8,8 @@ import { applySecurity, globalApiLimiter, writeLimiter, imageResizeLimiter } fro
 import { connectQueue } from './services/queue.service';
 import { startSearchSync } from './services/search.service';
 import { resizeUploadedImage } from './services/image.service';
+import { visitorCookie } from './services/recommender/events';
+import { attachRealtime } from './services/realtime';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -44,6 +46,9 @@ app.use((req, _res, next) => {
   }
   next();
 });
+
+// Anonymous visitor id for guest recommendations (API only, not static files)
+app.use('/api/v1', visitorCookie);
 
 // Uploads go through multer (multipart) with their own limits; JSON bodies never need to be big
 app.use(express.json({ limit: '2mb' }));
@@ -105,6 +110,8 @@ const server = app.listen(PORT, () => {
   startSearchSync();
   connectQueue();
 });
+
+attachRealtime(server);
 
 // Slow-connection (slowloris) protection: never wait forever for headers or a request body
 server.headersTimeout = 15_000;

@@ -124,7 +124,9 @@ CREATE TABLE user_settings (
     -- Thông báo
     notify_chapter_update   BOOLEAN DEFAULT TRUE,
     notify_group_events     BOOLEAN DEFAULT TRUE,
-    notify_comments         BOOLEAN DEFAULT TRUE,
+    notify_comments         BOOLEAN DEFAULT TRUE,   -- replies to my comments
+    notify_post_comments    BOOLEAN DEFAULT TRUE,   -- comments on my fandom posts
+    notify_post_reactions   BOOLEAN DEFAULT TRUE,   -- reactions on my fandom posts
     notify_system           BOOLEAN DEFAULT TRUE,
     -- Ngôn ngữ
     language            VARCHAR(10) DEFAULT 'vi',
@@ -224,6 +226,21 @@ CREATE TABLE group_messages (
 
 CREATE INDEX idx_group_messages_group ON group_messages(group_id);
 
+-- Tin nhắn riêng giữa hai người dùng (sql/migrations/014_direct_messages.sql)
+CREATE TABLE direct_messages (
+    id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    sender_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    recipient_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    message      TEXT NOT NULL,
+    read_at      TIMESTAMPTZ,
+    created_at   TIMESTAMPTZ DEFAULT NOW(),
+    CHECK (sender_id <> recipient_id)
+);
+
+CREATE INDEX idx_direct_messages_sender ON direct_messages(sender_id, created_at DESC);
+CREATE INDEX idx_direct_messages_recipient ON direct_messages(recipient_id, created_at DESC);
+CREATE INDEX idx_direct_messages_unread ON direct_messages(recipient_id) WHERE read_at IS NULL;
+
 -- ============================================================================
 -- 6. TRUYỆN (STORIES)
 -- ============================================================================
@@ -255,7 +272,7 @@ CREATE TABLE stories (
     total_favorites     BIGINT DEFAULT 0,
     total_bookmarks     BIGINT DEFAULT 0,
     total_comments      BIGINT DEFAULT 0,
-    rating_avg          DECIMAL(3,2) DEFAULT 0,
+    rating_avg          DECIMAL(4,2) DEFAULT 0,
     rating_count        INTEGER DEFAULT 0,
     last_chapter_at     TIMESTAMPTZ,
     created_at          TIMESTAMPTZ DEFAULT NOW(),
@@ -457,6 +474,37 @@ CREATE TABLE user_favorites (
 CREATE INDEX idx_favorites_user ON user_favorites(user_id);
 CREATE INDEX idx_favorites_story ON user_favorites(story_id);
 
+-- Albums (sql/migrations/009_story_albums.sql): named story lists, shareable and copyable
+CREATE TABLE albums (
+    id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name         VARCHAR(100) NOT NULL,
+    description  VARCHAR(500),
+    is_public    BOOLEAN NOT NULL DEFAULT FALSE,
+    share_token  VARCHAR(32) NOT NULL UNIQUE DEFAULT replace(uuid_generate_v4()::text, '-', ''),
+    copied_from  UUID REFERENCES albums(id) ON DELETE SET NULL,
+    created_at   TIMESTAMPTZ DEFAULT NOW(),
+    updated_at   TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX idx_albums_user ON albums(user_id, created_at DESC);
+
+CREATE TABLE album_stories (
+    album_id   UUID NOT NULL REFERENCES albums(id) ON DELETE CASCADE,
+    story_id   UUID NOT NULL REFERENCES stories(id) ON DELETE CASCADE,
+    added_at   TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (album_id, story_id)
+);
+CREATE INDEX idx_album_stories_story ON album_stories(story_id);
+
+CREATE TABLE album_saves (
+    user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    album_id   UUID NOT NULL REFERENCES albums(id) ON DELETE CASCADE,
+    share_token VARCHAR(32), -- link key used to save a private album; a reset link revokes the save
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (user_id, album_id)
+);
+CREATE INDEX idx_album_saves_album ON album_saves(album_id);
+
 -- ============================================================================
 -- 13. LỊCH SỬ ĐỌC (READING HISTORY)
 -- ============================================================================
@@ -601,6 +649,9 @@ CREATE TABLE posts (
     is_draft        BOOLEAN DEFAULT FALSE,
     is_deleted      BOOLEAN DEFAULT FALSE,
     approval_status VARCHAR(20) DEFAULT 'approved',
+    category        VARCHAR(20) NOT NULL DEFAULT 'discussion', -- discussion | review | fanart | theory | news | question
+    is_pinned       BOOLEAN NOT NULL DEFAULT FALSE,
+    rejection_reason TEXT,
     approved_by     UUID REFERENCES users(id),
     approved_at     TIMESTAMPTZ,
     view_count      BIGINT DEFAULT 0,
@@ -1065,6 +1116,86 @@ UPDATE posts SET
 -- Reports
 INSERT INTO reports (reporter_id, target_type, target_id, reason, description, status) VALUES
 ('a0000000-0000-0000-0000-000000000009', 'comment', '11000000-0000-0000-0000-000000000001', 'spam', 'Comment này có vẻ là spam', 'pending');
+
+-- Recommendations (sql/migrations/010_recommendations.sql)
+-- Recommendations ("Đề xuất cho bạn" on the home page, "Truyện liên quan" on a story page).
+-- rec_events is the raw signal (also for guests, keyed by the anonymous `vid` cookie); the
+-- worker trains on it plus reading_history / favorites / albums / ratings and writes the
+-- precomputed results into the rec_* tables below, which the API only reads.
+
+-- Behaviour log: story page views, chapter reads, and impressions/clicks on recommendation rows
+CREATE TABLE IF NOT EXISTS rec_events (
+    id          BIGSERIAL PRIMARY KEY,
+    user_id     UUID REFERENCES users(id) ON DELETE CASCADE,
+    visitor_id  VARCHAR(40),
+    story_id    UUID NOT NULL REFERENCES stories(id) ON DELETE CASCADE,
+    chapter_id  UUID REFERENCES chapters(id) ON DELETE SET NULL,
+    kind        VARCHAR(20) NOT NULL,   -- view | read | impression | click
+    source      VARCHAR(30),            -- home_rec | related (impression/click only)
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CHECK (user_id IS NOT NULL OR visitor_id IS NOT NULL)
+);
+CREATE INDEX IF NOT EXISTS idx_rec_events_user ON rec_events(user_id, created_at DESC) WHERE user_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_rec_events_visitor ON rec_events(visitor_id, created_at DESC) WHERE visitor_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_rec_events_created ON rec_events(created_at);
+
+-- "Truyện liên quan": top neighbours of each story, with the parts of the score for the label
+CREATE TABLE IF NOT EXISTS rec_item_similar (
+    story_id    UUID NOT NULL REFERENCES stories(id) ON DELETE CASCADE,
+    similar_id  UUID NOT NULL REFERENCES stories(id) ON DELETE CASCADE,
+    score       REAL NOT NULL,
+    co_readers  INT NOT NULL DEFAULT 0,   -- readers of both
+    pct_readers REAL NOT NULL DEFAULT 0,  -- co_readers / readers of story_id
+    covisit     REAL NOT NULL DEFAULT 0,  -- how often similar_id is read right after story_id
+    content     REAL NOT NULL DEFAULT 0,  -- genre/author/synopsis similarity
+    reason      VARCHAR(20) NOT NULL,     -- co_read | next_read | same_author | content
+    reason_tag  VARCHAR(100),             -- shared genre shown in the label
+    PRIMARY KEY (story_id, similar_id)
+);
+
+-- "Đề xuất cho bạn": precomputed top stories per signed-in user
+CREATE TABLE IF NOT EXISTS rec_user_scores (
+    user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    story_id    UUID NOT NULL REFERENCES stories(id) ON DELETE CASCADE,
+    score       REAL NOT NULL,
+    reason      VARCHAR(20) NOT NULL,     -- because_read | taste | similar_users | popular
+    reason_story_id UUID REFERENCES stories(id) ON DELETE SET NULL,
+    reason_tag  VARCHAR(100),
+    pct         REAL,                     -- share of similar readers who read it
+    PRIMARY KEY (user_id, story_id)
+);
+
+-- Latent vectors from matrix factorization, used to re-rank related stories per user
+CREATE TABLE IF NOT EXISTS rec_user_factors (
+    user_id  UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    factors  REAL[] NOT NULL
+);
+CREATE TABLE IF NOT EXISTS rec_item_factors (
+    story_id    UUID PRIMARY KEY REFERENCES stories(id) ON DELETE CASCADE,
+    factors     REAL[] NOT NULL,
+    popularity  REAL NOT NULL DEFAULT 0
+);
+
+-- One row per training run: data size, time taken and offline quality vs. a popularity baseline
+CREATE TABLE IF NOT EXISTS rec_model_runs (
+    id            BIGSERIAL PRIMARY KEY,
+    started_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    duration_ms   INT,
+    users         INT,
+    stories       INT,
+    interactions  INT,
+    metrics       JSONB,
+    status        VARCHAR(20) NOT NULL DEFAULT 'ok',
+    error         TEXT
+);
+
+-- Muted fandom posts (sql/migrations/013_notification_preferences.sql)
+CREATE TABLE post_notification_mutes (
+    user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    post_id    UUID NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (user_id, post_id)
+);
 
 -- Verification block
 DO $$

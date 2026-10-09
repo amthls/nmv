@@ -1,6 +1,8 @@
 import { UserReadingLog } from '../models/readingHistory.model';
 ﻿import { Request, Response } from 'express';
 import { pool } from '../config/db';
+import { recordView } from '../services/viewCounter';
+import { logRecEvent, visitorIdOf } from '../services/recommender/events';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import { searchStoryIds, indexStory, removeStoryFromIndex } from '../services/search.service';
 import { sanitizeRichText } from '../utils/richText';
@@ -682,6 +684,8 @@ export const getStoryBySlug = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Không tìm thấy truyện' });
     }
 
+    logRecEvent({ userId: currentUserId, visitorId: visitorIdOf(req), storyId: story.id, kind: 'view' });
+
     res.json({
       success: true,
       data: story,
@@ -779,11 +783,9 @@ export const getChapterBySlug = async (req: Request, res: Response) => {
       }).catch((err) => console.error('[UserReadingLog] Tự động ghi log thất bại:', err));
     }
 
-    pool.query(`
-      UPDATE chapters SET total_views = total_views + 1 WHERE id = $1;
-      UPDATE stories SET total_views = total_views + 1 WHERE id = $2;
-      INSERT INTO story_views (story_id, chapter_id) VALUES ($2, $1);
-    `, [chapter.id, story.id]).catch(() => {});
+    logRecEvent({ userId: currentUserId, visitorId: visitorIdOf(req), storyId: story.id, chapterId: chapter.id, kind: 'read' });
+
+    recordView(story.id, chapter.id);
 
     res.json({
       success: true,

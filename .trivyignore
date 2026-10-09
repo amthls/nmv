@@ -1,0 +1,3 @@
+# Accepted findings for the CI image scan (.github/workflows/ci.yml). Each entry needs a reason and
+# an expiry date (exp:), after which CI fails again and the decision must be revisited.
+

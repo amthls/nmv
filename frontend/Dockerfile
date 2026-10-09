@@ -1,4 +1,4 @@
-FROM node:20-slim AS builder
+FROM node:22-slim AS builder
 
 WORKDIR /app
 
@@ -11,9 +11,12 @@ RUN yarn install --frozen-lockfile || yarn install
 COPY . .
 RUN yarn build
 
-FROM node:20-slim AS runner
+FROM node:22-slim AS runner
 
 WORKDIR /app
+
+# Debian security fixes newer than the base image (CI scans the result)
+RUN apt-get -o Acquire::Check-Date=false update -y && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production
 ENV PORT=3000

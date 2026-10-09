@@ -1,0 +1,96 @@
+# Every push and pull request: typecheck, then build the real Docker stack, scan the images for
+# known critical vulnerabilities, start everything and check that the site answers.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+          cache-dependency-path: |
+            backend/yarn.lock
+            frontend/yarn.lock
+      - name: Backend
+        working-directory: backend
+        run: |
+          yarn install --frozen-lockfile
+          npx prisma generate
+          npx tsc --noEmit -p .
+      - name: Frontend
+        working-directory: frontend
+        run: |
+          yarn install --frozen-lockfile
+          npx tsc --noEmit -p .
+
+  smoke:
+    needs: typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Test .env (random secrets)
+        run: |
+          {
+            echo "JWT_SECRET=$(openssl rand -hex 32)"
+            echo "RABBITMQ_PASSWORD=$(openssl rand -hex 24)"
+            echo "REDIS_PASSWORD=$(openssl rand -hex 24)"
+          } > .env
+
+      - name: Build images
+        run: docker compose build
+
+      - name: Scan images (critical, fixable)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: local/nmv-backend:latest
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          trivyignores: .trivyignore
+      - name: Scan frontend image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: local/nmv-frontend:latest
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          trivyignores: .trivyignore
+
+      - name: Start stack
+        run: docker compose up -d --wait --wait-timeout 600
+
+      - name: Migrations
+        run: sh scripts/migrate.sh
+
+      - name: Site answers
+        run: |
+          for i in $(seq 1 30); do
+            curl -fsS http://localhost:3000/api/v1/health >/dev/null && break
+            sleep 5
+          done
+          curl -fsS http://localhost:3000/api/v1/health
+          curl -fsS -o /dev/null -w "home %{http_code}\n" http://localhost:3000/
+          curl -fsS -o /dev/null -w "trending %{http_code}\n" http://localhost:3000/api/v1/stories/trending
+
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs --tail 200
+
+      - name: Stop
+        if: always()
+        run: docker compose down -v

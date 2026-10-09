@@ -30,6 +30,7 @@ import { useAuth } from '@/context/AuthContext';
 import RichContent from '@/components/common/RichContent';
 import { stripHtml } from '@/lib/richText';
 import { chapterUploadHref } from '@/lib/chapterUpload';
+import { useRealtime } from '@/lib/realtime';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -257,13 +258,17 @@ export default function GroupDetailPage() {
   useEffect(() => {
     if (activeTab === 'chat' && group?.id && canSeeInternal) {
       fetchMessages();
-      const interval = setInterval(fetchMessages, 4000);
+      const interval = setInterval(fetchMessages, 30000); // fallback; new messages are pushed
       return () => clearInterval(interval);
     }
     if (activeTab === 'submissions' && group?.id && isMember) {
       fetchSubmissions();
     }
   }, [activeTab, group?.id, canSeeInternal, isMember]);
+
+  useRealtime('group_message', (data) => {
+    if (data?.groupId === group?.id && activeTab === 'chat') fetchMessages();
+  });
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();

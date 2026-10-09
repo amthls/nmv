@@ -1,4 +1,5 @@
 import { pool } from '../config/db';
+import { emitToUsers } from './realtime';
 
 /**
  * Notification writes. Called by the queue worker (normal path) and, when RabbitMQ is unreachable,
@@ -41,22 +42,45 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 /** Anything about a translation group (join requests, decisions, approval) is a "group event". */
 const isGroupEvent = (it: NotifyItem) => it.type.startsWith('group_') || it.referenceType === 'group';
 
-/** Drop group events for recipients who switched them off (user_settings.notify_group_events). */
-async function dropMutedGroupEvents(items: NotifyItem[]): Promise<NotifyItem[]> {
-  const userIds = [...new Set(items.filter(isGroupEvent).map((it) => it.userId))];
+/** The user_settings switch that controls a kind of notification (null = always delivered). */
+function settingFor(it: NotifyItem): string | null {
+  if (isGroupEvent(it)) return 'notify_group_events';
+  if (it.type === 'comment_reply') return 'notify_comments';
+  if (it.type === 'post_comment') return 'notify_post_comments';
+  if (it.type === 'post_reaction') return 'notify_post_reactions';
+  return null;
+}
+
+/**
+ * Drop what recipients asked not to get: kinds they switched off in their settings, and anything
+ * about a post they muted ("Tắt thông báo bài viết này").
+ */
+async function dropMuted(items: NotifyItem[]): Promise<NotifyItem[]> {
+  const userIds = [...new Set(items.map((it) => it.userId))];
   if (userIds.length === 0) return items;
-  const muted = await pool.query(
-    `SELECT user_id FROM user_settings WHERE user_id = ANY($1::uuid[]) AND notify_group_events = false`,
-    [userIds]
-  );
-  if (muted.rows.length === 0) return items;
-  const mutedIds = new Set(muted.rows.map((r: any) => r.user_id));
-  return items.filter((it) => !(isGroupEvent(it) && mutedIds.has(it.userId)));
+  const postIds = [...new Set(items.filter((it) => it.referenceType === 'post' && it.referenceId).map((it) => it.referenceId!))];
+  const [settings, mutes] = await Promise.all([
+    pool.query(
+      `SELECT user_id, notify_group_events, notify_comments, notify_post_comments, notify_post_reactions
+       FROM user_settings WHERE user_id = ANY($1::uuid[])`, [userIds]),
+    postIds.length
+      ? pool.query(`SELECT user_id, post_id FROM post_notification_mutes WHERE user_id = ANY($1::uuid[]) AND post_id = ANY($2::uuid[])`, [userIds, postIds])
+      : Promise.resolve({ rows: [] as any[] }),
+  ]);
+  const byUser = new Map(settings.rows.map((r: any) => [r.user_id, r]));
+  const muted = new Set(mutes.rows.map((r: any) => `${r.user_id}:${r.post_id}`));
+  return items.filter((it) => {
+    const key = settingFor(it);
+    if (key && byUser.get(it.userId)?.[key] === false) return false;
+    // review results (approved / hidden) about your own post always get through
+    if (it.referenceType === 'post' && it.type !== 'system' && muted.has(`${it.userId}:${it.referenceId}`)) return false;
+    return true;
+  });
 }
 
 /** One multi-row INSERT for any number of single notifications. Returns how many were new. */
 export async function insertNotifications(allItems: NotifyItem[]): Promise<number> {
-  const items = await dropMutedGroupEvents(allItems);
+  const items = await dropMuted(allItems);
   if (items.length === 0) return 0;
   const cols = 8;
   const values: any[] = [];
@@ -68,9 +92,11 @@ export async function insertNotifications(allItems: NotifyItem[]): Promise<numbe
   const res = await pool.query(
     `INSERT INTO notifications (user_id, type, title, message, reference_type, reference_id, sender_id, is_read, dedupe_key)
      VALUES ${tuples.join(', ')}
-     ON CONFLICT (dedupe_key) WHERE dedupe_key IS NOT NULL DO NOTHING`,
+     ON CONFLICT (dedupe_key) WHERE dedupe_key IS NOT NULL DO NOTHING
+     RETURNING user_id`,
     values
   );
+  emitToUsers(res.rows.map((r: any) => r.user_id), 'notification');
   return res.rowCount || 0;
 }
 
@@ -104,15 +130,17 @@ export async function fanOutChapterNotifications(job: ChapterPublishedJob): Prom
                 'chapter:' || $6::text || ':' || b.user_id::text
          FROM batch b CROSS JOIN stories s WHERE s.id = $1::uuid
          ON CONFLICT (dedupe_key) WHERE dedupe_key IS NOT NULL DO NOTHING
-         RETURNING 1
+         RETURNING user_id
        )
        SELECT (SELECT user_id FROM batch ORDER BY user_id DESC LIMIT 1) AS last_id,
               (SELECT count(*)::int FROM batch) AS batch_size,
-              (SELECT count(*)::int FROM ins) AS inserted`,
+              (SELECT count(*)::int FROM ins) AS inserted,
+              (SELECT array_agg(user_id) FROM ins) AS user_ids`,
       [job.storyId, lastUserId, job.uploaderId, FANOUT_CHUNK, job.chapterTitle, job.chapterId]
     );
     const row = res.rows[0];
     created += row.inserted;
+    emitToUsers(row.user_ids || [], 'notification');
     if (!row.last_id || row.batch_size < FANOUT_CHUNK) break;
     lastUserId = row.last_id;
     await sleep(FANOUT_PAUSE_MS);
@@ -186,15 +214,18 @@ export function postReactionNotification(input: {
   }];
 }
 
-export function postReviewNotifications(posts: { id: string; user_id: string; title: string }[], approved: boolean, moderatorId: string): NotifyItem[] {
+export function postReviewNotifications(
+  posts: { id: string; user_id: string; title: string }[], approved: boolean, moderatorId: string, reason?: string | null,
+): NotifyItem[] {
+  const at = Date.now(); // a post can be refused again after being edited: each review is its own notification
   return posts
     .filter((p) => p.user_id && p.user_id !== moderatorId)
     .map((p) => ({
       userId: p.user_id, type: 'system' as const,
       title: approved ? 'Bài viết của bạn đã được duyệt' : 'Bài viết của bạn không được duyệt',
-      message: `"${snippet(p.title, 100)}"`,
+      message: `"${snippet(p.title, 100)}"${!approved && reason ? ` · Lý do: ${snippet(reason, 200)}` : ''}`,
       referenceType: 'post' as const, referenceId: p.id, senderId: moderatorId,
-      dedupeKey: `post-review:${p.id}:${approved ? 'approved' : 'rejected'}`,
+      dedupeKey: `post-review:${p.id}:${approved ? 'approved' : 'rejected'}:${at}`,
     }));
 }
 

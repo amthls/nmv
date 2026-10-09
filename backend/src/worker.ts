@@ -2,6 +2,8 @@ import './config/env';
 import { pool } from './config/db';
 import { startConsumer, retryOrDeadLetter, DLQ, Envelope, queueEnabled } from './services/queue.service';
 import { insertNotifications, processNotificationJob, NotifyItem } from './services/notification.service';
+import { scheduleRecommender } from './services/recommender/train';
+import { flushViews } from './services/viewCounter';
 
 /**
  * Queue worker: `node dist/worker.js` (its own container in docker-compose, same image as the API).
@@ -116,7 +118,14 @@ async function main() {
       await new Promise((r) => setTimeout(r, Math.min(2000 * attempt, 15000)));
     }
   }
+  // Recommendation models: retrained on a timer in this process, not in the API
+  if (process.env.REC_TRAINING !== 'off') scheduleRecommender();
+
   console.log(`[Worker] consuming (prefetch ${PREFETCH}, batch ${BATCH_MAX}/${FLUSH_MS}ms, heavy ${MAX_HEAVY})`);
+
+  // Buffered chapter/story views (Redis) -> Postgres, once a minute
+  const flushViewCounts = () => flushViews().catch((err) => console.error('[Worker] view flush failed:', err.message));
+  setInterval(flushViewCounts, Number(process.env.VIEW_FLUSH_MS || 60_000)).unref();
 
   setInterval(() => {
     if (stats.notify || stats.chapters || stats.failed) {
@@ -130,6 +139,7 @@ async function main() {
     console.log(`[Worker] ${signal}: draining...`);
     await consumer?.close();
     await flush();
+    await flushViewCounts();
     while (heavyActive > 0) await new Promise((r) => setTimeout(r, 200));
     await pool.end().catch(() => {});
     process.exit(0);

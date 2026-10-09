@@ -6,6 +6,7 @@ import SmartImage from '@/components/common/SmartImage';
 import { Story } from '@/components/explore/StoryCardGrid';
 import FeaturedCarousel from '@/components/home/FeaturedCarousel';
 import StoryRail from '@/components/home/StoryRail';
+import RecommendationRail from '@/components/home/RecommendationRail';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -24,7 +25,6 @@ async function getList(url: string) {
 export default function HomePage() {
   const [trendingStories, setTrendingStories] = useState<Story[]>([]);
   const [recentlyUpdated, setRecentlyUpdated] = useState<Story[]>([]);
-  const [recommended, setRecommended] = useState<Story[]>([]);
   const [featuredIllustrations, setFeaturedIllustrations] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -32,15 +32,13 @@ export default function HomePage() {
     (async () => {
       setIsLoading(true);
       // trending is ordered by total views
-      const [trending, recent, topRated, illustrations] = await Promise.all([
+      const [trending, recent, illustrations] = await Promise.all([
         getList(`${API_BASE_URL}/stories/trending`),
         getList(`${API_BASE_URL}/stories/recently-updated`),
-        getList(`${API_BASE_URL}/stories/explore?sort=rating&limit=18`),
         getList(`${API_BASE_URL}/stories/illustrations`),
       ]);
       setTrendingStories(trending);
       setRecentlyUpdated(recent);
-      setRecommended(topRated);
       setFeaturedIllustrations(illustrations);
       setIsLoading(false);
     })();
@@ -62,7 +60,12 @@ export default function HomePage() {
         {/* 2. Rows */}
         <StoryRail title="Mới cập nhật" href="/kham-pha?sort=updated" stories={recentlyUpdated} meta="updated" />
         <StoryRail title="Nhiều người xem" href="/kham-pha?sort=views" stories={trendingStories} meta="views" ranked />
-        <StoryRail title="Đề xuất cho bạn" href="/kham-pha?sort=rating" stories={recommended} meta="rating" />
+        <RecommendationRail
+          title="Đề xuất cho bạn"
+          subtitle="Truyện bạn đang đọc dở và truyện bạn có khả năng thích cao nhất"
+          endpoint="/recommendations/home"
+          source="home_rec"
+        />
 
         {/* 3. Illustration gallery (only when chapters have illustrations) */}
         {featuredIllustrations.length > 0 && (

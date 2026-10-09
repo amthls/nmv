@@ -5,6 +5,7 @@ import { sanitizeRichText } from '../utils/richText';
 import { insertWithUniqueSlug } from '../utils/ids';
 import { InputError, isUuid, optionalText, optionalUrl, requiredText } from '../utils/validation';
 import { enqueueNotificationJob } from '../services/queue.service';
+import { emitToUsers } from '../services/realtime';
 import { groupJoinRequestNotifications, groupJoinDecisionNotification, NotifyItem } from '../services/notification.service';
 
 function slugify(text: string) {
@@ -706,6 +707,9 @@ export const sendGroupMessage = async (req: AuthenticatedRequest, res: Response)
     msg.display_name = req.user.display_name;
     msg.avatar_url = req.user.avatar_url;
     msg.member_role = actor.groupRole;
+    pool.query(`SELECT user_id FROM group_members WHERE group_id = $1`, [id])
+      .then((r) => emitToUsers(r.rows.map((m: any) => m.user_id), 'group_message', { groupId: id }))
+      .catch(() => {});
 
     res.status(201).json({
       success: true,

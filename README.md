@@ -9,7 +9,7 @@ Nền tảng đọc **Light Novel (truyện chữ)** và **Manga (truyện tranh
 2. [Cấu trúc thư mục](#-cấu-trúc-thư-mục)
 3. [Khởi chạy](#-khởi-chạy)
 4. [Biến môi trường](#-biến-môi-trường)
-5. [Chống lạm dụng & DDoS](#-chống-lạm-dụng--ddos)
+5. [Chống lạm dụng & DDoS](#-chống-lạm-dụng--ddos) · [Hiệu năng & mở rộng](#-hiệu-năng--mở-rộng-redis-realtime-pgbouncer) · [CI/CD & migration](#-cicd--migration) · [Lộ trình bảo mật](#-lộ-trình-bảo-mật)
 6. [Hàng đợi thông báo (RabbitMQ)](#-hàng-đợi-thông-báo-rabbitmq)
 7. [Tìm kiếm với Elasticsearch](#-tìm-kiếm-với-elasticsearch)
 8. [Trình soạn thảo rich text](#️-trình-soạn-thảo-rich-text-ckeditor-5) · [Độ phân giải ảnh](#-độ-phân-giải-ảnh-cho-người-đọc) · [Hiệu ứng tải trang](#-hiệu-ứng-tải-trang)
@@ -26,22 +26,28 @@ Nền tảng đọc **Light Novel (truyện chữ)** và **Manga (truyện tranh
 
 | Tầng | Công nghệ |
 |:---|:---|
-| Frontend | Next.js 14 (App Router), React 18, TypeScript, Tailwind CSS, Lucide Icons, CKEditor 5 (trình soạn thảo rich text) |
+| Frontend | Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS, Lucide Icons, CKEditor 5 (trình soạn thảo rich text) |
 | Backend | Node.js 22, Express, TypeScript, JWT (cookie + header), bcryptjs, multer (upload ảnh), sharp (đổi kích thước ảnh), sanitize-html |
 | Database | PostgreSQL 16 (khóa chính UUID), truy vấn bằng `pg` (raw SQL); Prisma chỉ dùng cho `db pull/generate/studio` |
 | Tìm kiếm | Elasticsearch 9.5 (1 node, đã tối ưu RAM; tùy chọn, có fallback về SQL `ILIKE`) |
 | Hàng đợi | RabbitMQ 3.13 + worker (gửi thông báo), có dự phòng chạy trực tiếp khi broker chết |
-| Cổng vào | nginx 1.27 (giới hạn tần suất, IP thật, cache ảnh) + helmet / express-rate-limit ở backend |
-| Hạ tầng | Docker Compose |
+| Cache / realtime | Redis 7.4 (`ioredis`): cache API công khai, đếm lượt xem, bộ đếm rate limit dùng chung; Socket.IO 4.8 + Redis adapter/emitter đẩy thông báo và tin nhắn |
+| Gom kết nối DB | PgBouncer 1.26 (transaction pooling) giữa API và Postgres |
+| Cổng vào | nginx 1.27 (giới hạn tần suất, IP thật, cache ảnh, WebSocket) + helmet / express-rate-limit ở backend |
+| Hạ tầng | Docker Compose (2 mạng: `edge`, `data`), GitHub Actions (CI/CD), image trên GHCR |
 
 ```
                       (duy nhất cổng 3000 mở ra ngoài)
-Trình duyệt ──> nginx gateway ──┬── /api/v1, /uploads ──> Express API ──> PostgreSQL
-                                │                            │  └──────> Elasticsearch (tùy chọn)
-                                └── còn lại ──> Next.js      └─ publish ─> RabbitMQ ──> worker ──> PostgreSQL
+Trình duyệt ──> nginx gateway ──┬── /api/v1, /uploads, /socket.io ──> Express API ──> PgBouncer ──> PostgreSQL
+                                │                                       │  ├──> Redis (cache, đếm, rate limit, pub/sub)
+                                │                                       │  └──> Elasticsearch (tùy chọn)
+                                └── còn lại ──> Next.js                 └─ publish ─> RabbitMQ ──> worker ──> PostgreSQL
+                                                                                    worker ──> Redis (gộp lượt xem, đẩy realtime)
+mạng "edge": gateway, frontend, backend
+mạng "data": backend, postgres, pgbouncer, redis, rabbitmq, search, worker, export-worker
 ```
 
-**8 container** (`docker compose ps`): `gateway`, `frontend`, `backend`, `worker`, `postgres`, `search`, `rabbitmq`, cộng `pgadmin` khi bật profile `tools`. Chỉ `gateway` (cổng 3000) mở ra mạng; backend, Postgres, Elasticsearch và giao diện quản trị RabbitMQ chỉ nghe trên `127.0.0.1`, còn frontend và worker không mở cổng nào.
+**10 container** (`docker compose ps`): `gateway`, `frontend`, `backend`, `worker`, `export-worker`, `postgres`, `pgbouncer`, `redis`, `search`, `rabbitmq`, cộng `pgadmin` khi bật profile `tools`. Chỉ `gateway` (cổng 3000) mở ra mạng; backend, Postgres, Redis, Elasticsearch và giao diện quản trị RabbitMQ chỉ nghe trên `127.0.0.1`, còn frontend, pgbouncer và các worker không mở cổng nào. Gateway và frontend **không** nằm trong mạng `data`, nên không chạm được tới Postgres/Redis/RabbitMQ.
 
 Trình duyệt gọi `/api/v1/...` và `/uploads/...` cùng origin; qua gateway các đường dẫn này đi thẳng tới backend. Khi chạy frontend riêng (không có gateway), `frontend/next.config.mjs` vẫn chuyển tiếp sang `http://backend:5000` (địa chỉ **viết cứng**, biến `API_URL` không được dùng).
 
@@ -78,16 +84,19 @@ Trình duyệt gọi `/api/v1/...` và `/uploads/...` cùng origin; qua gateway 
 ## 🚀 Khởi chạy
 
 ```bash
-cp .env.example .env         # BẮT BUỘC đặt JWT_SECRET và RABBITMQ_PASSWORD (openssl rand -hex 32); compose không chạy nếu thiếu
-docker compose up -d --build # gateway + frontend + backend + worker + postgres + search + rabbitmq
+cp .env.example .env         # BẮT BUỘC đặt JWT_SECRET, RABBITMQ_PASSWORD, REDIS_PASSWORD (openssl rand -hex 32); compose không chạy nếu thiếu
+docker compose up -d --build # toàn bộ 10 container
+sh scripts/migrate.sh        # chạy các migration mới (xem mục CI/CD & migration)
 ```
+`python3 launch.py` làm tất cả các bước trên (tự sinh `.env`, và tự thêm `REDIS_PASSWORD` vào `.env` cũ).
 
 | Dịch vụ | Địa chỉ | Ghi chú |
 |:---|:---|:---|
-| Website (gateway) | http://localhost:3000 | Cổng vào duy nhất; frontend dùng Node 20 (hết hỗ trợ chính thức, nên nâng lên 22 như backend) |
+| Website (gateway) | http://localhost:3000 | Cổng vào duy nhất; frontend và backend đều chạy Node 22 |
 | Backend API | `127.0.0.1:5000/api/v1` | Chỉ máy chủ; kiểm tra `/api/v1/health` (có trường `queue`: `up`/`down`/`disabled`) |
 | PostgreSQL | `127.0.0.1:5432` | Chỉ máy chủ; user `postgres`, DB `novel_platform` |
 | RabbitMQ quản trị | http://127.0.0.1:15673 | Chỉ máy chủ; đăng nhập bằng `RABBITMQ_USER` / `RABBITMQ_PASSWORD` |
+| Redis | `127.0.0.1:6380` | Chỉ máy chủ; cần mật khẩu `REDIS_PASSWORD` (`redis-cli -p 6380 -a ...`) |
 | Elasticsearch (search) | `127.0.0.1:9201` | **chỉ bind localhost**; tắt xác thực (`xpack.security.enabled=false`) nên tuyệt đối không mở ra ngoài |
 | pgAdmin | http://localhost:5050 | tùy chọn: `docker compose --profile tools up -d pgadmin` |
 
@@ -110,6 +119,12 @@ Chạy không qua Docker (cần Postgres sẵn): `yarn dev:local` (backend + fro
 | `SEARCH_URL` | `http://search:9200` (trong compose) | **Để trống để tắt Elasticsearch** và dùng SQL `ILIKE` |
 | `SEARCH_INDEX` | `novel_stories` | Tên index |
 | `SEARCH_PORT` | `9201` | Cổng publish trên máy host (localhost) |
+| `REDIS_PASSWORD` / `REDIS_PORT` | *(không có)* / `6380` | **Bắt buộc** `REDIS_PASSWORD`. Compose tự ghép `REDIS_URL` cho backend và worker |
+| `REDIS_URL` | compose tự ghép | Để trống (chạy ngoài Docker) thì app vẫn chạy: không cache, rate limit trong RAM, ghi lượt xem thẳng DB, không đẩy realtime (trang tự hỏi lại định kỳ) |
+| `DB_POOL_MAX` | `50` | Số kết nối tối đa của mỗi tiến trình Node tới Postgres/PgBouncer |
+| `PGBOUNCER_MAX_CLIENT_CONN` / `PGBOUNCER_POOL_SIZE` / `PGBOUNCER_MAX_DB_CONN` | `1000` / `20` / `60` | Kết nối từ app vào PgBouncer / kết nối thật tới Postgres |
+| `VIEW_FLUSH_MS` | `60000` | Chu kỳ worker ghi lượt xem từ Redis xuống Postgres |
+| `IMAGE_REGISTRY` / `IMAGE_TAG` | `local` / `latest` | Tên image; trên server deploy đặt `IMAGE_REGISTRY=ghcr.io/<owner>` để kéo image do CI build |
 | `PGADMIN_*` | | Chỉ dùng với profile `tools` |
 
 ## 🛡 Chống lạm dụng & DDoS
@@ -131,7 +146,38 @@ Chống DDoS băng thông lớn phải làm ở rìa mạng (Cloudflare, tườn
 
 Ngoài ra: tối đa 60 kết nối đồng thời/IP, hết hạn 10s cho header và 20s cho thân yêu cầu (chống slowloris), thân yêu cầu thường tối đa 2MB. Vượt giới hạn trả `429`. **IP thật** do gateway xác định: `X-Forwarded-For` gửi kèm được ghi đè, và `CF-Connecting-IP` chỉ được tin khi yêu cầu đến từ tunnel Cloudflare cục bộ (kẻ trong LAN gửi header giả sẽ bị bỏ qua). Ghi chú: Next.js chuyển nguyên `X-Forwarded-For` của người gửi, đó là lý do backend không tự tin header đó.
 
-**3. Backend (`middlewares/security.ts`)** giới hạn theo ngữ cảnh, dựa trên IP do gateway cấp: đăng nhập sai 10 lần/15 phút cho mỗi cặp (IP, tài khoản), đăng ký 5 lần/giờ, bình luận 30 lần/5 phút, đăng bài 20 lần/giờ, thả cảm xúc 60/phút, báo cáo 10/giờ, chat nhóm 30/phút (theo tài khoản), tìm kiếm 90/phút, ảnh thu nhỏ 300/phút. Thêm: JSON tối đa 2MB, từ khóa tìm kiếm ≤ 120 ký tự, `page` ≤ 1000, tối đa 3 tiến trình `sharp` cùng lúc, `headersTimeout`/`requestTimeout` cho server. **Upload yêu cầu đăng nhập**; đuôi file lấy từ loại MIME đã kiểm (không lấy tên do người dùng đặt) và nội dung phải giải mã được thành ảnh, nếu không bị xóa ngay (chặn "file HTML giả làm PNG" gây XSS lưu trữ).
+**3. Backend (`middlewares/security.ts`)** giới hạn theo ngữ cảnh (bộ đếm lưu trong **Redis**: còn nguyên sau khi khởi động lại và dùng chung giữa nhiều bản backend; Redis lỗi thì cho qua thay vì chặn cả site), dựa trên IP do gateway cấp: đăng nhập sai 10 lần/15 phút cho mỗi cặp (IP, tài khoản), đăng ký 5 lần/giờ, bình luận 30 lần/5 phút, đăng bài 20 lần/giờ, thả cảm xúc 60/phút, báo cáo 10/giờ, chat nhóm 30/phút (theo tài khoản), tìm kiếm 90/phút, ảnh thu nhỏ 300/phút. Thêm: JSON tối đa 2MB, từ khóa tìm kiếm ≤ 120 ký tự, `page` ≤ 1000, tối đa 3 tiến trình `sharp` cùng lúc, `headersTimeout`/`requestTimeout` cho server. **Upload yêu cầu đăng nhập**; đuôi file lấy từ loại MIME đã kiểm (không lấy tên do người dùng đặt) và nội dung phải giải mã được thành ảnh, nếu không bị xóa ngay (chặn "file HTML giả làm PNG" gây XSS lưu trữ).
+
+## ⚡ Hiệu năng & mở rộng (Redis, realtime, PgBouncer)
+
+Mục tiêu: chịu được vài nghìn đến vài chục nghìn người online mà không đổi code khi thêm bản backend. Mọi phần dưới đây đều **tự lùi về cách cũ** nếu Redis không có.
+
+| Vấn đề | Cách làm | Code |
+|:---|:---|:---|
+| Mỗi lượt đọc chương ghi DB nhiều lần, tranh khóa dòng `stories` của truyện hot | Lượt xem cộng vào Redis (`HINCRBY`), worker mỗi phút ghi gộp vào `stories.total_views`, `chapters.total_views` và `story_views_daily`. Không ghi từng dòng vào `story_views` nữa | `services/viewCounter.ts`, `worker.ts` |
+| Trang chủ truy vấn nặng cho mọi người | Cache JSON trong Redis: `/stories/trending` 120s, `/stories/recently-updated` 60s, `/stories/illustrations` 300s, `/tags` 600s (header `X-Cache: HIT/MISS`) | `middlewares/cache.ts` |
+| Trình duyệt hỏi server liên tục (thông báo 25s, chat 4s) | Socket.IO đẩy tín hiệu `notification`, `dm`, `group_message` vào phòng `user:<id>`; trang nhận được thì tải lại qua REST. Hỏi định kỳ chỉ còn là dự phòng (120s / 30–60s) | `services/realtime.ts`, `frontend/src/lib/realtime.ts` |
+| Nhiều bản backend × pool 50 làm hết kết nối Postgres | API đi qua PgBouncer (transaction pooling). Worker nối thẳng Postgres | `docker-compose.yml` |
+
+- **Realtime:** chỉ dùng transport WebSocket (không long-polling) nên chạy nhiều bản backend không cần sticky session; xác thực bằng JWT (cookie hoặc `auth.token`) với cùng điều kiện như API (tài khoản tồn tại, không bị khóa/xóa). Worker phát sự kiện qua `@socket.io/redis-emitter`. `next dev` chạy riêng (không qua gateway) thì không có socket, trang vẫn chạy nhờ hỏi định kỳ.
+- **PgBouncer chế độ transaction** không giữ trạng thái theo phiên: không dùng advisory lock theo phiên, `SET` không `LOCAL`, `LISTEN`, prepared statement có tên, hay nhiều lệnh SQL có tham số trong một `query`. Train gợi ý dùng `pg_try_advisory_xact_lock` vì lý do này.
+- **Thêm bản backend:** bỏ `container_name` của `backend`, rồi `docker compose up -d --scale backend=3` (nginx tự phân giải tên `backend` qua DNS của Docker).
+
+## 🔁 CI/CD & migration
+
+- **Migration:** `sh scripts/migrate.sh` chạy các file mới trong `sql/migrations/` theo thứ tự tên, mỗi file một transaction, ghi vào bảng `schema_migrations`; file lỗi được rollback và script dừng với mã lỗi. Lần chạy đầu (chưa có bảng) chỉ **ghi nhận** các file hiện có là đã chạy (vì `sql/database.sql` và các DB cũ đã có chúng). Thêm migration mới: tạo file số tiếp theo, đồng thời thêm nội dung tương ứng vào `sql/database.sql` cho cài đặt mới.
+- **CI** (`.github/workflows/ci.yml`, mọi push/PR): typecheck backend + frontend → `docker compose build` → quét image bằng Trivy (lỗi **CRITICAL đã có bản vá** thì fail; ngoại lệ có lý do và hạn dùng ở `.trivyignore`) → khởi động cả stack → `migrate.sh` → kiểm tra `/api/v1/health`, trang chủ, `/stories/trending`.
+- **CD** (`.github/workflows/deploy.yml`, push lên `main`): build và đẩy `ghcr.io/<owner>/nmv-backend` và `nmv-frontend` (tag = commit SHA và `latest`). Bước deploy qua SSH **chỉ chạy khi** biến repo `DEPLOY_ENABLED=true` và có secrets `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_PATH`: `git pull` → `docker compose pull` → `migrate.sh` → `up -d` → kiểm tra health. Server cần `IMAGE_REGISTRY=ghcr.io/<owner>` trong `.env` và đã `docker login ghcr.io`.
+- **Dependabot** (`.github/dependabot.yml`): mỗi tuần mở PR cập nhật npm, Docker và GitHub Actions; CI chạy trên từng PR.
+
+## 🔐 Lộ trình bảo mật
+
+Đã có: một cổng vào duy nhất, 2 mạng Docker tách tầng, `no-new-privileges` cho các container app, mật khẩu bắt buộc cho RabbitMQ/Redis, rate limit dùng chung, quét lỗ hổng image trong CI, Dependabot. Bước tiếp theo, theo thứ tự nên làm:
+
+1. HTTPS (Cloudflare tunnel hoặc chứng chỉ trên gateway), rồi bật `Secure` cho cookie và HSTS.
+2. Thu hồi token: lưu "token hết hiệu lực trước thời điểm X" của từng người trong Redis, kiểm tra trong `requireAuth` và khi kết nối socket (đăng xuất mọi thiết bị, đổi mật khẩu).
+3. Chạy container bằng user không phải root (`USER node`); cần `chown` volume `image_cache` cũ trước.
+4. Content-Security-Policy cho frontend; đổi mật khẩu mặc định Postgres và các tài khoản mẫu.
 
 ## 📬 Hàng đợi thông báo (RabbitMQ)
 
@@ -223,9 +269,10 @@ Các trang danh sách/chi tiết vẫn giữ khung xám nhấp nháy (skeleton) 
 | `/dang-chuong` | Soạn và nộp chương (văn bản hoặc ảnh), lưu nháp. Thêm `?edit=<chapterId>` để **sửa chương đã đăng** (tiêu đề, số chương, tập, nội dung) |
 | `/nhom-dich`, `/nhom-dich/[slug]` | Danh sách nhóm dịch, tạo nhóm, thành viên và vai trò, kênh chat nhóm, duyệt chương nộp |
 | `/fandom`, `/fandom/[slug]` | Diễn đàn: đăng/sửa/xóa bài, phản ứng cảm xúc, bình luận, kiểm duyệt bài (đơn lẻ và hàng loạt) |
+| `/tin-nhan` | Tin nhắn riêng giữa hai người (kiểu Reddit chat): hộp thư bên trái, cuộc trò chuyện bên phải (`?u=<username>`), tin mới được đẩy ngay qua Socket.IO, đánh dấu "Đã xem". Mở từ nút **Nhắn tin** ở trang cá nhân hoặc biểu tượng cạnh tên tác giả bài Fandom |
 | `/bao-cao` | Danh sách báo cáo vi phạm cho Admin/Mod: lọc theo trạng thái, mở nội dung bị báo cáo, đánh dấu "đã xử lý" hoặc "bỏ qua" |
 | `/tai-khoan` | Hồ sơ, avatar, cài đặt đọc truyện, thông báo; tab quản lý vai trò (admin) |
-| Navbar | Tìm nhanh, chuông thông báo (đánh dấu đã đọc, xóa), đăng nhập/đăng ký, tài khoản demo, lối vào `/bao-cao` cho Admin/Mod |
+| Navbar | Tìm nhanh, biểu tượng tin nhắn kèm số tin chưa đọc, chuông thông báo (đánh dấu đã đọc, xóa), đăng nhập/đăng ký, tài khoản demo, lối vào `/bao-cao` cho Admin/Mod |
 
 ## 🔐 Phân quyền & quy trình duyệt
 
@@ -248,8 +295,9 @@ Schema thật gồm 31 bảng và 2 view (`sql/database.sql`). Nhóm chính:
 | Nhóm | Bảng |
 |:---|:---|
 | Người dùng | `users`, `user_roles`, `user_settings`, `user_follows`*, `user_favorites` |
-| Truyện | `stories`, `volumes`, `chapters`, `chapter_pages`, `chapter_submissions`, `story_tags`, `tags`, `tag_categories`, `story_ratings`, `story_collaborators`, `story_views`, `story_views_daily`* |
+| Truyện | `stories`, `volumes`, `chapters`, `chapter_pages`, `chapter_submissions`, `story_tags`, `tags`, `tag_categories`, `story_ratings`, `story_collaborators`, `story_views`, `story_views_daily` |
 | Nhóm dịch | `translation_groups`, `group_members`, `group_join_requests`, `group_messages` |
+| Tin nhắn riêng | `direct_messages` (migration `014_direct_messages.sql`) |
 | Tương tác | `bookmarks`, `reading_history`, `comments`, `comment_likes`, `notifications`, `broadcast_notifications`* |
 | Fandom | `posts`, `post_tags`, `post_reactions` |
 | Kiểm duyệt | `reports` |
@@ -257,7 +305,7 @@ Schema thật gồm 31 bảng và 2 view (`sql/database.sql`). Nhóm chính:
 
 `*` = bảng đã có trong DB nhưng **chưa có API hay giao diện nào dùng** (xem Hạn chế).
 
-**Migration cho DB đã tồn tại:** `sql/database.sql` chỉ chạy khi tạo volume mới. Với DB đang chạy, áp dụng thủ công từng file trong `sql/migrations/` theo thứ tự (`001_story_comments.sql`, `002_notification_queue.sql`): `docker exec -i novel_postgres psql -U postgres -d novel_platform < sql/migrations/<tên file>`.
+**Migration cho DB đã tồn tại:** `sql/database.sql` chỉ chạy khi tạo volume mới. Với DB đang chạy: `sh scripts/migrate.sh` (xem [CI/CD & migration](#-cicd--migration)); bảng `schema_migrations` ghi lại file nào đã chạy. Lượt xem nằm ở `stories.total_views`, `chapters.total_views` và `story_views_daily` (theo ngày); bảng `story_views` (từng lượt) không còn được ghi.
 
 Ghi chú thực tế: bảng `users` **không có** cột `role`, `coins`, `exp_points` (vai trò ở `user_roles`; hệ thống xu/kinh nghiệm chưa tồn tại). Bình luận (`comments`) hỗ trợ đích là `story`, `chapter` và `post` (giá trị `story` được thêm bằng `sql/migrations/001_story_comments.sql`; DB tạo mới đã có sẵn). Hệ thống này miễn phí, **không có** xu, mua chương hay cấp độ và cũng không dự định làm. Enum: `story_type` (novel/manga), `story_status` (ongoing/completed/hiatus/dropped), `approval_status` (pending/approved/rejected).
 
@@ -308,6 +356,11 @@ Ghi chú thực tế: bảng `users` **không có** cột `role`, `coins`, `exp_
 - Xin gia nhập nhóm (trưởng nhóm/mod hoặc admin duyệt): `POST /groups/:id/join-requests` (người dùng gửi, kèm lời nhắn tùy chọn; bị từ chối thì chờ 24 giờ mới gửi lại), `DELETE /groups/:id/join-requests/me` (hủy), `GET /groups/:id/join-requests` (danh sách chờ duyệt), `POST /groups/:id/join-requests/:requestId/approve|reject`
 - `GET|POST /groups/:id/messages`, `DELETE /groups/:id/messages/:messageId` (chỉ thành viên nhóm và Admin)
 
+**Tin nhắn riêng** (Auth)
+- `GET /messages`: hộp thư (mỗi người một dòng, tin mới nhất, số chưa đọc) và `unread_count`
+- `GET /messages/:username`: 100 tin gần nhất với người đó; mở ra là đánh dấu đã đọc
+- `POST /messages/:username` (body `message`, tối đa 2000 ký tự; không tự nhắn cho mình, không nhắn tài khoản đã xóa)
+
 **Người dùng & Upload**
 - `GET /profile/me`, `PUT /profile/me`, `PUT /profile/me/settings`
 - `GET /users`, `GET /users/admin/all`, `POST /users/:userId/roles`
@@ -336,14 +389,14 @@ Email có dạng `<tên ngắn>@novelhub.vn` (ví dụ `admin@novelhub.vn`, `sak
 - Quên/đặt lại mật khẩu, đổi mật khẩu, xác thực email (cột `email_verified` có nhưng chưa dùng).
 - Sửa chương chưa có lịch sử phiên bản (sửa là ghi đè).
 - Báo cáo vi phạm chưa tự ẩn/xóa nội dung: Admin/Mod phải tự xử lý rồi đánh dấu báo cáo.
-- Các bảng `user_follows`, `broadcast_notifications`, `story_views_daily` chưa được code sử dụng.
+- Các bảng `user_follows`, `broadcast_notifications` chưa được code sử dụng.
+- Tin nhắn riêng chưa có chặn người dùng, xóa/sửa tin, gửi ảnh hay báo cáo tin nhắn.
 - Chưa có test tự động.
 - Web miễn phí nên **không làm** hệ thống xu, nạp tiền, mua chương hay cấp độ.
 
 **Bảo mật (cần xử lý trước khi chạy thật)**
 - **Tài khoản mẫu vẫn dùng mật khẩu `password123`** (kể cả `admin`), bất kể danh sách demo đang tắt. Nếu website đang mở ra Internet (ví dụ qua tunnel), hãy đổi mật khẩu hoặc xóa các tài khoản này.
 - Đổi `JWT_SECRET` làm mọi phiên đăng nhập hiện có hết hiệu lực (người dùng phải đăng nhập lại). Token sống 30 ngày, chưa có cơ chế thu hồi.
-- Bộ đếm giới hạn của backend lưu trong bộ nhớ (mất khi khởi động lại, không dùng chung giữa nhiều bản backend); tầng nginx vẫn hoạt động độc lập. Muốn chạy nhiều bản backend cần chuyển sang kho dùng chung (Redis).
 - Elasticsearch và RabbitMQ chạy trong mạng nội bộ Docker; Elasticsearch tắt xác thực (chỉ bind `127.0.0.1`).
 - Postgres còn dùng mật khẩu mặc định `postgres` (chỉ nghe `127.0.0.1` nên không truy cập từ ngoài; đổi mật khẩu trên volume đã có cần `ALTER USER`).
 - Cổng 3000 chạy HTTP thường; cần HTTPS (Cloudflare tunnel, hoặc chứng chỉ trên gateway) khi dùng thật.
