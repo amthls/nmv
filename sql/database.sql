@@ -77,6 +77,7 @@ CREATE TABLE users (
     deleted_at      TIMESTAMPTZ,                  -- tài khoản đã bị xóa (ẩn danh hóa, giữ nội dung)
     deleted_by      UUID REFERENCES users(id) ON DELETE SET NULL,
     email_verified  BOOLEAN DEFAULT FALSE,
+    tokens_valid_after TIMESTAMPTZ,             -- token đăng nhập cấp trước thời điểm này bị từ chối
     last_login_at   TIMESTAMPTZ,
     created_at      TIMESTAMPTZ DEFAULT NOW(),
     updated_at      TIMESTAMPTZ DEFAULT NOW()
@@ -240,6 +241,19 @@ CREATE TABLE direct_messages (
 CREATE INDEX idx_direct_messages_sender ON direct_messages(sender_id, created_at DESC);
 CREATE INDEX idx_direct_messages_recipient ON direct_messages(recipient_id, created_at DESC);
 CREATE INDEX idx_direct_messages_unread ON direct_messages(recipient_id) WHERE read_at IS NULL;
+
+-- Link một lần gửi qua email: đặt lại mật khẩu, xác thực email (sql/migrations/015_account_security.sql).
+-- Chỉ lưu SHA-256 của token.
+CREATE TABLE auth_tokens (
+    token_hash  TEXT PRIMARY KEY,
+    user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    purpose     VARCHAR(20) NOT NULL CHECK (purpose IN ('reset_password', 'verify_email')),
+    expires_at  TIMESTAMPTZ NOT NULL,
+    used_at     TIMESTAMPTZ,
+    created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_auth_tokens_user ON auth_tokens(user_id, purpose);
 
 -- ============================================================================
 -- 6. TRUYỆN (STORIES)

@@ -44,6 +44,8 @@ interface AuthContextType {
   logout: () => void;
   authFetch: (url: string, options?: RequestInit) => Promise<Response>;
   refreshProfile: () => Promise<void>;
+  /** Replace the stored token (the server issues a new one after a password change). */
+  setSessionToken: (token: string) => void;
   hasRole: (...roles: string[]) => boolean;
 }
 
@@ -81,6 +83,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       credentials: 'include',
       headers,
     });
+  };
+
+  const setSessionToken = (newToken: string) => {
+    setToken(newToken);
+    localStorage.setItem('novelhub_token', newToken);
   };
 
   // Forget the local session (token + cached user). Used when the server rejects it.
@@ -277,6 +284,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         authFetch,
         refreshProfile,
+        setSessionToken,
         hasRole,
       }}
     >

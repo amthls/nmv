@@ -27,6 +27,12 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/assets ./assets
 
+# Runs as root just long enough to fix permissions on the mounted folders, then drops to `node`
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN sed -i 's/\r$//' /usr/local/bin/docker-entrypoint.sh && chmod +x /usr/local/bin/docker-entrypoint.sh \
+    && mkdir -p /app/uploads /app/exports /app/.cache && chown node:node /app/uploads /app/exports /app/.cache
+ENTRYPOINT ["docker-entrypoint.sh"]
+
 EXPOSE 5000
 
 CMD ["node", "dist/server.js"]

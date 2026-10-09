@@ -6,6 +6,7 @@ import jwt from 'jsonwebtoken';
 import { pool } from '../config/db';
 import { JWT_SECRET } from '../config/env';
 import { redis, redisReady, newRedisConnection } from '../config/redis';
+import { isTokenRevoked } from '../middlewares/auth.middleware';
 
 /**
  * Realtime "something changed" pings (Socket.IO). The server only pushes; browsers then refetch
@@ -38,9 +39,11 @@ export function attachRealtime(server: HttpServer) {
     try {
       const token = socket.handshake.auth?.token || tokenFromCookie(socket.handshake.headers.cookie);
       const decoded: any = jwt.verify(String(token || ''), JWT_SECRET);
-      const userRes = await pool.query(`SELECT is_banned, deleted_at FROM users WHERE id = $1::uuid`, [decoded?.id]);
+      const userRes = await pool.query(`SELECT is_banned, deleted_at, tokens_valid_after FROM users WHERE id = $1::uuid`, [decoded?.id]);
       const user = userRes.rows[0];
-      if (!user || user.is_banned || user.deleted_at) return next(new Error('unauthorized'));
+      if (!user || user.is_banned || user.deleted_at || isTokenRevoked(decoded, user.tokens_valid_after)) {
+        return next(new Error('unauthorized'));
+      }
       socket.join(room(decoded.id));
       next();
     } catch {
@@ -61,5 +64,15 @@ export function emitToUsers(userIds: Iterable<string | null | undefined>, event:
     else localIo?.to(rooms).emit(event, payload);
   } catch (err: any) {
     console.warn('[Realtime] emit failed:', err.message);
+  }
+}
+
+/** Close every open socket of a user (their tokens were just revoked). Never throws. */
+export function disconnectUser(userId: string) {
+  try {
+    if (emitter && redisReady()) emitter.in(room(userId)).disconnectSockets(true);
+    else localIo?.in(room(userId)).disconnectSockets(true);
+  } catch (err: any) {
+    console.warn('[Realtime] disconnect failed:', err.message);
   }
 }

@@ -1,3 +1,23 @@
+// Content-Security-Policy: limits where scripts, styles, frames and connections may come from, so an
+// injected tag cannot load a remote script or post data elsewhere. Next inlines its bootstrap scripts
+// and CKEditor sets inline styles, hence 'unsafe-inline' (a nonce setup would need dynamic rendering).
+// Images may come from any https host (covers of imported stories are hot-linked).
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  "img-src 'self' data: blob: https:",
+  "media-src 'self' blob: https:",
+  "connect-src 'self' ws: wss:",
+  "worker-src 'self' blob:",
+  "frame-src 'none'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'self'",
+].join('; ');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -14,7 +34,8 @@ const nextConfig = {
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
-          { key: 'Strict-Transport-Security', value: 'max-age=15552000' }, // ignored over plain http
+          { key: 'Content-Security-Policy', value: CSP },
+          // HSTS is sent by the nginx gateway, only to visitors who arrived over HTTPS
         ],
       },
     ];

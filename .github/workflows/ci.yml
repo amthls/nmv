@@ -47,6 +47,8 @@ jobs:
             echo "JWT_SECRET=$(openssl rand -hex 32)"
             echo "RABBITMQ_PASSWORD=$(openssl rand -hex 24)"
             echo "REDIS_PASSWORD=$(openssl rand -hex 24)"
+            echo "POSTGRES_PASSWORD=$(openssl rand -hex 24)"
+            echo "PGADMIN_DEFAULT_PASSWORD=$(openssl rand -hex 16)"
           } > .env
 
       - name: Build images
