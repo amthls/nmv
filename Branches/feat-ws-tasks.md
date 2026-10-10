@@ -3,7 +3,7 @@
 - **Mục tiêu:** Workspace giai đoạn 4b: việc, quy trình theo vai trò, WS nhóm
 - **Tạo từ:** `origin/main` sau #60, ngày 2026-10-10
 - **Trạng thái:** xong, đã thử local; tự merge
-- **PR:** (điền khi mở)
+- **PR:** https://github.com/amthls/nmv/pull/61
 - **Plan:** `Plan/chapter-workspace.md` (4b)
 
 ## Thay đổi
