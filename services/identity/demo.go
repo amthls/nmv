@@ -49,6 +49,9 @@ func seedDemo(ctx context.Context, db *pgxpool.Pool) error {
 					return err
 				}
 			}
+			if err := userEvent(ctx, tx, a.id, "created", nil); err != nil { // the backend copy (seeded too) learns the version
+				return err
+			}
 		}
 		return nil
 	})

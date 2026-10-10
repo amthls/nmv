@@ -2,6 +2,7 @@
 //
 //	workspace               serve HTTP on :PORT (default 8080)
 //	workspace import        make v1 of every catalog chapter not imported yet (safe to re-run)
+//	workspace republish [id] re-send workspace.revision.merged for every chapter (or one) to rebuild the reading copy
 //	workspace healthcheck   exit 0 when the local server answers /health (Docker healthcheck)
 package main
 
@@ -10,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -48,6 +50,13 @@ func main() {
 	}
 	s := &server{cfg: cfg, db: db, now: time.Now, perms: &permCache{m: map[string]permEntry{}}}
 
+	if cmd == "republish" {
+		if err := republish(ctx, db, strings.Join(os.Args[2:], "")); err != nil {
+			logError(ctx, "republish: "+err.Error())
+			os.Exit(1)
+		}
+		return
+	}
 	if cmd == "import" {
 		if err := s.importChapters(ctx); err != nil {
 			logError(ctx, "import: "+err.Error())
@@ -125,6 +134,7 @@ func (s *server) routes() http.Handler {
 	m.HandleFunc("GET /board", s.handleBoard)
 	m.HandleFunc("DELETE /drafts/{id}/schedule", s.handleUnschedule)
 
+	m.HandleFunc("GET /internal/stats", s.internal(s.handleStats))
 	m.HandleFunc("POST /internal/chapters", s.internal(s.handleCreate))
 	m.HandleFunc("GET /internal/chapters/{id}", s.internal(s.handleCurrent))
 	m.HandleFunc("POST /internal/chapters/{id}/revisions", s.internal(s.handleEdit))

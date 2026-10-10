@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -156,4 +158,48 @@ func (s *server) publishBatch(ctx context.Context, ch *amqp.Channel) (int, error
 		return err
 	})
 	return n, err
+}
+
+// republish queues identity.user.* with the current snapshot of one user (uid) or all of them, without bumping the
+// version: a copy that is missing or behind applies it, an up-to-date one skips it. Rebuilds a lost or drifted copy.
+func republish(ctx context.Context, db *pgxpool.Pool, uid string) error {
+	rows, err := db.Query(ctx, `SELECT `+userSnapshotSQL+` FROM users WHERE $1 = '' OR id::text = $1 ORDER BY created_at`, uid)
+	if err != nil {
+		return err
+	}
+	snaps, err := pgx.CollectRows(rows, pgx.RowTo[map[string]any])
+	if err != nil {
+		return err
+	}
+	err = pgx.BeginFunc(ctx, db, func(tx pgx.Tx) error {
+		for _, d := range snaps {
+			kind := "updated"
+			if d["deleted_at"] != nil {
+				kind = "deleted"
+			}
+			if err := enqueueEvent(ctx, tx, "identity.user."+kind, d["version"], d); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err == nil {
+		logInfo(ctx, fmt.Sprintf("republish: %d user events queued", len(snaps)))
+	}
+	return err
+}
+
+// GET /internal/stats: totals the backend's reconcile job compares with its copy, and the outbox backlog.
+func (s *server) handleStats(w http.ResponseWriter, r *http.Request) {
+	var users, versionSum, pending int64
+	var oldest float64
+	err := s.db.QueryRow(r.Context(), `SELECT (SELECT count(*) FROM users), (SELECT COALESCE(sum(version), 0) FROM users),
+		(SELECT count(*) FROM outbox WHERE published_at IS NULL),
+		(SELECT COALESCE(EXTRACT(EPOCH FROM NOW() - min(created_at)), 0) FROM outbox WHERE published_at IS NULL)`).
+		Scan(&users, &versionSum, &pending, &oldest)
+	if err != nil {
+		fail(w, 500, err.Error())
+		return
+	}
+	ok(w, "", map[string]any{"users": users, "version_sum": versionSum, "outbox_pending": pending, "outbox_oldest_seconds": int64(oldest)})
 }
