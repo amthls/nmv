@@ -37,23 +37,20 @@ function notify(items: NotifyItem[], what: string) {
     .catch((err) => console.error(`[Groups] ${what} notification failed:`, err.message));
 }
 
-/** Who the signed-in user is for this group: site admin and/or their role inside the group. */
+/** The signed-in user's role inside this group. Site admin/mod get no extra rights in groups. */
 async function getGroupActor(req: AuthenticatedRequest, groupId: string) {
-  const roles = req.user?.roles || [];
   const memRes = req.user
     ? await pool.query(`SELECT role FROM group_members WHERE group_id = $1 AND user_id = $2`, [groupId, req.user.id])
     : { rows: [] as any[] };
   const groupRole: string | null = memRes.rows[0]?.role ?? null;
-  const isAdmin = roles.includes('admin');
   return {
-    isAdmin,
     groupRole,
-    isLeader: isAdmin || groupRole === 'leader', // full control over the group
-    isManager: isAdmin || MANAGER_ROLES.includes(groupRole || ''), // leader or group mod
+    isLeader: groupRole === 'leader', // full control over the group
+    isManager: MANAGER_ROLES.includes(groupRole || ''), // leader or group mod
   };
 }
 
-async function requireGroupLeaderOrAdmin(req: AuthenticatedRequest, groupId: string): Promise<{ ok: true } | { ok: false; status: number; message: string }> {
+async function requireGroupManager(req: AuthenticatedRequest, groupId: string): Promise<{ ok: true } | { ok: false; status: number; message: string }> {
   if (!req.user || !req.user.id) {
     return { ok: false, status: 401, message: 'Bạn chưa đăng nhập.' };
   }
@@ -69,7 +66,6 @@ const roleRank = (role: string) => (role === 'leader' ? 3 : role === 'mod' ? 2 :
 /**
  * Role changes follow the group hierarchy:
  *  - anyone may step down (lower their own role), never promote themselves;
- *  - a site admin may change anyone;
  *  - a leader may manage everyone except other leaders (co-leaders can't demote each other);
  *  - a group mod may only manage regular members and only hand out regular roles.
  * The "group keeps at least one leader" rule is checked separately.
@@ -86,9 +82,8 @@ function assertCanManageMember(
     }
     return;
   }
-  if (actor.isAdmin) return;
   if (targetRole === 'leader') {
-    throw new InputError('Chỉ Admin hoặc chính Trưởng nhóm đó mới thay đổi được vai trò của một Trưởng nhóm.', 403);
+    throw new InputError('Chỉ chính Trưởng nhóm đó mới thay đổi được vai trò của mình.', 403);
   }
   if (actor.groupRole === 'leader') return;
   if (MANAGER_ROLES.includes(targetRole)) {
@@ -130,7 +125,6 @@ async function assertGroupNameFree(name: string, exceptGroupId?: string) {
 export const getGroups = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { q, filter_status } = req.query;
-    const roles = req.user?.roles || [];
 
     const params: any[] = [];
     let conditions = 'WHERE 1=1';
@@ -139,11 +133,6 @@ export const getGroups = async (req: AuthenticatedRequest, res: Response) => {
       if (!req.user) return res.status(401).json({ success: false, message: 'Bạn chưa đăng nhập.' });
       params.push(req.user.id);
       conditions += ` AND g.id IN (SELECT group_id FROM group_members WHERE user_id = $${params.length}::uuid)`;
-    } else if (filter_status === 'pending') {
-      if (!roles.includes('admin') && !roles.includes('mod')) {
-        return res.status(403).json({ success: false, message: 'Chỉ Admin hoặc Mod mới xem được hàng chờ duyệt nhóm.' });
-      }
-      conditions += ` AND g.approval_status = 'pending'`;
     } else {
       conditions += ` AND (g.approval_status = 'approved' OR g.approval_status IS NULL)`;
     }
@@ -237,15 +226,7 @@ export const getGroupBySlug = async (req: AuthenticatedRequest, res: Response) =
 
     group.members = membersRes.rows;
 
-    // A group still waiting for approval is only visible to its members and site staff
     const viewerId = req.user?.id;
-    const viewerRoles = req.user?.roles || [];
-    if (group.approval_status === 'pending'
-      && !viewerRoles.includes('admin') && !viewerRoles.includes('mod')
-      && group.created_by !== viewerId
-      && !group.members.some((m: any) => m.user_id === viewerId)) {
-      return res.status(404).json({ success: false, message: 'Nhóm dịch không tồn tại' });
-    }
 
     // Signed-in viewer: do they already have a join request waiting?
     group.my_join_request = null;
@@ -286,12 +267,6 @@ export const createGroup = async (req: AuthenticatedRequest, res: Response) => {
     const name = requiredText(req.body?.name, 100, 'Tên nhóm');
     await assertGroupNameFree(name);
 
-    // Check roles for auto-approval (admin/mod)
-    const roles = req.user!.roles || [];
-    const isAdminOrMod = roles.includes('admin') || roles.includes('mod');
-
-    const approvalStatus = isAdminOrMod ? 'approved' : 'pending';
-
     const baseSlug = slugify(name) || 'nhom-dich';
 
     // Slug: the name, or name-2, name-3... when taken (checked against the database)
@@ -299,7 +274,7 @@ export const createGroup = async (req: AuthenticatedRequest, res: Response) => {
       INSERT INTO translation_groups (
         name, slug, description, avatar_url, banner_url, website_url, discord_url, rules, created_by, approval_status
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, 'approved'
       ) RETURNING *;
     `, [
       name,
@@ -311,7 +286,6 @@ export const createGroup = async (req: AuthenticatedRequest, res: Response) => {
       fields.discord_url ?? null,
       fields.rules ?? null,
       creatorId,
-      approvalStatus
     ]));
 
     const group = groupRes.rows[0];
@@ -325,9 +299,7 @@ export const createGroup = async (req: AuthenticatedRequest, res: Response) => {
 
     res.status(201).json({
       success: true,
-      message: approvalStatus === 'pending'
-        ? 'Tạo nhóm dịch thành công, vui lòng chờ Admin duyệt'
-        : 'Tạo nhóm dịch thành công',
+      message: 'Tạo nhóm dịch thành công',
       data: group,
     });
   } catch (error: any) {
@@ -374,105 +346,6 @@ export const updateGroup = async (req: AuthenticatedRequest, res: Response) => {
       message: 'Cập nhật thông tin nhóm dịch thành công',
       data: updateRes.rows[0],
     });
-  } catch (error: any) {
-    sendError(res, error);
-  }
-};
-
-export const approveGroup = async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    if (!req.user || !req.user.id) {
-      return res.status(401).json({ success: false, message: 'Bạn chưa đăng nhập.' });
-    }
-
-    const userRoles = req.user.roles || [];
-    if (!userRoles.includes('admin') && !userRoles.includes('mod')) {
-      return res.status(403).json({
-        success: false,
-        message: 'Chỉ Quản trị viên (Admin) hoặc Kiểm duyệt viên (Mod) mới có quyền duyệt nhóm dịch.',
-      });
-    }
-
-    const { id } = req.params;
-    if (!isUuid(id)) return res.status(404).json({ success: false, message: 'Nhóm dịch không tồn tại' });
-    const adminId = req.user.id;
-
-    const updateRes = await pool.query(`
-      UPDATE translation_groups SET
-        approval_status = 'approved',
-        approved_by = $1,
-        approved_at = NOW(),
-        updated_at = NOW()
-      WHERE id = $2 AND approval_status = 'pending'
-      RETURNING *;
-    `, [adminId, id]);
-
-    if (updateRes.rows.length === 0) {
-      const exists = await pool.query(`SELECT 1 FROM translation_groups WHERE id = $1`, [id]);
-      return exists.rows.length === 0
-        ? res.status(404).json({ success: false, message: 'Nhóm dịch không tồn tại' })
-        : res.status(409).json({ success: false, message: 'Nhóm dịch này đã được duyệt trước đó.' });
-    }
-
-    const group = updateRes.rows[0];
-    notify([{
-      userId: group.created_by, type: 'system',
-      title: `Nhóm dịch ${group.name} đã được duyệt`,
-      message: 'Nhóm của bạn đã được công khai và có thể nhận thành viên.',
-      referenceType: 'group', referenceId: group.id, senderId: adminId,
-      dedupeKey: `group-approved:${group.id}`,
-    }], 'group approval');
-
-    res.json({
-      success: true,
-      message: 'Đã duyệt nhóm dịch thành công',
-      data: group,
-    });
-  } catch (error: any) {
-    sendError(res, error);
-  }
-};
-
-/**
- * Reject a pending group. The group is deleted, which frees its name for a corrected request;
- * stories already pointing at it keep existing without a group (FK SET NULL).
- */
-export const rejectGroup = async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const userRoles = req.user?.roles || [];
-    if (!userRoles.includes('admin') && !userRoles.includes('mod')) {
-      return res.status(403).json({
-        success: false,
-        message: 'Chỉ Quản trị viên (Admin) hoặc Kiểm duyệt viên (Mod) mới có quyền từ chối nhóm dịch.',
-      });
-    }
-
-    const { id } = req.params;
-    if (!isUuid(id)) return res.status(404).json({ success: false, message: 'Nhóm dịch không tồn tại' });
-    const reason = optionalText(req.body?.reason, 500, 'Lý do');
-
-    const delRes = await pool.query(`
-      DELETE FROM translation_groups WHERE id = $1 AND approval_status = 'pending'
-      RETURNING id, name, created_by;
-    `, [id]);
-
-    if (delRes.rows.length === 0) {
-      const exists = await pool.query(`SELECT 1 FROM translation_groups WHERE id = $1`, [id]);
-      return exists.rows.length === 0
-        ? res.status(404).json({ success: false, message: 'Nhóm dịch không tồn tại' })
-        : res.status(409).json({ success: false, message: 'Chỉ từ chối được nhóm đang chờ duyệt.' });
-    }
-
-    const group = delRes.rows[0];
-    notify([{
-      userId: group.created_by, type: 'system',
-      title: `Nhóm dịch ${group.name} không được duyệt`,
-      message: reason ? `Lý do: ${reason}` : 'Bạn có thể chỉnh sửa và gửi yêu cầu thành lập nhóm mới.',
-      referenceType: 'group', referenceId: group.id, senderId: req.user!.id,
-      dedupeKey: `group-rejected:${group.id}`,
-    }], 'group rejection');
-
-    res.json({ success: true, message: `Đã từ chối và xóa nhóm dịch ${group.name}.` });
   } catch (error: any) {
     sendError(res, error);
   }
@@ -554,7 +427,7 @@ export const updateGroupMemberRole = async (req: AuthenticatedRequest, res: Resp
       return res.status(404).json({ success: false, message: 'Thành viên không tồn tại trong nhóm' });
     }
 
-    const permCheck = await requireGroupLeaderOrAdmin(req, id);
+    const permCheck = await requireGroupManager(req, id);
     if (!permCheck.ok) {
       return res.status(permCheck.status).json({ success: false, message: permCheck.message });
     }
@@ -592,7 +465,7 @@ export const updateGroupMemberRole = async (req: AuthenticatedRequest, res: Resp
   }
 };
 
-/** Remove a member (leader/mod/admin), or leave the group yourself (any member). */
+/** Remove a member (leader/group mod), or leave the group yourself (any member). */
 export const removeGroupMember = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id, memberUserId } = req.params;
@@ -602,7 +475,7 @@ export const removeGroupMember = async (req: AuthenticatedRequest, res: Response
 
     const isSelf = req.user!.id === memberUserId;
     if (!isSelf) {
-      const permCheck = await requireGroupLeaderOrAdmin(req, id);
+      const permCheck = await requireGroupManager(req, id);
       if (!permCheck.ok) {
         return res.status(permCheck.status).json({ success: false, message: permCheck.message });
       }
@@ -639,7 +512,7 @@ export const removeGroupMember = async (req: AuthenticatedRequest, res: Response
   }
 };
 
-/** Internal chat: members (and site admins) only. Returns the latest 100 messages, oldest first. */
+/** Internal chat: members only. Returns the latest 100 messages, oldest first. */
 export const getGroupMessages = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
@@ -647,7 +520,7 @@ export const getGroupMessages = async (req: AuthenticatedRequest, res: Response)
     if (!req.user) return res.status(401).json({ success: false, message: 'Bạn chưa đăng nhập.' });
 
     const actor = await getGroupActor(req, id);
-    if (!actor.isAdmin && !actor.groupRole) {
+    if (!actor.groupRole) {
       return res.status(403).json({ success: false, message: 'Chỉ thành viên nhóm mới xem được chatroom nội bộ.' });
     }
 
@@ -688,7 +561,7 @@ export const sendGroupMessage = async (req: AuthenticatedRequest, res: Response)
 
     const senderId = req.user.id;
     const actor = await getGroupActor(req, id);
-    if (!actor.isAdmin && !actor.groupRole) {
+    if (!actor.groupRole) {
       return res.status(403).json({
         success: false,
         message: 'Chỉ thành viên trong nhóm mới có quyền gửi tin nhắn trong chatroom nội bộ.',
@@ -753,7 +626,7 @@ export const deleteGroupMessage = async (req: AuthenticatedRequest, res: Respons
 };
 
 // ---------------------------------------------------------------- join requests
-// A user asks to join; a group leader/mod (or site admin) approves or rejects it.
+// A user asks to join; a group leader/mod approves or rejects it.
 
 const REJECT_COOLDOWN_HOURS = 24; // after a rejection, wait before asking the same group again
 
@@ -853,7 +726,7 @@ export const getGroupJoinRequests = async (req: AuthenticatedRequest, res: Respo
     const { id } = req.params;
     if (!isUuid(id)) return res.status(404).json({ success: false, message: 'Nhóm dịch không tồn tại' });
 
-    const permCheck = await requireGroupLeaderOrAdmin(req, id);
+    const permCheck = await requireGroupManager(req, id);
     if (!permCheck.ok) {
       return res.status(permCheck.status).json({ success: false, message: permCheck.message });
     }
@@ -881,7 +754,7 @@ async function reviewJoinRequest(req: AuthenticatedRequest, res: Response, appro
     return res.status(404).json({ success: false, message: 'Yêu cầu không tồn tại' });
   }
 
-  const permCheck = await requireGroupLeaderOrAdmin(req, id);
+  const permCheck = await requireGroupManager(req, id);
   if (!permCheck.ok) {
     return res.status(permCheck.status).json({ success: false, message: permCheck.message });
   }

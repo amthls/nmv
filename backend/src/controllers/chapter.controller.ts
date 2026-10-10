@@ -4,7 +4,7 @@ import { pool } from '../config/db';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import {
   canUserManageStory, checkStoryReferences, parseStoryInput, sendClientError,
-  storyApprovalFor, grantPublisherRole, notifyGroupStoryPending,
+  grantPublisherRole,
 } from './story.controller';
 import { InputError, isUuid, optionalUrl, requiredText } from '../utils/validation';
 import { insertWithUniqueSlug } from '../utils/ids';
@@ -154,14 +154,13 @@ export const submitChapter = async (req: AuthenticatedRequest, res: Response) =>
     if (volume_id && !isUuid(volume_id)) throw new InputError('Tập không hợp lệ.');
 
     const uploaderId = req.user.id;
-    const userRoles = req.user.roles || [];
 
-    // Check permissions: ONLY Story Owner, Assigned Group Members, or Admin/Mod
-    const isAuthorized = await canUserManageStory(uploaderId, story_id, userRoles);
+    // Story owner, members of its group or collaborators publish straight away (no review)
+    const isAuthorized = await canUserManageStory(uploaderId, story_id);
     if (!isAuthorized) {
       return res.status(403).json({
         success: false,
-        message: 'Bạn không phải chủ thầu của truyện này (người đăng, nhóm dịch phụ trách hoặc Admin/Mod) nên không có quyền đăng chương cho tác phẩm này.',
+        message: 'Bạn không phải chủ thầu của truyện này (người đăng, nhóm dịch phụ trách hoặc cộng tác viên) nên không có quyền đăng chương cho tác phẩm này.',
       });
     }
 
@@ -189,6 +188,12 @@ export const submitChapter = async (req: AuthenticatedRequest, res: Response) =>
         ) all_numbers
       `, [story_id]);
       chapterNumber = Number(nextRes.rows[0].next);
+    } else if (!isDraft) {
+      // Publishing writes over the public chapter with that number: an existing one is edited instead
+      const takenRes = await pool.query(`SELECT 1 FROM chapters WHERE story_id = $1 AND chapter_number = $2`, [story_id, chapterNumber]);
+      if (takenRes.rows.length > 0) {
+        return res.status(409).json({ success: false, message: `Chương ${chapterNumber} đã có. Hãy sửa chương đó hoặc chọn số chương khác.` });
+      }
     }
 
     let fullPlainText = blocksToPlainText(blocks);
@@ -196,23 +201,9 @@ export const submitChapter = async (req: AuthenticatedRequest, res: Response) =>
     const calculatedWordCount = fullPlainText.split(/\s+/).filter(Boolean).length;
 
     const chapterSlug = `chuong-${chapterNumber}-${slugify(title)}`.slice(0, 500);
-    // Always the story's own group: a group_id from the request must not decide who may self-approve
     const actualGroupId = story.group_id;
 
-    // Check if uploader is leader/mod of the group or site admin/mod
-    let isLeader = false;
-    if (userRoles.includes('admin') || userRoles.includes('mod') || story.uploader_id === uploaderId) {
-      isLeader = true;
-    } else if (actualGroupId) {
-      const memRes = await pool.query(`
-        SELECT role FROM group_members WHERE group_id = $1 AND user_id = $2
-      `, [actualGroupId, uploaderId]);
-      if (memRes.rows.length > 0 && ['leader', 'mod'].includes(memRes.rows[0].role)) {
-        isLeader = true;
-      }
-    }
-
-    const initialApproval = isDraft ? 'draft' : (isLeader ? 'approved' : 'pending');
+    const initialApproval = isDraft ? 'draft' : 'approved';
 
     // Submission and (when approved) the public chapter are written together or not at all
     const client = await pool.connect();
@@ -263,9 +254,7 @@ export const submitChapter = async (req: AuthenticatedRequest, res: Response) =>
       success: true,
       message: isDraft
         ? 'Đã lưu bản nháp chương thành công'
-        : (initialApproval === 'approved'
-            ? 'Đăng chương thành công và đã xuất bản cho độc giả'
-            : 'Đã nộp bản dịch chương, vui lòng chờ Trưởng nhóm hoặc Chủ thầu duyệt'),
+        : 'Đăng chương thành công và đã xuất bản cho độc giả',
       data: submission,
     });
   } catch (error: any) {
@@ -365,12 +354,11 @@ function notifyChapterPublished(sub: any, chapterId: string) {
 }
 
 /**
- * Who may edit or delete a published chapter: Admin/Mod, the chapter uploader,
- * the story owner, or a leader/mod of the story's translation group.
+ * Who may edit or delete a published chapter: the chapter uploader, the story owner, or a leader/mod
+ * of the story's translation group. Site admin/mod have no say here (they take the whole story down).
  * `chapter` must carry uploader_id, story_uploader_id and group_id.
  */
-async function canUserModifyChapter(chapter: any, userId: string, userRoles: string[]): Promise<boolean> {
-  if (userRoles.includes('admin') || userRoles.includes('mod')) return true;
+async function canUserModifyChapter(chapter: any, userId: string): Promise<boolean> {
   if (chapter.uploader_id === userId || chapter.story_uploader_id === userId) return true;
   if (chapter.group_id) {
     const gRes = await pool.query(
@@ -383,7 +371,7 @@ async function canUserModifyChapter(chapter: any, userId: string, userRoles: str
 }
 
 /**
- * Delete Chapter (Admin, Mod, Story Owner, or Chapter Uploader)
+ * Delete Chapter (chapter uploader, story owner, or a leader/mod of its group)
  */
 export const deleteChapter = async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -396,7 +384,6 @@ export const deleteChapter = async (req: AuthenticatedRequest, res: Response) =>
       return res.status(404).json({ success: false, message: 'Chương không tồn tại.' });
     }
     const currentUserId = req.user.id;
-    const userRoles = req.user.roles || [];
 
     const chapterRes = await pool.query(
       `SELECT c.id, c.title, c.chapter_number, c.story_id, c.uploader_id, s.uploader_id as story_uploader_id, s.group_id
@@ -412,10 +399,10 @@ export const deleteChapter = async (req: AuthenticatedRequest, res: Response) =>
 
     const chapter = chapterRes.rows[0];
 
-    if (!(await canUserModifyChapter(chapter, currentUserId, userRoles))) {
+    if (!(await canUserModifyChapter(chapter, currentUserId))) {
       return res.status(403).json({
         success: false,
-        message: 'Bạn không có quyền xóa chương này. Chỉ người đăng chương, chủ thầu truyện hoặc Admin/Mod mới có quyền xóa.',
+        message: 'Bạn không có quyền xóa chương này. Chỉ người đăng chương, chủ thầu truyện hoặc Trưởng nhóm/Mod của nhóm mới có quyền xóa.',
       });
     }
 
@@ -458,232 +445,6 @@ export const deleteChapter = async (req: AuthenticatedRequest, res: Response) =>
   }
 };
 
-/**
- * Chapter submissions (unpublished translations) for review. Signed-in only: site admin/mod see
- * everything; otherwise the caller must be a member of the requested group or the owner of the
- * requested story. The list never includes the chapter text itself.
- */
-export const getChapterSubmissions = async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    if (!req.user) return res.status(401).json({ success: false, message: 'Bạn chưa đăng nhập.' });
-    const { story_id, chapter_number, group_id, status } = req.query;
-
-    if ((story_id !== undefined && !isUuid(story_id)) || (group_id !== undefined && !isUuid(group_id))) {
-      return res.status(400).json({ success: false, message: 'Tham số không hợp lệ.' });
-    }
-    if (status !== undefined && !['pending', 'approved', 'rejected'].includes(String(status))) {
-      return res.status(400).json({ success: false, message: 'Trạng thái không hợp lệ.' });
-    }
-    if (chapter_number !== undefined && !Number.isFinite(Number(chapter_number))) {
-      return res.status(400).json({ success: false, message: 'Số chương không hợp lệ.' });
-    }
-
-    const userRoles = req.user.roles || [];
-    if (!userRoles.includes('admin') && !userRoles.includes('mod')) {
-      let allowed = false;
-      if (group_id) {
-        const mem = await pool.query(`SELECT 1 FROM group_members WHERE group_id = $1 AND user_id = $2`, [group_id, req.user.id]);
-        allowed = mem.rows.length > 0;
-      } else if (story_id) {
-        const own = await pool.query(`SELECT 1 FROM stories WHERE id = $1 AND uploader_id = $2`, [story_id, req.user.id]);
-        allowed = own.rows.length > 0;
-      }
-      if (!allowed) {
-        return res.status(403).json({ success: false, message: 'Chỉ thành viên nhóm dịch mới xem được các bản dịch đang chờ duyệt.' });
-      }
-    }
-
-    const params: any[] = [];
-    let conditions = 'WHERE 1=1';
-
-    if (story_id) {
-      params.push(story_id);
-      conditions += ` AND cs.story_id = $${params.length}::uuid`;
-    }
-
-    if (chapter_number) {
-      params.push(chapter_number);
-      conditions += ` AND cs.chapter_number = $${params.length}`;
-    }
-
-    if (group_id) {
-      params.push(group_id);
-      conditions += ` AND cs.group_id = $${params.length}::uuid`;
-    }
-
-    if (status) {
-      params.push(status);
-      conditions += ` AND cs.approval_status = $${params.length}`;
-    }
-
-    const result = await pool.query(`
-      SELECT 
-        cs.id, cs.story_id, cs.volume_id, cs.chapter_number, cs.title, cs.slug, cs.word_count,
-        cs.uploader_id, cs.group_id, cs.approval_status, cs.approved_by, cs.approved_at,
-        cs.rejection_reason, cs.is_active, cs.created_at, cs.updated_at,
-        u.username as uploader_username,
-        u.display_name as uploader_name,
-        u.avatar_url as uploader_avatar,
-        s.title as story_title,
-        s.slug as story_slug,
-        g.name as group_name,
-        v.title as volume_title
-      FROM chapter_submissions cs
-      JOIN users u ON cs.uploader_id = u.id
-      JOIN stories s ON cs.story_id = s.id
-      LEFT JOIN translation_groups g ON cs.group_id = g.id
-      LEFT JOIN volumes v ON cs.volume_id = v.id
-      ${conditions}
-      ORDER BY cs.chapter_number ASC, cs.created_at DESC
-      LIMIT 500;
-    `, params);
-
-    res.json({
-      success: true,
-      data: result.rows,
-    });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-/**
- * Can this user approve/reject a chapter submission for a given story/group?
- * Mirrors the "leader" check already used in submitChapter: site admin/mod,
- * the story owner ("chủ thầu"), or a leader/mod of the group the submission
- * belongs to.
- */
-async function canUserApproveSubmission(userId: string, userRoles: string[], storyId: string, groupId: string | null): Promise<boolean> {
-  if (userRoles.includes('admin') || userRoles.includes('mod')) return true;
-
-  const storyRes = await pool.query(`SELECT uploader_id FROM stories WHERE id = $1`, [storyId]);
-  if (storyRes.rows.length > 0 && storyRes.rows[0].uploader_id === userId) return true;
-
-  if (groupId) {
-    const memRes = await pool.query(`
-      SELECT role FROM group_members WHERE group_id = $1 AND user_id = $2
-    `, [groupId, userId]);
-    if (memRes.rows.length > 0 && ['leader', 'mod'].includes(memRes.rows[0].role)) return true;
-  }
-
-  return false;
-}
-
-export const approveChapterSubmission = async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    if (!req.user || !req.user.id) {
-      return res.status(401).json({ success: false, message: 'Bạn chưa đăng nhập.' });
-    }
-
-    const { id } = req.params;
-    const leaderId = req.user.id;
-    const userRoles = req.user.roles || [];
-    if (!isUuid(id)) {
-      return res.status(404).json({ success: false, message: 'Bản dịch không tồn tại' });
-    }
-
-    const subRes = await pool.query(`SELECT * FROM chapter_submissions WHERE id = $1`, [id]);
-    if (subRes.rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Bản dịch không tồn tại' });
-    }
-
-    const submission = subRes.rows[0];
-
-    const isAuthorized = await canUserApproveSubmission(leaderId, userRoles, submission.story_id, submission.group_id);
-    if (!isAuthorized) {
-      return res.status(403).json({
-        success: false,
-        message: 'Chỉ Trưởng nhóm, Chủ thầu của truyện hoặc Admin/Mod mới có quyền duyệt bản dịch này.',
-      });
-    }
-
-    // Approve and publish together; notify followers only once it is committed
-    const client = await pool.connect();
-    let chapterId: string | undefined;
-    try {
-      await client.query('BEGIN');
-      await client.query(`
-        UPDATE chapter_submissions SET
-          approval_status = 'approved',
-          approved_by = $1,
-          approved_at = NOW(),
-          rejection_reason = NULL,
-          is_active = true,
-          updated_at = NOW()
-        WHERE id = $2;
-      `, [leaderId, id]);
-      chapterId = await syncSubmissionToPublicChapter(client, submission);
-      await client.query('COMMIT');
-    } catch (txErr) {
-      await client.query('ROLLBACK');
-      throw txErr;
-    } finally {
-      client.release();
-    }
-    if (chapterId) notifyChapterPublished(submission, chapterId);
-
-    res.json({
-      success: true,
-      message: `Đã duyệt bản dịch Chương ${submission.chapter_number} làm phiên bản chính thức cho độc giả!`,
-    });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-export const rejectChapterSubmission = async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    if (!req.user || !req.user.id) {
-      return res.status(401).json({ success: false, message: 'Bạn chưa đăng nhập.' });
-    }
-
-    const { id } = req.params;
-    const { reason } = req.body;
-    const userId = req.user.id;
-    const userRoles = req.user.roles || [];
-
-    const subRes = await pool.query(`SELECT * FROM chapter_submissions WHERE id = $1`, [id]);
-    if (subRes.rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Bản dịch không tồn tại' });
-    }
-
-    const submission = subRes.rows[0];
-
-    const isAuthorized = await canUserApproveSubmission(userId, userRoles, submission.story_id, submission.group_id);
-    if (!isAuthorized) {
-      return res.status(403).json({
-        success: false,
-        message: 'Chỉ Trưởng nhóm, Chủ thầu của truyện hoặc Admin/Mod mới có quyền từ chối bản dịch này.',
-      });
-    }
-
-    if (submission.is_active) {
-      return res.status(400).json({
-        success: false,
-        message: 'Không thể từ chối bản dịch đang là phiên bản chính thức. Hãy duyệt một bản dịch khác thay thế trước.',
-      });
-    }
-
-    await pool.query(`
-      UPDATE chapter_submissions SET
-        approval_status = 'rejected',
-        approved_by = $1,
-        approved_at = NOW(),
-        rejection_reason = $2,
-        is_active = false,
-        updated_at = NOW()
-      WHERE id = $3;
-    `, [userId, reason?.trim() || null, id]);
-
-    res.json({
-      success: true,
-      message: `Đã từ chối bản dịch Chương ${submission.chapter_number} của "${submission.title}"`,
-    });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
 export const createStory = async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user || !req.user.id) {
@@ -702,12 +463,9 @@ export const createStory = async (req: AuthenticatedRequest, res: Response) => {
     // Story, its default volume and its tags are created together or not at all
     const client = await pool.connect();
     let story: any;
-    let approvalStatus: 'approved' | 'pending' = 'approved';
     try {
       await client.query('BEGIN');
-      await checkStoryReferences(client, input, uploaderId, req.user.roles || []);
-      // No admin review: own stories go live at once; group stories wait for the group's leader/mod
-      approvalStatus = await storyApprovalFor(client, uploaderId, req.user.roles || [], input.group_id ?? null);
+      await checkStoryReferences(client, input, uploaderId);
 
       // Slug: the title, or title-2, title-3... when taken (checked against the database)
       const storyRes = await insertWithUniqueSlug(client, 'stories', baseSlug, (uniqueSlug) => client.query(`
@@ -716,7 +474,7 @@ export const createStory = async (req: AuthenticatedRequest, res: Response) => {
           story_type, status, group_id, uploader_id,
           author_name, artist_name, original_language, approval_status, total_volumes, allow_download
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7::story_type, $8::story_status, $9, $10, $11, $12, $13, $14::approval_status, 1, $15
+          $1, $2, $3, $4, $5, $6, $7::story_type, $8::story_status, $9, $10, $11, $12, $13, 'approved', 1, $14
         ) RETURNING *;
       `, [
         title,
@@ -732,13 +490,10 @@ export const createStory = async (req: AuthenticatedRequest, res: Response) => {
         input.author_name ?? null,
         input.artist_name ?? null,
         input.original_language ?? 'ja',
-        approvalStatus,
         input.allow_download ?? false,
       ]), true);
       story = storyRes.rows[0];
-      if (approvalStatus === 'approved') {
-        await grantPublisherRole(client, uploaderId, story.group_id);
-      }
+      await grantPublisherRole(client, uploaderId, story.group_id);
 
       // Every story starts with Volume 1
       await client.query(
@@ -761,13 +516,10 @@ export const createStory = async (req: AuthenticatedRequest, res: Response) => {
     }
 
     await indexStory(story.id);
-    if (approvalStatus === 'pending') notifyGroupStoryPending(story);
 
     res.status(201).json({
       success: true,
-      message: approvalStatus === 'pending'
-        ? 'Đã gửi truyện! Truyện sẽ hiển thị sau khi Trưởng nhóm hoặc Phó nhóm duyệt.'
-        : 'Đăng bộ truyện mới thành công!',
+      message: 'Đăng bộ truyện mới thành công!',
       data: story,
     });
   } catch (error: any) {
@@ -785,7 +537,7 @@ export const createVolume = async (req: AuthenticatedRequest, res: Response) => 
     const { storyId } = req.params;
     const { title, volume_number, cover_image_url, description } = req.body;
 
-    const isAuthorized = await canUserManageStory(req.user.id, storyId, req.user.roles || []);
+    const isAuthorized = await canUserManageStory(req.user.id, storyId);
     if (!isAuthorized) {
       return res.status(403).json({
         success: false,
@@ -861,7 +613,7 @@ export const getChapterForEdit = async (req: AuthenticatedRequest, res: Response
       return res.status(404).json({ success: false, message: 'Chương không tồn tại.' });
     }
     const chapter = chRes.rows[0];
-    if (!(await canUserModifyChapter({ ...chapter, group_id: chapter.effective_group_id }, req.user.id, req.user.roles || []))) {
+    if (!(await canUserModifyChapter({ ...chapter, group_id: chapter.effective_group_id }, req.user.id))) {
       return res.status(403).json({ success: false, message: 'Bạn không có quyền sửa chương này.' });
     }
     // Manga pages live in chapter_pages (imported chapters may have no image blocks at all)
@@ -912,7 +664,7 @@ export const updateChapter = async (req: AuthenticatedRequest, res: Response) =>
       return res.status(404).json({ success: false, message: 'Chương không tồn tại.' });
     }
     const chapter = chRes.rows[0];
-    if (!(await canUserModifyChapter({ ...chapter, group_id: chapter.effective_group_id }, req.user.id, req.user.roles || []))) {
+    if (!(await canUserModifyChapter({ ...chapter, group_id: chapter.effective_group_id }, req.user.id))) {
       return res.status(403).json({ success: false, message: 'Bạn không có quyền sửa chương này.' });
     }
 
@@ -1028,7 +780,7 @@ export const updateVolume = async (req: AuthenticatedRequest, res: Response) => 
       return res.status(404).json({ success: false, message: 'Tập không tồn tại.' });
     }
     const vol = volRes.rows[0];
-    if (!(await canUserManageStory(req.user.id, vol.story_id, req.user.roles || []))) {
+    if (!(await canUserManageStory(req.user.id, vol.story_id))) {
       return res.status(403).json({ success: false, message: 'Bạn không có quyền sửa tập của truyện này.' });
     }
 
@@ -1066,7 +818,7 @@ export const deleteVolume = async (req: AuthenticatedRequest, res: Response) => 
       return res.status(404).json({ success: false, message: 'Tập không tồn tại.' });
     }
     const vol = volRes.rows[0];
-    if (!(await canUserManageStory(req.user.id, vol.story_id, req.user.roles || []))) {
+    if (!(await canUserManageStory(req.user.id, vol.story_id))) {
       return res.status(403).json({ success: false, message: 'Bạn không có quyền xóa tập của truyện này.' });
     }
 
@@ -1107,7 +859,7 @@ export const reorderVolumes = async (req: AuthenticatedRequest, res: Response) =
     }
     const { storyId } = req.params;
     const { order } = req.body;
-    if (!(await canUserManageStory(req.user.id, storyId, req.user.roles || []))) {
+    if (!(await canUserManageStory(req.user.id, storyId))) {
       return res.status(403).json({ success: false, message: 'Bạn không có quyền sắp xếp tập của truyện này.' });
     }
     if (!Array.isArray(order) || order.length === 0) {

@@ -16,13 +16,12 @@ import {
   getChapterBySlug,
   updateStory,
   deleteStory,
+  removeStory,
+  restoreStory,
   getStoryCollaborators,
   addStoryCollaborator,
   removeStoryCollaborator,
   getManageableStories,
-  getGroupPendingStories,
-  approveStory,
-  rejectStory
 } from '../controllers/story.controller';
 import { 
   getUsers, 
@@ -38,8 +37,6 @@ import {
   getGroupBySlug, 
   createGroup, 
   updateGroup,
-  approveGroup,
-  rejectGroup,
   addGroupMember,
   updateGroupMemberRole,
   removeGroupMember,
@@ -60,8 +57,6 @@ import {
   deletePost,
   approvePost,
   rejectPost,
-  bulkApprovePosts,
-  bulkRejectPosts,
   reactToPost,
   getFandomSidebar,
   togglePinPost,
@@ -69,6 +64,7 @@ import {
 } from '../controllers/post.controller';
 import { getComments, createComment, likeComment, updateComment, deleteComment } from '../controllers/comment.controller';
 import { createReport, getReports, resolveReport } from '../controllers/report.controller';
+import { getRemovedContent } from '../controllers/moderation.controller';
 import { resolveCode } from '../controllers/code.controller';
 import { uploadMultipleImages, uploadSingleImage, uploadMangaPages } from '../controllers/upload.controller';
 import { uploadImages, uploadMangaPageFiles } from '../middlewares/upload.middleware';
@@ -82,9 +78,6 @@ import {
   getChapterForEdit,
   updateChapter,
   deleteChapter,
-  getChapterSubmissions,
-  approveChapterSubmission,
-  rejectChapterSubmission
 } from '../controllers/chapter.controller';
 import { 
   getReadingHistory, 
@@ -181,9 +174,9 @@ router.get('/stories/:slug/chapters/:chapterSlug', optionalAuth, getChapterBySlu
 router.post('/stories', requireAuth, createStory);
 router.put('/stories/:id', requireAuth, updateStory);
 router.delete('/stories/:id', requireAuth, deleteStory);
-// Group stories: approved by the group's leader/mod (no admin review)
-router.post('/stories/:id/approve', requireAuth, approveStory);
-router.post('/stories/:id/reject', requireAuth, rejectStory);
+// Admin/Mod take a story down (soft) or restore it; listed at GET /moderation/removed
+router.post('/stories/:id/remove', requireAuth, removeStory);
+router.post('/stories/:id/restore', requireAuth, restoreStory);
 router.get('/stories/:id/collaborators', getStoryCollaborators);
 router.post('/stories/:id/collaborators', requireAuth, addStoryCollaborator);
 router.delete('/stories/:id/collaborators/:userId', requireAuth, removeStoryCollaborator);
@@ -196,11 +189,8 @@ router.get('/exports/:id', getExport);
 router.get('/exports/:id/download', downloadExport);
 router.delete('/volumes/:id', requireAuth, deleteVolume);
 
-// Chapters & Submissions
+// Chapters (published straight away, no review)
 router.post('/chapters/submissions', requireAuth, submitChapter);
-router.get('/chapters/submissions', optionalAuth, getChapterSubmissions);
-router.post('/chapters/submissions/:id/approve-active', requireAuth, approveChapterSubmission);
-router.post('/chapters/submissions/:id/reject', requireAuth, rejectChapterSubmission);
 router.get('/chapters/:id', requireAuth, getChapterForEdit);
 router.put('/chapters/:id', requireAuth, updateChapter);
 router.delete('/chapters/:id', requireAuth, deleteChapter);
@@ -260,6 +250,7 @@ router.delete('/comments/:id', requireAuth, deleteComment);
 // Violation reports
 router.post('/reports', requireAuth, reportLimiter, createReport);
 router.get('/reports', requireAuth, getReports);
+router.get('/moderation/removed', requireAuth, getRemovedContent);
 router.put('/reports/:id/resolve', requireAuth, resolveReport);
 
 // Fandom / Community Posts
@@ -271,8 +262,6 @@ router.put('/posts/:id', requireAuth, updatePost);
 router.delete('/posts/:id', requireAuth, deletePost);
 router.post('/posts/:id/approve', requireAuth, approvePost);
 router.post('/posts/:id/reject', requireAuth, rejectPost);
-router.post('/posts/bulk-approve', requireAuth, bulkApprovePosts);
-router.post('/posts/bulk-reject', requireAuth, bulkRejectPosts);
 router.post('/posts/:id/react', requireAuth, reactLimiter, reactToPost);
 router.post('/posts/:id/pin', requireAuth, togglePinPost);
 router.post('/posts/:id/mute', requireAuth, togglePostMute);
@@ -290,8 +279,6 @@ router.get('/groups', optionalAuth, getGroups);
 router.get('/groups/:slug', optionalAuth, getGroupBySlug);
 router.post('/groups', requireAuth, createGroup);
 router.put('/groups/:id', requireAuth, updateGroup);
-router.post('/groups/:id/approve', requireAuth, approveGroup);
-router.post('/groups/:id/reject', requireAuth, rejectGroup);
 router.post('/groups/:id/members', requireAuth, addGroupMember);
 router.put('/groups/:id/members/:memberUserId', requireAuth, updateGroupMemberRole);
 router.delete('/groups/:id/members/:memberUserId', requireAuth, removeGroupMember);
@@ -299,7 +286,6 @@ router.delete('/groups/:id/members/:memberUserId', requireAuth, removeGroupMembe
 router.post('/groups/:id/join-requests', requireAuth, joinRequestLimiter, requestToJoinGroup);
 router.delete('/groups/:id/join-requests/me', requireAuth, cancelMyJoinRequest);
 router.get('/groups/:id/join-requests', requireAuth, getGroupJoinRequests);
-router.get('/groups/:id/pending-stories', requireAuth, getGroupPendingStories);
 router.post('/groups/:id/join-requests/:requestId/approve', requireAuth, approveJoinRequest);
 router.post('/groups/:id/join-requests/:requestId/reject', requireAuth, rejectJoinRequest);
 

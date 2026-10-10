@@ -10,6 +10,9 @@ const TARGET_TABLES: Record<string, string> = {
 };
 const REASONS = ['spam', 'inappropriate', 'copyright', 'wrong_info', 'harassment', 'other'];
 const isModerator = (roles: string[] = []) => roles.includes('admin') || roles.includes('mod');
+// Spam guard on top of the per-hour limiter in the routes and the one-pending-report unique index
+const DAILY_REPORT_LIMIT = 30;
+const REREPORT_COOLDOWN_HOURS = 24;
 
 /**
  * File a violation report against a story, chapter, comment or post.
@@ -36,19 +39,36 @@ export const createReport = async (req: AuthenticatedRequest, res: Response) => 
       return res.status(404).json({ success: false, message: 'Nội dung bị báo cáo không tồn tại.' });
     }
 
-    const dup = await pool.query(
-      `SELECT 1 FROM reports WHERE reporter_id = $1 AND target_type = $2 AND target_id = $3 AND status = 'pending'`,
-      [req.user.id, target_type, target_id]
-    );
-    if (dup.rows.length > 0) {
+    const guard = await pool.query(`
+      SELECT
+        EXISTS (SELECT 1 FROM reports WHERE reporter_id = $1 AND target_type = $2 AND target_id = $3 AND status = 'pending') AS pending,
+        EXISTS (SELECT 1 FROM reports WHERE reporter_id = $1 AND target_type = $2 AND target_id = $3
+                AND status <> 'pending' AND resolved_at > NOW() - make_interval(hours => $4)) AS recently_handled,
+        (SELECT count(*)::int FROM reports WHERE reporter_id = $1 AND created_at > NOW() - INTERVAL '24 hours') AS today
+    `, [req.user.id, target_type, target_id, REREPORT_COOLDOWN_HOURS]);
+    const g = guard.rows[0];
+    if (g.pending) {
       return res.status(409).json({ success: false, message: 'Bạn đã báo cáo nội dung này và đang chờ xử lý.' });
     }
+    if (g.recently_handled) {
+      return res.status(429).json({ success: false, message: `Báo cáo trước của bạn về nội dung này vừa được xử lý. Vui lòng chờ ${REREPORT_COOLDOWN_HOURS} giờ trước khi báo cáo lại.` });
+    }
+    if (g.today >= DAILY_REPORT_LIMIT) {
+      return res.status(429).json({ success: false, message: `Mỗi ngày chỉ gửi được tối đa ${DAILY_REPORT_LIMIT} báo cáo. Vui lòng thử lại sau.` });
+    }
 
-    const ins = await pool.query(
-      `INSERT INTO reports (reporter_id, target_type, target_id, reason, description)
-       VALUES ($1, $2, $3, $4, $5) RETURNING id, status, created_at`,
-      [req.user.id, target_type, target_id, reason, typeof description === 'string' ? description.trim().slice(0, 1000) || null : null]
-    );
+    let ins;
+    try {
+      ins = await pool.query(
+        `INSERT INTO reports (reporter_id, target_type, target_id, reason, description)
+         VALUES ($1, $2, $3, $4, $5) RETURNING id, status, created_at`,
+        [req.user.id, target_type, target_id, reason, typeof description === 'string' ? description.trim().slice(0, 1000) || null : null]
+      );
+    } catch (err: any) {
+      // uq_reports_pending: a second click that raced past the check above
+      if (err.code === '23505') return res.status(409).json({ success: false, message: 'Bạn đã báo cáo nội dung này và đang chờ xử lý.' });
+      throw err;
+    }
     res.status(201).json({ success: true, message: 'Đã gửi báo cáo. Cảm ơn bạn, ban quản trị sẽ xem xét.', data: ins.rows[0] });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -56,7 +76,9 @@ export const createReport = async (req: AuthenticatedRequest, res: Response) => 
 };
 
 /**
- * List reports for moderators, with a short preview of the reported content.
+ * List reports for moderators: `status` (pending|resolved|dismissed|all), `type` (story|chapter|comment|post),
+ * `q` (report code, the reported item's code or title, the reporter's description). Each row carries a preview,
+ * the reported item's code and link, whether it was taken down, and how many reports on it are still pending.
  */
 export const getReports = async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -64,39 +86,61 @@ export const getReports = async (req: AuthenticatedRequest, res: Response) => {
       return res.status(403).json({ success: false, message: 'Chỉ Admin/Mod mới xem được báo cáo.' });
     }
     const status = typeof req.query.status === 'string' ? req.query.status : 'pending';
+    const type = typeof req.query.type === 'string' && TARGET_TABLES[req.query.type] ? req.query.type : null;
+    const q = typeof req.query.q === 'string' ? req.query.q.trim().slice(0, 100) : '';
     const pageNum = Math.max(1, parseInt(req.query.page as string) || 1);
     const limitNum = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 30));
 
-    const where = status === 'all' ? '' : 'WHERE r.status = $1';
-    const params: any[] = status === 'all' ? [] : [status];
+    const params: any[] = [];
+    const where: string[] = [];
+    if (status !== 'all') { params.push(status); where.push(`r.status = $${params.length}`); }
+    if (type) { params.push(type); where.push(`r.target_type = $${params.length}`); }
+    if (q) {
+      params.push(`%${q.replace(/[\\%_]/g, '\\$&')}%`);
+      const n = params.length;
+      where.push(`(r.code ILIKE $${n} OR r.description ILIKE $${n} OR t.code ILIKE $${n} OR t.preview ILIKE $${n})`);
+    }
+    const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
-    const total = await pool.query(`SELECT count(*) FROM reports r ${where}`, params);
-    const rows = await pool.query(`
-      SELECT r.id, r.code, r.target_type, r.target_id, r.reason, r.description, r.status,
-             r.resolution_note, r.resolved_at, r.created_at,
-             u.username AS reporter_username, u.display_name AS reporter_name,
-             CASE r.target_type
-               WHEN 'story'   THEN (SELECT s.title FROM stories s WHERE s.id = r.target_id)
-               WHEN 'chapter' THEN (SELECT c.title FROM chapters c WHERE c.id = r.target_id)
-               WHEN 'comment' THEN (SELECT left(c.content, 160) FROM comments c WHERE c.id = r.target_id)
-               WHEN 'post'    THEN (SELECT p.title FROM posts p WHERE p.id = r.target_id)
-             END AS target_preview,
-             CASE r.target_type
-               WHEN 'story'   THEN (SELECT s.slug FROM stories s WHERE s.id = r.target_id)
-               WHEN 'chapter' THEN (SELECT s.slug || '/' || c.slug FROM chapters c JOIN stories s ON s.id = c.story_id WHERE c.id = r.target_id)
-               WHEN 'post'    THEN (SELECT p.slug FROM posts p WHERE p.id = r.target_id)
-             END AS target_path
+    // One row per report with the reported item resolved by type
+    const fromSql = `
       FROM reports r
       JOIN users u ON u.id = r.reporter_id
-      ${where}
-      ORDER BY r.created_at DESC
-      LIMIT $${params.length + 1} OFFSET $${params.length + 2}
-    `, [...params, limitNum, (pageNum - 1) * limitNum]);
+      LEFT JOIN LATERAL (
+        SELECT s.title AS preview, s.code, s.slug AS path, s.approval_status = 'rejected' AS removed
+          FROM stories s WHERE r.target_type = 'story' AND s.id = r.target_id
+        UNION ALL
+        SELECT s.title || ' · ' || c.title, s.code || '-C' || trim_scale(c.chapter_number)::text,
+               s.slug || '/' || c.slug, s.approval_status = 'rejected'
+          FROM chapters c JOIN stories s ON s.id = c.story_id WHERE r.target_type = 'chapter' AND c.id = r.target_id
+        UNION ALL
+        SELECT p.title, p.code, p.slug, p.approval_status = 'rejected'
+          FROM posts p WHERE r.target_type = 'post' AND p.id = r.target_id
+        UNION ALL
+        SELECT left(c.content, 160), NULL, NULL, c.is_deleted
+          FROM comments c WHERE r.target_type = 'comment' AND c.id = r.target_id
+      ) t ON true`;
+
+    const [total, rows] = await Promise.all([
+      pool.query(`SELECT count(*)::int AS n ${fromSql} ${whereSql}`, params),
+      pool.query(`
+        SELECT r.id, r.code, r.target_type, r.target_id, r.reason, r.description, r.status,
+               r.resolution_note, r.resolved_at, r.created_at,
+               u.username AS reporter_username, u.display_name AS reporter_name,
+               t.preview AS target_preview, t.code AS target_code, t.path AS target_path, COALESCE(t.removed, false) AS target_removed,
+               (SELECT count(*)::int FROM reports x
+                 WHERE x.target_type = r.target_type AND x.target_id = r.target_id AND x.status = 'pending') AS target_pending_count
+        ${fromSql}
+        ${whereSql}
+        ORDER BY r.created_at DESC
+        LIMIT $${params.length + 1} OFFSET $${params.length + 2}
+      `, [...params, limitNum, (pageNum - 1) * limitNum]),
+    ]);
 
     res.json({
       success: true,
       data: rows.rows,
-      pagination: { page: pageNum, limit: limitNum, total: parseInt(total.rows[0].count) },
+      pagination: { page: pageNum, limit: limitNum, total: total.rows[0].n },
     });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
