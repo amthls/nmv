@@ -1,9 +1,9 @@
 # feat/media-service
 
 - **Mục tiêu:** Giai đoạn D: service media (upload, ảnh ?w=, xuất EPUB/PDF) tách khỏi backend
-- **Tạo từ:** `origin/main` (rebase lên 5ae4819), ngày 2026-10-10
+- **Tạo từ:** `origin/main` (rebase lên e6297bb), ngày 2026-10-10
 - **Trạng thái:** xong, chờ CI
-- **PR:** (chưa mở)
+- **PR:** https://github.com/amthls/nmv/pull/67
 - **Plan:** `Plan/media.md`, `Plan/microservices.md` (giai đoạn D)
 
 ## Thay đổi
