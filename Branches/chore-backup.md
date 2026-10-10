@@ -3,7 +3,7 @@
 - **Mục tiêu:** Sao lưu hằng ngày Postgres + uploads, giữ 14 ngày/8 tuần/12 tháng, tự thử khôi phục
 - **Tạo từ:** `origin/main` @ e3c8402, ngày 2026-10-10
 - **Trạng thái:** xong, chủ dự án đã duyệt (2026-10-10), chờ review PR
-- **PR:** (chưa mở)
+- **PR:** https://github.com/amthls/nmv/pull/51
 - **Plan:** `Plan/microservices.md` (Giai đoạn 0: backup). Nhánh này mang theo `Plan/microservices.md` và `Plan/chapter-workspace.md` (chưa commit ở đâu khác)
 
 ## Thay đổi
