@@ -3,7 +3,7 @@
 - **Mục tiêu:** Đồng bộ checklist microservices; phần nền móng còn thiếu: quy tắc schema, trang lỗi gateway, phát lại sự kiện, đối soát
 - **Tạo từ:** `origin/main` @ 9ef3bdb, ngày 2026-10-10
 - **Trạng thái:** xong, chờ CI
-- **PR:** (chưa mở)
+- **PR:** https://github.com/amthls/nmv/pull/64
 - **Plan:** `Plan/microservices.md` (giai đoạn A)
 
 ## Thay đổi
