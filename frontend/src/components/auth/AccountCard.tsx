@@ -2,12 +2,13 @@
 
 import React from 'react';
 import { AlertCircle, CheckCircle2, KeyRound } from 'lucide-react';
-import { apiJson } from '@/lib/apiJson';
+import { apiJson, IDENTITY_URL } from '@/lib/apiJson';
+import { apiFetch } from '@/lib/session';
 
-/** POST JSON to the auth API; returns { ok, message } and never throws. */
+/** POST JSON to the identity (account) API; returns { ok, message } and never throws. */
 export async function postAuth(path: string, body: unknown): Promise<{ ok: boolean; message: string }> {
   try {
-    const { ok, json } = await apiJson(fetch, path, { method: 'POST', credentials: 'include', json: body });
+    const { ok, json } = await apiJson(apiFetch, path, { method: 'POST', json: body }, IDENTITY_URL);
     return { ok, message: json.message || (ok ? 'Xong.' : 'Có lỗi xảy ra.') };
   } catch {
     return { ok: false, message: 'Không kết nối được máy chủ.' };

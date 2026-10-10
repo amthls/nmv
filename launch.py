@@ -104,8 +104,6 @@ def ensure_env():
     if os.path.exists(ENV_FILE):
         env = read_env(ENV_FILE)
         problems = []
-        if len(env.get("JWT_SECRET", "")) < 32 or env.get("JWT_SECRET", "").startswith("change-me"):
-            problems.append("JWT_SECRET (needs >= 32 random chars)")
         if not env.get("RABBITMQ_PASSWORD") or env["RABBITMQ_PASSWORD"] == "change-me":
             problems.append("RABBITMQ_PASSWORD")
         if not env.get("REDIS_PASSWORD") or env["REDIS_PASSWORD"] == "change-me":
@@ -150,7 +148,6 @@ def ensure_env():
     rabbit_pw = secrets.token_hex(24)
     pg_pw = secrets.token_hex(24)
     overrides = {
-        "JWT_SECRET": secrets.token_hex(32),
         "RABBITMQ_PASSWORD": rabbit_pw,
         "RABBITMQ_URL": f"amqp://novel:{rabbit_pw}@localhost:5672",
         "REDIS_PASSWORD": secrets.token_hex(24),
@@ -169,7 +166,7 @@ def ensure_env():
         for line in f:
             key = line.split("=", 1)[0].strip() if "=" in line and not line.lstrip().startswith("#") else None
             if key in overrides:
-                if key in seen:  # .env.example defines JWT_SECRET twice; keep one
+                if key in seen:  # keep the first definition of a key
                     continue
                 seen.add(key)
                 out.append(f"{key}={overrides[key]}\n")
@@ -178,7 +175,7 @@ def ensure_env():
     with open(ENV_FILE, "w", encoding="utf-8") as f:
         f.writelines(out)
     os.chmod(ENV_FILE, 0o600)
-    info("Created .env with random JWT_SECRET and Postgres/RabbitMQ/Redis/pgAdmin passwords")
+    info("Created .env with random identity keys and Postgres/RabbitMQ/Redis/pgAdmin passwords")
     return read_env(ENV_FILE)
 
 
@@ -401,6 +398,18 @@ def apply_migrations(env):
     return all_ok
 
 
+def import_accounts(env):
+    """Accounts live in identity: copy those the backend database has and identity lacks (sample users, first move).
+    Only adds, never overwrites; run after migrations and seeders."""
+    url = (f"postgres://{env.get('POSTGRES_USER', 'postgres')}:{env['POSTGRES_PASSWORD']}@postgres:5432/"
+           f"{env.get('POSTGRES_DB', 'novel_platform')}")
+    res = subprocess.run(["docker", "compose", "run", "--rm", "--no-deps", "-e", f"LEGACY_DATABASE_URL={url}", "identity", "import-legacy"],
+                         cwd=ROOT, capture_output=True)
+    out = (res.stdout + res.stderr).decode(errors="replace")
+    summary = next((l for l in out.splitlines() if "import-legacy" in l), out.strip()[-300:])
+    return res.returncode == 0, summary
+
+
 # Sample-data seeders from backend/scripts, run in order inside a one-off backend container.
 SEEDERS = [
     ("demo passwords (password123)", ["node", "scripts/seed-passwords.js"]),
@@ -533,6 +542,9 @@ def run_checks(env, timeout, seed=None):
             record("backend  healthy after seeding", passed, "" if passed else detail)
         elif seed is None:
             info(f"Database already has {count} stories, skipping seeders (use --seed to force)")
+
+        passed, detail = import_accounts(env)
+        record("accounts in identity (import-legacy)", passed, detail)
 
     # Search service
     es_auth = base64.b64encode(f"elastic:{env.get('ELASTIC_PASSWORD', '')}".encode()).decode()

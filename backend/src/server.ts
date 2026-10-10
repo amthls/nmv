@@ -10,6 +10,13 @@ import { resizeUploadedImage } from './services/image.service';
 import { visitorCookie } from './services/recommender/events';
 import { attachRealtime } from './services/realtime';
 import { requestContext } from './utils/logger';
+import { identityFromHeaders } from './middlewares/auth.middleware';
+import { deleteCheck } from './controllers/user.controller';
+
+// Without the key that verifies the gateway's identity headers nobody is ever signed in: refuse to start
+if (process.env.NODE_ENV === 'production' && (process.env.AUTH_HEADER_KEY || '').length < 32) {
+  throw new Error('AUTH_HEADER_KEY is missing or shorter than 32 characters (launch.py generates it; same value as identity).');
+}
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -64,6 +71,13 @@ app.use('/uploads', express.static(path.resolve(__dirname, './uploads'), { maxAg
 
 // RESTful API V1
 app.use('/api/v1', globalApiLimiter, writeLimiter, apiRoutes);
+
+// Service-to-service calls (identity -> backend), signed like the gateway's headers. The gateway answers 404 for
+// /internal from outside, so only containers on the Docker networks reach these.
+app.get('/internal/users/:id/delete-check', (req, res, next) => {
+  if (!identityFromHeaders(req.headers)) return res.status(401).json({ ok: false });
+  deleteCheck(req, res).catch(next);
+});
 
 // Root endpoint
 app.get('/', (req, res) => {

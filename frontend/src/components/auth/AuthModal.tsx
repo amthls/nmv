@@ -98,8 +98,8 @@ export default function AuthModal() {
       return;
     }
 
-    if (regPassword.length < 6) {
-      setErrorMsg('Mật khẩu phải từ 6 ký tự trở lên.');
+    if (regPassword.length < 8) {
+      setErrorMsg('Mật khẩu phải từ 8 ký tự trở lên.');
       return;
     }
 
@@ -331,7 +331,7 @@ export default function AuthModal() {
                     type={showRegPassword ? 'text' : 'password'}
                     value={regPassword}
                     onChange={(e) => setRegPassword(e.target.value)}
-                    placeholder="Ít nhất 6 ký tự"
+                    placeholder="Ít nhất 8 ký tự"
                     className="w-full h-10 pl-9 pr-9 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-500"
                     required
                   />

@@ -1,7 +1,8 @@
-﻿'use client';
+'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { connectRealtime, disconnectRealtime } from '@/lib/realtime';
+import { apiFetch, IDENTITY_URL } from '@/lib/session';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -13,7 +14,8 @@ export interface UserRoleInfo {
 export interface UserProfile {
   id: string;
   username: string;
-  email: string;
+  email?: string;
+  email_verified?: boolean;
   display_name?: string;
   avatar_url?: string;
   banner_url?: string;
@@ -32,7 +34,6 @@ export interface UserProfile {
 
 interface AuthContextType {
   user: UserProfile | null;
-  token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   isAuthModalOpen: boolean;
@@ -42,18 +43,25 @@ interface AuthContextType {
   login: (identifier: string, password: string) => Promise<{ success: boolean; message?: string }>;
   register: (data: { username: string; email: string; password: string; display_name?: string }) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
+  /** fetch with the session cookies, the CSRF header on writes and a refresh-and-retry on 401 */
   authFetch: (url: string, options?: RequestInit) => Promise<Response>;
   refreshProfile: () => Promise<void>;
-  /** Replace the stored token (the server issues a new one after a password change). */
-  setSessionToken: (token: string) => void;
   hasRole: (...roles: string[]) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Only what draws the header before /me answers; never the email (localStorage is readable by any script)
+const CACHE_KEY = 'novelhub_user';
+const cacheUser = (u: UserProfile | null) => {
+  try {
+    if (!u) localStorage.removeItem(CACHE_KEY);
+    else localStorage.setItem(CACHE_KEY, JSON.stringify({ id: u.id, username: u.username, display_name: u.display_name, avatar_url: u.avatar_url, roles: u.roles }));
+  } catch {}
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [authModalTab, setAuthModalTab] = useState<'login' | 'register'>('login');
@@ -62,150 +70,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAuthModalTab(tab);
     setIsAuthModalOpen(true);
   };
+  const closeAuthModal = () => setIsAuthModalOpen(false);
 
-  const closeAuthModal = () => {
-    setIsAuthModalOpen(false);
-  };
-
-  // Helper to fetch with Bearer token & cookie credentials
-  const authFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
-    const currentToken = token || (typeof window !== 'undefined' ? localStorage.getItem('novelhub_token') : null);
-    const headers: Record<string, string> = {
-      ...(options.headers as Record<string, string> || {}),
-    };
-
-    if (currentToken && currentToken !== 'cookie_session') {
-      headers['Authorization'] = `Bearer ${currentToken}`;
-    }
-
-    return fetch(url, {
-      ...options,
-      credentials: 'include',
-      headers,
-    });
-  };
-
-  const setSessionToken = (newToken: string) => {
-    setToken(newToken);
-    localStorage.setItem('novelhub_token', newToken);
-  };
-
-  // Forget the local session (token + cached user). Used when the server rejects it.
   const clearLocalSession = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('novelhub_token');
-      localStorage.removeItem('novelhub_user');
-    }
-    setToken(null);
+    cacheUser(null);
     setUser(null);
   };
 
+  /**
+   * Who am I: account facts from identity (email, verified) + profile from the backend (name, avatar, visible roles).
+   * 401 = signed out (after a refresh attempt). A 5xx or network error keeps what we have.
+   */
   const refreshProfile = async () => {
-    const savedToken = token || (typeof window !== 'undefined' ? localStorage.getItem('novelhub_token') : null);
-
     try {
-      const headers: Record<string, string> = {};
-      if (savedToken) {
-        headers['Authorization'] = `Bearer ${savedToken}`;
-      }
-
-      const res = await fetch(`${API_BASE_URL}/auth/me`, {
-        headers,
-        credentials: 'include',
-      });
-
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success && json.data) {
-          setUser(json.data);
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('novelhub_user', JSON.stringify(json.data));
-          }
-          return;
-        }
-      }
-      // Token/cookie expired, invalid, or account banned. A 5xx or network error keeps the session.
-      if (res.status === 401 || res.status === 403) clearLocalSession();
+      const idRes = await apiFetch(`${IDENTITY_URL}/me`);
+      if (idRes.status === 401 || idRes.status === 403) return clearLocalSession();
+      if (!idRes.ok) return;
+      const account = (await idRes.json()).data;
+      const profRes = await apiFetch(`${API_BASE_URL}/auth/me`);
+      const profile = profRes.ok ? (await profRes.json()).data : null;
+      const merged: UserProfile = { ...account, ...(profile || {}), email: account.email, email_verified: account.email_verified };
+      setUser(merged);
+      cacheUser(merged);
     } catch (e) {
-      console.error('Failed to verify token:', e);
+      console.error('Failed to load the session:', e);
     }
   };
 
-  // Initialize auth on client mount (Check localStorage and cookie session)
   useEffect(() => {
-    const initAuth = async () => {
-      try {
-        const savedToken = localStorage.getItem('novelhub_token');
-        const savedUser = localStorage.getItem('novelhub_user');
-
-        if (savedToken) {
-          setToken(savedToken);
-        }
-        if (savedUser) {
-          try {
-            setUser(JSON.parse(savedUser));
-          } catch {
-            // ignore
-          }
-        }
-
-        // Always check /auth/me with credentials: 'include' to support 30-day cookie
-        const headers: Record<string, string> = {};
-        if (savedToken) {
-          headers['Authorization'] = `Bearer ${savedToken}`;
-        }
-
-        const res = await fetch(`${API_BASE_URL}/auth/me`, {
-          headers,
-          credentials: 'include',
-        });
-
-        if (res.ok) {
-          const json = await res.json();
-          if (json.success && json.data) {
-            setUser(json.data);
-            localStorage.setItem('novelhub_user', JSON.stringify(json.data));
-            if (!savedToken && json.data.id) {
-              // Cookie is active!
-              setToken('cookie_session');
-            }
-          } else {
-            clearLocalSession();
-          }
-        } else if (res.status === 401 || res.status === 403 || !savedToken) {
-          // Saved token expired/invalid (or none at all): don't keep showing a stale signed-in user
-          clearLocalSession();
-        }
-      } catch (err) {
-        console.error('Auth initialization error:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    initAuth();
-  }, []);
-
-  const login = async (identifier: string, password: string): Promise<{ success: boolean; message?: string }> => {
     try {
-      const res = await fetch(`${API_BASE_URL}/auth/login`, {
+      localStorage.removeItem('novelhub_token'); // left over from the old JWT-in-localStorage sign-in
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (cached) setUser(JSON.parse(cached));
+    } catch {}
+    refreshProfile().finally(() => setIsLoading(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const submit = async (path: string, body: unknown, fallback: string) => {
+    try {
+      const res = await apiFetch(`${IDENTITY_URL}${path}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ identifier, password }),
+        body: JSON.stringify(body),
       });
-
-      const json = await res.json();
-      if (!res.ok || !json.success) {
-        return { success: false, message: json.message || 'Đăng nhập thất bại' };
-      }
-
-      const { token: receivedToken, user: receivedUser } = json.data;
-      setToken(receivedToken);
-      setUser(receivedUser);
-      localStorage.setItem('novelhub_token', receivedToken);
-      localStorage.setItem('novelhub_user', JSON.stringify(receivedUser));
-
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success) return { success: false, message: json.message || fallback };
+      await refreshProfile();
       closeAuthModal();
       return { success: true, message: json.message };
     } catch (err: any) {
@@ -213,53 +123,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const register = async (data: { username: string; email: string; password: string; display_name?: string }): Promise<{ success: boolean; message?: string }> => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(data),
-      });
-
-      const json = await res.json();
-      if (!res.ok || !json.success) {
-        return { success: false, message: json.message || 'Đăng ký thất bại' };
-      }
-
-      const { token: receivedToken, user: receivedUser } = json.data;
-      setToken(receivedToken);
-      setUser(receivedUser);
-      localStorage.setItem('novelhub_token', receivedToken);
-      localStorage.setItem('novelhub_user', JSON.stringify(receivedUser));
-
-      closeAuthModal();
-      return { success: true, message: json.message };
-    } catch (err: any) {
-      return { success: false, message: 'Lỗi kết nối mạng: ' + err.message };
-    }
-  };
+  const login = (identifier: string, password: string) => submit('/login', { identifier, password }, 'Đăng nhập thất bại');
+  const register = (data: { username: string; email: string; password: string; display_name?: string }) =>
+    submit('/register', data, 'Đăng ký thất bại');
 
   const logout = () => {
-    try {
-      fetch(`${API_BASE_URL}/auth/logout`, {
-        method: 'POST',
-        credentials: 'include',
-      }).catch(() => {});
-    } catch {
-      // ignore
-    }
-    localStorage.removeItem('novelhub_token');
-    localStorage.removeItem('novelhub_user');
-    setToken(null);
-    setUser(null);
+    apiFetch(`${IDENTITY_URL}/logout`, { method: 'POST' }).catch(() => {});
+    clearLocalSession();
   };
 
-  // Realtime pushes only for signed-in users
+  // Realtime pushes only for signed-in users (the socket handshake carries the session cookie)
   useEffect(() => {
-    if (user) connectRealtime(token);
+    if (user) connectRealtime();
     else disconnectRealtime();
-  }, [user?.id, token]);
+  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const hasRole = (...roles: string[]): boolean => {
     if (!user || !user.roles) return false;
@@ -272,7 +149,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <AuthContext.Provider
       value={{
         user,
-        token,
         isLoading,
         isAuthenticated: !!user,
         isAuthModalOpen,
@@ -282,9 +158,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         register,
         logout,
-        authFetch,
+        authFetch: apiFetch,
         refreshProfile,
-        setSessionToken,
         hasRole,
       }}
     >

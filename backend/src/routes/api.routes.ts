@@ -30,24 +30,8 @@ import {
   getCurrentUserProfile, 
   updateUserProfile, 
   updateUserSettings,
-  getAdminUserList,
-  manageUserRole,
-  setUserBan,
-  deleteUser
 } from '../controllers/user.controller';
-import { 
-  login, 
-  register, 
-  getMe, 
-  logout, 
-  getDemoAccounts,
-  logoutAll,
-  changePassword,
-  forgotPassword,
-  resetPassword,
-  verifyEmail,
-  resendVerification,
-} from '../controllers/auth.controller';
+import { getMe, getDemoAccounts } from '../controllers/auth.controller';
 import { requireAuth, optionalAuth, requireRole } from '../middlewares/auth.middleware';
 import { 
   getGroups, 
@@ -148,7 +132,7 @@ import {
 } from '../controllers/message.controller';
 import { queueStatus } from '../services/queue.service';
 import { cacheJson } from '../middlewares/cache';
-import { loginLimiter, registerLimiter, mailLimiter, accountTokenLimiter, uploadLimiter, mangaUploadLimiter, searchLimiter, perUserLimiter, exportLimiter } from '../middlewares/security';
+import { uploadLimiter, mangaUploadLimiter, searchLimiter, perUserLimiter, exportLimiter } from '../middlewares/security';
 
 const router = Router();
 
@@ -172,21 +156,10 @@ router.get('/health', (req, res) => {
   });
 });
 
-// Authentication & Account Management
-router.post('/auth/login', loginLimiter, login);
-router.post('/auth/register', registerLimiter, register);
-router.post('/auth/logout', logout);
+// Account: sign-up/in, sessions, passwords, email, roles, bans, deletion live in the identity service (/api/identity/*).
+// Here: the profile side of "who am I" and the optional demo-account list.
 router.get('/auth/me', requireAuth, getMe);
 router.get('/auth/accounts', getDemoAccounts);
-// Express 4 does not catch rejected promises from handlers: forward them to the error handler
-const wrap = (fn: (req: any, res: express.Response) => Promise<unknown>) =>
-  (req: express.Request, res: express.Response, next: express.NextFunction) => { fn(req, res).catch(next); };
-router.post('/auth/logout-all', requireAuth, wrap(logoutAll));
-router.post('/auth/change-password', requireAuth, accountTokenLimiter, wrap(changePassword));
-router.post('/auth/forgot-password', mailLimiter, wrap(forgotPassword));
-router.post('/auth/reset-password', accountTokenLimiter, wrap(resetPassword));
-router.post('/auth/verify-email', accountTokenLimiter, wrap(verifyEmail));
-router.post('/auth/resend-verification', requireAuth, mailLimiter, wrap(resendVerification));
 
 // File & Image Uploads (Multipart/Form-Data)
 router.post('/upload/images', requireAuth, uploadLimiter, uploadImages.array('images', 10) as any, uploadMultipleImages);
@@ -309,15 +282,8 @@ router.get('/profile/me', requireAuth, getCurrentUserProfile);
 router.put('/profile/me', requireAuth, updateUserProfile);
 router.put('/profile/me/settings', requireAuth, updateUserSettings);
 router.get('/users', getUsers);
-router.get('/users/admin/all', requireAuth, getAdminUserList);
-router.post('/users/:userId/roles', requireAuth, manageUserRole);
 router.get('/codes/:code', optionalAuth, resolveCode);
 router.get('/users/:username', optionalAuth, getUserProfile);
-// Site moderation (admin/mod, rules in moderationRights): ban/unban, soft-delete an account
-const requireStaff = requireRole('admin', 'mod');
-router.post('/users/:userId/ban', requireAuth, requireStaff, setUserBan(true));
-router.post('/users/:userId/unban', requireAuth, requireStaff, setUserBan(false));
-router.delete('/users/:userId', requireAuth, requireStaff, deleteUser);
 
 // Translation Groups
 router.get('/groups', optionalAuth, getGroups);

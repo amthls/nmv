@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import SmartImage from '@/components/common/SmartImage';
 import { useAuth } from '@/context/AuthContext';
+import { useConfirmPassword } from '@/components/account/ConfirmPassword';
+import { IDENTITY_URL } from '@/lib/session';
 import CodeBadge from '@/components/common/CodeBadge';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
@@ -46,6 +48,7 @@ export default function UserProfilePage() {
   const params = useParams();
   const username = params?.username as string;
   const { user, authFetch } = useAuth();
+  const confirmPassword = useConfirmPassword();
 
   const [profile, setProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -63,6 +66,13 @@ export default function UserProfilePage() {
       if (res.ok && json?.success) {
         setProfile(json.data);
         setNotFound(false);
+        if (json.data.moderation) {
+          // The email lives only in the identity service, shown to staff only
+          authFetch(`${IDENTITY_URL}/users/${json.data.id}/private`)
+            .then((r) => r.json())
+            .then((p) => p?.success && setProfile((cur: any) => cur && ({ ...cur, moderation: { ...cur.moderation, email: p.data.email } })))
+            .catch(() => {});
+        }
       } else {
         setProfile(null);
         setNotFound(true);
@@ -97,29 +107,36 @@ export default function UserProfilePage() {
     }
   };
 
+  // Account actions belong to the identity service and ask for the actor's password again
   const handleBan = async () => {
     const reason = prompt(`Lý do khóa tài khoản ${profile.username}:`, 'Vi phạm điều khoản cộng đồng');
     if (reason === null) return;
-    if (await runAction(`${API_BASE_URL}/users/${profile.id}/ban`, 'POST', { reason })) fetchProfile();
+    const password = await confirmPassword.ask(`Khóa tài khoản ${profile.username}`, `Lý do: ${reason}`);
+    if (!password) return;
+    if (await runAction(`${IDENTITY_URL}/users/${profile.id}/ban`, 'POST', { reason, password })) fetchProfile();
   };
 
   const handleUnban = async () => {
-    if (!confirm(`Mở khóa tài khoản ${profile.username}?`)) return;
-    if (await runAction(`${API_BASE_URL}/users/${profile.id}/unban`, 'POST')) fetchProfile();
+    const password = await confirmPassword.ask(`Mở khóa tài khoản ${profile.username}`);
+    if (!password) return;
+    if (await runAction(`${IDENTITY_URL}/users/${profile.id}/unban`, 'POST', { password })) fetchProfile();
   };
 
   const handleRole = async (action: 'grant' | 'revoke') => {
-    const question = action === 'grant'
-      ? `Cấp quyền Kiểm duyệt viên (Mod) cho ${profile.username}?`
-      : `Thu hồi quyền Mod của ${profile.username}?`;
-    if (!confirm(question)) return;
-    if (await runAction(`${API_BASE_URL}/users/${profile.id}/roles`, 'POST', { role: 'mod', action })) fetchProfile();
+    const title = action === 'grant'
+      ? `Cấp quyền Kiểm duyệt viên (Mod) cho ${profile.username}`
+      : `Thu hồi quyền Mod của ${profile.username}`;
+    const password = await confirmPassword.ask(title);
+    if (!password) return;
+    if (await runAction(`${IDENTITY_URL}/users/${profile.id}/roles`, 'POST', { role: 'mod', action, password })) fetchProfile();
   };
 
   const handleDelete = async () => {
     if (!confirm(`Xóa tài khoản ${profile.username}? Tên, email, ảnh và giới thiệu sẽ bị xóa vĩnh viễn và tài khoản không thể đăng nhập lại. Truyện đã đăng vẫn được giữ.`)) return;
     const purge = confirm('Ẩn luôn tất cả bài viết và bình luận của người dùng này?\n\nOK = ẩn hết, Hủy = giữ lại bài viết/bình luận.');
-    if (await runAction(`${API_BASE_URL}/users/${profile.id}`, 'DELETE', { purge_content: purge })) fetchProfile();
+    const password = await confirmPassword.ask(`Xóa tài khoản ${profile.username}`, purge ? 'Kèm ẩn mọi bài viết và bình luận.' : 'Giữ lại bài viết và bình luận.');
+    if (!password) return;
+    if (await runAction(`${IDENTITY_URL}/users/${profile.id}`, 'DELETE', { purge_content: purge, password })) fetchProfile();
   };
 
   if (isLoading) {
@@ -154,6 +171,7 @@ export default function UserProfilePage() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 pb-24">
+      {confirmPassword.dialog}
 
       {/* Header */}
       <div className="rounded-3xl overflow-hidden glass-panel border border-white/10 bg-glass shadow-2xl">

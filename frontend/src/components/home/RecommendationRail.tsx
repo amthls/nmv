@@ -24,11 +24,7 @@ export default function RecommendationRail({ title, subtitle, endpoint, source }
 
   const send = (kind: 'impression' | 'click', ids: string[]) => {
     const body = JSON.stringify({ kind, source, story_ids: ids });
-    // beacon survives the navigation a click starts; cookies identify the reader
-    if (kind === 'click' && typeof navigator !== 'undefined' && navigator.sendBeacon) {
-      navigator.sendBeacon(`${API_BASE_URL}/recommendations/events`, new Blob([body], { type: 'application/json' }));
-      return;
-    }
+    // keepalive survives the navigation a click starts (sendBeacon can't send the CSRF header signed-in writes need)
     const fetcher = isAuthenticated ? authFetch : fetch;
     fetcher(`${API_BASE_URL}/recommendations/events`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body, credentials: 'include', keepalive: true,
