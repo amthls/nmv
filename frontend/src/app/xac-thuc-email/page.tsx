@@ -6,10 +6,11 @@ import { useSearchParams } from 'next/navigation';
 import { MailCheck } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import PageLoader from '@/components/common/PageLoader';
-import { AccountCard, Notice, postAuth, primaryButton } from '@/components/auth/AccountCard';
+import { AccountCard, Notice, postAuth, primaryButton, useLinkToken } from '@/components/auth/AccountCard';
 
 function VerifyEmail() {
-  const token = useSearchParams().get('token') || '';
+  const token = useLinkToken();
+  const changing = useSearchParams().get('doi') === '1'; // link from "change email": confirms the new address
   const { refreshProfile } = useAuth();
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
   const sent = useRef(false); // the token is single-use: do not post it twice (React strict mode)
@@ -17,14 +18,14 @@ function VerifyEmail() {
   useEffect(() => {
     if (!token || sent.current) return;
     sent.current = true;
-    postAuth('/verify-email', { token }).then((r) => {
+    postAuth(changing ? '/confirm-email-change' : '/verify-email', { token }).then((r) => {
       setResult(r);
       if (r.ok) refreshProfile?.();
     });
-  }, [token, refreshProfile]);
+  }, [token, changing, refreshProfile]);
 
   return (
-    <AccountCard title="Xác thực email" icon={<MailCheck className="w-5 h-5" />}>
+    <AccountCard title={changing ? 'Xác nhận email mới' : 'Xác thực email'} icon={<MailCheck className="w-5 h-5" />}>
       {!token && <Notice ok={false}>Liên kết thiếu mã. Hãy mở đúng liên kết trong email.</Notice>}
       {token && !result && <p className="text-sm text-gray-400">Đang xác thực...</p>}
       {result && <Notice ok={result.ok}>{result.message}</Notice>}

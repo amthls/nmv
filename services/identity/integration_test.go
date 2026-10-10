@@ -405,3 +405,75 @@ func TestEventContracts(t *testing.T) {
 		t.Fatalf("expected at least 6 events, got %d", n)
 	}
 }
+
+func lastMailTo(t *testing.T, h *harness, to string) string {
+	t.Helper()
+	var body string
+	h.s.db.QueryRow(context.Background(), `SELECT body_text FROM mail_outbox WHERE to_addr = $1 ORDER BY id DESC LIMIT 1`, to).Scan(&body)
+	return body
+}
+
+func TestChangeEmail(t *testing.T) {
+	h := newHarness(t)
+	mai := h.register("mai")
+	h.register("other")
+	// an unused reset link to the old address must die with the change
+	h.client().want(200, "POST", "/forgot-password", map[string]any{"email": "mai@mail.vn"}, false)
+	reset := regexp.MustCompile(`token=([0-9a-f]{64})`).FindStringSubmatch(lastMailTo(t, h, "mai@mail.vn"))
+
+	mai.want(400, "POST", "/change-email", map[string]any{"new_email": "mai2@mail.vn", "password": "sai-mat-khau"}, true)
+	mai.want(409, "POST", "/change-email", map[string]any{"new_email": "OTHER@mail.vn", "password": testPW}, true)
+	mai.want(400, "POST", "/change-email", map[string]any{"new_email": "mai@mail.vn", "password": testPW}, true)
+	mai.want(200, "POST", "/change-email", map[string]any{"new_email": "Mai2@Mail.vn", "password": testPW}, true)
+	if !strings.Contains(lastMailTo(t, h, "mai@mail.vn"), "mai2@mail.vn") {
+		t.Fatal("the old address must be warned")
+	}
+	link := regexp.MustCompile(`doi=1&token=([0-9a-f]{64})`).FindStringSubmatch(lastMailTo(t, h, "mai2@mail.vn"))
+	if link == nil {
+		t.Fatal("no confirm link mailed to the new address")
+	}
+	if me := mai.want(200, "GET", "/me", nil, false)["data"].(map[string]any); me["email"] != "mai@mail.vn" {
+		t.Fatal("email must not change before the link is opened")
+	}
+	h.client().want(200, "POST", "/confirm-email-change", map[string]any{"token": link[1]}, false)
+	h.client().want(400, "POST", "/confirm-email-change", map[string]any{"token": link[1]}, false) // single use
+	if me := mai.want(200, "GET", "/me", nil, false)["data"].(map[string]any); me["email"] != "mai2@mail.vn" || me["email_verified"] != true {
+		t.Fatalf("after confirm: %v", me)
+	}
+	h.client().want(400, "POST", "/reset-password", map[string]any{"token": reset[1], "new_password": "Mat-Khau-Moi-2026"}, false)
+	if !strings.Contains(lastMailTo(t, h, "mai@mail.vn"), "đã được đổi") && !strings.Contains(lastMailTo(t, h, "mai@mail.vn"), "vừa được đổi") {
+		t.Fatal("the old address must be told the change happened")
+	}
+}
+
+func TestMailDailyLimit(t *testing.T) {
+	h := newHarness(t)
+	h.register("spam_target")
+	ctx := context.Background()
+	h.s.db.Exec(ctx, `INSERT INTO mail_outbox (to_addr, subject, body_text, body_html) SELECT 'spam_target@mail.vn', 's', 'b', 'b' FROM generate_series(1, 9)`) // + the sign-up mail = 10
+	h.client().want(200, "POST", "/forgot-password", map[string]any{"email": "spam_target@mail.vn"}, false)
+	var n int
+	h.s.db.QueryRow(ctx, `SELECT count(*) FROM mail_outbox WHERE to_addr = 'spam_target@mail.vn'`).Scan(&n)
+	if n != 10 {
+		t.Fatalf("mails to one address in a day: %d, want the limit (10)", n)
+	}
+}
+
+func TestTurnstile(t *testing.T) {
+	h := newHarness(t)
+	cf := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r.ParseForm()
+		fmt.Fprintf(w, `{"success":%v}`, r.Form.Get("secret") == "sec" && r.Form.Get("response") == "human")
+	}))
+	defer cf.Close()
+	old := turnstileURL
+	turnstileURL = cf.URL
+	defer func() { turnstileURL = old }()
+	h.s.cfg.TurnstileSecret = "sec"
+	body := map[string]any{"username": "bot", "email": "bot@mail.vn", "password": testPW}
+	h.client().want(400, "POST", "/register", body, false)
+	body["turnstile_token"] = "human"
+	h.client().want(201, "POST", "/register", body, false)
+	h.client().want(400, "POST", "/forgot-password", map[string]any{"email": "bot@mail.vn", "turnstile_token": "robot"}, false)
+	h.client().want(200, "POST", "/forgot-password", map[string]any{"email": "bot@mail.vn", "turnstile_token": "human"}, false)
+}

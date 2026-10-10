@@ -20,6 +20,8 @@ import (
 //   docker compose exec postgres psql -U identity -d identity_db -c "SELECT to_addr, body_text FROM mail_outbox ORDER BY id DESC LIMIT 1"
 // Links are never written to the logs (they carry tokens).
 
+const mailsPerDay = 10
+
 func enqueueMail(ctx context.Context, tx pgx.Tx, to, subject, intro, linkText, link string) error {
 	text := intro + "\n\n" + linkText + ": " + link + "\n\nNếu bạn không yêu cầu, hãy bỏ qua email này."
 	body := "<p>" + html.EscapeString(intro) + "</p><p><a href=\"" + html.EscapeString(link) + "\">" + html.EscapeString(linkText) + "</a></p>" +
@@ -27,6 +29,15 @@ func enqueueMail(ctx context.Context, tx pgx.Tx, to, subject, intro, linkText, l
 	if link == "" { // notice only (e.g. "your password was changed")
 		text = intro
 		body = "<p>" + html.EscapeString(intro) + "</p>"
+	}
+	// A form can be used to flood someone's inbox: at most mailsPerDay per address, the rest is dropped quietly
+	var sent int
+	if err := tx.QueryRow(ctx, `SELECT count(*) FROM mail_outbox WHERE to_addr = $1 AND created_at > NOW() - INTERVAL '1 day'`, to).Scan(&sent); err != nil {
+		return err
+	}
+	if sent >= mailsPerDay {
+		logf(ctx, "warn", fmt.Sprintf("mail dropped: %d mails to one address in 24 hours (%q)", sent, subject))
+		return nil
 	}
 	_, err := tx.Exec(ctx, `INSERT INTO mail_outbox (to_addr, subject, body_text, body_html) VALUES ($1, $2, $3, $4)`, to, subject, text, body)
 	return err

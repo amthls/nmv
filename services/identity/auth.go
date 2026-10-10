@@ -54,6 +54,7 @@ func (s *server) handleRegister(w http.ResponseWriter, r *http.Request) {
 		Email       string  `json:"email"`
 		Password    string  `json:"password"`
 		DisplayName *string `json:"display_name"`
+		Turnstile   string  `json:"turnstile_token"`
 	}
 	if readJSON(w, r, &b) != nil {
 		fail(w, 400, "Dữ liệu gửi lên không hợp lệ.")
@@ -81,6 +82,9 @@ func (s *server) handleRegister(w http.ResponseWriter, r *http.Request) {
 	}
 	if p := passwordProblem(b.Password, username, email); p != "" {
 		fail(w, 400, p)
+		return
+	}
+	if !s.humanOK(w, r, b.Turnstile) {
 		return
 	}
 
@@ -341,7 +345,7 @@ func (s *server) handleRevokeSession(w http.ResponseWriter, r *http.Request, c c
 
 // ---- passwords and email ------------------------------------------------------------------------------
 
-var tokenTTL = map[string]time.Duration{"reset_password": time.Hour, "verify_email": 24 * time.Hour}
+var tokenTTL = map[string]time.Duration{"reset_password": time.Hour, "verify_email": 24 * time.Hour, "change_email": 24 * time.Hour}
 
 // createAccountToken: a new one-time token (only its hash is stored); unused older ones for the purpose stop working.
 func createAccountToken(ctx context.Context, tx pgx.Tx, uid, purpose string) (string, error) {
@@ -434,12 +438,16 @@ const forgotReply = "Nếu email này có tài khoản, chúng tôi đã gửi l
 // Always the same answer (and the same work), so the form can't tell which emails have accounts.
 func (s *server) handleForgot(w http.ResponseWriter, r *http.Request) {
 	var b struct {
-		Email string `json:"email"`
+		Email     string `json:"email"`
+		Turnstile string `json:"turnstile_token"`
 	}
 	readJSON(w, r, &b)
 	email := strings.ToLower(strings.TrimSpace(b.Email))
 	if len(email) > 255 || !emailRe.MatchString(email) {
 		fail(w, 400, "Email không đúng định dạng.")
+		return
+	}
+	if !s.humanOK(w, r, b.Turnstile) {
 		return
 	}
 	ctx := r.Context()

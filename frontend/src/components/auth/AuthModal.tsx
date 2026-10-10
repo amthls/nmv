@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import Turnstile, { TURNSTILE_SITE_KEY } from '@/components/auth/Turnstile';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -49,6 +50,8 @@ export default function AuthModal() {
 
   // Form states
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [humanToken, setHumanToken] = useState('');
+  const [turnstileRun, setTurnstileRun] = useState(0); // a Turnstile token works once: new widget after each try
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
@@ -103,6 +106,11 @@ export default function AuthModal() {
       return;
     }
 
+    if (TURNSTILE_SITE_KEY && !humanToken) {
+      setErrorMsg('Vui lòng xác nhận bạn không phải robot.');
+      return;
+    }
+
     setIsSubmitting(true);
     setErrorMsg(null);
 
@@ -111,9 +119,11 @@ export default function AuthModal() {
       email: regEmail.trim(),
       password: regPassword,
       display_name: regDisplayName.trim() || regUsername.trim(),
+      turnstile_token: humanToken,
     });
 
     setIsSubmitting(false);
+    setTurnstileRun((n) => n + 1);
 
     if (!res.success) {
       setErrorMsg(res.message || 'Đăng ký không thành công.');
@@ -360,6 +370,8 @@ export default function AuthModal() {
                 />
               </div>
             </div>
+
+            <Turnstile key={turnstileRun} onToken={setHumanToken} />
 
             <button
               type="submit"

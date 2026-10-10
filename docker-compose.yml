@@ -207,6 +207,7 @@ services:
       MAIL_FROM: ${MAIL_FROM:-NovelHub <no-reply@novelhub.local>}
       SITE_URL: ${SITE_URL:-http://localhost:3000}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      TURNSTILE_SECRET: ${TURNSTILE_SECRET:-} # optional bot check on sign-up / forgot password (with NEXT_PUBLIC_TURNSTILE_SITE_KEY)
     volumes:
       - ./uploads:/app/uploads
       - ./exports:/app/exports # built EPUB/PDF files (served only by the download endpoint)
@@ -343,6 +344,7 @@ services:
       MAIL_FROM: ${MAIL_FROM:-NovelHub <no-reply@novelhub.local>}
       SITE_URL: ${SITE_URL:-http://localhost:3000}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      TURNSTILE_SECRET: ${TURNSTILE_SECRET:-} # optional bot check on sign-up / forgot password (with NEXT_PUBLIC_TURNSTILE_SITE_KEY)
     mem_limit: 128m
     depends_on:
       db-init:
@@ -448,6 +450,7 @@ services:
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_URL: /api/v1
+        NEXT_PUBLIC_TURNSTILE_SITE_KEY: ${TURNSTILE_SITE_KEY:-}
     container_name: novel_frontend
     restart: unless-stopped
     # Not published: visitors reach it through the gateway (nginx) only

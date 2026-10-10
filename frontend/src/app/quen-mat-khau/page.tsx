@@ -3,17 +3,22 @@
 import React, { useState } from 'react';
 import { Mail } from 'lucide-react';
 import { AccountCard, Notice, postAuth, primaryButton } from '@/components/auth/AccountCard';
+import Turnstile, { TURNSTILE_SITE_KEY } from '@/components/auth/Turnstile';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
+  const [humanToken, setHumanToken] = useState('');
+  const [turnstileRun, setTurnstileRun] = useState(0);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (TURNSTILE_SITE_KEY && !humanToken) return setResult({ ok: false, message: 'Vui lòng xác nhận bạn không phải robot.' });
     setBusy(true);
-    setResult(await postAuth('/forgot-password', { email }));
+    setResult(await postAuth('/forgot-password', { email, turnstile_token: humanToken }));
     setBusy(false);
+    setTurnstileRun((n) => n + 1);
   };
 
   return (
@@ -34,6 +39,7 @@ export default function ForgotPasswordPage() {
               className="w-full h-11 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition"
             />
           </label>
+          <Turnstile key={turnstileRun} onToken={setHumanToken} />
           <button type="submit" disabled={busy} className={primaryButton}>
             {busy ? 'Đang gửi...' : 'Gửi liên kết'}
           </button>

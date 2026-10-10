@@ -21,6 +21,7 @@ type config struct {
 	SiteURL         string
 	CookieSecure    bool
 	EnableDemoUsers bool
+	TurnstileSecret string // optional: register and forgot-password then need a Cloudflare Turnstile token
 }
 
 func loadConfig() (config, error) {
@@ -39,6 +40,7 @@ func loadConfig() (config, error) {
 		SiteURL:         strings.TrimRight(env("SITE_URL", "http://localhost:3000"), "/"),
 		CookieSecure:    os.Getenv("COOKIE_SECURE") == "true",
 		EnableDemoUsers: os.Getenv("ENABLE_DEMO_ACCOUNTS") == "true",
+		TurnstileSecret: os.Getenv("TURNSTILE_SECRET"),
 	}
 	if c.DatabaseURL == "" {
 		return c, fmt.Errorf("IDENTITY_DATABASE_URL is required")

@@ -1,14 +1,13 @@
 'use client';
 
 import React, { Suspense, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
 import { Lock } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import PageLoader from '@/components/common/PageLoader';
-import { AccountCard, Notice, PasswordInput, postAuth, primaryButton } from '@/components/auth/AccountCard';
+import { AccountCard, Notice, PasswordInput, postAuth, primaryButton, useLinkToken } from '@/components/auth/AccountCard';
 
 function ResetPasswordForm() {
-  const token = useSearchParams().get('token') || '';
+  const token = useLinkToken();
   const { openAuthModal } = useAuth();
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
