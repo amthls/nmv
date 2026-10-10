@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { refreshSession } from './session';
 
 /**
  * One shared Socket.IO connection for the signed-in user (opened/closed by AuthContext).
@@ -12,25 +13,25 @@ import { io, Socket } from 'socket.io-client';
 type Handler = (data: any) => void;
 const listeners = new Map<string, Set<Handler>>();
 let socket: Socket | null = null;
-let socketToken: string | null = null;
 
-export function connectRealtime(token: string | null) {
-  if (socket && socketToken === token) return;
-  disconnectRealtime();
-  socketToken = token;
-  socket = io({
-    path: '/socket.io',
-    transports: ['websocket'],
-    auth: token ? { token } : {}, // the httpOnly cookie is sent too
-    withCredentials: true,
-  });
+/** Open the socket; the handshake goes through the gateway with the session cookie (no token in JS). */
+export function connectRealtime() {
+  if (socket) return;
+  let retried = false;
+  socket = io({ path: '/socket.io', transports: ['websocket'], withCredentials: true });
   socket.onAny((event: string, data: any) => listeners.get(event)?.forEach((fn) => fn(data)));
+  // Refused at the handshake: usually the 15-minute access cookie ran out. Refresh once, then reconnect.
+  socket.on('connect_error', async () => {
+    if (retried || !socket) return;
+    retried = true;
+    if (await refreshSession()) setTimeout(() => socket?.connect(), 500);
+  });
+  socket.on('connect', () => { retried = false; });
 }
 
 export function disconnectRealtime() {
   socket?.disconnect();
   socket = null;
-  socketToken = null;
 }
 
 /** Calls the latest `handler` whenever the server pushes `event`. */

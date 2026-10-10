@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "envelope.v1.json",
+  "title": "Envelope of every event on the novelhub.events exchange",
+  "description": "Rules: fields may only be ADDED to a version; a breaking change is a new type suffix (v2) published side by side until every consumer moved. Consumers dedupe on event_id and apply only a newer version.",
+  "type": "object",
+  "required": ["event_id", "type", "version", "occurred_at", "data"],
+  "properties": {
+    "event_id": { "type": "string", "format": "uuid" },
+    "type": { "type": "string", "pattern": "^[a-z]+([.][a-z_]+)+$" },
+    "version": { "type": "integer", "minimum": 1 },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "request_id": { "type": "string" },
+    "data": { "type": "object" }
+  }
+}

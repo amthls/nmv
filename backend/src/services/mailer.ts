@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { log } from '../utils/logger';
 
 // SMTP_URL e.g. smtps://user:app-password@smtp.gmail.com:465. Without it, mails are not sent and the
 // link is written to the backend log instead, so password reset still works for the site owner.
@@ -13,7 +14,8 @@ export const mailConfigured = () => Boolean(transport);
 /** Send a short mail with one action link. Never throws: callers must not leak whether it worked. */
 export async function sendLinkMail(to: string, subject: string, intro: string, linkText: string, link: string) {
   if (!transport) {
-    console.warn(`[mail] SMTP_URL not set; would send "${subject}" to ${to}: ${link}`);
+    // The one deliberate unredacted line: without SMTP the site owner reads reset/verify links here (dev only)
+    log('warn', `[mail] SMTP_URL not set; would send "${subject}" to ${to}: ${link}`, {}, true);
     return;
   }
   const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));

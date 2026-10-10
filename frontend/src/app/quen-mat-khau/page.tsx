@@ -12,7 +12,7 @@ export default function ForgotPasswordPage() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
-    setResult(await postAuth('/auth/forgot-password', { email }));
+    setResult(await postAuth('/forgot-password', { email }));
     setBusy(false);
   };
 

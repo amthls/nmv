@@ -97,28 +97,70 @@ Workspace là một phần của kiến trúc nhiều service: xem `Plan/microse
 
 Mục tiêu: đường đọc của độc giả **không chậm đi chút nào**, thao tác workspace nhẹ, không quá tải.
 Đề xuất ban đầu để thảo luận, chốt từng mục rồi mới code:
-- [ ] **Tách đường đọc và đường viết**: độc giả vẫn đọc bảng `chapters` (bản phẳng hiện tại, có cache Redis);
+- [x] **Tách đường đọc và đường viết**: độc giả vẫn đọc bảng `chapters` (bản phẳng hiện tại, có cache Redis);
       lịch sử/nháp nằm bảng riêng, chỉ workspace chạm tới. Gộp = cập nhật bản phẳng trong cùng transaction.
-- [ ] **Lưu đoạn theo nội dung (content-addressed)**: bảng `content_blocks(hash PK, data JSONB)`; phiên bản và nháp chỉ lưu
+- [x] **Lưu đoạn theo nội dung (content-addressed)**: bảng `content_blocks(hash PK, data JSONB)`; phiên bản và nháp chỉ lưu
       **mảng hash**. Sao chép nháp, rewind, chụp mỗi lần gửi gần như miễn phí; diff = so hai mảng hash (không so chữ trên server).
-- [ ] Bảng: `chapter_revisions` (chapter, số phiên bản, mảng hash, tác giả, nguồn: nháp/sửa thẳng/rewind/xóa),
+- [x] Bảng: `chapter_revisions` (chapter, số phiên bản, mảng hash, tác giả, nguồn: nháp/sửa thẳng/rewind/xóa),
       `chapter_drafts` (chủ, truyện, chương hoặc số chương mới, dựa trên revision/nháp nào, trạng thái, mảng hash, `version` để chống ghi đè),
       `draft_rounds` (chụp mỗi lần gửi), `draft_shares`, `chapter_tasks` (giao việc/nhận chương), góp ý theo đoạn.
-- [ ] **Lưu nháp tự động**: client gom thay đổi (debounce vài giây), chỉ gửi đoạn đổi; khóa lạc quan bằng `version` (2 tab không đè nhau).
-- [ ] **Gộp/pull**: diff3 trên mảng hash ở server (rẻ: ~70 phần tử); kiểm tra `current_revision` đúng như lúc mở (compare-and-swap) + `FOR UPDATE`.
-- [ ] So sánh chữ trong một đoạn (word diff) làm ở **trình duyệt**, chỉ cho đoạn đã đổi.
-- [ ] Manga: đoạn = trang ảnh (tham chiếu URL), không chép ảnh.
-- [ ] Danh sách workspace: index theo (chủ nháp), (truyện, trạng thái), (người được giao); phân trang theo khóa; bộ đếm "đề xuất đang chờ".
-- [ ] Thông báo (gửi, trả lại, gộp, giao việc) đi qua hàng đợi RabbitMQ có sẵn; tìm kiếm chỉ cập nhật khi bản chính đổi.
-- [ ] Dọn rác: hash không còn ai tham chiếu (nháp bị xóa) → job định kỳ, hoặc giữ luôn (rẻ). Chốt cách.
-- [ ] Ước lượng tải mục tiêu (số người dùng, chương, người viết cùng lúc) để chọn giới hạn: số nháp mở/người, số phiên bản giữ lại.
-- [ ] Viết bản thiết kế chốt (schema SQL + API) vào cuối file này.
+- [x] **Lưu nháp tự động**: client gom thay đổi (debounce vài giây), chỉ gửi đoạn đổi; khóa lạc quan bằng `version` (2 tab không đè nhau).
+- [x] **Gộp/pull**: diff3 trên mảng hash ở server (rẻ: ~70 phần tử); kiểm tra `current_revision` đúng như lúc mở (compare-and-swap) + `FOR UPDATE`.
+- [x] So sánh chữ trong một đoạn (word diff) làm ở **trình duyệt**, chỉ cho đoạn đã đổi.
+- [x] Manga: đoạn = trang ảnh (tham chiếu URL), không chép ảnh.
+- [x] Danh sách workspace: index theo (chủ nháp), (truyện, trạng thái), (người được giao); phân trang theo khóa; bộ đếm "đề xuất đang chờ".
+- [x] Thông báo (gửi, trả lại, gộp, giao việc) đi qua hàng đợi RabbitMQ có sẵn; tìm kiếm chỉ cập nhật khi bản chính đổi.
+- [x] Dọn rác: **giữ luôn** (khớp "giữ lịch sử mãi"; ~10 KB/chương, cả web hiện ~700 KB nội dung).
+- [x] Giới hạn: tối đa **50 nháp đang mở/người**; phiên bản giữ hết.
+- [x] Viết bản thiết kế chốt (schema SQL + API) vào cuối file này.
+
+## Thiết kế chốt (2026-10-10)
+
+**Lọc HTML (chủ dự án chọn 2026-10-10):** nội dung chương **luôn đi qua backend** (bộ lọc `sanitize-html` hiện có), backend gọi API nội bộ của
+workspace. Workspace không nhận HTML trực tiếp từ trình duyệt → chỉ có một bộ lọc. Thao tác không mang nội dung mới (xem lịch sử, so sánh,
+rewind, gộp, pull chọn đoạn theo hash) gọi thẳng workspace qua gateway `/api/ws/*`.
+
+**Quyền** (backend là nguồn, `GET /internal/permissions?user=&story=` → `{keeper, contributor, removed}`, workspace cache 30 s):
+người giữ truyện = chủ truyện, hoặc leader/mod nhóm của truyện; người đóng góp = người giữ + thành viên nhóm + cộng tác viên.
+
+**`ws_db` (giai đoạn 1):**
+```sql
+content_blocks (hash TEXT PRIMARY KEY,          -- sha256 của JSON chuẩn hóa của đoạn (không gồm id vị trí)
+                data JSONB NOT NULL)
+chapter_heads  (chapter_id UUID PRIMARY KEY,    -- cùng UUID với catalog.chapters
+                story_id UUID NOT NULL, current_version INT NOT NULL, deleted BOOLEAN NOT NULL)
+chapter_revisions (chapter_id UUID, version INT, story_id UUID,
+                meta JSONB NOT NULL,             -- title, chapter_number, volume_id, intro_note, outro_note
+                blocks TEXT[] NOT NULL,          -- mảng hash theo thứ tự
+                deleted BOOLEAN NOT NULL, source TEXT NOT NULL, -- import | create | edit | rewind | delete | restore
+                based_on INT, author_id UUID, created_at TIMESTAMPTZ, PRIMARY KEY (chapter_id, version))
+outbox (như identity)
+```
+Giai đoạn 2+ thêm `chapter_drafts`, `draft_rounds`, `draft_shares`, `chapter_tasks`, `ws_activity`.
+
+**API nội bộ (backend → workspace, `X-Internal-Auth`):** `POST /internal/chapters` (tạo, v1) · `POST /internal/chapters/{id}/revisions`
+(sửa; `expected_version` để chống ghi đè) · `POST /internal/chapters/{id}/delete` · `GET /internal/chapters/{id}` (bản hiện tại).
+Mỗi lần trả về revision đầy đủ để backend **áp dụng ngay** vào bản đọc (trang chuyển hướng sang chương mới không phải chờ sự kiện).
+**API công khai `/api/ws/*`** (header ký, như backend): `GET chapters/{id}/revisions` · `GET chapters/{id}/revisions/{v}` ·
+`GET chapters/{id}/compare?from=&to=` (diff theo hash, LCS) · `POST chapters/{id}/rewind {to_version}` (người giữ truyện; tạo vN+1).
+
+**Sự kiện** `workspace.revision.merged {chapter_id, story_id, version, deleted, meta, blocks[] (đầy đủ), author_id, source}` → backend áp dụng
+nếu `version` mới hơn `chapters.ws_version` (idempotent, cùng hàm với áp dụng đồng bộ). Xóa chương: backend xóa dòng đọc nhưng **giữ bình luận**
+(khôi phục = phiên bản mới, cùng UUID, bình luận gắn lại). Thông báo người theo dõi chỉ khi chương mới (v1, nguồn `create`).
+
+**Chuyển một lần:** `workspace import` đọc `GET backend /internal/chapters/export` (phân trang) → mỗi chương thành v1 (`source=import`), bỏ qua
+chương đã có head; chạy trong `migrate.sh`/`launch.py` như identity. Nháp cũ (`chapter_submissions` draft) giữ nguyên tới giai đoạn 2.
 
 ## Giai đoạn 1: lịch sử phiên bản bản chính
-- [ ] Migration: bảng đoạn + `chapter_revisions`; chuyển nội dung chương hiện có thành v1
-- [ ] Sửa chương (`PUT /chapters/:id`) tạo phiên bản mới thay vì ghi đè; xóa chương = phiên bản "đã xóa"
-- [ ] API + giao diện: xem lịch sử, so sánh hai phiên bản, rewind (người giữ truyện)
-- [ ] Test: diff/rewind; README
+- [x] Service `services/workspace` (Go) + `ws_db` (db-init) + migration nhúng + outbox; Dockerfile, compose, CI
+- [x] Băm đoạn (JSON chuẩn hóa) + diff LCS theo hash (test)
+- [x] API nội bộ tạo/sửa/xóa + import; API công khai lịch sử/so sánh/rewind (quyền qua backend `/internal/permissions`)
+- [x] Backend: `/internal/permissions`, `/internal/chapters/export`; `submitChapter` (đăng, không phải nháp), `updateChapter`, `deleteChapter` gọi workspace
+      rồi áp dụng revision; consumer `workspace.revision.merged`; migration `chapters.ws_version`
+- [x] Gateway `/api/ws/*`; frontend: trang lịch sử chương (danh sách, so sánh hai bản, khôi phục) + nút ở trang đọc cho người giữ truyện
+- [x] Chuyển thật + thử (`scripts/workspace-smoke.py` 20/20)
+- [x] README (mục Service workspace), Branches
+- [x] Chủ dự án duyệt giao diện trang lịch sử (2026-10-10) → commit, push, PR
 
 ## Giai đoạn 2: workspace cá nhân + nháp riêng + pull
 - [ ] Vai trò người giữ truyện / người đóng góp (hàm quyền dùng chung)

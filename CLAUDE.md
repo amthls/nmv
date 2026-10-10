@@ -1,6 +1,6 @@
 # NovelHub: hướng dẫn làm việc
 
-Web đọc light novel + manga + Fandom (Next.js 15 / Express / Postgres, chạy bằng Docker Compose).
+Web đọc light novel + manga + Fandom (Next.js 15 / Express / Postgres + service Go `identity`, chạy bằng Docker Compose).
 **README.md là nguồn sự thật** về kiến trúc, route, bảng, biến môi trường, hạn chế. Sửa code thì sửa README cho khớp.
 
 **Bắt buộc: nạp skill `ponytail` (plugin ponytail) trước khi viết, sửa hay review code** trong dự án này
@@ -40,7 +40,8 @@ Plan nằm trong nhánh của việc đó và được commit cùng code.
 | Typecheck | `cd backend && npx tsc --noEmit`, `cd frontend && npx tsc --noEmit` |
 | Migration | Thêm `sql/migrations/NNN_ten.sql` (idempotent), **chép nội dung vào `sql/database.sql`**, chạy `sh scripts/migrate.sh` |
 | nginx đổi cấu hình | `docker exec novel_gateway nginx -s reload` (file được mount, `up -d` không tự nạp) |
-| Token thử API | `docker exec novel_backend node -e "console.log(require('jsonwebtoken').sign({id:'<uuid>'},process.env.JWT_SECRET,{expiresIn:'10m'}))"` |
+| Gọi API như một người dùng | Qua gateway: đăng nhập `POST /api/identity/login` lưu cookie (`curl -c jar -b jar`), request ghi gửi kèm `X-CSRF-Token: <cookie nh_csrf>`. Thẳng backend (127.0.0.1:5000): header ký `docker exec novel_backend node -e "console.log(require('./dist/middlewares/auth.middleware').signIdentityHeaders('<uuid>',['admin']))"` (hạn 2 phút) |
+| Service Go (identity) | `cd services/identity && gofmt -l . && go vet ./... && go test ./...`; thêm `IDENTITY_TEST_DATABASE_URL=postgres://…/identity_test` để chạy test tích hợp (xóa sạch DB đó) |
 
 ## Bẫy đã biết
 
@@ -48,6 +49,8 @@ Plan nằm trong nhánh của việc đó và được commit cùng code.
 - Lỗi 5xx đã được che ở production (`maskServerErrors` trong `backend/src/middlewares/security.ts`), không cần che lại từng handler.
 - PgBouncer chế độ transaction: không dùng advisory lock theo phiên, `SET` không `LOCAL`, `LISTEN`, nhiều câu SQL có tham số trong một query.
 - Trong container Postgres, kết nối `127.0.0.1` được tin không cần mật khẩu: thử mật khẩu phải từ container khác trên mạng `nmv_data`.
-- Express 4 không tự bắt lỗi của handler async: bọc `try/catch` hoặc dùng `wrap()` như các route `/auth/*`.
+- Express 4 không tự bắt lỗi của handler async: bọc `try/catch` hoặc `.catch(next)` (như route `/internal/...` trong `server.ts`).
 - Trên Windows (Git Bash) script nhiều lớp thoát ký tự dễ hỏng: dùng Edit hoặc file script riêng; file `*.sh` luôn LF (`.gitattributes`).
 - Chọn phiên bản thư viện đã phát hành ít nhất 2 tuần.
+- Đăng nhập ở service identity (Go, `identity_db` riêng): backend chỉ tin `X-User-*` có chữ ký `AUTH_HEADER_KEY`; bảng `users`/`user_roles` của backend là **bản sao** (sửa vai trò/khóa/xóa phải qua identity, không UPDATE thẳng). Xem `Plan/identity.md`.
+- Request ghi từ frontend phải qua `authFetch`/`apiFetch` (`src/lib/session.ts`): `fetch` thô thiếu header CSRF nên bị gateway trả 403 khi đã đăng nhập.

@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "identity.user.v1.json",
+  "title": "identity.user.created | identity.user.updated | identity.user.deleted",
+  "description": "Public snapshot of an account (never the email or password). version = users.version in identity_db.",
+  "allOf": [{ "$ref": "envelope.v1.json" }],
+  "properties": {
+    "type": { "enum": ["identity.user.created", "identity.user.updated", "identity.user.deleted"] },
+    "data": {
+      "type": "object",
+      "required": ["id", "version", "username", "is_banned", "roles", "created_at"],
+      "not": { "anyOf": [{ "required": ["email"] }, { "required": ["password_hash"] }] },
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "version": { "type": "integer", "minimum": 1 },
+        "username": { "type": "string", "minLength": 1, "maxLength": 50 },
+        "display_name": { "type": ["string", "null"] },
+        "email_verified": { "type": "boolean" },
+        "is_banned": { "type": "boolean" },
+        "ban_reason": { "type": ["string", "null"] },
+        "banned_at": { "type": ["string", "null"] },
+        "banned_by": { "type": ["string", "null"] },
+        "deleted_at": { "type": ["string", "null"] },
+        "deleted_by": { "type": ["string", "null"] },
+        "created_at": { "type": "string" },
+        "purge_content": { "type": "boolean", "description": "only on identity.user.deleted: also hide their posts and comments" },
+        "roles": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["role", "is_visible"],
+            "properties": {
+              "role": { "enum": ["admin", "mod", "translator", "author", "reader"] },
+              "is_visible": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

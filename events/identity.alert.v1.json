@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "identity.alert.v1.json",
+  "title": "identity.alert",
+  "description": "Something an admin must see (failed account mail, login burst). The backend turns it into a site notification for every admin, once per key.",
+  "allOf": [{ "$ref": "envelope.v1.json" }],
+  "properties": {
+    "type": { "const": "identity.alert" },
+    "data": {
+      "type": "object",
+      "required": ["key", "title", "message"],
+      "properties": {
+        "key": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "message": { "type": "string" }
+      }
+    }
+  }
+}
