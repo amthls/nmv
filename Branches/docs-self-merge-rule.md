@@ -3,7 +3,7 @@
 - **Mục tiêu:** Quy trình git: Claude tự merge PR vào main, chủ dự án không cần duyệt
 - **Tạo từ:** `origin/main` @ fd1b38d, ngày 2026-10-10
 - **Trạng thái:** xong, tự merge
-- **PR:** (điền khi mở)
+- **PR:** https://github.com/amthls/nmv/pull/58
 - **Plan:** không
 
 ## Thay đổi
