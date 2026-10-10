@@ -105,6 +105,17 @@ export async function readThroughUser(id: string): Promise<void> {
   }
 }
 
+/** Site notification to every admin, once per key (the site has no external alerting). */
+export async function notifyAdmins(db: { query: (text: string, params?: any[]) => Promise<any> }, key: string, title: string, message: string) {
+  await db.query(
+    `INSERT INTO notifications (user_id, type, title, message, dedupe_key)
+     SELECT DISTINCT user_id, 'system'::notification_type, $2, $3, $1 || ':' || user_id
+     FROM user_roles WHERE role = 'admin'
+     ON CONFLICT DO NOTHING`,
+    [String(key), String(title).slice(0, 300), String(message)]
+  );
+}
+
 /** Apply one event exactly once. Throws to have it retried. */
 export async function handleIdentityEvent(evt: any): Promise<string> {
   if (!evt?.event_id || typeof evt.type !== 'string' || typeof evt.data !== 'object') throw new Error('malformed event');
@@ -127,13 +138,7 @@ export async function handleIdentityEvent(evt: any): Promise<string> {
       }
     } else if (evt.type === 'identity.alert') {
       const { key, title, message } = evt.data;
-      await client.query(
-        `INSERT INTO notifications (user_id, type, title, message, dedupe_key)
-         SELECT DISTINCT user_id, 'system'::notification_type, $2, $3, 'identity:' || $1 || ':' || user_id
-         FROM user_roles WHERE role = 'admin'
-         ON CONFLICT DO NOTHING`,
-        [String(key), String(title).slice(0, 300), String(message)]
-      );
+      await notifyAdmins(client, `identity:${key}`, title, message);
       outcome = 'applied';
     }
     await client.query('COMMIT');

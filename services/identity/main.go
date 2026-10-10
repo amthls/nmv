@@ -2,6 +2,7 @@
 //
 //	identity                 serve HTTP on :PORT (default 8080)
 //	identity seed-demo       add the sample accounts (password123), only into an empty identity_db
+//	identity republish [id]  re-send identity.user.* for every user (or one) to rebuild a copy
 //	identity healthcheck     exit 0 when the local server answers /health (Docker healthcheck)
 package main
 
@@ -10,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -49,6 +51,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	if cmd == "republish" {
+		if err := republish(ctx, db, strings.Join(os.Args[2:], "")); err != nil {
+			logError(ctx, "republish: "+err.Error())
+			os.Exit(1)
+		}
+		return
+	}
 	if cmd == "seed-demo" {
 		if err := seedDemo(ctx, db); err != nil {
 			logError(ctx, "seed-demo: "+err.Error())
@@ -125,6 +134,7 @@ func (s *server) routes() http.Handler {
 
 	m.HandleFunc("GET /internal/verify", s.handleVerify)
 	m.HandleFunc("GET /internal/users/{id}", s.internal(s.handleInternalUser))
+	m.HandleFunc("GET /internal/stats", s.internal(s.handleStats))
 	m.HandleFunc("POST /internal/users/{id}/roles", s.internal(s.handleInternalGrant))
 	return m
 }

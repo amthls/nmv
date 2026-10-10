@@ -6,6 +6,7 @@ import { scheduleRecommender } from './services/recommender/train';
 import { flushViews } from './services/viewCounter';
 import { startIdentityConsumer } from './services/identitySync';
 import { startWorkspaceConsumer } from './services/workspaceSync';
+import { scheduleReconcile } from './services/reconcile';
 
 /**
  * Queue worker: `node dist/worker.js` (its own container in docker-compose, same image as the API).
@@ -142,6 +143,9 @@ async function main() {
 
   // Recommendation models: retrained on a timer in this process, not in the API
   if (process.env.REC_TRAINING !== 'off') scheduleRecommender();
+
+  // Copies of identity/workspace data and the event pipeline checked every 6 hours (admin notification if off)
+  scheduleReconcile();
 
   console.log(`[Worker] consuming (prefetch ${PREFETCH}, batch ${BATCH_MAX}/${FLUSH_MS}ms, heavy ${MAX_HEAVY})`);
 

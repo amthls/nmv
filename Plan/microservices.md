@@ -462,48 +462,57 @@ Bẫy (giai đoạn A):
 - Git Bash đổi đường dẫn trong `-v host:/ctr` → `MSYS_NO_PATHCONV=1` + `pwd -W`.
 
 ### Giai đoạn A: nền móng (chưa tách service nào)
-- [ ] Cấu trúc repo: `services/<tên>/` cho service mới, thư viện dùng chung TS (`packages/shared`: outbox, consumer RabbitMQ, đọc header xác thực, log)
-- [ ] Postgres: tạo các database theo service + user riêng mỗi database; PgBouncer cấu hình pool theo database
-- [ ] RabbitMQ: exchange `novelhub.events` (topic), quy ước tên sự kiện, dead-letter queue
-- [ ] Bảng `outbox` + tiến trình đẩy (xác nhận của RabbitMQ) và consumer idempotent (bảng `inbox`, so `version`, ack sau commit,
-      thử lại chờ tăng dần, hàng cách ly) trong thư viện dùng chung TS + Go (+ bản nhận của Python)
-- [ ] JSON Schema cho mọi sự kiện + test hợp đồng trong CI; quy tắc đổi schema (chỉ thêm trường, phá vỡ → `v2`)
-- [ ] Công cụ `republish` (phát lại sự kiện theo loại/id) và API xuất nội bộ phân trang để dựng lại bản sao
-- [ ] Job đối soát đêm + cảnh báo (outbox dồn, hàng cách ly, consumer chậm, lệch dữ liệu)
+- [x] Cấu trúc repo: `services/<tên>/` cho service mới. ~~Thư viện dùng chung `packages/shared`~~: **không làm** (2026-10-10) — mỗi service Go
+      tự có outbox/log/header (~100 dòng, chép từ identity), consumer TS ở `backend/src/services/eventConsumer.ts`; gom lại khi có service thứ 3 cùng ngôn ngữ cần
+- [x] Postgres: database + user riêng mỗi service (`db-init`, `postgres/provision.sh`). PgBouncer: service Go nối thẳng Postgres (pgxpool có giới hạn);
+      thêm pool theo database khi chạy nhiều bản một service
+- [x] RabbitMQ: exchange `novelhub.events` (topic), tên `<service>.<thực thể>.<việc>`, hàng `.retry` + `.dlq` mỗi consumer
+- [x] Bảng `outbox` + tiến trình đẩy (xác nhận của RabbitMQ) và consumer idempotent (bảng `inbox`, so `version`, ack sau commit,
+      thử lại chờ tăng dần, hàng cách ly): identity, workspace (Go), backend (TS: `processed_events`). Bản nhận Python làm cùng recommender
+- [x] JSON Schema cho mọi sự kiện (`events/`) + test hợp đồng trong CI (test Go của identity, workspace); quy tắc đổi schema ở README
+- [x] Công cụ `republish` (phát lại sự kiện theo loại/id) để dựng lại bản sao: `identity republish [user-id]` (ảnh chụp hiện tại,
+      **không** tăng version: bản sao thiếu/cũ thì nhận, đã đúng thì bỏ qua), `workspace republish [chapter-id]` (bản hiện tại).
+      ~~API xuất nội bộ phân trang~~: không cần, phát lại qua outbox đi đúng đường consumer vốn có.
+      `seed-demo` phát `identity.user.created` để bản cài mới cũng khớp. (Bẫy 2026-10-10: 212 tài khoản chuyển bằng `import-legacy`
+      chưa từng có sự kiện → bản sao `identity_version = 0`; chạy `identity republish` một lần.)
+- [x] Job đối soát (worker backend, 6 giờ/lần) + cảnh báo Admin (thông báo, 1 lần/ngày/loại): `GET /internal/stats` của identity và workspace
+      (số dòng + tổng version + outbox chưa gửi/lâu nhất) so với bản sao (`users.identity_version > 0`, `ws_chapter_versions`);
+      hàng `.dlq` có tin; outbox chưa gửi quá 10 phút. Lệch → cảnh báo kèm lệnh `republish`
 - [x] Log JSON + che dữ liệu nhạy cảm cho backend/worker hiện có (`backend/src/utils/logger.ts`, AsyncLocalStorage giữ `request_id`) và gateway
-- [ ] Log JSON + che dữ liệu cho Go/Python (làm cùng service Go đầu tiên); `request_id` qua HTTP nội bộ và metadata sự kiện
+- [x] Log JSON + che dữ liệu cho Go (identity, workspace); `request_id` qua HTTP nội bộ và metadata sự kiện. Python: làm cùng recommender
 - [x] ~~VictoriaLogs + VictoriaMetrics + vmalert, cảnh báo Telegram + Discord, bản đồ phụ thuộc~~: **bỏ** (chủ dự án, 2026-10-10)
-- [ ] `/health` + `/ready` mọi service (làm cùng từng service); trang lỗi 502/503/504 riêng ở gateway
+- [x] `/health` + `/ready` mọi service (identity, workspace có; service mới làm cùng); trang lỗi 502/503/504 riêng ở gateway (HTML cho trang, JSON cho `/api/`)
 - [x] Gateway: `request_id` (sinh mới, ghi đè giá trị client, trả về trình duyệt, là mã lỗi 5xx người dùng thấy)
-- [ ] Gateway: định tuyến theo tiền tố, `auth_request` (làm cùng identity)
-- [ ] CI build/test theo từng thư mục service; `launch.py` + `scripts/migrate.sh` chạy migration cho mọi database
+- [x] Gateway: định tuyến theo tiền tố, `auth_request` (làm cùng identity)
+- [x] CI build/test theo từng thư mục service; migration mỗi service nhúng trong service (chạy lúc khởi động)
 - [x] Đo tải hiện tại: `scripts/bench.mjs`. Mốc 2026-10-10 (máy dev, có cache, ~15 req/s): `/stories/trending` p50 3 ms; chi tiết truyện API 7 ms;
       trang truyện 9 ms (p95 10); đọc chương API 7 ms; trang chương 9 ms (p95 12)
 - [x] Bảo mật nền (phần làm được ngay): gateway xóa `X-User-*` client gửi, chặn `/internal`, CSP/HSTS (đã có); mật khẩu Elasticsearch;
       cổng gateway mặc định `127.0.0.1` (`GATEWAY_BIND`); sửa lỗi nginx: `location /` và `/socket.io/` mất `X-Forwarded-For`/`Host`
 - [ ] Khóa ký nội bộ riêng từng service (cùng service đầu tiên); luật Cloudflare (đăng nhập, bot, chống cào: cần tài khoản Cloudflare của chủ dự án)
-- [ ] Thư viện dùng chung: thời gian chờ + ngắt mạch cho lời gọi nội bộ, giới hạn request đồng thời
+- [x] Thời gian chờ cho mọi lời gọi nội bộ (đã có: 3–10 giây ở backend, identity, workspace). ~~Ngắt mạch, giới hạn đồng thời~~: chưa cần
+      ở tải hiện tại (timeout đã chặn treo); làm khi đo tải thấy cần
 
 ### Giai đoạn B: identity
-- [ ] Service identity + `identity_db`; chuyển bảng users, user_roles, token/cài đặt
-- [ ] `/internal/verify` + gateway `auth_request` (cache ngắn); backend cũ đọc header thay vì tự verify JWT
-- [ ] Sự kiện `user.*`; bảng `user_profiles` ở backend cũ cập nhật từ sự kiện (bỏ JOIN users)
-- [ ] Chuyển khóa/xóa tài khoản, phân quyền site, gửi mail
-- [ ] Token mới: truy cập 15 phút (chỉ mã người dùng) + làm mới 30 ngày cookie `httpOnly` xoay vòng, phát hiện dùng lại → thu hồi chuỗi;
+- [x] Service identity + `identity_db`; chuyển bảng users, user_roles, token/cài đặt
+- [x] `/internal/verify` + gateway `auth_request` (cache ngắn); backend cũ đọc header thay vì tự verify JWT
+- [x] Sự kiện `user.*`; bảng `users` ở backend cũ thành bản sao cập nhật từ sự kiện (giữ JOIN, xem `Plan/identity.md`)
+- [x] Chuyển khóa/xóa tài khoản, phân quyền site, gửi mail
+- [x] Token mới: truy cập 15 phút (chỉ mã người dùng) + làm mới 30 ngày cookie `httpOnly` xoay vòng, phát hiện dùng lại → thu hồi chuỗi;
       frontend bỏ `localStorage`, tự làm mới token
-- [ ] Mật khẩu argon2id (đổi dần khi người dùng đăng nhập), chặn mật khẩu yếu/đã lộ, khóa tạm khi sai nhiều; nhập lại mật khẩu cho thao tác nguy hiểm
-- [ ] Nhật ký bảo mật (90 ngày) + cảnh báo Admin; nút "thu hồi mọi phiên" toàn hệ thống
-- [ ] Bảng `sessions` + Redis `sess:`/`revoked:`; cookie `nh_access`/`nh_refresh`/`nh_csrf`/`nh_vid`; chống CSRF cho request ghi;
+- [x] Mật khẩu argon2id (đổi dần khi người dùng đăng nhập), chặn mật khẩu yếu/đã lộ, khóa tạm khi sai nhiều; nhập lại mật khẩu cho thao tác nguy hiểm
+- [x] Nhật ký bảo mật (90 ngày) + cảnh báo Admin; nút "thu hồi mọi phiên" toàn hệ thống
+- [x] Bảng `sessions` + Redis `sess:`/`revoked:`; cookie `nh_access`/`nh_refresh`/`nh_csrf`/`nh_vid`; chống CSRF cho request ghi;
       trang "Thiết bị đang đăng nhập"; cài đặt đọc đồng bộ lên DB; gộp lịch sử khách vào tài khoản khi đăng nhập
-- [ ] Test bảo mật trước khi chuyển: đăng nhập, khóa, thu hồi phiên, đặt lại mật khẩu, giả header, đổi id trên URL
+- [x] Test bảo mật trước khi chuyển: đăng nhập, khóa, thu hồi phiên, đặt lại mật khẩu, giả header, đổi id trên URL
 - [ ] Xóa/đổi mật khẩu tài khoản mẫu trước khi chạy thật
 - [ ] Mail tài khoản: `mail_outbox` + tiến trình `identity-mail` (thử lại, cảnh báo), mail "mật khẩu vừa đổi", luồng đổi email,
       hủy token cũ, giới hạn mail/ngày/email, Turnstile (đăng ký, quên mật khẩu), xóa token khỏi URL + `no-referrer` + không log query
 - [ ] (Khi công khai) chặn chức năng với tài khoản chưa xác thực; nhắc/dọn tài khoản không xác thực; xem lại nhà cung cấp mail
 
 ### Giai đoạn C: workspace (Go), làm theo `Plan/chapter-workspace.md`
-- [ ] Backend cũ (đang đóng vai catalog) mở `/internal/permissions` và nhận `revision.merged` để dựng bản đọc
-- [ ] Các giai đoạn 1–4 của plan workspace; chuyển một lần, tắt đường đăng/sửa chương cũ
+- [x] Backend cũ (đang đóng vai catalog) mở `/internal/permissions` và nhận `revision.merged` để dựng bản đọc
+- [x] Các giai đoạn 1–4 của plan workspace; chuyển một lần, tắt đường đăng/sửa chương cũ
 
 ### Giai đoạn D: media
 - [ ] Upload, đổi kích thước ảnh, xuất EPUB/PDF (export-worker hiện có chuyển sang đây); gateway định tuyến `/uploads`, `/api/media`
@@ -520,7 +529,7 @@ Bẫy (giai đoạn A):
 - [ ] Gộp thông báo cùng loại; bản sao người theo dõi; thông báo toàn site 1 dòng; dọn đã đọc 30 ngày / chưa đọc 60 ngày
 - [ ] Bảng `notifications` mới (category, type chuỗi, actors, data ảnh chụp, group_key, seen/read); chuyển dữ liệu cũ từ enum
 - [ ] Danh mục loại thông báo + danh sách không tắt được; chuông (chưa xem/chưa đọc, tab), trang `/thong-bao`, cài đặt nhóm × kênh
-- [ ] (Sau, cùng workspace giai đoạn 4) đính kèm bản nháp trong tin nhắn
+- [x] (Sau, cùng workspace giai đoạn 4) đính kèm bản nháp trong tin nhắn (thẻ nháp, migration 024)
 - [ ] Thông báo chương mới: lấy danh sách người theo dõi từ library (tạm thời từ backend cũ)
 
 ### Giai đoạn F: community

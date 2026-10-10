@@ -319,6 +319,14 @@ func TestSeedDemoOnlyIntoEmptyDB(t *testing.T) {
 	if n != len(demoAccounts)-1 {
 		t.Fatalf("seed-demo re-added accounts into a non-empty database: %d", n)
 	}
+	// Stats for the backend's reconcile job: 11 users, each at version 2 (insert + created event)
+	rec := httptest.NewRecorder()
+	h.s.handleStats(rec, httptest.NewRequest("GET", "/internal/stats", nil))
+	var stats struct{ Data map[string]float64 }
+	json.Unmarshal(rec.Body.Bytes(), &stats)
+	if stats.Data["users"] != 11 || stats.Data["version_sum"] != 22 || stats.Data["outbox_pending"] != 12 {
+		t.Fatalf("stats: %s", rec.Body.String())
+	}
 }
 
 func TestForgotAndReset(t *testing.T) {
@@ -351,6 +359,9 @@ func TestEventContracts(t *testing.T) {
 	admin.want(200, "POST", "/users/"+id+"/ban", map[string]any{"reason": "spam", "password": testPW}, true)
 	admin.want(200, "DELETE", "/users/"+id, map[string]any{"password": testPW}, true)
 	if err := h.s.alert(context.Background(), "test", "Tiêu đề", "Nội dung"); err != nil {
+		t.Fatal(err)
+	}
+	if err := republish(context.Background(), h.s.db, ""); err != nil { // re-sent snapshots, the deleted user's included
 		t.Fatal(err)
 	}
 

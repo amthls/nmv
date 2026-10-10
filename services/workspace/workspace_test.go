@@ -313,6 +313,15 @@ func TestRevisionLifecycle(t *testing.T) {
 	h.s.perms = &permCache{m: map[string]permEntry{}}
 	h.want(409, "POST", "/chapters/"+id+"/rewind", h.keeper, false, map[string]any{"to_version": 1})
 
+	// Stats for the backend's reconcile job; republish re-sends the current version (one more event, same schema)
+	stats := h.want(200, "GET", "/internal/stats", "", true, nil)
+	if stats["chapters"].(float64) != 2 || stats["version_sum"].(float64) != 5+2 {
+		t.Fatalf("stats: %v", stats)
+	}
+	if err := republish(context.Background(), h.s.db, id); err != nil {
+		t.Fatal(err)
+	}
+
 	// Every event matches its schema
 	comp := jsonschema.NewCompiler()
 	comp.AssertFormat()
@@ -332,8 +341,8 @@ func TestRevisionLifecycle(t *testing.T) {
 		}
 		n++
 	}
-	if n != 7 { // first chapter: create, edit, rewind, delete, restore; second: create, delete
-		t.Fatalf("events: %d, want 7", n)
+	if n != 8 { // first chapter: create, edit, rewind, delete, restore, republish; second: create, delete
+		t.Fatalf("events: %d, want 8", n)
 	}
 }
 

@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
@@ -124,4 +126,50 @@ func (s *server) publishBatch(ctx context.Context, ch *amqp.Channel) (int, error
 		return err
 	})
 	return n, err
+}
+
+// republish queues workspace.revision.merged with the current version of one chapter (id) or all of them, so a
+// missing or drifted reading copy is rebuilt; the backend ignores versions it already has.
+func republish(ctx context.Context, db *pgxpool.Pool, id string) error {
+	rows, err := db.Query(ctx, `SELECT chapter_id::text, current_version FROM chapter_heads WHERE $1 = '' OR chapter_id::text = $1 ORDER BY chapter_id`, id)
+	if err != nil {
+		return err
+	}
+	type headRow struct {
+		ID      string
+		Version int
+	}
+	heads, err := pgx.CollectRows(rows, pgx.RowToStructByPos[headRow])
+	if err != nil {
+		return err
+	}
+	for _, h := range heads {
+		err := pgx.BeginFunc(ctx, db, func(tx pgx.Tx) error {
+			rev, _, err := loadRevision(ctx, tx, h.ID, h.Version)
+			if err != nil {
+				return err
+			}
+			return enqueueEvent(ctx, tx, "workspace.revision.merged", rev.Version, rev)
+		})
+		if err != nil {
+			return fmt.Errorf("chapter %s: %w", h.ID, err)
+		}
+	}
+	logInfo(ctx, fmt.Sprintf("republish: %d chapter events queued", len(heads)))
+	return nil
+}
+
+// GET /internal/stats: totals the backend's reconcile job compares with ws_chapter_versions, and the outbox backlog.
+func (s *server) handleStats(w http.ResponseWriter, r *http.Request) {
+	var chapters, versionSum, pending int64
+	var oldest float64
+	err := s.db.QueryRow(r.Context(), `SELECT (SELECT count(*) FROM chapter_heads), (SELECT COALESCE(sum(current_version), 0) FROM chapter_heads),
+		(SELECT count(*) FROM outbox WHERE published_at IS NULL),
+		(SELECT COALESCE(EXTRACT(EPOCH FROM NOW() - min(created_at)), 0) FROM outbox WHERE published_at IS NULL)`).
+		Scan(&chapters, &versionSum, &pending, &oldest)
+	if err != nil {
+		fail(w, 500, err.Error())
+		return
+	}
+	ok(w, map[string]any{"chapters": chapters, "version_sum": versionSum, "outbox_pending": pending, "outbox_oldest_seconds": int64(oldest)})
 }
