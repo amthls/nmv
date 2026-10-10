@@ -183,16 +183,12 @@ func (s *server) handleProposals(w http.ResponseWriter, r *http.Request) {
 	list := []item{}
 	for rows.Next() {
 		var it item
-		it.draft = &draft{}
-		var meta []byte
-		var hashes []string
-		d := it.draft
-		if err := rows.Scan(&d.ID, &d.OwnerID, &d.OwnerName, &d.StoryID, &d.ChapterID, &d.BaseVersion, &meta, &hashes, &d.Status, &d.Version,
-			&d.PublishedVersion, &d.CreatedAt, &d.UpdatedAt, &d.CurrentVersion, &d.ChapterDeleted, &d.LastRound, &it.Note, &it.SubmittedAt); err != nil {
+		d, _, err := scanDraft(rows, &it.Note, &it.SubmittedAt)
+		if err != nil {
 			internalError(w, r, err)
 			return
 		}
-		json.Unmarshal(meta, &d.Meta)
+		it.draft = d
 		list = append(list, it)
 	}
 	if err := rows.Err(); err != nil {

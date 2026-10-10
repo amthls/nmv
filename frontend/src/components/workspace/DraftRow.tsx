@@ -23,12 +23,14 @@ export function DraftRow({ d, storyTitle }: { d: any; storyTitle?: string }) {
         <div className="text-sm font-bold text-white truncate">{draftLabel(d)}</div>
         <div className="text-[11px] text-gray-400 flex flex-wrap gap-x-2">
           {storyTitle && <span className="text-brand-300">{storyTitle}</span>}
-          <span>{d.chapter_id ? `sửa chương đã đăng (từ phiên bản ${d.base_version})` : 'chương mới'}</span>
+          <span>{d.copied_from ? 'bản sao để sửa giúp' : d.chapter_id ? `sửa chương đã đăng (từ phiên bản ${d.base_version})` : 'chương mới'}</span>
           <span>· {d.block_count} đoạn</span>
           <span>· lưu {new Date(d.updated_at).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}</span>
         </div>
       </div>
-      {d.status === 'submitted' ? (
+      {d.status === 'offered' ? (
+        <span className="shrink-0 text-[10px] font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 rounded-full px-2 py-0.5">Đã gửi cho chủ nháp</span>
+      ) : d.status === 'submitted' ? (
         <span className="shrink-0 text-[10px] font-bold text-sky-300 bg-sky-500/10 border border-sky-500/30 rounded-full px-2 py-0.5">Chờ duyệt</span>
       ) : d.chapter_deleted ? (
         <span className="shrink-0 text-[10px] font-bold text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded-full px-2 py-0.5">Chương đã xóa</span>

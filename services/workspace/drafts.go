@@ -39,6 +39,13 @@ type draft struct {
 	PublishedVersion *int        `json:"published_version"`
 	LastRound        int         `json:"last_round"`          // proposals sent so far (stage 3)
 	CanMerge         *bool       `json:"can_merge,omitempty"` // GET /drafts/{id}: the caller keeps the story (publishes directly)
+	CopiedFrom       *string     `json:"copied_from"`         // a helper's copy of another draft (stage 4)
+	LockUser         *string     `json:"lock_user"`           // who is editing right now (until lock_until)
+	LockName         *string     `json:"lock_name"`
+	LockUntil        *time.Time  `json:"lock_until"`
+	Access           string      `json:"access,omitempty"` // GET /drafts/{id}: owner | editor | viewer
+	Shares           any         `json:"shares,omitempty"` // owner only: who it is shared with
+	Offers           any         `json:"offers,omitempty"` // owner only: helpers' copies sent back
 	CreatedAt        time.Time   `json:"created_at"`
 	UpdatedAt        time.Time   `json:"updated_at"`
 	// the official line now: a draft opened from an older version shows "the official version changed"
@@ -47,14 +54,17 @@ type draft struct {
 }
 
 const draftColumns = `d.id::text, d.owner_id::text, d.owner_name, d.story_id::text, d.chapter_id::text, d.base_version, d.meta, d.blocks,
-	d.status, d.version, d.published_version, d.created_at, d.updated_at, h.current_version, COALESCE(h.deleted, FALSE), d.last_round`
+	d.status, d.version, d.published_version, d.created_at, d.updated_at, h.current_version, COALESCE(h.deleted, FALSE), d.last_round,
+	d.copied_from::text, d.lock_user::text, d.lock_name, d.lock_until`
 
-func scanDraft(row pgx.Row) (*draft, []string, error) {
+// scanDraft reads draftColumns, then `extra` columns a query adds after them.
+func scanDraft(row pgx.Row, extra ...any) (*draft, []string, error) {
 	d := &draft{}
 	var meta []byte
 	var hashes []string
-	err := row.Scan(&d.ID, &d.OwnerID, &d.OwnerName, &d.StoryID, &d.ChapterID, &d.BaseVersion, &meta, &hashes,
-		&d.Status, &d.Version, &d.PublishedVersion, &d.CreatedAt, &d.UpdatedAt, &d.CurrentVersion, &d.ChapterDeleted, &d.LastRound)
+	err := row.Scan(append([]any{&d.ID, &d.OwnerID, &d.OwnerName, &d.StoryID, &d.ChapterID, &d.BaseVersion, &meta, &hashes,
+		&d.Status, &d.Version, &d.PublishedVersion, &d.CreatedAt, &d.UpdatedAt, &d.CurrentVersion, &d.ChapterDeleted, &d.LastRound,
+		&d.CopiedFrom, &d.LockUser, &d.LockName, &d.LockUntil}, extra...)...)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil, errNotFound
 	}
@@ -89,6 +99,7 @@ func openOwnDraft(ctx context.Context, tx pgx.Tx, id, user string) (*draft, []st
 }
 
 func (s *server) draftError(w http.ResponseWriter, r *http.Request, err error) {
+	var locked *lockedError
 	switch {
 	case errors.Is(err, errNotFound):
 		fail(w, 404, "Bản nháp không tồn tại.")
@@ -106,6 +117,10 @@ func (s *server) draftError(w http.ResponseWriter, r *http.Request, err error) {
 		fail(w, 409, "Bản chính thức đã thay đổi từ khi bạn mở nháp. Hãy bấm \"Cập nhật theo bản chính\" trước khi đăng.")
 	case errors.Is(err, errDeleted):
 		fail(w, 409, "Chương này đã bị xóa khỏi bản chính thức.")
+	case errors.As(err, &locked):
+		fail(w, 409, locked.name+" đang sửa bản nháp này. Bạn chỉ xem được cho tới khi họ rời đi (khóa tự nhả sau 2 phút không gõ).")
+	case errors.Is(err, errAlreadyHasDraft):
+		fail(w, 409, "Người này đã có một bản nháp đang mở của chương này.")
 	case errors.Is(err, errTooMany):
 		fail(w, 409, "Bạn đang có 50 bản nháp đang mở. Hãy đăng hoặc bỏ bớt nháp cũ trước.")
 	default:
@@ -139,14 +154,14 @@ func (s *server) handleDraftCreate(w http.ResponseWriter, r *http.Request) {
 	status := 201
 	err := pgx.BeginFunc(ctx, s.db, func(tx pgx.Tx) error {
 		var open int
-		if err := tx.QueryRow(ctx, `SELECT count(*) FROM chapter_drafts WHERE owner_id = $1 AND status IN ('open', 'submitted')`, b.OwnerID).Scan(&open); err != nil {
+		if err := tx.QueryRow(ctx, `SELECT count(*) FROM chapter_drafts WHERE owner_id = $1 AND status IN ('open', 'submitted', 'offered')`, b.OwnerID).Scan(&open); err != nil {
 			return err
 		}
 		var meta chapterMeta
 		var hashes []string
 		var base *int
 		if b.ChapterID != nil {
-			err := tx.QueryRow(ctx, `SELECT id::text FROM chapter_drafts WHERE owner_id = $1 AND chapter_id = $2 AND status IN ('open', 'submitted')`, b.OwnerID, *b.ChapterID).Scan(&id)
+			err := tx.QueryRow(ctx, `SELECT id::text FROM chapter_drafts WHERE owner_id = $1 AND chapter_id = $2 AND status IN ('open', 'submitted') AND copied_from IS NULL`, b.OwnerID, *b.ChapterID).Scan(&id)
 			if err == nil {
 				status = 200
 				return nil
@@ -235,7 +250,7 @@ func (s *server) handleDraftSave(w http.ResponseWriter, r *http.Request) {
 	var version int
 	var updated time.Time
 	err := pgx.BeginFunc(ctx, s.db, func(tx pgx.Tx) error {
-		d, _, err := openOwnDraft(ctx, tx, id, b.OwnerID)
+		d, _, err := s.editableDraft(ctx, tx, id, b.OwnerID, b.OwnerName)
 		if err != nil {
 			return err
 		}
@@ -247,8 +262,11 @@ func (s *server) handleDraftSave(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 		meta, _ := json.Marshal(b.Meta)
-		return tx.QueryRow(ctx, `UPDATE chapter_drafts SET meta = $2, blocks = $3, version = version + 1, updated_at = NOW()
-			WHERE id = $1 RETURNING version, updated_at`, id, meta, hashes).Scan(&version, &updated)
+		if err := tx.QueryRow(ctx, `UPDATE chapter_drafts SET meta = $2, blocks = $3, version = version + 1, updated_at = NOW()
+			WHERE id = $1 RETURNING version, updated_at`, id, meta, hashes).Scan(&version, &updated); err != nil {
+			return err
+		}
+		return recordEdit(ctx, tx, id, version, b.OwnerID, b.OwnerName)
 	})
 	if err != nil {
 		s.draftError(w, r, err)
@@ -379,7 +397,7 @@ func (s *server) handleDraftList(w http.ResponseWriter, r *http.Request) {
 		story = ""
 	}
 	rows, err := s.db.Query(r.Context(), `SELECT `+draftColumns+` FROM chapter_drafts d LEFT JOIN chapter_heads h ON h.chapter_id = d.chapter_id
-		WHERE d.owner_id = $1 AND d.status IN ('open', 'submitted') AND ($2 = '' OR d.story_id::text = $2) ORDER BY d.updated_at DESC LIMIT 100`, user, story)
+		WHERE d.owner_id = $1 AND d.status IN ('open', 'submitted', 'offered') AND ($2 = '' OR d.story_id::text = $2) ORDER BY d.updated_at DESC LIMIT 100`, user, story)
 	if err != nil {
 		internalError(w, r, err)
 		return
@@ -427,34 +445,6 @@ func (s *server) draftOwner(w http.ResponseWriter, r *http.Request) (string, str
 		return "", "", false
 	}
 	return id, user, true
-}
-
-func (s *server) handleDraftGet(w http.ResponseWriter, r *http.Request) {
-	id, user, allowed := s.draftOwner(w, r)
-	if !allowed {
-		return
-	}
-	var d *draft
-	err := pgx.BeginFunc(r.Context(), s.db, func(tx pgx.Tx) error {
-		var hashes []string
-		var err error
-		if d, hashes, err = loadDraft(r.Context(), tx, id, false); err != nil {
-			return err
-		}
-		d.Blocks, err = loadBlocks(r.Context(), tx, hashes)
-		return err
-	})
-	if err != nil {
-		s.draftError(w, r, err)
-		return
-	}
-	p, err := s.permission(r.Context(), user, d.StoryID)
-	if err != nil {
-		internalError(w, r, err)
-		return
-	}
-	d.CanMerge = &p.Keeper
-	ok(w, d)
 }
 
 // DELETE /drafts/{id}: discard (kept in the database, no longer listed or editable).
@@ -515,15 +505,19 @@ func planPull(ctx context.Context, tx pgx.Tx, d *draft, ours []string) (*pullPla
 
 // GET /drafts/{id}/pull: what updating from the official version would do, with the data of every block involved.
 func (s *server) handlePullPreview(w http.ResponseWriter, r *http.Request) {
-	id, user, allowed := s.draftOwner(w, r)
+	acc, _, _, allowed := s.accessDraft(w, r, "owner", "editor")
 	if !allowed {
 		return
 	}
+	id := acc.ID
 	var out map[string]any
 	err := pgx.BeginFunc(r.Context(), s.db, func(tx pgx.Tx) error {
-		d, ours, err := openOwnDraft(r.Context(), tx, id, user)
+		d, ours, err := loadDraft(r.Context(), tx, id, false)
 		if err != nil {
 			return err
+		}
+		if d.Status != "open" {
+			return errDraftClosed
 		}
 		p, err := planPull(r.Context(), tx, d, ours)
 		if err != nil {
@@ -559,10 +553,11 @@ func (s *server) handlePullPreview(w http.ResponseWriter, r *http.Request) {
 
 // POST /drafts/{id}/pull {expected_version, to_version, choices}: apply the merge; the draft is then based on to_version.
 func (s *server) handlePullApply(w http.ResponseWriter, r *http.Request) {
-	id, user, allowed := s.draftOwner(w, r)
+	acc, user, p, allowed := s.accessDraft(w, r, "owner", "editor")
 	if !allowed {
 		return
 	}
+	id := acc.ID
 	var b struct {
 		ExpectedVersion int               `json:"expected_version"`
 		ToVersion       int               `json:"to_version"`
@@ -574,7 +569,7 @@ func (s *server) handlePullApply(w http.ResponseWriter, r *http.Request) {
 	}
 	var choiceErr error
 	err := pgx.BeginFunc(r.Context(), s.db, func(tx pgx.Tx) error {
-		d, ours, err := openOwnDraft(r.Context(), tx, id, user)
+		d, ours, err := s.editableDraft(r.Context(), tx, id, user, &p.Name)
 		if err != nil {
 			return err
 		}

@@ -19,6 +19,7 @@ export default function WorkspacePage() {
   const { isAuthenticated, isLoading, openAuthModal, authFetch } = useAuth();
   const [drafts, setDrafts] = useState<any[] | null>(null);
   const [stories, setStories] = useState<any[] | null>(null);
+  const [shared, setShared] = useState<any[]>([]); // drafts others shared with me (được nhờ)
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -26,6 +27,8 @@ export default function WorkspacePage() {
     authFetch(`${WS_URL}/drafts`).then((r) => r.json())
       .then((j) => (j.success ? setDrafts(j.data) : setError(j.message || 'Không tải được bản nháp.')))
       .catch((e) => setError(e.message));
+    authFetch(`${WS_URL}/drafts/shared`).then((r) => r.json())
+      .then((j) => j.success && setShared(j.data)).catch(() => {});
     authFetch(`${API_BASE_URL}/stories/manageable`).then((r) => r.json())
       .then((j) => setStories(j.success ? j.data || [] : []))
       .catch(() => setStories([]));
@@ -73,6 +76,12 @@ export default function WorkspacePage() {
             <p className="text-xs text-gray-500">Chưa có bản nháp nào. Bấm “Chương mới”, hoặc “Sửa” ở một chương đã đăng.</p>
           ) : (
             drafts.map((d) => <DraftRow key={d.id} d={d} storyTitle={storyTitle(d.story_id)} />)
+          )}
+          {shared.length > 0 && (
+            <>
+              <h2 className="pt-3 text-xs font-bold text-sky-300 uppercase tracking-wider">Được nhờ ({shared.length})</h2>
+              {shared.map((d) => <DraftRow key={d.id} d={d} storyTitle={`${storyTitle(d.story_id) || ''} · của ${d.owner_name || 'người khác'} · ${d.can_edit ? 'được sửa' : 'chỉ xem'}`} />)}
+            </>
           )}
         </section>
 

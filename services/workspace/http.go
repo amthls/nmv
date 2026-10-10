@@ -162,7 +162,7 @@ type permEntry struct {
 	exp time.Time
 }
 
-// permission asks the backend (cached 30 s per user+story).
+// permission asks the backend (cached 30 s per user+story when the user takes part).
 func (s *server) permission(ctx context.Context, user, story string) (perm, error) {
 	key := user + "|" + story
 	s.perms.mu.Lock()
@@ -188,12 +188,16 @@ func (s *server) permission(ctx context.Context, user, story string) (perm, erro
 	if res.StatusCode != 200 || json.NewDecoder(res.Body).Decode(&body) != nil {
 		return perm{}, fmt.Errorf("backend permissions: %s", res.Status)
 	}
-	s.perms.mu.Lock()
-	if len(s.perms.m) > 10000 {
-		s.perms.m = map[string]permEntry{}
+	// Only "takes part" is cached: someone just added to a story or group gets in at once, while a removal
+	// can lag up to 30 s.
+	if body.Data.Contributor {
+		s.perms.mu.Lock()
+		if len(s.perms.m) > 10000 {
+			s.perms.m = map[string]permEntry{}
+		}
+		s.perms.m[key] = permEntry{body.Data, s.now().Add(30 * time.Second)}
+		s.perms.mu.Unlock()
 	}
-	s.perms.m[key] = permEntry{body.Data, s.now().Add(30 * time.Second)}
-	s.perms.mu.Unlock()
 	return body.Data, nil
 }
 

@@ -14,7 +14,8 @@ export interface NotifyItem {
   type: 'system' | 'chapter_update' | 'comment_reply' | 'post_reaction' | 'post_comment' | 'group_join_request' | 'group_member_add';
   title: string;
   message: string | null;
-  referenceType: 'chapter' | 'post' | 'story' | 'group' | 'draft' | null; // draft: a workspace proposal (/ws/de-xuat/:id)
+  // draft: a workspace proposal (/ws/de-xuat/:id); draft_edit: a draft to open in the editor (/dang-chuong?draft=:id)
+  referenceType: 'chapter' | 'post' | 'story' | 'group' | 'draft' | 'draft_edit' | null;
   referenceId: string | null;
   senderId: string | null;
   dedupeKey: string;
@@ -265,20 +266,24 @@ export function groupJoinDecisionNotification(input: {
  * a return or a merge goes back to its author. Opens the review page /ws/de-xuat/:draftId.
  */
 export function draftNotifications(input: {
-  event: 'submitted' | 'returned' | 'merged'; draftId: string; round: number; recipientIds: string[]; actorId: string;
+  event: 'submitted' | 'returned' | 'merged' | 'offered' | 'transferred'; draftId: string; round: number; recipientIds: string[]; actorId: string;
   actorName: string; chapterLabel: string; storyTitle: string; note?: string | null;
 }): NotifyItem[] {
   const title = {
     submitted: `${input.actorName} gửi đề xuất ${input.chapterLabel} (${input.storyTitle})`,
     returned: `Đề xuất ${input.chapterLabel} được trả lại để sửa`,
     merged: `Đề xuất ${input.chapterLabel} đã được gộp vào bản chính`,
+    offered: `${input.actorName} gửi lại bản sửa giúp cho nháp ${input.chapterLabel}`,
+    transferred: `${input.actorName} giao cho bạn bản nháp ${input.chapterLabel} (${input.storyTitle})`,
   }[input.event];
   return [...new Set(input.recipientIds)]
     .filter((id) => id && id !== input.actorId)
     .map((userId) => ({
       userId, type: 'system' as const, title,
       message: input.note ? `"${snippet(input.note, 160)}"` : input.event === 'submitted' ? 'Mở để xem thay đổi và gộp hoặc trả lại.' : null,
-      referenceType: 'draft' as const, referenceId: input.draftId, senderId: input.actorId,
-      dedupeKey: `draft:${input.draftId}:${input.round}:${input.event}:${userId}`,
+      referenceType: input.event === 'offered' || input.event === 'transferred' ? 'draft_edit' as const : 'draft' as const,
+      referenceId: input.draftId, senderId: input.actorId,
+      // a proposal round is notified once; offers and hand-overs can repeat
+      dedupeKey: `draft:${input.draftId}:${input.event === 'offered' || input.event === 'transferred' ? Date.now() : input.round}:${input.event}:${userId}`,
     }));
 }

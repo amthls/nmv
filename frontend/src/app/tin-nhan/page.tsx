@@ -9,6 +9,7 @@ import {
 import SmartImage from '@/components/common/SmartImage';
 import PageLoader from '@/components/common/PageLoader';
 import LabelManager from '@/components/messages/LabelManager';
+import DraftCard from '@/components/workspace/DraftCard';
 import { DmLabel, labelStyle } from '@/components/messages/labels';
 import { useAuth } from '@/context/AuthContext';
 import { useRealtime } from '@/lib/realtime';
@@ -511,6 +512,7 @@ function MessagesInner() {
                         title={new Date(m.created_at).toLocaleString('vi-VN')}
                       >
                         {m.message}
+                        {m.draft_id && <DraftCard id={m.draft_id} mine={mine} />}
                         <div className={`text-[10px] mt-1 flex items-center gap-1 ${mine ? 'text-snow/70 justify-end' : 'text-gray-500'}`}>
                           {m.pinned_at && <Pin className="w-2.5 h-2.5 text-amber-300" aria-label="Đã ghim" />}
                           {new Date(m.created_at).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
