@@ -1,9 +1,9 @@
 # security/service-keys
 
 - **Mục tiêu:** Khóa riêng từng service: chữ ký X-User-* theo từng service nhận, khóa gọi nội bộ theo service nhận
-- **Tạo từ:** `origin/main` @ 855c92b, ngày 2026-10-10
+- **Tạo từ:** `origin/main` @ fa768bb (rebase), ngày 2026-10-10
 - **Trạng thái:** xong, chờ CI
-- **PR:** (chưa mở)
+- **PR:** https://github.com/amthls/nmv/pull/65
 - **Plan:** `Plan/microservices.md` (giai đoạn A, khóa ký nội bộ)
 
 ## Thay đổi
