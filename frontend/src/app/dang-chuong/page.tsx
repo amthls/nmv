@@ -836,6 +836,17 @@ function ChapterEditorContent() {
         </div>
       )}
 
+      {(draft?.others?.length > 0 || draft?.claims?.length > 0) && draft?.status === 'open' && (
+        <div className="px-4 py-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-100 text-xs font-semibold">
+          Chương này đã có người khác làm:{' '}
+          {[
+            ...(draft.others || []).map((o: any) => `${o.name || 'ai đó'} có nháp ${o.status === 'submitted' ? 'đang chờ duyệt' : 'đang mở'}`),
+            ...(draft.claims || []).map((t: any) => `${t.assignee_name || 'chưa ai'} ${t.status === 'claimed' ? 'đang nhận' : 'được mở'} việc ${t.kind}`),
+          ].join(' · ')}
+          . Hai bản cùng sửa thì người đăng sau phải cập nhật theo bản chính.
+        </div>
+      )}
+
       {draft?.access === 'viewer' && (
         <div className="p-4 rounded-2xl bg-sky-500/10 border border-sky-500/30 text-sky-100 text-xs font-semibold flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <span>Bản nháp của {draft.owner_name || 'người khác'} chia sẻ cho bạn (chỉ xem). Muốn sửa giúp: tạo bản sao của bạn, sửa rồi gửi lại cho họ.</span>

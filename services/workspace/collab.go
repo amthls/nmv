@@ -135,6 +135,27 @@ func (s *server) handleDraftGet(w http.ResponseWriter, r *http.Request) {
 		if d.Blocks, err = loadBlocks(ctx, tx, hashes); err != nil {
 			return err
 		}
+		// someone else already on this chapter? (other open drafts, a task someone took)
+		type other struct {
+			Name   *string `json:"name"`
+			Status string  `json:"status"`
+		}
+		rows, _ := tx.Query(ctx, `SELECT owner_name, status FROM chapter_drafts WHERE story_id = $1 AND id <> $2 AND copied_from IS NULL
+			AND status IN ('open', 'submitted') AND ((chapter_id IS NOT NULL AND chapter_id = $3) OR (chapter_id IS NULL AND $3::uuid IS NULL AND (meta->>'chapter_number')::numeric = $4))`,
+			d.StoryID, d.ID, d.ChapterID, d.Meta.ChapterNumber)
+		others, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (other, error) {
+			var x other
+			return x, row.Scan(&x.Name, &x.Status)
+		})
+		if err != nil {
+			return err
+		}
+		claims, err := queryTasks(ctx, tx, `story_id = $1 AND chapter_number = $2 AND status IN ('open', 'claimed') AND (draft_id IS NULL OR draft_id <> $3)`,
+			d.StoryID, d.Meta.ChapterNumber, d.ID)
+		if err != nil {
+			return err
+		}
+		d.Others, d.Claims = others, claims
 		if access != "owner" {
 			return nil
 		}
@@ -143,7 +164,7 @@ func (s *server) handleDraftGet(w http.ResponseWriter, r *http.Request) {
 			UserName *string `json:"user_name"`
 			CanEdit  bool    `json:"can_edit"`
 		}
-		rows, _ := tx.Query(ctx, `SELECT user_id::text, user_name, can_edit FROM draft_shares WHERE draft_id = $1 ORDER BY created_at`, d.ID)
+		rows, _ = tx.Query(ctx, `SELECT user_id::text, user_name, can_edit FROM draft_shares WHERE draft_id = $1 ORDER BY created_at`, d.ID)
 		shares, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (share, error) {
 			var x share
 			return x, row.Scan(&x.UserID, &x.UserName, &x.CanEdit)

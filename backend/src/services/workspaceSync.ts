@@ -2,6 +2,7 @@ import { pool } from '../config/db';
 import { internalAuthHeader } from '../middlewares/auth.middleware';
 import { currentRequestId } from '../utils/logger';
 import { startEventConsumer } from './eventConsumer';
+import { insertNotifications } from './notification.service';
 import { blocksToPlainText, slugify, notifyChapterPublished, ContentBlock } from '../controllers/chapter.controller';
 
 /**
@@ -124,8 +125,47 @@ export async function applyRevisionNow(rev: Revision): Promise<{ applied: boolea
   return result;
 }
 
+const STEP_ROLE: Record<string, string> = { raw: 'raw_provider', translate: 'translator', edit: 'editor', proofread: 'proofreader' };
+const STEP_LABEL: Record<string, string> = { raw: 'RAW', translate: 'DỊCH', edit: 'BIÊN TẬP', proofread: 'HIỆU ĐÍNH' };
+
+/**
+ * A workspace task opened (Plan/chapter-workspace.md, stage 4b): tell whoever it is assigned to, otherwise everyone in the
+ * story's group with that step's role (nobody has it: the leaders/mods); a story without a group: its owner and collaborators.
+ */
+async function notifyTaskOpened(t: any) {
+  let recipients: string[] = t.assignee_id ? [t.assignee_id] : [];
+  if (recipients.length === 0) {
+    const r = await pool.query(`
+      SELECT COALESCE(
+        NULLIF(ARRAY(SELECT user_id::text FROM group_members WHERE group_id = s.group_id AND role = $2), '{}'),
+        ARRAY(SELECT user_id::text FROM group_members WHERE group_id = s.group_id AND role IN ('leader', 'mod'))
+      ) AS by_role,
+      ARRAY(SELECT s.uploader_id::text UNION SELECT user_id::text FROM story_collaborators WHERE story_id = s.id) AS team,
+      s.group_id
+      FROM stories s WHERE s.id = $1`, [t.story_id, STEP_ROLE[t.kind] || 'translator']);
+    const row = r.rows[0];
+    if (!row) return;
+    recipients = row.group_id ? row.by_role : row.team;
+  }
+  const story = await pool.query(`SELECT title FROM stories WHERE id = $1`, [t.story_id]);
+  const items = [...new Set(recipients)].filter((id) => id && id !== t.actor_id).map((userId) => ({
+    userId, type: 'system' as const,
+    title: `${t.assignee_id ? 'Bạn được giao' : 'Việc mới'}: ${STEP_LABEL[t.kind] || t.kind} chương ${Number(t.chapter_number)} (${story.rows[0]?.title || ''})`,
+    message: t.note ? `"${String(t.note).slice(0, 160)}"` : t.due_at ? `Hạn: ${new Date(t.due_at).toLocaleString('vi-VN')}` : null,
+    referenceType: 'ws_story' as const, referenceId: t.story_id, senderId: t.actor_id || null,
+    dedupeKey: `task:${t.task_id}:${userId}`,
+  }));
+  if (items.length > 0) await insertNotifications(items);
+}
+
 async function handleWorkspaceEvent(evt: any): Promise<string> {
-  if (!evt?.event_id || evt.type !== 'workspace.revision.merged' || !evt.data?.chapter_id) throw new Error('malformed event');
+  if (!evt?.event_id || !['workspace.revision.merged', 'workspace.task.opened'].includes(evt.type) || !evt.data) throw new Error('malformed event');
+  if (evt.type === 'workspace.task.opened') {
+    // notifications carry a dedupe key per task and person: a redelivery inserts nothing twice
+    await notifyTaskOpened(evt.data);
+    return 'notified';
+  }
+  if (!evt.data.chapter_id) throw new Error('malformed event');
   const seen = await pool.query(`INSERT INTO processed_events (event_id, type) VALUES ($1, $2) ON CONFLICT DO NOTHING RETURNING 1`, [evt.event_id, evt.type]);
   if (seen.rowCount === 0) return 'duplicate';
   try {
@@ -137,6 +177,6 @@ async function handleWorkspaceEvent(evt: any): Promise<string> {
   }
 }
 
-/** Worker: workspace.revision.merged -> the chapters reading copy. */
+/** Worker: workspace.revision.merged -> the chapters reading copy; workspace.task.opened -> notifications. */
 export const startWorkspaceConsumer = (onClose: () => void) =>
-  startEventConsumer({ queue: 'backend.workspace', bindings: ['workspace.revision.merged'], label: 'workspace-sync', handle: handleWorkspaceEvent, onClose });
+  startEventConsumer({ queue: 'backend.workspace', bindings: ['workspace.revision.merged', 'workspace.task.opened'], label: 'workspace-sync', handle: handleWorkspaceEvent, onClose });

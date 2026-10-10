@@ -146,10 +146,12 @@ func (s *server) internal(h http.HandlerFunc) http.HandlerFunc {
 // ---- permissions (the backend owns stories and groups) -----------------------------------------------------
 
 type perm struct {
-	Keeper      bool   `json:"keeper"`      // story owner, or leader/mod of its group: rewinds, merges
-	Contributor bool   `json:"contributor"` // keeper, group member or collaborator: reads history
-	Removed     bool   `json:"removed"`     // story taken down by Admin/Mod: nothing is merged until restored
-	Name        string `json:"name"`        // caller's display name, kept on the revisions they make
+	Keeper      bool     `json:"keeper"`      // story owner, or leader/mod of its group: rewinds, merges
+	Contributor bool     `json:"contributor"` // keeper, group member or collaborator: reads history
+	Removed     bool     `json:"removed"`     // story taken down by Admin/Mod: nothing is merged until restored
+	Name        string   `json:"name"`        // caller's display name, kept on the revisions they make
+	Role        string   `json:"role"`        // owner | group role | collaborator | "" (stage 4b: who takes which step)
+	Workflow    []string `json:"workflow"`    // the group's steps before a merge
 }
 
 type permCache struct {

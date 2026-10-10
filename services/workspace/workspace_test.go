@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -151,15 +152,17 @@ func TestMergeMeta(t *testing.T) {
 const testKey = "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
 
 type wsHarness struct {
-	t       *testing.T
-	s       *server
-	srv     *httptest.Server
-	story   string
-	keeper  string
-	member  string
-	helper  string          // another contributor
-	gone    map[string]bool // contributors who left the story
-	removed bool
+	t        *testing.T
+	s        *server
+	srv      *httptest.Server
+	story    string
+	keeper   string
+	member   string
+	helper   string          // another contributor
+	gone     map[string]bool // contributors who left the story
+	roles    map[string]string
+	workflow []string
+	removed  bool
 }
 
 func newWS(t *testing.T) *wsHarness {
@@ -179,7 +182,8 @@ func newWS(t *testing.T) *wsHarness {
 	if err := migrate(ctx, db); err != nil {
 		t.Fatal(err)
 	}
-	h := &wsHarness{t: t, story: newUUID(), keeper: newUUID(), member: newUUID(), helper: newUUID(), gone: map[string]bool{}}
+	h := &wsHarness{t: t, story: newUUID(), keeper: newUUID(), member: newUUID(), helper: newUUID(), gone: map[string]bool{}, workflow: []string{"translate"}}
+	h.roles = map[string]string{h.keeper: "owner", h.member: "translator", h.helper: "editor"}
 	// The backend's /internal/permissions: keeper owns the story, member only contributes
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !internalAuthOK([]byte(testKey), r.Header.Get("X-Internal-Auth"), time.Now()) {
@@ -187,7 +191,8 @@ func newWS(t *testing.T) *wsHarness {
 			return
 		}
 		u := r.URL.Query().Get("user")
-		p := perm{Keeper: u == h.keeper, Contributor: (u == h.keeper || u == h.member || u == h.helper) && !h.gone[u], Removed: h.removed, Name: "Người " + u[:4]}
+		p := perm{Keeper: u == h.keeper, Contributor: (u == h.keeper || u == h.member || u == h.helper) && !h.gone[u], Removed: h.removed, Name: "Người " + u[:4],
+			Role: h.roles[u], Workflow: h.workflow}
 		json.NewEncoder(w).Encode(map[string]any{"data": p})
 	}))
 	t.Cleanup(backend.Close)
@@ -581,5 +586,124 @@ func TestCollaboration(t *testing.T) {
 	h.want(403, "POST", "/drafts/"+did+"/reclaim", h.member, false, nil)
 	if d := h.want(200, "POST", "/drafts/"+did+"/reclaim", h.keeper, false, nil); d["owner_id"] != h.keeper || texts(d) != "A|B (giúp)|C (chủ)|D (giúp)" {
 		t.Fatalf("reclaim: %v", d)
+	}
+}
+
+func TestTasks(t *testing.T) {
+	h := newWS(t)
+	h.workflow = []string{"translate", "edit"}
+	meta := map[string]any{"title": "Mở đầu", "chapter_number": 1}
+	id := h.want(201, "POST", "/internal/chapters", "", true, map[string]any{"story_id": h.story, "meta": meta, "blocks": para("A", "B")})["chapter_id"].(string)
+
+	// A keeper opens chapter 1 to the translators; the editor cannot take a translate step, the translator can
+	tk := h.want(201, "POST", "/tasks", h.keeper, false, map[string]any{"story_id": h.story, "chapter_id": id, "note": "Dịch kỹ"})
+	tid := tk["id"].(string)
+	if tk["status"] != "open" || tk["kind"] != "translate" || tk["chapter_number"].(float64) != 1 {
+		t.Fatalf("task: %v", tk)
+	}
+	h.want(409, "POST", "/tasks", h.keeper, false, map[string]any{"story_id": h.story, "chapter_id": id})
+	h.want(403, "POST", "/tasks/"+tid+"/claim", h.helper, false, nil)
+	h.want(200, "POST", "/tasks/"+tid+"/claim", h.member, false, nil)
+	h.want(409, "POST", "/tasks/"+tid+"/claim", h.keeper, false, nil)
+
+	// Start = the translator's draft of the chapter; save, finish: the edit step opens and the editor may edit that draft
+	st := h.want(200, "POST", "/tasks/"+tid+"/start", h.member, false, nil)
+	did := st["draft_id"].(string)
+	h.want(200, "PUT", "/internal/drafts/"+did, "", true, map[string]any{"owner_id": h.member, "meta": meta, "blocks": para("A", "B dịch"), "expected_version": 1})
+	h.want(403, "POST", "/tasks/"+tid+"/done", h.helper, false, nil)
+	h.want(200, "POST", "/tasks/"+tid+"/done", h.member, false, nil)
+	tasks := h.want(200, "GET", "/tasks?story_id="+h.story, h.helper, false, nil)["data"].([]any)
+	var edit map[string]any
+	for _, x := range tasks {
+		if x.(map[string]any)["kind"] == "edit" {
+			edit = x.(map[string]any)
+		}
+	}
+	if edit == nil || edit["status"] != "open" || edit["draft_id"] != did {
+		t.Fatalf("edit step: %v", tasks)
+	}
+	eid := edit["id"].(string)
+	h.want(200, "POST", "/tasks/"+eid+"/claim", h.helper, false, nil)
+	if again := h.want(200, "POST", "/tasks/"+eid+"/start", h.helper, false, nil); again["draft_id"] != did {
+		t.Fatal("later steps use the same draft")
+	}
+	if d := h.want(200, "GET", "/drafts/"+did, h.helper, false, nil); d["access"] != "editor" {
+		t.Fatalf("editor access: %v", d["access"])
+	}
+	h.want(200, "PUT", "/internal/drafts/"+did, "", true, map[string]any{"owner_id": h.helper, "meta": meta, "blocks": para("A biên tập", "B dịch"), "expected_version": 2})
+	if mine := h.want(200, "GET", "/tasks?mine=1", h.helper, false, nil)["data"].([]any); len(mine) != 1 {
+		t.Fatalf("my tasks: %v", mine)
+	}
+
+	// Someone else starting on the same chapter is warned
+	kd := h.want(201, "POST", "/internal/drafts", "", true, map[string]any{"owner_id": h.keeper, "story_id": h.story, "chapter_id": id})["id"].(string)
+	warn := h.want(200, "GET", "/drafts/"+kd, h.keeper, false, nil)
+	if len(warn["others"].([]any)) != 1 || len(warn["claims"].([]any)) != 1 {
+		t.Fatalf("warnings: %v %v", warn["others"], warn["claims"])
+	}
+	h.want(200, "DELETE", "/drafts/"+kd, h.keeper, false, nil)
+
+	// Last step done: the draft goes to the keepers as a proposal (merge step); returned -> the edit step reopens for the editor
+	h.want(200, "POST", "/tasks/"+eid+"/done", h.helper, false, nil)
+	rv := h.want(200, "GET", "/drafts/"+did+"/review", h.keeper, false, nil)
+	if rv["draft"].(map[string]any)["status"] != "submitted" {
+		t.Fatalf("auto proposal: %v", rv["draft"])
+	}
+	h.want(200, "POST", "/internal/drafts/"+did+"/return", "", true, map[string]any{"owner_id": h.keeper, "note": "Sửa lại đoạn A"})
+	reopened := h.want(200, "GET", "/tasks?mine=1", h.helper, false, nil)["data"].([]any)
+	if len(reopened) != 1 || reopened[0].(map[string]any)["kind"] != "edit" {
+		t.Fatalf("reopened: %v", reopened)
+	}
+	h.want(200, "POST", "/tasks/"+reopened[0].(map[string]any)["id"].(string)+"/done", h.helper, false, nil)
+	merged := h.want(200, "POST", "/internal/drafts/"+did+"/publish", "", true, map[string]any{"owner_id": h.keeper})
+	if merged["version"].(float64) != 2 {
+		t.Fatalf("merged: %v", merged)
+	}
+
+	// The board: nothing active any more, the feed tells the story
+	board := h.want(200, "GET", "/board?story_id="+h.story+"&story_id=not-a-uuid", h.member, false, nil)
+	active := 0
+	for _, x := range board["tasks"].([]any) {
+		if st := x.(map[string]any)["status"]; st == "open" || st == "claimed" {
+			active++
+		}
+	}
+	actions := []string{}
+	for _, a := range board["activity"].([]any) {
+		actions = append(actions, a.(map[string]any)["action"].(string))
+	}
+	if active != 0 || len(board["stories"].([]any)) != 1 || !slices.Contains(actions, "proposal_merged") || !slices.Contains(actions, "task_claimed") {
+		t.Fatalf("board: active %d, actions %v", active, actions)
+	}
+
+	// Contributors claim a new chapter for themselves; only keepers cancel
+	own := h.want(201, "POST", "/tasks", h.member, false, map[string]any{"story_id": h.story, "chapter_number": 2, "assignee_id": h.helper})
+	if own["status"] != "claimed" || own["assignee_id"] != h.member {
+		t.Fatalf("claim a new chapter: %v", own)
+	}
+	h.want(403, "POST", "/tasks/"+own["id"].(string)+"/cancel", h.member, false, nil)
+	h.want(200, "POST", "/tasks/"+own["id"].(string)+"/cancel", h.keeper, false, nil)
+
+	// Task events match their schema
+	comp := jsonschema.NewCompiler()
+	comp.AssertFormat()
+	sch, err := comp.Compile("../../events/workspace.task.opened.v1.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	rows, _ := h.s.db.Query(context.Background(), `SELECT payload::text FROM outbox WHERE routing_key = 'workspace.task.opened'`)
+	n := 0
+	for rows.Next() {
+		var body string
+		rows.Scan(&body)
+		var doc any
+		json.Unmarshal([]byte(body), &doc)
+		if err := sch.Validate(doc); err != nil {
+			t.Errorf("task event: %v\n%s", err, body)
+		}
+		n++
+	}
+	if n < 3 {
+		t.Fatalf("task events: %d", n)
 	}
 }

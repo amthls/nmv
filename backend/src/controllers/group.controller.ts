@@ -832,3 +832,27 @@ export const rejectJoinRequest = async (req: AuthenticatedRequest, res: Response
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+const WORKFLOW_STEPS = ['raw', 'translate', 'edit', 'proofread'];
+
+/**
+ * PUT /groups/:id/workflow {steps}: the steps a chapter of this group goes through before a story keeper merges it
+ * (Plan/chapter-workspace.md, stage 4b). Kept in the fixed order raw -> translate -> edit -> proofread. Leader/mod only.
+ */
+export const updateGroupWorkflow = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!isUuid(id)) return res.status(404).json({ success: false, message: 'Nhóm dịch không tồn tại' });
+    const actor = await getGroupActor(req, id);
+    if (!actor.isManager) return res.status(403).json({ success: false, message: 'Chỉ Trưởng nhóm/Mod nhóm đổi được quy trình.' });
+    const steps = req.body?.steps;
+    if (!Array.isArray(steps) || steps.some((s) => !WORKFLOW_STEPS.includes(s))) throw new InputError('Bước quy trình không hợp lệ.');
+    const ordered = WORKFLOW_STEPS.filter((s) => steps.includes(s));
+    if (ordered.length === 0) throw new InputError('Quy trình cần ít nhất một bước trước khi gộp.');
+    const r = await pool.query(`UPDATE translation_groups SET workflow = $1, updated_at = NOW() WHERE id = $2 RETURNING workflow`, [ordered, id]);
+    if (r.rows.length === 0) return res.status(404).json({ success: false, message: 'Nhóm dịch không tồn tại' });
+    res.json({ success: true, message: 'Đã lưu quy trình của nhóm.', data: { workflow: r.rows[0].workflow } });
+  } catch (error: any) {
+    sendError(res, error);
+  }
+};
