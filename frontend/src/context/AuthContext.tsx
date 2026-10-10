@@ -41,7 +41,7 @@ interface AuthContextType {
   openAuthModal: (tab?: 'login' | 'register') => void;
   closeAuthModal: () => void;
   login: (identifier: string, password: string) => Promise<{ success: boolean; message?: string }>;
-  register: (data: { username: string; email: string; password: string; display_name?: string }) => Promise<{ success: boolean; message?: string }>;
+  register: (data: { username: string; email: string; password: string; display_name?: string; turnstile_token?: string }) => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
   /** fetch with the session cookies, the CSRF header on writes and a refresh-and-retry on 401 */
   authFetch: (url: string, options?: RequestInit) => Promise<Response>;
@@ -124,7 +124,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const login = (identifier: string, password: string) => submit('/login', { identifier, password }, 'Đăng nhập thất bại');
-  const register = (data: { username: string; email: string; password: string; display_name?: string }) =>
+  const register = (data: { username: string; email: string; password: string; display_name?: string; turnstile_token?: string }) =>
     submit('/register', data, 'Đăng ký thất bại');
 
   const logout = () => {

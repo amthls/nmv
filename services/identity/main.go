@@ -116,12 +116,14 @@ func (s *server) routes() http.Handler {
 	m.HandleFunc("POST /forgot-password", s.handleForgot)
 	m.HandleFunc("POST /reset-password", s.handleReset)
 	m.HandleFunc("POST /verify-email", s.handleVerifyEmail)
+	m.HandleFunc("POST /confirm-email-change", s.handleConfirmEmailChange)
 
 	m.HandleFunc("GET /me", s.authed(s.handleMe))
 	m.HandleFunc("GET /sessions", s.authed(s.handleSessions))
 	m.HandleFunc("DELETE /sessions/{id}", s.authed(s.handleRevokeSession))
 	m.HandleFunc("POST /logout-all", s.authed(s.handleLogoutAll))
 	m.HandleFunc("POST /change-password", s.authed(s.handleChangePassword))
+	m.HandleFunc("POST /change-email", s.authed(s.handleChangeEmail))
 	m.HandleFunc("POST /resend-verification", s.authed(s.handleResendVerification))
 
 	m.HandleFunc("POST /users/{id}/roles", s.authed(s.handleRoles))

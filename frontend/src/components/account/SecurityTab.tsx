@@ -31,6 +31,10 @@ export default function SecurityTab() {
   const [mailResult, setMailResult] = useState<Result>(null);
   const [mailBusy, setMailBusy] = useState(false);
   const [logoutBusy, setLogoutBusy] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [emailPassword, setEmailPassword] = useState('');
+  const [emailBusy, setEmailBusy] = useState(false);
+  const [emailResult, setEmailResult] = useState<Result>(null);
 
   const call = async (path: string, method = 'POST', body?: unknown) => {
     try {
@@ -64,6 +68,15 @@ export default function SecurityTab() {
     setMailBusy(true);
     setMailResult(await call('/resend-verification'));
     setMailBusy(false);
+  };
+
+  const changeEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEmailBusy(true);
+    const r = await call('/change-email', 'POST', { new_email: newEmail, password: emailPassword });
+    if (r.ok) { setNewEmail(''); setEmailPassword(''); }
+    setEmailResult(r);
+    setEmailBusy(false);
   };
 
   const revoke = async (id: string) => {
@@ -108,6 +121,16 @@ export default function SecurityTab() {
                   {mailBusy ? 'Đang gửi...' : 'Gửi email xác thực'}
                 </button>
               </>)}
+          <form onSubmit={changeEmail} className="space-y-3 pt-3 border-t border-white/5">
+            <p className="text-xs font-semibold text-gray-300">Đổi email</p>
+            {emailResult && <Notice ok={emailResult.ok}>{emailResult.message}</Notice>}
+            <input type="email" required value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="Email mới"
+              autoComplete="email" maxLength={255}
+              className="w-full h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-500" />
+            <PasswordInput label="Mật khẩu hiện tại" value={emailPassword} onChange={setEmailPassword} autoComplete="current-password" />
+            <p className="text-xs text-gray-500">Chúng tôi gửi liên kết xác nhận tới email mới; email chỉ đổi khi bạn mở liên kết đó. Email cũ cũng được báo.</p>
+            <button type="submit" disabled={emailBusy} className={primaryButton}>{emailBusy ? 'Đang gửi...' : 'Gửi liên kết xác nhận'}</button>
+          </form>
         </div>
 
         <div className={card}>

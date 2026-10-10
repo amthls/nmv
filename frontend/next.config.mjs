@@ -2,16 +2,18 @@
 // injected tag cannot load a remote script or post data elsewhere. Next inlines its bootstrap scripts
 // and CKEditor sets inline styles, hence 'unsafe-inline' (a nonce setup would need dynamic rendering).
 // Images may come from any https host (covers of imported stories are hot-linked).
+// Turnstile (optional bot check) needs Cloudflare's script and iframe; allowed only when it is switched on.
+const turnstile = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ? ' https://challenges.cloudflare.com' : '';
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  `script-src 'self' 'unsafe-inline'${turnstile}`,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
   "media-src 'self' blob: https:",
   "connect-src 'self' ws: wss:",
   "worker-src 'self' blob:",
-  "frame-src 'none'",
+  turnstile ? `frame-src${turnstile}` : "frame-src 'none'",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",

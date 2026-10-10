@@ -1,6 +1,7 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { AlertCircle, CheckCircle2, KeyRound } from 'lucide-react';
 import { apiJson, IDENTITY_URL } from '@/lib/apiJson';
 import { apiFetch } from '@/lib/session';
@@ -13,6 +14,22 @@ export async function postAuth(path: string, body: unknown): Promise<{ ok: boole
   } catch {
     return { ok: false, message: 'Không kết nối được máy chủ.' };
   }
+}
+
+/**
+ * The one-time token of a mailed link, read once and then removed from the address bar, so it does not stay in the
+ * history, a screenshot or a shared URL (the page also sends no Referer: see the route's layout.tsx).
+ */
+export function useLinkToken(): string {
+  const params = useSearchParams();
+  const [token] = useState(() => params.get('token') || '');
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has('token')) return;
+    url.searchParams.delete('token');
+    window.history.replaceState(window.history.state, '', url.pathname + url.search);
+  }, []);
+  return token;
 }
 
 /** Centered card used by the forgot / reset password and email verification pages. */
