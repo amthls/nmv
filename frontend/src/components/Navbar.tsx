@@ -22,7 +22,8 @@ import {
   Flag,
   EyeOff,
   Dices,
-  MessageCircle
+  MessageCircle,
+  FileText,
 } from 'lucide-react';
 import QuickActionModal from './QuickActionModal';
 import AuthModal from './auth/AuthModal';
@@ -472,6 +473,14 @@ export default function Navbar() {
                         >
                           <BookOpen className="w-4 h-4 text-indigo-400" />
                           <span>Đăng chương mới</span>
+                        </Link>
+                        <Link
+                          href="/ws"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          className="flex items-center gap-2.5 px-4 py-1.5 text-xs text-gray-300 hover:text-white hover:bg-white/5 transition"
+                        >
+                          <FileText className="w-4 h-4 text-amber-400" />
+                          <span>Workspace (nháp của tôi)</span>
                         </Link>
                       </div>
                     )}

@@ -78,6 +78,9 @@ import {
   getChapterForEdit,
   updateChapter,
   deleteChapter,
+  createDraft,
+  saveDraft,
+  publishDraft,
 } from '../controllers/chapter.controller';
 import { 
   getReadingHistory, 
@@ -194,6 +197,10 @@ router.post('/chapters/submissions', requireAuth, submitChapter);
 router.get('/chapters/:id', requireAuth, getChapterForEdit);
 router.put('/chapters/:id', requireAuth, updateChapter);
 router.delete('/chapters/:id', requireAuth, deleteChapter);
+// Drafts (workspace): content passes the HTML filter here; reading/pulling/discarding is on /api/ws
+router.post('/drafts', requireAuth, createDraft);
+router.put('/drafts/:id', requireAuth, saveDraft);
+router.post('/drafts/:id/publish', requireAuth, publishDraft);
 
 
 // Notifications

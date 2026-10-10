@@ -6,6 +6,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"html"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -16,15 +18,30 @@ import (
 
 type block = map[string]any
 
-// blockHash: sha256 of the canonical JSON (encoding/json sorts map keys) without the positional id.
-func blockHash(b block) (string, []byte, error) {
+// canonicalBlock: the block without its positional id, and without an "html" that only wraps its own text in
+// <p>…</p>. Imported chapters store a plain paragraph as {text}; the editor sends the same paragraph back as
+// {html: "<p>text</p>", text}. Both must hash the same or every paragraph looks changed to diff3 after one save.
+func canonicalBlock(b block) block {
 	c := make(block, len(b))
 	for k, v := range b {
 		if k != "id" {
 			c[k] = v
 		}
 	}
-	data, err := json.Marshal(c)
+	h, _ := c["html"].(string)
+	t, _ := c["text"].(string)
+	if inner, found := strings.CutPrefix(h, "<p>"); found && strings.HasSuffix(inner, "</p>") && c["type"] == "paragraph" {
+		inner = strings.TrimSuffix(inner, "</p>")
+		if !strings.Contains(inner, "<") && html.UnescapeString(inner) == t {
+			delete(c, "html")
+		}
+	}
+	return c
+}
+
+// blockHash: sha256 of the canonical JSON (encoding/json sorts map keys).
+func blockHash(b block) (string, []byte, error) {
+	data, err := json.Marshal(canonicalBlock(b))
 	if err != nil {
 		return "", nil, err
 	}

@@ -29,6 +29,18 @@ func TestBlockHashIgnoresPositionAndKeyOrder(t *testing.T) {
 	}
 }
 
+func TestBlockHashPlainParagraphHTML(t *testing.T) {
+	// what an imported chapter stores vs what the editor sends back for the same paragraph
+	plain, _, _ := blockHash(block{"type": "paragraph", "text": "A & B < C"})
+	edited, _, _ := blockHash(block{"id": "b3", "type": "paragraph", "text": "A & B < C", "html": "<p>A &amp; B &lt; C</p>"})
+	bold, _, _ := blockHash(block{"type": "paragraph", "text": "A & B < C", "html": "<p><strong>A</strong> &amp; B &lt; C</p>"})
+	centered, _, _ := blockHash(block{"type": "paragraph", "text": "A", "html": "<p style=\"text-align:center\">A</p>"})
+	alone, _, _ := blockHash(block{"type": "paragraph", "text": "A"})
+	if plain != edited || plain == bold || centered == alone {
+		t.Fatalf("plain %s edited %s bold %s centered %s", plain, edited, bold, centered)
+	}
+}
+
 func TestDiffHashes(t *testing.T) {
 	render := func(ops []diffOp) string {
 		var b strings.Builder
@@ -58,6 +70,77 @@ func TestDiffHashes(t *testing.T) {
 		if got := render(diffHashes(a, b)); got != c.want {
 			t.Errorf("%q -> %q: got %q, want %q", c.a, c.b, got, c.want)
 		}
+	}
+}
+
+func TestMerge3(t *testing.T) {
+	// one letter = one paragraph hash; conflicts render as <base|ours|theirs>
+	render := func(chunks []mergeChunk) string {
+		var b strings.Builder
+		for _, c := range chunks {
+			if c.Conflict == nil {
+				b.WriteString(strings.Join(c.Ok, ""))
+				continue
+			}
+			b.WriteString("<" + strings.Join(c.Conflict.Base, "") + "|" + strings.Join(c.Conflict.Ours, "") + "|" + strings.Join(c.Conflict.Theirs, "") + ">")
+		}
+		return b.String()
+	}
+	split := func(s string) []string {
+		if s == "" {
+			return nil
+		}
+		return strings.Split(s, "")
+	}
+	cases := []struct{ name, base, ours, theirs, want string }{
+		{"nothing changed", "abc", "abc", "abc", "abc"},
+		{"only ours changed", "abc", "aXc", "abc", "aXc"},
+		{"only theirs changed", "abc", "abc", "aXc", "aXc"},
+		{"different paragraphs", "abcde", "aXcde", "abcYe", "aXcYe"},
+		{"both the same change", "abc", "aXc", "aXc", "aXc"},
+		{"both changed one paragraph", "abc", "aXc", "aYc", "a<b|X|Y>c"},
+		{"ours inserted, theirs deleted elsewhere", "abcd", "abXcd", "abc", "abXc"},
+		{"theirs inserted at the end", "ab", "Ab", "abZ", "AbZ"},
+		{"both inserted at the same place", "ab", "aXb", "aYb", "a<|X|Y>b"},
+		{"ours deleted what theirs edited", "abc", "ac", "aYc", "a<b||Y>c"},
+		{"new paragraphs both sides apart", "", "X", "", "X"},
+	}
+	for _, c := range cases {
+		if got := render(merge3(split(c.base), split(c.ours), split(c.theirs))); got != c.want {
+			t.Errorf("%s: got %q, want %q", c.name, got, c.want)
+		}
+	}
+
+	// conflicts are numbered and resolved by the user's choices
+	chunks := merge3(split("abc"), split("XbY"), split("ZbW"))
+	if render(chunks) != "<a|X|Z>b<c|Y|W>" || chunks[0].Conflict.ID != "b0" || chunks[2].Conflict.ID != "b1" {
+		t.Fatalf("ids: %s", render(chunks))
+	}
+	out, _, err := resolve(chunks, chapterMeta{}, nil, chapterMeta{}, map[string]string{"b0": "theirs", "b1": "both"})
+	if err != nil || strings.Join(out, "") != "ZbYW" {
+		t.Fatalf("resolve: %v %v", out, err)
+	}
+	if _, _, err := resolve(chunks, chapterMeta{}, nil, chapterMeta{}, map[string]string{"b0": "ours"}); err == nil {
+		t.Fatal("an unchosen conflict must be refused")
+	}
+}
+
+func TestMergeMeta(t *testing.T) {
+	base := chapterMeta{Title: "Mở đầu", ChapterNumber: 1}
+	ours := chapterMeta{Title: "Mở đầu (sửa)", ChapterNumber: 1}
+	theirs := chapterMeta{Title: "Mở đầu", ChapterNumber: 2}
+	m, conf := mergeMeta(base, ours, theirs)
+	if m.Title != "Mở đầu (sửa)" || m.ChapterNumber != 2 || len(conf) != 0 {
+		t.Fatalf("clean meta merge: %+v %v", m, conf)
+	}
+	theirs.Title = "Khởi đầu"
+	m, conf = mergeMeta(base, ours, theirs)
+	if len(conf) != 1 || conf[0].ID != "title" || m.Title != "Mở đầu (sửa)" {
+		t.Fatalf("title conflict: %+v %v", m, conf)
+	}
+	_, m, err := resolve(nil, m, conf, theirs, map[string]string{"title": "theirs"})
+	if err != nil || m.Title != "Khởi đầu" || m.ChapterNumber != 2 {
+		t.Fatalf("resolve meta: %+v %v", m, err)
 	}
 }
 
@@ -243,4 +326,88 @@ func TestRevisionLifecycle(t *testing.T) {
 	if n != 7 { // first chapter: create, edit, rewind, delete, restore; second: create, delete
 		t.Fatalf("events: %d, want 7", n)
 	}
+}
+
+func TestDraftLifecycle(t *testing.T) {
+	h := newWS(t)
+	meta := map[string]any{"title": "Mở đầu", "chapter_number": 1}
+	id := h.want(201, "POST", "/internal/chapters", "", true, map[string]any{"story_id": h.story, "meta": meta, "blocks": para("A", "B", "C", "D")})["chapter_id"].(string)
+
+	// The member opens a draft of chapter 1 (a copy of v1); opening it again gives the same draft
+	d := h.want(201, "POST", "/internal/drafts", "", true, map[string]any{"owner_id": h.member, "story_id": h.story, "chapter_id": id})
+	did := d["id"].(string)
+	if d["base_version"].(float64) != 1 || len(d["blocks"].([]any)) != 4 {
+		t.Fatalf("draft from v1: %v", d)
+	}
+	if again := h.want(200, "POST", "/internal/drafts", "", true, map[string]any{"owner_id": h.member, "story_id": h.story, "chapter_id": id}); again["id"] != did {
+		t.Fatal("a second Edit must reopen the same draft")
+	}
+	// Only the owner reads it; saves need the current draft version
+	h.want(403, "GET", "/drafts/"+did, h.keeper, false, nil)
+	h.want(200, "GET", "/drafts/"+did, h.member, false, nil)
+	saved := h.want(200, "PUT", "/internal/drafts/"+did, "", true, map[string]any{"owner_id": h.member, "meta": meta, "blocks": para("A", "B của tôi", "C", "D"), "expected_version": 1})
+	h.want(409, "PUT", "/internal/drafts/"+did, "", true, map[string]any{"owner_id": h.member, "meta": meta, "blocks": para("tab cũ"), "expected_version": 1})
+	h.want(403, "PUT", "/internal/drafts/"+did, "", true, map[string]any{"owner_id": h.keeper, "meta": meta, "blocks": para("x"), "expected_version": 2})
+
+	// Meanwhile the official line moves (v2 changes D and the title): publishing the draft is refused until it pulls
+	h.want(200, "POST", "/internal/chapters/"+id+"/revisions", "", true,
+		map[string]any{"meta": map[string]any{"title": "Khởi đầu", "chapter_number": 1}, "blocks": para("A", "B", "C", "D mới"), "expected_version": 1})
+	h.want(409, "POST", "/internal/drafts/"+did+"/publish", "", true, map[string]any{"owner_id": h.member})
+	list := h.want(200, "GET", "/drafts", h.member, false, nil)["data"].([]any)
+	if len(list) != 1 || list[0].(map[string]any)["current_version"].(float64) != 2 {
+		t.Fatalf("list shows the draft is behind: %v", list)
+	}
+
+	// Pull: no conflict (different paragraphs, title only changed upstream)
+	pv := h.want(200, "GET", "/drafts/"+did+"/pull", h.member, false, nil)
+	plan := pv["plan"].(map[string]any)
+	if plan["to"].(float64) != 2 || len(plan["meta_conflicts"].([]any)) != 0 || len(plan["chunks"].([]any)) != 1 {
+		t.Fatalf("clean pull plan: %v", plan)
+	}
+	pulled := h.want(200, "POST", "/drafts/"+did+"/pull", h.member, false, map[string]any{"expected_version": saved["version"], "to_version": 2})
+	texts := []string{}
+	for _, b := range pulled["blocks"].([]any) {
+		texts = append(texts, b.(map[string]any)["text"].(string))
+	}
+	if strings.Join(texts, "|") != "A|B của tôi|C|D mới" || pulled["meta"].(map[string]any)["title"] != "Khởi đầu" || pulled["base_version"].(float64) != 2 {
+		t.Fatalf("pulled: %v %v", texts, pulled["meta"])
+	}
+	pub := h.want(200, "POST", "/internal/drafts/"+did+"/publish", "", true, map[string]any{"owner_id": h.member})
+	if pub["version"].(float64) != 3 || pub["source"] != "edit" {
+		t.Fatalf("publish: %v", pub)
+	}
+	h.want(409, "PUT", "/internal/drafts/"+did, "", true, map[string]any{"owner_id": h.member, "meta": meta, "blocks": para("x"), "expected_version": 3})
+
+	// Conflict: the keeper's draft and an official edit both change paragraph C
+	k := h.want(201, "POST", "/internal/drafts", "", true, map[string]any{"owner_id": h.keeper, "story_id": h.story, "chapter_id": id})
+	kid := k["id"].(string)
+	h.want(200, "PUT", "/internal/drafts/"+kid, "", true, map[string]any{"owner_id": h.keeper, "meta": map[string]any{"title": "Khởi đầu", "chapter_number": 1},
+		"blocks": para("A", "B của tôi", "C (keeper)", "D mới"), "expected_version": 1})
+	h.want(200, "POST", "/internal/chapters/"+id+"/revisions", "", true,
+		map[string]any{"meta": map[string]any{"title": "Khởi đầu", "chapter_number": 1}, "blocks": para("A", "B của tôi", "C (khác)", "D mới"), "expected_version": 3})
+	plan = h.want(200, "GET", "/drafts/"+kid+"/pull", h.keeper, false, nil)["plan"].(map[string]any)
+	if len(plan["chunks"].([]any)) != 3 {
+		t.Fatalf("conflict plan: %v", plan["chunks"])
+	}
+	h.want(400, "POST", "/drafts/"+kid+"/pull", h.keeper, false, map[string]any{"expected_version": 2, "to_version": 4})
+	both := h.want(200, "POST", "/drafts/"+kid+"/pull", h.keeper, false, map[string]any{"expected_version": 2, "to_version": 4, "choices": map[string]string{"b0": "both"}})
+	if len(both["blocks"].([]any)) != 5 {
+		t.Fatalf("both sides kept: %v", both["blocks"])
+	}
+	h.want(200, "DELETE", "/drafts/"+kid, h.keeper, false, nil)
+	h.want(409, "POST", "/internal/drafts/"+kid+"/publish", "", true, map[string]any{"owner_id": h.keeper})
+
+	// New chapter drafts: publishing makes v1; a number already taken is refused
+	nd := h.want(201, "POST", "/internal/drafts", "", true, map[string]any{"owner_id": h.member, "story_id": h.story, "meta": map[string]any{"title": "", "chapter_number": 1}, "blocks": para("X")})
+	h.want(400, "POST", "/internal/drafts/"+nd["id"].(string)+"/publish", "", true, map[string]any{"owner_id": h.member})
+	h.want(400, "GET", "/drafts/"+nd["id"].(string)+"/pull", h.member, false, nil) // nothing official to pull from
+	h.want(200, "PUT", "/internal/drafts/"+nd["id"].(string), "", true, map[string]any{"owner_id": h.member, "meta": map[string]any{"title": "Chương 2", "chapter_number": 1}, "blocks": para("X"), "expected_version": 1})
+	h.want(409, "POST", "/internal/drafts/"+nd["id"].(string)+"/publish", "", true, map[string]any{"owner_id": h.member})
+	h.want(200, "PUT", "/internal/drafts/"+nd["id"].(string), "", true, map[string]any{"owner_id": h.member, "meta": map[string]any{"title": "Chương 2", "chapter_number": 2}, "blocks": para("X"), "expected_version": 2})
+	created := h.want(200, "POST", "/internal/drafts/"+nd["id"].(string)+"/publish", "", true, map[string]any{"owner_id": h.member})
+	if created["version"].(float64) != 1 || created["source"] != "create" {
+		t.Fatalf("new chapter: %v", created)
+	}
+	h.want(409, "GET", "/drafts/"+nd["id"].(string)+"/pull", h.member, false, nil) // published: closed
+	h.want(401, "GET", "/drafts", "", false, nil)
 }

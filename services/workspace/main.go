@@ -94,10 +94,19 @@ func (s *server) routes() http.Handler {
 	m.HandleFunc("GET /chapters/{id}/revisions/{version}", s.handleRevision)
 	m.HandleFunc("GET /chapters/{id}/compare", s.handleCompare)
 	m.HandleFunc("POST /chapters/{id}/rewind", s.handleRewind)
+	m.HandleFunc("GET /drafts", s.handleDraftList)
+	m.HandleFunc("GET /drafts/{id}", s.handleDraftGet)
+	m.HandleFunc("DELETE /drafts/{id}", s.handleDraftDiscard)
+	m.HandleFunc("GET /drafts/{id}/pull", s.handlePullPreview)
+	m.HandleFunc("POST /drafts/{id}/pull", s.handlePullApply)
 
 	m.HandleFunc("POST /internal/chapters", s.internal(s.handleCreate))
 	m.HandleFunc("GET /internal/chapters/{id}", s.internal(s.handleCurrent))
 	m.HandleFunc("POST /internal/chapters/{id}/revisions", s.internal(s.handleEdit))
 	m.HandleFunc("POST /internal/chapters/{id}/delete", s.internal(s.handleDelete))
+	m.HandleFunc("POST /internal/drafts", s.internal(s.handleDraftCreate))
+	m.HandleFunc("GET /internal/drafts/{id}", s.internal(s.handleDraftInternal))
+	m.HandleFunc("PUT /internal/drafts/{id}", s.internal(s.handleDraftSave))
+	m.HandleFunc("POST /internal/drafts/{id}/publish", s.internal(s.handleDraftPublish))
 	return m
 }

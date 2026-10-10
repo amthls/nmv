@@ -14,8 +14,11 @@ import {
   Plus,
   X,
   Lock,
-  LogIn
+  LogIn,
+  GitMerge,
+  Trash2,
 } from 'lucide-react';
+import PullDialog from '@/components/workspace/PullDialog';
 import SmartImage from '@/components/common/SmartImage';
 import ChapterEditor from '@/components/chapter/ChapterEditor';
 import RichTextEditor from '@/components/common/RichTextEditor';
@@ -29,6 +32,9 @@ import UploadModeSwitch from '@/components/story/UploadModeSwitch';
 import { CHOSEN_PARAM, chapterUploadHref } from '@/lib/chapterUpload';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+const WS_URL = '/api/ws';
+// Autosave to the server draft this long after the last keystroke
+const AUTOSAVE_MS = 3000;
 
 interface Annotation {
   note?: string;
@@ -42,9 +48,12 @@ function ChapterEditorContent() {
   // ?group_id=<id> (from a group page) narrows the story list to that group
   const groupId = searchParams?.get('group_id') || '';
   const modeChosen = searchParams?.get(CHOSEN_PARAM) === '1';
-  // ?edit=<chapterId> switches the editor to "edit a published chapter" mode
+  // ?edit=<chapterId>: a novel chapter opens (or reopens) the caller's draft of it and moves to ?draft=;
+  // a manga chapter stays here to edit its title / number / volume
   const editId = searchParams?.get('edit') || '';
   const isEditMode = Boolean(editId);
+  // ?draft=<id>: the editor works on a workspace draft (Plan/chapter-workspace.md, stage 2), saved as you type
+  const draftParam = searchParams?.get('draft') || '';
 
   const { user, isAuthenticated, isLoading: isAuthLoading, openAuthModal, authFetch } = useAuth();
 
@@ -76,7 +85,7 @@ function ChapterEditorContent() {
   const [activeTab, setActiveTab] = useState<'editor' | 'preview'>('editor');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
-  const [editLoadState, setEditLoadState] = useState<'idle' | 'loading' | 'ready' | 'error'>(isEditMode ? 'loading' : 'idle');
+  const [editLoadState, setEditLoadState] = useState<'idle' | 'loading' | 'ready' | 'error'>(isEditMode || draftParam ? 'loading' : 'idle');
   // Version of the chapter this edit started from: the server refuses the save if someone saved in between
   const [editVersion, setEditVersion] = useState(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -111,99 +120,144 @@ function ChapterEditorContent() {
     });
   };
 
-  // Local autosave: protects against losing a half-written chapter to an
-  // accidental tab close / refresh / crash before it's submitted.
   // Optional translator messages shown in a box before / after the chapter
   const [introNote, setIntroNote] = useState('');
   const [outroNote, setOutroNote] = useState('');
   const [showMessages, setShowMessages] = useState(false);
 
-  const [restorableDraft, setRestorableDraft] = useState<any>(null);
-  const dismissedDraftStoryRef = React.useRef<string | null>(null);
+  // The server draft this editor writes to (none yet for a new chapter: made on the first autosave)
+  const [draft, setDraft] = useState<any>(null);
+  const draftRef = React.useRef<any>(null);
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [savedAt, setSavedAt] = useState<Date | null>(null);
+  const [showPull, setShowPull] = useState(false);
+  const setDraftInfo = (d: any) => { draftRef.current = d; setDraft(d); };
 
-  const draftStorageKey = (storyId: string) => `novelhub_chapter_draft_${storyId}`;
-
-  const clearDraftFromStorage = (storyId?: string) => {
-    const id = storyId || selectedStoryId;
-    if (!id) return;
-    try { window.localStorage.removeItem(draftStorageKey(id)); } catch (e) {}
+  const formattedBlocks = useMemo(() => editorBlocks.map((b, idx) => ({
+    html: b.html,
+    text: b.text,
+    image_url: b.image_url || null,
+    note: annotations[idx]?.note || null,
+  })), [editorBlocks, annotations]);
+  const draftPayload = {
+    title: chapterTitle.trim(),
+    chapter_number: chapterNumber,
+    volume_id: selectedVolumeId || null,
+    intro_note: introNote,
+    outro_note: outroNote,
+    content_blocks: formattedBlocks,
   };
-
+  const snapshot = JSON.stringify(draftPayload);
+  const payloadRef = React.useRef(draftPayload);
+  payloadRef.current = draftPayload;
+  const snapshotRef = React.useRef(snapshot);
+  snapshotRef.current = snapshot;
+  const lastSaved = React.useRef(snapshot);
+  // The editor normalises HTML it is given for a moment after loading: that is not a change to save
+  const loadedAt = React.useRef(0);
+  const [, rerender] = useState(0);
   useEffect(() => {
-    if (!selectedStoryId || isEditMode || dismissedDraftStoryRef.current === selectedStoryId) {
-      setRestorableDraft(null);
-      return;
+    if (Date.now() - loadedAt.current < 2000 && lastSaved.current !== snapshot) {
+      lastSaved.current = snapshot;
+      rerender((n) => n + 1); // the status line reads `dirty` from this ref
     }
-    try {
-      const raw = window.localStorage.getItem(draftStorageKey(selectedStoryId));
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed && (parsed.chapterTitle?.trim() || parsed.bodyHtml?.trim() || parsed.bodyText?.trim())) {
-          setRestorableDraft(parsed);
-          return;
-        }
-      }
-    } catch (e) {}
-    setRestorableDraft(null);
-  }, [selectedStoryId]);
+  }, [snapshot]);
+  const dirty = snapshot !== lastSaved.current;
 
+  // Warn before an accidental tab close / navigation away from work not saved yet
   useEffect(() => {
-    if (!selectedStoryId || isEditMode) return;
-    const hasContent = chapterTitle.trim() || bodyHtml.trim();
-    if (!hasContent) return;
-
-    const timer = setTimeout(() => {
-      try {
-        window.localStorage.setItem(draftStorageKey(selectedStoryId), JSON.stringify({
-          chapterTitle,
-          chapterNumber,
-          selectedVolumeId,
-          bodyHtml,
-          annotations,
-          activeAnnotationIndices,
-          introNote,
-          outroNote,
-          savedAt: new Date().toISOString(),
-        }));
-      } catch (e) {}
-    }, 1500);
-
-    return () => clearTimeout(timer);
-  }, [selectedStoryId, chapterTitle, chapterNumber, selectedVolumeId, bodyHtml, annotations, activeAnnotationIndices, introNote, outroNote]);
-
-  const restoreDraft = () => {
-    if (!restorableDraft) return;
-    setChapterTitle(restorableDraft.chapterTitle || '');
-    if (restorableDraft.chapterNumber !== undefined) setChapterNumber(restorableDraft.chapterNumber);
-    if (restorableDraft.selectedVolumeId !== undefined) setSelectedVolumeId(restorableDraft.selectedVolumeId);
-    setBodyHtml(restorableDraft.bodyHtml ?? plainTextToHtml(restorableDraft.bodyText || ''));
-    setAnnotations(restorableDraft.annotations || {});
-    setActiveAnnotationIndices(restorableDraft.activeAnnotationIndices || []);
-    setIntroNote(restorableDraft.introNote || '');
-    setOutroNote(restorableDraft.outroNote || '');
-    if (restorableDraft.introNote || restorableDraft.outroNote) setShowMessages(true);
-    setRestorableDraft(null);
-  };
-
-  const dismissDraft = () => {
-    dismissedDraftStoryRef.current = selectedStoryId;
-    clearDraftFromStorage(selectedStoryId);
-    setRestorableDraft(null);
-  };
-
-  // Warn before an accidental tab close / navigation away from unsaved work. Compared on the
-  // visible text, since the editor normalises the HTML it is given.
-  const workKey = `${chapterTitle.trim()}\u0000${paragraphs.join('\n')}`;
-  const savedWorkKey = React.useRef(`\u0000`);
-  useEffect(() => {
-    if (workKey === savedWorkKey.current) return;
+    if (!dirty) return;
     const handler = (e: BeforeUnloadEvent) => {
       e.preventDefault();
       e.returnValue = '';
     };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [workKey]);
+  }, [dirty]);
+
+  /** Fill the form from stored chapter blocks + fields (a draft or a published chapter). */
+  const fillForm = (stored: any[], meta: any, fallbackText = '') => {
+    const loadedHtml = stored.length > 0 ? blocksToHtml(stored) : plainTextToHtml(fallbackText);
+    // notes follow their paragraph (older chapters split into paragraph + illustration blocks)
+    const converted = htmlToBlocks(loadedHtml);
+    const nextAnnotations: Record<number, Annotation> = {};
+    const nextActive: number[] = [];
+    stored.filter((b) => b.note).forEach((b) => {
+      const text = (b.text || '').replace(/\s+/g, ' ').trim();
+      const idx = converted.findIndex((c, i) => c.text === text && !nextActive.includes(i));
+      if (idx >= 0) {
+        nextAnnotations[idx] = { note: b.note };
+        nextActive.push(idx);
+      }
+    });
+    setSelectedVolumeId(meta.volume_id || '');
+    setChapterNumber(Number(meta.chapter_number));
+    setChapterTitle(meta.title || '');
+    setBodyHtml(loadedHtml);
+    setAnnotations(nextAnnotations);
+    setActiveAnnotationIndices(nextActive);
+    setIntroNote(meta.intro_note || '');
+    setOutroNote(meta.outro_note || '');
+    if (nextActive.length > 0) setShowAnnotations(true);
+    if (meta.intro_note || meta.outro_note) setShowMessages(true);
+    loadedAt.current = Date.now();
+  };
+
+  // One save at a time, in order; resolves false when it did not save
+  const inflight = React.useRef<Promise<boolean>>(Promise.resolve(true));
+  const stopSaving = React.useRef(false);
+  const saveDraftNow = (): Promise<boolean> => {
+    inflight.current = inflight.current.then(async () => {
+      const snap = snapshotRef.current;
+      if (snap === lastSaved.current && draftRef.current) return true;
+      if (stopSaving.current) return false;
+      setSaveState('saving');
+      try {
+        const d = draftRef.current;
+        const res = d
+          ? await authFetch(`${API_BASE_URL}/drafts/${d.id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ...payloadRef.current, expected_version: d.version }),
+            })
+          : await authFetch(`${API_BASE_URL}/drafts`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ story_id: selectedStoryId, ...payloadRef.current }),
+            });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json.success) {
+          if (res.status === 409) stopSaving.current = true; // saved elsewhere or closed: reload instead of overwriting
+          setErrorMsg(json.message || 'Không lưu được bản nháp.');
+          setSaveState('error');
+          return false;
+        }
+        if (d) setDraftInfo({ ...d, version: json.data.version });
+        else {
+          setDraftInfo(json.data);
+          // keep typing undisturbed: only the address changes, so a reload reopens this draft
+          window.history.replaceState(null, '', `/dang-chuong?draft=${json.data.id}`);
+        }
+        lastSaved.current = snap;
+        setSavedAt(new Date());
+        setSaveState('saved');
+        return true;
+      } catch (e: any) {
+        setErrorMsg('Lỗi khi lưu nháp: ' + e.message);
+        setSaveState('error');
+        return false;
+      }
+    });
+    return inflight.current;
+  };
+
+  // Autosave a few seconds after the last change (a new chapter only once it has a title or some text)
+  useEffect(() => {
+    if (isEditMode || !selectedStoryId || !dirty || stopSaving.current) return;
+    if (!draftRef.current && !chapterTitle.trim() && !hasText) return;
+    const timer = setTimeout(() => { saveDraftNow(); }, AUTOSAVE_MS);
+    return () => clearTimeout(timer);
+  }, [snapshot, selectedStoryId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load stories the current user is actually allowed to manage
   // (uploader, translation-group member, or added collaborator) — resolved
@@ -281,6 +335,7 @@ function ChapterEditorContent() {
             if (json.success) {
               setSelectedStory(json.data);
               setVolumes(json.data.volumes || []);
+              if (draftRef.current || draftParam) return; // a draft keeps its own volume and number
               setSelectedVolumeId('');
               // Next number after the highest published chapter (the count is wrong when numbers have gaps)
               const latest = Number(json.data.latest_chapter?.chapter_number);
@@ -310,21 +365,24 @@ function ChapterEditorContent() {
           return;
         }
         const d = json.data;
-        setEditVersion(d.ws_version || 0);
-        const stored: any[] = d.content_blocks || [];
-        const loadedHtml = stored.length > 0 ? blocksToHtml(stored) : plainTextToHtml(d.content || '');
-        // notes follow their paragraph (older chapters split into paragraph + illustration blocks)
-        const converted = htmlToBlocks(loadedHtml);
-        const nextAnnotations: Record<number, Annotation> = {};
-        const nextActive: number[] = [];
-        stored.filter((b) => b.note).forEach((b) => {
-          const text = (b.text || '').replace(/\s+/g, ' ').trim();
-          const idx = converted.findIndex((c, i) => c.text === text && !nextActive.includes(i));
-          if (idx >= 0) {
-            nextAnnotations[idx] = { note: b.note };
-            nextActive.push(idx);
+        if (d.story_type !== 'manga') {
+          // Text chapters are edited on a draft: open (or reopen) mine, then work there
+          const dr = await authFetch(`${API_BASE_URL}/drafts`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chapter_id: editId }),
+          });
+          const dj = await dr.json().catch(() => ({}));
+          if (cancelled) return;
+          if (!dr.ok || !dj.success) {
+            setErrorMsg(dj.message || 'Không mở được bản nháp để sửa chương.');
+            setEditLoadState('error');
+            return;
           }
-        });
+          router.replace(`/dang-chuong?draft=${dj.data.id}`);
+          return;
+        }
+        setEditVersion(d.ws_version || 0);
 
         let storyDetail: any = null;
         const storyRes = await fetch(`${API_BASE_URL}/stories/${d.story_slug}`);
@@ -343,16 +401,7 @@ function ChapterEditorContent() {
         setSelectedStoryId(d.story_id);
         setSelectedStory(storyDetail || { id: d.story_id, slug: d.story_slug, title: d.story_title });
         setVolumes(storyDetail?.volumes || []);
-        setSelectedVolumeId(d.volume_id || '');
-        setChapterNumber(Number(d.chapter_number));
-        setChapterTitle(d.title || '');
-        setBodyHtml(loadedHtml);
-        savedWorkKey.current = `${(d.title || '').trim()}\u0000${converted.map((c) => c.text).join('\n')}`;
-        setAnnotations(nextAnnotations);
-        setActiveAnnotationIndices(nextActive);
-        setIntroNote(d.intro_note || '');
-        setOutroNote(d.outro_note || '');
-        if (d.intro_note || d.outro_note) setShowMessages(true);
+        fillForm(d.content_blocks || [], d, d.content || '');
         setEditLoadState('ready');
       } catch (e: any) {
         if (!cancelled) {
@@ -364,6 +413,38 @@ function ChapterEditorContent() {
     loadChapter();
     return () => { cancelled = true; };
   }, [isEditMode, isAuthenticated, editId]);
+
+  /** Load draft {id} from the workspace into the form (also after a pull). */
+  const loadDraft = async (id: string) => {
+    setEditLoadState('loading');
+    try {
+      const res = await authFetch(`${WS_URL}/drafts/${id}`);
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success) {
+        setErrorMsg(json.message || 'Không mở được bản nháp.');
+        setEditLoadState('error');
+        return;
+      }
+      showDraft(json.data);
+    } catch (e: any) {
+      setErrorMsg('Lỗi: ' + e.message);
+      setEditLoadState('error');
+    }
+  };
+  const showDraft = (d: any) => {
+    setDraftInfo({ ...d, blocks: undefined });
+    stopSaving.current = d.status !== 'open';
+    if (d.status !== 'open') setErrorMsg('Bản nháp này đã đăng hoặc đã bỏ, chỉ xem được.');
+    setSelectedStoryId(d.story_id);
+    fillForm(d.blocks || [], d.meta);
+    setEditLoadState('ready');
+  };
+
+  useEffect(() => {
+    // our own first autosave also puts ?draft= in the address: that draft is already on screen
+    if (!draftParam || !isAuthenticated || draftRef.current?.id === draftParam) return;
+    loadDraft(draftParam);
+  }, [draftParam, isAuthenticated]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle Create New Volume
   const handleCreateVolume = async () => {
@@ -390,8 +471,8 @@ function ChapterEditorContent() {
     }
   };
 
-  // Handle Submit / Save
-  const handleSaveOrSubmit = async (isDraft: boolean) => {
+  // Publish: save what is on screen, then the draft becomes the official chapter (manga: save the fields directly)
+  const handlePublish = async () => {
     if (!isAuthenticated) {
       openAuthModal('login');
       return;
@@ -402,8 +483,7 @@ function ChapterEditorContent() {
       setErrorMsg('Số chương phải là số từ 0 trở lên.');
       return;
     }
-
-    if (!isMangaEdit && !isDraft && !hasText) {
+    if (!isMangaEdit && !hasText) {
       setErrorMsg('Nội dung chương đang trống.');
       return;
     }
@@ -411,14 +491,7 @@ function ChapterEditorContent() {
     setIsSubmitting(true);
     setErrorMsg(null);
     try {
-      const formattedBlocks = editorBlocks.map((b, idx) => ({
-        html: b.html,
-        text: b.text,
-        image_url: b.image_url || null,
-        note: annotations[idx]?.note || null,
-      }));
-
-      if (isEditMode) {
+      if (isMangaEdit) {
         const editRes = await authFetch(`${API_BASE_URL}/chapters/${editId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -430,12 +503,11 @@ function ChapterEditorContent() {
             outro_note: outroNote,
             expected_version: editVersion,
             // manga pages are left untouched (sending no content keeps them)
-            ...(isMangaEdit ? {} : { content_blocks: formattedBlocks }),
           }),
         });
         const editJson = await editRes.json();
         if (editRes.ok && editJson.success) {
-          savedWorkKey.current = workKey;
+          lastSaved.current = snapshot;
           setFeedback(editJson.message || 'Đã cập nhật chương');
           setTimeout(() => {
             const storySlug = editJson.data?.story_slug || selectedStory?.slug;
@@ -448,39 +520,23 @@ function ChapterEditorContent() {
         return;
       }
 
-      const res = await authFetch(`${API_BASE_URL}/chapters/submissions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          story_id: selectedStoryId,
-          volume_id: selectedVolumeId || null,
-          title: chapterTitle.trim(),
-          chapter_number: parsedNumber,
-          content: paragraphs.filter(Boolean).join('\n\n'),
-          content_blocks: formattedBlocks,
-          intro_note: introNote,
-          outro_note: outroNote,
-          word_count: totalWords,
-          is_draft: isDraft,
-        }),
-      });
-
-      const json = await res.json();
+      if (!(await saveDraftNow()) || !draftRef.current) return;
+      const res = await authFetch(`${API_BASE_URL}/drafts/${draftRef.current.id}/publish`, { method: 'POST' });
+      const json = await res.json().catch(() => ({}));
       if (res.ok && json.success) {
-        savedWorkKey.current = workKey;
+        stopSaving.current = true; // the draft is closed now
         setFeedback(json.message || 'Đăng chương thành công');
-        clearDraftFromStorage();
-        if (!isDraft) {
-          setTimeout(() => {
-            if (selectedStory?.slug) {
-              router.push(`/truyen/${selectedStory.slug}`);
-            } else {
-              router.push('/nhom-dich');
-            }
-          }, 1500);
-        }
+        setTimeout(() => {
+          const { story_slug, slug } = json.data || {};
+          router.push(story_slug && slug ? `/truyen/${story_slug}/${slug}` : '/ws');
+        }, 1200);
       } else {
         setErrorMsg(json.message || 'Đăng chương thất bại.');
+        // the official version may have moved: refresh what the banner knows
+        if (res.status === 409) {
+          const fresh = await authFetch(`${WS_URL}/drafts/${draftRef.current.id}`).then((r) => r.json()).catch(() => null);
+          if (fresh?.success) setDraftInfo({ ...fresh.data, blocks: undefined });
+        }
       }
     } catch (e: any) {
       setErrorMsg('Lỗi: ' + e.message);
@@ -488,6 +544,26 @@ function ChapterEditorContent() {
       setIsSubmitting(false);
     }
   };
+
+  const discardDraft = async () => {
+    const d = draftRef.current;
+    if (!d || !window.confirm('Bỏ bản nháp này? Nội dung chưa đăng sẽ không còn trong danh sách nháp của bạn.')) return;
+    const res = await authFetch(`${WS_URL}/drafts/${d.id}`, { method: 'DELETE' });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || !json.success) {
+      setErrorMsg(json.message || 'Không bỏ được bản nháp.');
+      return;
+    }
+    stopSaving.current = true;
+    lastSaved.current = snapshot;
+    router.push('/ws');
+  };
+
+  // Before pulling, the draft on the server must hold what is on screen
+  const openPull = async () => {
+    if (await saveDraftNow()) setShowPull(true);
+  };
+  const behind = Boolean(draft?.chapter_id && draft.current_version && draft.current_version !== draft.base_version && !draft.chapter_deleted);
 
   if (isAuthLoading) {
     return (
@@ -522,28 +598,28 @@ function ChapterEditorContent() {
       {/* Back Button */}
       <div>
         <Link
-          href="/nhom-dich"
+          href={draftParam || draft ? '/ws' : '/nhom-dich'}
           className="inline-flex items-center gap-2 text-xs font-semibold text-gray-400 hover:text-white transition"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Quay lại Quản Lý Nhóm Dịch</span>
+          <span>{draftParam || draft ? 'Về Workspace (nháp của tôi)' : 'Quay lại Quản Lý Nhóm Dịch'}</span>
         </Link>
       </div>
 
-      {!isEditMode && <UploadModeSwitch mode="novel" groupId={groupId} />}
+      {!isEditMode && !draft && !draftParam && <UploadModeSwitch mode="novel" groupId={groupId} />}
 
       {/* Header */}
       <div className="rounded-3xl p-6 sm:p-7 glass-panel border border-white/10 bg-glass shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="space-y-1.5">
           <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-wide flex items-center gap-2">
             <Pencil className="w-5 h-5 text-brand-400" />
-            {isEditMode ? 'Sửa Chương' : 'Đăng Chương Mới'}
+            {isEditMode || draft?.chapter_id ? 'Sửa Chương' : 'Đăng Chương Mới'}
           </h1>
           <p className="text-xs sm:text-sm text-gray-400">
             {isMangaEdit
               ? 'Chương truyện tranh: sửa tiêu đề, số chương hoặc tập. Các trang ảnh được giữ nguyên.'
-              : isEditMode
-              ? 'Chỉnh sửa chương đã xuất bản. Thay đổi có hiệu lực ngay và không gửi lại thông báo cho người theo dõi.'
+              : draft?.chapter_id
+              ? 'Bạn đang sửa trên bản nháp riêng, tự lưu khi gõ. Độc giả chỉ thấy thay đổi khi bạn bấm Đăng (thành phiên bản mới, không gửi lại thông báo).'
               : 'Soạn chương như trong Word: tiêu đề, in đậm, căn lề, tô màu chữ, ngắt cảnh, chèn ảnh minh họa. Dán từ Word / Google Docs vẫn giữ định dạng.'}
           </p>
         </div>
@@ -576,24 +652,62 @@ function ChapterEditorContent() {
         </div>
       )}
 
-      {restorableDraft && (
-        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs font-semibold flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in">
-          <div className="flex items-center gap-2">
-            <Save className="w-4 h-4 text-amber-400 shrink-0" />
+      {/* Draft status: autosave, discard; the official version moved since the draft was opened */}
+      {!isMangaEdit && selectedStoryId && (
+        <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/10 text-xs flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-gray-300">
+            <Save className="w-4 h-4 text-brand-400 shrink-0" />
             <span>
-              Phát hiện bản nháp tự động lưu lúc{' '}
-              {new Date(restorableDraft.savedAt).toLocaleString('vi-VN')} cho truyện này. Khôi phục lại?
+              {draft
+                ? draft.chapter_id ? `Bản nháp sửa chương (dựa trên phiên bản ${draft.base_version})` : 'Bản nháp chương mới'
+                : 'Bản nháp được tạo khi bạn bắt đầu viết'}
+              {' · '}
+              <span className={saveState === 'error' ? 'text-rose-300' : 'text-gray-400'}>
+                {saveState === 'saving' ? 'Đang lưu...'
+                  : saveState === 'error' ? 'Chưa lưu được'
+                  : dirty ? 'Có thay đổi chưa lưu'
+                  : savedAt ? `Đã lưu lúc ${savedAt.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`
+                  : draft ? 'Đã lưu' : ''}
+              </span>
             </span>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <button type="button" onClick={restoreDraft} className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-ink font-bold text-[11px] transition">
-              Khôi phục
+          {draft && draft.status === 'open' && (
+            <button type="button" onClick={discardDraft} className="text-[11px] font-bold text-gray-400 hover:text-rose-300 flex items-center gap-1 transition">
+              <Trash2 className="w-3.5 h-3.5" /> Bỏ nháp
             </button>
-            <button type="button" onClick={dismissDraft} className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 font-bold text-[11px] transition">
-              Bỏ qua
-            </button>
-          </div>
+          )}
         </div>
+      )}
+
+      {behind && (
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs font-semibold flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <GitMerge className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>
+              Bản chính thức đã thay đổi từ khi bạn mở nháp (phiên bản {draft.base_version} → {draft.current_version}).
+              Cập nhật để lấy phần người khác đã sửa trước khi đăng.
+            </span>
+          </div>
+          <button type="button" onClick={openPull} className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-ink font-bold text-[11px] transition shrink-0">
+            Cập nhật theo bản chính
+          </button>
+        </div>
+      )}
+
+      {draft?.chapter_deleted && (
+        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-200 text-xs font-semibold">
+          Chương này đã bị xóa khỏi bản chính thức nên bản nháp không đăng được nữa. Người giữ truyện có thể khôi phục chương trong lịch sử.
+        </div>
+      )}
+
+      {showPull && draft && (
+        <PullDialog
+          draftId={draft.id}
+          draftVersion={draft.version}
+          authFetch={authFetch}
+          onClose={() => setShowPull(false)}
+          onDone={(d) => { setShowPull(false); setFeedback(`Đã cập nhật nháp theo bản chính (phiên bản ${d.base_version}).`); showDraft(d); }}
+        />
       )}
 
       {/* 1. PUBLICATION METADATA */}
@@ -605,7 +719,7 @@ function ChapterEditorContent() {
             <label className="text-xs font-bold text-gray-200">Bộ Truyện *</label>
             <select
               value={selectedStoryId}
-              disabled={isEditMode}
+              disabled={isEditMode || Boolean(draft) || Boolean(draftParam)}
               onChange={(e) => pickStory(e.target.value)}
               className="w-full h-10 px-3 rounded-xl bg-surface-3 border border-white/10 text-xs text-white focus:outline-none focus:border-brand-500 font-semibold"
               required
@@ -625,8 +739,8 @@ function ChapterEditorContent() {
                   ))}
                 </optgroup>
               )}
-              {isEditMode && selectedStory && !novelStories.some((s) => s.id === selectedStoryId) && (
-                <option value={selectedStoryId}>{selectedStory.title}</option>
+              {(isEditMode || draft) && selectedStoryId && !novelStories.some((s) => s.id === selectedStoryId) && (
+                <option value={selectedStoryId}>{selectedStory?.title || 'Truyện của bản nháp'}</option>
               )}
             </select>
             {isLoadingStories ? (
@@ -962,31 +1076,32 @@ function ChapterEditorContent() {
         {/* Action Toolbar */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-white/10">
           <div className="text-xs text-gray-400">
-            * Chỉ chủ thầu bộ truyện, thành viên nhóm dịch hoặc Mod/Admin mới có thể xuất bản chương.
+            * Chỉ chủ truyện, thành viên nhóm dịch hoặc cộng tác viên mới đăng được chương.
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-            {!isEditMode && (
+            {!isMangaEdit && (
             <button
               type="button"
-              onClick={() => handleSaveOrSubmit(true)}
-              disabled={!selectedStoryId || !chapterTitle.trim() || isSubmitting}
+              onClick={() => saveDraftNow()}
+              disabled={!selectedStoryId || isSubmitting || saveState === 'saving' || (draft && draft.status !== 'open') || (!draft && !chapterTitle.trim() && !hasText)}
               className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 disabled:opacity-40 text-white font-bold text-xs border border-white/15 flex items-center gap-1.5 transition"
-              title="Lưu riêng tư, chưa hiển thị cho độc giả"
+              title="Bản nháp tự lưu sau vài giây; bấm để lưu ngay. Độc giả chưa thấy."
             >
               <Save className="w-3.5 h-3.5" />
-              <span>Lưu Bản Nháp</span>
+              <span>Lưu nháp</span>
             </button>
             )}
 
             <button
               type="button"
-              onClick={() => handleSaveOrSubmit(false)}
-              disabled={!selectedStoryId || !chapterTitle.trim() || isSubmitting || (isEditMode && editLoadState !== 'ready')}
+              onClick={handlePublish}
+              disabled={!selectedStoryId || !chapterTitle.trim() || isSubmitting || behind || Boolean(draft?.chapter_deleted) || (draft && draft.status !== 'open') || ((isEditMode || Boolean(draftParam)) && editLoadState !== 'ready')}
+              title={behind ? 'Cập nhật theo bản chính trước khi đăng' : undefined}
               className="px-8 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 disabled:opacity-40 text-snow font-bold text-xs shadow-xl shadow-brand-500/25 flex items-center gap-2 transition hover:scale-105"
             >
               <Send className="w-4 h-4" />
-              <span>{isSubmitting ? 'Đang gửi...' : (isEditMode ? 'Lưu Thay Đổi' : 'Nộp & Xuất Bản Chương')}</span>
+              <span>{isSubmitting ? 'Đang gửi...' : isMangaEdit ? 'Lưu Thay Đổi' : draft?.chapter_id ? 'Đăng bản sửa' : 'Đăng Chương'}</span>
             </button>
           </div>
         </div>
