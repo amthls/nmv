@@ -3,7 +3,7 @@
 - **Mục tiêu:** Giai đoạn B, nhánh 1: service identity (Go) + database riêng, chạy trong compose nhưng chưa nhận traffic
 - **Tạo từ:** `chore/request-id-logs` @ ed6d0ce (xếp chồng trên #52 → #51; plan nằm ở đó), ngày 2026-10-10. PR base = `chore/request-id-logs`
 - **Trạng thái:** xong, chờ review PR
-- **PR:** (chưa mở)
+- **PR:** https://github.com/amthls/nmv/pull/53
 - **Plan:** `Plan/identity.md` (nhánh 1), `Plan/microservices.md` (Giai đoạn B)
 
 ## Thay đổi
