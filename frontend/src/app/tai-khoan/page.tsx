@@ -60,12 +60,6 @@ const ROLE_INFO: Record<string, { label: string; cls: string }> = {
 };
 const roleInfo = (r: string) => ROLE_INFO[r] || { label: r, cls: 'bg-white/10 text-gray-300 border-white/20' };
 
-const STATUS_INFO: Record<string, { label: string; cls: string }> = {
-  approved: { label: 'Đã duyệt', cls: 'bg-emerald-500/20 text-emerald-300' },
-  pending: { label: 'Chờ duyệt', cls: 'bg-amber-500/20 text-amber-300' },
-  rejected: { label: 'Bị từ chối', cls: 'bg-rose-500/20 text-rose-300' },
-};
-
 const fmtDate = (d?: string | null) => (d ? new Date(d).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—');
 const fmtNumber = (n?: number | string | null) => Number(n || 0).toLocaleString('vi-VN');
 
@@ -567,11 +561,6 @@ export default function UserProfilePage() {
                       <Link key={s.id} href={`/truyen/${s.slug}`} className="group space-y-1.5">
                         <div className="aspect-[3/4] rounded-xl overflow-hidden bg-gray-900 relative border border-white/10">
                           <SmartImage src={s.cover_image_url} alt={s.title} className="w-full h-full object-cover group-hover:scale-105 transition" />
-                          {s.approval_status && s.approval_status !== 'approved' && STATUS_INFO[s.approval_status] && (
-                            <span className={`absolute top-1 left-1 px-1.5 py-0.5 rounded text-[9px] font-bold ${STATUS_INFO[s.approval_status].cls}`}>
-                              {STATUS_INFO[s.approval_status].label}
-                            </span>
-                          )}
                         </div>
                         <p className="text-[11px] font-semibold text-gray-200 line-clamp-2 group-hover:text-brand-300">{s.title}</p>
                         <p className="text-[10px] text-gray-500 flex items-center gap-1">
@@ -824,7 +813,7 @@ export default function UserProfilePage() {
                 {
                   checked: notifyGroupEvents, set: setNotifyGroupEvents,
                   title: 'Hoạt động nhóm dịch',
-                  desc: 'Yêu cầu gia nhập, kết quả duyệt, được thêm vào nhóm, nhóm được duyệt hoặc bị từ chối',
+                  desc: 'Yêu cầu gia nhập, kết quả xin gia nhập, được thêm vào nhóm',
                 },
               ].map((opt) => (
                 <label key={opt.title} className="flex items-start gap-3 p-3 rounded-2xl bg-white/5 border border-white/10 cursor-pointer hover:border-white/20 transition">

@@ -22,7 +22,9 @@ import {
   ArrowUp,
   ArrowDown,
   Download,
-  Library
+  Library,
+  EyeOff,
+  RotateCcw
 } from 'lucide-react';
 import SmartImage from '@/components/common/SmartImage';
 import CommentSection from '@/components/comments/CommentSection';
@@ -159,8 +161,8 @@ export default function StoryDetailPage() {
     }
   };
 
-  // Check if current user is owner ("chủ thầu"), collaborator, translation-group
-  // member, or Admin/Mod. Resolved server-side (story.can_manage) so group
+  // Check if current user is owner ("chủ thầu"), collaborator or translation-group
+  // member. Resolved server-side (story.can_manage) so group
   // members see the same management controls the backend actually authorizes;
   // the local check below is only a fallback for stale/unauthenticated data.
   const isOwner = Boolean(
@@ -169,20 +171,23 @@ export default function StoryDetailPage() {
       (story.collaborators && story.collaborators.some((c: any) => c.user_id === user.id))
     )
   );
-  const canManage = story?.can_manage ?? (hasRole('admin', 'mod') || isOwner);
-  const [isReviewing, setIsReviewing] = useState(false);
+  const canManage = story?.can_manage ?? isOwner;
+  // Only the uploader deletes a story for good; Admin/Mod don't edit it, they take it down (undoable)
+  const isUploader = Boolean(user && story && user.id === story.uploader_id);
+  const isStaff = hasRole('admin', 'mod');
+  const isRemoved = story?.approval_status === 'rejected';
+  const [isModerating, setIsModerating] = useState(false);
 
-  // Group story waiting for the group's leader/vice leader
-  const handleReviewStory = async (approve: boolean) => {
-    if (!story || isReviewing) return;
+  const handleModerate = async (remove: boolean) => {
+    if (!story || isModerating) return;
     let reason: string | null = null;
-    if (!approve) {
-      reason = prompt('Lý do từ chối (không bắt buộc):');
+    if (remove) {
+      reason = prompt(`Gỡ truyện "${story.title}"? Lý do (người đăng sẽ thấy, có thể để trống):`);
       if (reason === null) return;
     }
-    setIsReviewing(true);
+    setIsModerating(true);
     try {
-      const res = await authFetch(`${API_BASE_URL}/stories/${story.id}/${approve ? 'approve' : 'reject'}`, {
+      const res = await authFetch(`${API_BASE_URL}/stories/${story.id}/${remove ? 'remove' : 'restore'}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reason }),
@@ -193,7 +198,7 @@ export default function StoryDetailPage() {
     } catch (err: any) {
       alert('Lỗi: ' + err.message);
     } finally {
-      setIsReviewing(false);
+      setIsModerating(false);
     }
   };
 
@@ -274,7 +279,7 @@ export default function StoryDetailPage() {
             Đọc ngay
           </Link>
 
-          {/* Edit / Delete Chapter for Owner / Admin / Mod */}
+          {/* Edit / delete chapter: the story's team */}
           {canManage && (
             <Link
               href={`/dang-chuong?edit=${ch.id}`}
@@ -406,42 +411,20 @@ export default function StoryDetailPage() {
             <span className="text-gray-200 font-medium truncate max-w-xs">{story.title}</span>
           </div>
 
-          {story.approval_status && story.approval_status !== 'approved' && (
-            <div className={`mb-6 p-4 rounded-2xl border text-xs flex flex-col sm:flex-row sm:items-center gap-3 [text-shadow:none] ${
-              story.approval_status === 'rejected'
-                ? 'bg-rose-500/20 border-rose-500/30 text-rose-200'
-                : 'bg-amber-500/20 border-amber-500/30 text-amber-100'
-            }`}>
+          {isRemoved && (
+            <div className="mb-6 p-4 rounded-2xl border text-xs flex flex-col sm:flex-row sm:items-center gap-3 [text-shadow:none] bg-rose-500/20 border-rose-500/30 text-rose-200">
               <div className="flex-1">
-                {story.approval_status === 'rejected' ? (
-                  <>
-                    <b>Truyện không được nhóm duyệt.</b>
-                    {story.rejection_reason && <> Lý do: {story.rejection_reason}.</>} Bạn có thể sửa thông tin truyện để gửi duyệt lại.
-                  </>
-                ) : (
-                  <>
-                    <b>Truyện đang chờ duyệt.</b> Chỉ hiển thị công khai sau khi Trưởng nhóm hoặc Phó nhóm{' '}
-                    {story.group_name ? <>của <b>{story.group_name}</b> </> : ''}duyệt.
-                  </>
-                )}
+                <b>Truyện đã bị Ban quản trị gỡ.</b> Chỉ người đăng, nhóm dịch và Ban quản trị còn xem được.
+                {story.rejection_reason && <> Lý do: {story.rejection_reason}.</>}
               </div>
-              {story.can_review && story.approval_status === 'pending' && (
-                <div className="flex gap-2 shrink-0">
-                  <button
-                    onClick={() => handleReviewStory(true)}
-                    disabled={isReviewing}
-                    className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold disabled:opacity-50"
-                  >
-                    Duyệt
-                  </button>
-                  <button
-                    onClick={() => handleReviewStory(false)}
-                    disabled={isReviewing}
-                    className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold disabled:opacity-50"
-                  >
-                    Từ chối
-                  </button>
-                </div>
+              {isStaff && (
+                <button
+                  onClick={() => handleModerate(false)}
+                  disabled={isModerating}
+                  className="shrink-0 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" /> Khôi phục
+                </button>
               )}
             </div>
           )}
@@ -649,33 +632,49 @@ export default function StoryDetailPage() {
       {/* 2. Main Content Body: Synopsis, Chapter Tree & Comments */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
         
-        {/* Management, only for the story's team / Admin / Mod (outside the banner: same banner for everyone) */}
-        {canManage && (
+        {/* Management for the story's team; Admin/Mod only get "Gỡ truyện" (outside the banner: same banner for everyone) */}
+        {(canManage || isStaff) && (
           <div className="flex flex-wrap items-center gap-2 px-4 py-3 rounded-2xl glass-panel border border-white/10">
             <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mr-1">Quản lý</span>
             <CodeBadge code={story.code} />
-            <Link
-              href={chapterUploadHref({ storyType: story.story_type, storyId: story.id })}
-              className="px-3 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold flex items-center gap-1.5 transition"
-            >
-              <PlusCircle className="w-3.5 h-3.5" />
-              <span>Thêm chương</span>
-            </Link>
-            <Link
-              href={`/dang-truyen/sua/${story.slug}`}
-              className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-200 border border-white/15 text-xs font-bold flex items-center gap-1.5 transition"
-            >
-              <Pencil className="w-3.5 h-3.5" />
-              <span>Sửa truyện</span>
-            </Link>
-            <button
-              onClick={handleDeleteStory}
-              disabled={isDeleting}
-              className="px-3 py-1.5 rounded-lg bg-rose-600/15 hover:bg-rose-600/25 text-rose-300 border border-rose-500/30 text-xs font-bold flex items-center gap-1.5 transition"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>{isDeleting ? 'Đang xóa...' : 'Xóa truyện'}</span>
-            </button>
+            {canManage && (
+              <>
+                <Link
+                  href={chapterUploadHref({ storyType: story.story_type, storyId: story.id })}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-xs font-bold flex items-center gap-1.5 transition"
+                >
+                  <PlusCircle className="w-3.5 h-3.5" />
+                  <span>Thêm chương</span>
+                </Link>
+                <Link
+                  href={`/dang-truyen/sua/${story.slug}`}
+                  className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-gray-200 border border-white/15 text-xs font-bold flex items-center gap-1.5 transition"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                  <span>Sửa truyện</span>
+                </Link>
+              </>
+            )}
+            {isUploader && (
+              <button
+                onClick={handleDeleteStory}
+                disabled={isDeleting}
+                className="px-3 py-1.5 rounded-lg bg-rose-600/15 hover:bg-rose-600/25 text-rose-300 border border-rose-500/30 text-xs font-bold flex items-center gap-1.5 transition"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{isDeleting ? 'Đang xóa...' : 'Xóa truyện'}</span>
+              </button>
+            )}
+            {isStaff && !isRemoved && (
+              <button
+                onClick={() => handleModerate(true)}
+                disabled={isModerating}
+                className="px-3 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-xs font-bold flex items-center gap-1.5 transition"
+              >
+                <EyeOff className="w-3.5 h-3.5" />
+                <span>Gỡ truyện vi phạm</span>
+              </button>
+            )}
           </div>
         )}
 

@@ -14,7 +14,6 @@ import {
   MoreHorizontal,
   Eye,
   Pin,
-  ShieldAlert,
   EyeOff,
   FileText,
   CheckCircle2,
@@ -84,6 +83,7 @@ export default function PostDetailPage() {
   }, [showMenu]);
 
   const isAuthor = Boolean(user && post && user.id === post.user_id);
+  // Admin/Mod don't edit or delete other people's posts: they only take them down (undoable)
   const isStaff = hasRole('admin', 'mod');
   const canModify = isAuthor || isStaff;
 
@@ -107,7 +107,7 @@ export default function PostDetailPage() {
     action('', { method: 'DELETE' }, () => router.push('/fandom'));
   };
   const handleHide = () => {
-    const reason = prompt('Lý do ẩn bài viết (người đăng sẽ thấy, có thể để trống):');
+    const reason = prompt('Lý do gỡ bài viết (người đăng sẽ thấy, có thể để trống):');
     if (reason === null) return;
     action('/reject', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason }) });
   };
@@ -174,25 +174,13 @@ export default function PostDetailPage() {
       </nav>
 
       {/* Visibility notes for the author / moderators */}
-      {status === 'pending' && (
-        <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-sm">
-          <span className="flex items-center gap-2 font-semibold"><ShieldAlert className="w-4 h-4" /> Bài đã được sửa sau khi bị ẩn, đang chờ Ban quản trị xem lại.</span>
-          {isStaff && (
-            <div className="flex gap-2">
-              <button onClick={() => action('/approve', { method: 'POST' })} disabled={busy} className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-snow text-xs font-bold">Hiện lại</button>
-              <button onClick={handleHide} disabled={busy} className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-snow text-xs font-bold">Giữ ẩn</button>
-            </div>
-          )}
-        </div>
-      )}
       {status === 'rejected' && (
         <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl bg-rose-500/10 border border-rose-500/25 text-rose-300 text-sm">
           <div className="space-y-0.5">
-            <div className="font-semibold flex items-center gap-2"><EyeOff className="w-4 h-4" /> Bài viết đã bị Ban quản trị ẩn</div>
+            <div className="font-semibold flex items-center gap-2"><EyeOff className="w-4 h-4" /> Bài viết đã bị Ban quản trị gỡ</div>
             {post.rejection_reason && <div className="text-rose-200/80">Lý do: {post.rejection_reason}</div>}
           </div>
-          {isAuthor && <button onClick={() => setIsEditing(true)} className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white text-xs font-bold">Sửa bài viết</button>}
-          {isStaff && <button onClick={() => action('/approve', { method: 'POST' })} disabled={busy} className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-snow text-xs font-bold">Hiện lại</button>}
+          {isStaff && <button onClick={() => action('/approve', { method: 'POST' })} disabled={busy} className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-snow text-xs font-bold">Khôi phục</button>}
         </div>
       )}
       {status === 'draft' && (
@@ -269,9 +257,11 @@ export default function PostDetailPage() {
                         </button>
                         {showMenu && (
                           <div className="absolute right-0 mt-1 w-52 rounded-xl bg-surface-3 border border-white/15 shadow-2xl p-1 z-20 text-xs font-semibold">
-                            <button onClick={() => { setShowMenu(false); setIsEditing(true); }} className="w-full text-left px-3 py-2 rounded-lg text-gray-200 hover:bg-white/10 flex items-center gap-2">
-                              <Edit3 className="w-3.5 h-3.5 text-brand-400" /> Sửa bài viết
-                            </button>
+                            {isAuthor && (
+                              <button onClick={() => { setShowMenu(false); setIsEditing(true); }} className="w-full text-left px-3 py-2 rounded-lg text-gray-200 hover:bg-white/10 flex items-center gap-2">
+                                <Edit3 className="w-3.5 h-3.5 text-brand-400" /> Sửa bài viết
+                              </button>
+                            )}
                             {isStaff && status === 'approved' && (
                               <>
                                 <button onClick={() => action('/pin', { method: 'POST' })} className="w-full text-left px-3 py-2 rounded-lg text-gray-200 hover:bg-white/10 flex items-center gap-2">
@@ -279,14 +269,16 @@ export default function PostDetailPage() {
                                 </button>
                                 {!isAuthor && (
                                   <button onClick={handleHide} className="w-full text-left px-3 py-2 rounded-lg text-amber-300 hover:bg-amber-500/10 flex items-center gap-2">
-                                    <EyeOff className="w-3.5 h-3.5" /> Ẩn bài vi phạm
+                                    <EyeOff className="w-3.5 h-3.5" /> Gỡ bài vi phạm
                                   </button>
                                 )}
                               </>
                             )}
-                            <button onClick={handleDelete} disabled={busy} className="w-full text-left px-3 py-2 rounded-lg text-rose-400 hover:bg-rose-500/10 flex items-center gap-2">
-                              <Trash2 className="w-3.5 h-3.5" /> Xóa bài viết
-                            </button>
+                            {isAuthor && (
+                              <button onClick={handleDelete} disabled={busy} className="w-full text-left px-3 py-2 rounded-lg text-rose-400 hover:bg-rose-500/10 flex items-center gap-2">
+                                <Trash2 className="w-3.5 h-3.5" /> Xóa bài viết
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>

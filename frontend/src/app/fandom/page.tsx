@@ -11,11 +11,7 @@ import {
   ShieldCheck,
   Award,
   FileText,
-  ShieldAlert,
   CheckCircle2,
-  XCircle,
-  CheckSquare,
-  Square,
   User,
   Newspaper,
   X,
@@ -28,13 +24,13 @@ import SmartImage from '@/components/common/SmartImage';
 import { useAuth } from '@/context/AuthContext';
 import { API_BASE_URL, CATEGORIES, ROLE_BADGES, readJson, topRole } from '@/lib/fandom';
 
-type Feed = 'all' | 'mine' | 'drafts' | 'pending';
+type Feed = 'all' | 'mine' | 'drafts';
 type Sort = 'newest' | 'hot' | 'top' | 'views';
 interface StoryRef { id: string; title: string; slug: string; cover_image_url?: string; story_type?: string; author_name?: string; post_count?: number }
 interface Sidebar {
   leaderboard: { username: string; display_name: string | null; avatar_url: string | null; roles: string[]; posts: number; reactions: number; comments: number }[];
   stories: StoryRef[];
-  counts: { total: number; drafts: number; mine: number; pending: number | null };
+  counts: { total: number; drafts: number; mine: number };
 }
 
 const SORTS: { id: Sort; label: string }[] = [
@@ -45,10 +41,9 @@ const SORTS: { id: Sort; label: string }[] = [
 ];
 
 function FandomContent() {
-  const { user, isAuthenticated, isLoading: authLoading, hasRole, authFetch, openAuthModal } = useAuth();
+  const { user, isAuthenticated, isLoading: authLoading, authFetch, openAuthModal } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const isStaff = hasRole('admin', 'mod');
 
   const [feed, setFeed] = useState<Feed>('all');
   const [sort, setSort] = useState<Sort>('newest');
@@ -65,8 +60,6 @@ function FandomContent() {
   const [sidebar, setSidebar] = useState<Sidebar | null>(null);
 
   const [composer, setComposer] = useState<{ open: boolean; edit: PostItem | null }>({ open: false, edit: null });
-  const [selected, setSelected] = useState<string[]>([]);
-  const [isBulk, setIsBulk] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
   const showToast = useCallback((msg: string) => {
@@ -111,7 +104,6 @@ function FandomContent() {
 
   const loadPosts = useCallback(async () => {
     setIsLoading(true);
-    setSelected([]);
     try {
       const json = await readJson(await fetcher(buildUrl(1)));
       setPosts(json.data || []);
@@ -161,44 +153,17 @@ function FandomContent() {
     router.replace(s ? `/fandom?story=${s.slug}` : '/fandom', { scroll: false });
   };
 
-  const bulk = async (approve: boolean) => {
-    if (selected.length === 0 || isBulk) return;
-    let reason: string | null = null;
-    if (approve) {
-      if (!confirm(`Duyệt ${selected.length} bài viết đã chọn?`)) return;
-    } else {
-      reason = prompt(`Lý do từ chối ${selected.length} bài viết (người đăng sẽ thấy, có thể để trống):`);
-      if (reason === null) return;
-    }
-    setIsBulk(true);
-    try {
-      const json = await readJson(await authFetch(`${API_BASE_URL}/posts/${approve ? 'bulk-approve' : 'bulk-reject'}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ post_ids: selected, reason }),
-      }));
-      showToast(json.message);
-      refresh();
-    } catch (e: any) {
-      showToast(e.message);
-    } finally {
-      setIsBulk(false);
-    }
-  };
-
   const counts = sidebar?.counts;
-  const feeds: { id: Feed; label: string; icon: any; count?: number | null; hidden?: boolean }[] = [
+  const feeds: { id: Feed; label: string; icon: any; count?: number | null }[] = [
     { id: 'all', label: 'Bảng tin', icon: Newspaper, count: counts?.total },
     { id: 'mine', label: 'Bài viết của tôi', icon: User, count: isAuthenticated ? counts?.mine : null },
     { id: 'drafts', label: 'Bản nháp', icon: FileText, count: isAuthenticated ? counts?.drafts : null },
-    { id: 'pending', label: 'Cần xem lại', icon: ShieldAlert, count: counts?.pending, hidden: !isStaff },
   ];
 
   const emptyText = {
     all: query || story || category !== 'all' ? 'Không có bài viết nào khớp bộ lọc.' : 'Chưa có bài viết nào. Hãy mở đầu cuộc thảo luận!',
     mine: 'Bạn chưa đăng bài viết nào.',
     drafts: 'Bạn chưa có bản nháp nào. Khi soạn bài, bấm "Lưu Nháp" để viết tiếp sau.',
-    pending: 'Không có bài viết nào cần xem lại.',
   }[feed];
 
   return (
@@ -224,7 +189,7 @@ function FandomContent() {
         {/* Left: feeds + stories */}
         <aside className="lg:col-span-3 space-y-4">
           <nav className="glass-panel border border-white/10 rounded-2xl p-2 flex lg:flex-col gap-1 overflow-x-auto">
-            {feeds.filter((f) => !f.hidden).map(({ id, label, icon: Icon, count }) => (
+            {feeds.map(({ id, label, icon: Icon, count }) => (
               <button
                 key={id}
                 onClick={() => pickFeed(id)}
@@ -233,10 +198,10 @@ function FandomContent() {
                 }`}
               >
                 <span className="flex items-center gap-2">
-                  <Icon className={`w-4 h-4 ${id === 'pending' ? 'text-rose-400' : 'text-brand-400'}`} /> {label}
+                  <Icon className="w-4 h-4 text-brand-400" /> {label}
                 </span>
                 {count ? (
-                  <span className={`text-[11px] px-1.5 rounded-full ${id === 'pending' ? 'bg-rose-500/25 text-rose-200' : 'bg-white/10 text-gray-300'}`}>{count}</span>
+                  <span className="text-[11px] px-1.5 rounded-full bg-white/10 text-gray-300">{count}</span>
                 ) : null}
               </button>
             ))}
@@ -347,27 +312,6 @@ function FandomContent() {
             </div>
           )}
 
-          {/* Moderation bar */}
-          {feed === 'pending' && isStaff && posts.length > 0 && (
-            <div className="flex flex-wrap items-center justify-between gap-2 p-3 rounded-xl bg-rose-500/10 border border-rose-500/25">
-              <button
-                onClick={() => setSelected(selected.length === posts.length ? [] : posts.map((p) => p.id))}
-                className="flex items-center gap-1.5 text-xs font-semibold text-gray-200"
-              >
-                {selected.length === posts.length ? <CheckSquare className="w-4 h-4 text-brand-400" /> : <Square className="w-4 h-4 text-gray-400" />}
-                Chọn tất cả ({selected.length}/{posts.length})
-              </button>
-              <div className="flex gap-2">
-                <button onClick={() => bulk(true)} disabled={!selected.length || isBulk} className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-snow text-xs font-bold flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Duyệt
-                </button>
-                <button onClick={() => bulk(false)} disabled={!selected.length || isBulk} className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 disabled:opacity-40 text-snow text-xs font-bold flex items-center gap-1">
-                  <XCircle className="w-3.5 h-3.5" /> Từ chối
-                </button>
-              </div>
-            </div>
-          )}
-
           {/* Feed */}
           {isLoading ? (
             <div className="space-y-4">
@@ -386,11 +330,9 @@ function FandomContent() {
             <div className="p-10 text-center rounded-2xl glass-panel border border-white/10 space-y-3">
               <MessageSquare className="w-10 h-10 text-brand-400 mx-auto opacity-60" />
               <p className="text-sm text-gray-300">{emptyText}</p>
-              {feed !== 'pending' && (
-                <button onClick={() => openComposer()} className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow text-xs font-bold">
-                  Viết bài viết
-                </button>
-              )}
+              <button onClick={() => openComposer()} className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow text-xs font-bold">
+                Viết bài viết
+              </button>
             </div>
           ) : (
             <div className="space-y-4">
@@ -401,10 +343,6 @@ function FandomContent() {
                   onRefresh={refresh}
                   onEdit={(p) => openComposer(p)}
                   onToast={showToast}
-                  isAdminView={feed === 'pending'}
-                  isSelectable={feed === 'pending' && isStaff}
-                  isSelected={selected.includes(post.id)}
-                  onSelectToggle={(id) => setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))}
                 />
               ))}
               {page < totalPages && (

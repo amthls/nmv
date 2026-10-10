@@ -217,12 +217,12 @@ export function postReactionNotification(input: {
 export function postReviewNotifications(
   posts: { id: string; user_id: string; title: string }[], approved: boolean, moderatorId: string, reason?: string | null,
 ): NotifyItem[] {
-  const at = Date.now(); // a post can be refused again after being edited: each review is its own notification
+  const at = Date.now(); // a post can be taken down again after a restore: each action is its own notification
   return posts
     .filter((p) => p.user_id && p.user_id !== moderatorId)
     .map((p) => ({
       userId: p.user_id, type: 'system' as const,
-      title: approved ? 'Bài viết của bạn đã được duyệt' : 'Bài viết của bạn không được duyệt',
+      title: approved ? 'Bài viết của bạn đã được khôi phục' : 'Bài viết của bạn đã bị Ban quản trị gỡ',
       message: `"${snippet(p.title, 100)}"${!approved && reason ? ` · Lý do: ${snippet(reason, 200)}` : ''}`,
       referenceType: 'post' as const, referenceId: p.id, senderId: moderatorId,
       dedupeKey: `post-review:${p.id}:${approved ? 'approved' : 'rejected'}:${at}`,
