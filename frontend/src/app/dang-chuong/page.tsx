@@ -77,6 +77,8 @@ function ChapterEditorContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [editLoadState, setEditLoadState] = useState<'idle' | 'loading' | 'ready' | 'error'>(isEditMode ? 'loading' : 'idle');
+  // Version of the chapter this edit started from: the server refuses the save if someone saved in between
+  const [editVersion, setEditVersion] = useState(0);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   // Editing a manga chapter: its pages are images, so only title / number / volume are editable here
   const [mangaPages, setMangaPages] = useState<string[] | null>(null);
@@ -308,6 +310,7 @@ function ChapterEditorContent() {
           return;
         }
         const d = json.data;
+        setEditVersion(d.ws_version || 0);
         const stored: any[] = d.content_blocks || [];
         const loadedHtml = stored.length > 0 ? blocksToHtml(stored) : plainTextToHtml(d.content || '');
         // notes follow their paragraph (older chapters split into paragraph + illustration blocks)
@@ -425,6 +428,7 @@ function ChapterEditorContent() {
             volume_id: selectedVolumeId || null,
             intro_note: introNote,
             outro_note: outroNote,
+            expected_version: editVersion,
             // manga pages are left untouched (sending no content keeps them)
             ...(isMangaEdit ? {} : { content_blocks: formattedBlocks }),
           }),

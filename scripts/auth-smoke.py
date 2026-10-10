@@ -24,6 +24,7 @@ p.add_argument("--admin")
 p.add_argument("--admin-password")
 p.add_argument("--skip-slow", action="store_true", help="skip the 31 s wait of the refresh-reuse check")
 args = p.parse_args()
+sys.stdout.reconfigure(encoding="utf-8")  # Vietnamese messages on a Windows console
 
 failures = 0
 

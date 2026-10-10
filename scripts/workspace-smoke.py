@@ -1,0 +1,135 @@
+#!/usr/bin/env python3
+"""Smoke test of chapter versions through the real gateway (backend + workspace + events).
+
+    python scripts/workspace-smoke.py --user admin --password ... --story berserker-of-gluttony [--base http://127.0.0.1:3000]
+
+--user must be a keeper of --story (owner, or leader/mod of its group), --story a novel with at least one chapter.
+Edits that story's first chapter and puts its content back at the end (as a newer version); creates and deletes a
+throwaway chapter. Checks: edit -> new version visible to readers, stale save refused, history + compare, rewind
+(through the event), delete -> gone for readers but comments kept, restore, duplicate number refused, outsiders
+refused. Exit code 1 on any failure.
+"""
+import argparse
+import http.cookiejar
+import json
+import secrets
+import sys
+import time
+import urllib.error
+import urllib.request
+
+p = argparse.ArgumentParser()
+p.add_argument("--base", default="http://127.0.0.1:3000")  # not localhost: Windows tries ::1 first
+p.add_argument("--user", required=True)
+p.add_argument("--password", required=True)
+p.add_argument("--story", required=True)
+args = p.parse_args()
+sys.stdout.reconfigure(encoding="utf-8")  # Vietnamese messages on a Windows console
+failures = 0
+
+
+def check(name, ok, detail=""):
+    global failures
+    print(("  [OK]   " if ok else "  [FAIL] ") + name + (f"  ({detail})" if detail and not ok else ""))
+    failures += 0 if ok else 1
+
+
+class Client:
+    def __init__(self):
+        self.jar = http.cookiejar.CookieJar()
+        self.op = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(self.jar))
+
+    def req(self, method, path, body=None):
+        h = {"Content-Type": "application/json"}
+        csrf = next((c.value for c in self.jar if c.name == "nh_csrf"), "")
+        if method != "GET" and csrf:
+            h["X-CSRF-Token"] = csrf
+        r = urllib.request.Request(args.base + path, method=method, headers=h, data=json.dumps(body).encode() if body is not None else None)
+        try:
+            with self.op.open(r, timeout=20) as res:
+                return res.status, json.loads(res.read() or b"{}")
+        except urllib.error.HTTPError as e:
+            try:
+                return e.code, json.loads(e.read() or b"{}")
+            except ValueError:
+                return e.code, {}
+
+
+def eventually(fn, seconds=5):
+    end = time.time() + seconds
+    while time.time() < end:
+        if fn():
+            return True
+        time.sleep(0.3)
+    return fn()
+
+
+k = Client()
+st, _ = k.req("POST", "/api/identity/login", {"identifier": args.user, "password": args.password})
+check("keeper login", st == 200, str(st))
+st, story = k.req("GET", f"/api/v1/stories/{args.story}")
+first = story["data"]["first_chapter"]
+cid, cslug = first["id"], first["slug"]
+reader = lambda: Client().req("GET", f"/api/v1/stories/{args.story}/chapters/{cslug}")
+
+st, ed = k.req("GET", f"/api/v1/chapters/{cid}")
+orig = ed["data"]
+v0 = orig["ws_version"]
+check("edit form carries the workspace version", st == 200 and v0 >= 1, f"{st} {v0}")
+blocks = orig["content_blocks"]
+marker = "Dòng thử " + secrets.token_hex(3)
+edited = blocks + [{"type": "paragraph", "text": marker}]
+base = {"title": orig["title"], "chapter_number": float(orig["chapter_number"]), "volume_id": orig["volume_id"]}
+
+st, js = k.req("PUT", f"/api/v1/chapters/{cid}", {**base, "content_blocks": edited, "expected_version": v0})
+check("edit -> new version", st == 200 and js["data"]["version"] == v0 + 1, f"{st} {js.get('message')}")
+st, rd = reader()
+check("readers see the edit at once", st == 200 and marker in json.dumps(rd, ensure_ascii=False), str(st))
+st, js = k.req("PUT", f"/api/v1/chapters/{cid}", {**base, "content_blocks": blocks, "expected_version": v0})
+check("save based on an old version -> 409", st == 409, f"{st} {js.get('message')}")
+
+st, js = k.req("GET", f"/api/ws/chapters/{cid}/revisions")
+check("history lists the versions", st == 200 and js["data"][0]["version"] == v0 + 1, str(st))
+st, js = k.req("GET", f"/api/ws/chapters/{cid}/compare?from={v0}&to={v0 + 1}")
+check("compare shows exactly one added block", st == 200 and [o["op"] for o in js["data"]["ops"]].count("ins") == 1
+      and all(o["op"] in ("same", "ins") for o in js["data"]["ops"]), str(st))
+
+st, js = k.req("POST", f"/api/ws/chapters/{cid}/rewind", {"to_version": v0})
+check("rewind -> another new version", st == 200 and js["data"]["version"] == v0 + 2, f"{st} {js.get('message')}")
+check("readers get the rewound text (event)", eventually(lambda: marker not in json.dumps(reader()[1], ensure_ascii=False)))
+
+outsider = Client()
+name = "ws_" + secrets.token_hex(3)
+outsider.req("POST", "/api/identity/register", {"username": name, "email": f"{name}@example.invalid", "password": "Kiem-Tra-" + secrets.token_hex(4)})
+st, _ = outsider.req("GET", f"/api/ws/chapters/{cid}/revisions")
+check("someone outside the story cannot read the history", st == 403, str(st))
+st, _ = outsider.req("POST", f"/api/ws/chapters/{cid}/rewind", {"to_version": v0})
+check("...nor rewind", st == 403, str(st))
+st, _ = Client().req("GET", f"/api/ws/chapters/{cid}/revisions")
+check("guests are refused", st == 401, str(st))
+
+# A throwaway chapter: create, duplicate number, comment, delete, restore, delete again
+num = 9000 + secrets.randbelow(900)
+new = {"story_id": story["data"]["id"], "title": "Chương thử", "chapter_number": num, "is_draft": False,
+       "content_blocks": [{"type": "paragraph", "text": "Nội dung chương thử."}]}
+st, js = k.req("POST", "/api/v1/chapters/submissions", new)
+check("publish a new chapter -> v1", st == 201 and js["data"]["version"] == 1, f"{st} {js.get('message')}")
+nid, nslug = js["data"]["id"], js["data"]["slug"]
+st, js = k.req("POST", "/api/v1/chapters/submissions", new)
+check("same chapter number again -> 409", st == 409, f"{st} {js.get('message')}")
+st, _ = k.req("POST", "/api/v1/comments", {"target_type": "chapter", "target_id": nid, "content": "bình luận thử"})
+st, js = k.req("DELETE", f"/api/v1/chapters/{nid}")
+check("delete", st == 200, f"{st} {js.get('message')}")
+st, _ = Client().req("GET", f"/api/v1/stories/{args.story}/chapters/{nslug}")
+check("deleted chapter is gone for readers", st == 404, str(st))
+st, js = k.req("GET", f"/api/ws/chapters/{nid}/revisions")
+check("its history still shows it, marked deleted", st == 200 and js["data"][0]["deleted"] is True, str(st))
+st, js = k.req("POST", f"/api/ws/chapters/{nid}/rewind", {"to_version": 1})
+check("restore from history", st == 200 and js["data"]["source"] == "restore", f"{st} {js.get('message')}")
+check("restored chapter is back for readers", eventually(lambda: Client().req("GET", f"/api/v1/stories/{args.story}/chapters/{nslug}")[0] == 200))
+st, js = Client().req("GET", f"/api/v1/comments?target_type=chapter&target_id={nid}")
+check("its comments came back with it", st == 200 and "bình luận thử" in json.dumps(js, ensure_ascii=False), str(st))
+k.req("DELETE", f"/api/v1/chapters/{nid}")  # leave no test chapter behind (history keeps it)
+
+print("FAILED: %d check(s)" % failures if failures else "All checks passed")
+sys.exit(1 if failures else 0)

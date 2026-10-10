@@ -10,7 +10,8 @@ import { resizeUploadedImage } from './services/image.service';
 import { visitorCookie } from './services/recommender/events';
 import { attachRealtime } from './services/realtime';
 import { requestContext } from './utils/logger';
-import { identityFromHeaders } from './middlewares/auth.middleware';
+import { identityFromHeaders, internalAuthOK } from './middlewares/auth.middleware';
+import { permissions, exportChapters } from './controllers/internal.controller';
 import { deleteCheck } from './controllers/user.controller';
 
 // Without the key that verifies the gateway's identity headers nobody is ever signed in: refuse to start
@@ -78,6 +79,13 @@ app.get('/internal/users/:id/delete-check', (req, res, next) => {
   if (!identityFromHeaders(req.headers)) return res.status(401).json({ ok: false });
   deleteCheck(req, res).catch(next);
 });
+// Workspace -> backend (X-Internal-Auth): story rights and the one-time chapter import
+const internal = (fn: (req: express.Request, res: express.Response) => Promise<unknown>): express.RequestHandler => (req, res, next) => {
+  if (!internalAuthOK(req.get('x-internal-auth'))) return res.status(401).json({ success: false });
+  fn(req, res).catch(next);
+};
+app.get('/internal/permissions', internal(permissions));
+app.get('/internal/chapters/export', internal(exportChapters));
 
 // Root endpoint
 app.get('/', (req, res) => {

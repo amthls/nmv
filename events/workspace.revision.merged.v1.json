@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "workspace.revision.merged.v1.json",
+  "title": "workspace.revision.merged",
+  "description": "A new version of a chapter's official line (create, edit, rewind, delete, restore). The catalog (backend) rebuilds its reading copy from it when version is newer than chapters.ws_version. blocks are complete (sanitized by the backend before they reached workspace); empty when deleted.",
+  "allOf": [{ "$ref": "envelope.v1.json" }],
+  "properties": {
+    "type": { "const": "workspace.revision.merged" },
+    "data": {
+      "type": "object",
+      "required": ["chapter_id", "story_id", "version", "deleted", "source", "meta", "blocks", "created_at"],
+      "properties": {
+        "chapter_id": { "type": "string", "format": "uuid" },
+        "story_id": { "type": "string", "format": "uuid" },
+        "version": { "type": "integer", "minimum": 1 },
+        "deleted": { "type": "boolean" },
+        "source": { "enum": ["import", "create", "edit", "rewind", "delete", "restore"] },
+        "based_on": { "type": ["integer", "null"] },
+        "author_id": { "type": ["string", "null"] },
+        "author_name": { "type": ["string", "null"] },
+        "created_at": { "type": "string" },
+        "meta": {
+          "type": "object",
+          "required": ["title", "chapter_number"],
+          "properties": {
+            "title": { "type": "string", "minLength": 1, "maxLength": 500 },
+            "chapter_number": { "type": "number", "minimum": 0 },
+            "volume_id": { "type": ["string", "null"] },
+            "intro_note": { "type": ["string", "null"] },
+            "outro_note": { "type": ["string", "null"] }
+          }
+        },
+        "blocks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "type"],
+            "properties": {
+              "id": { "type": "string" },
+              "type": { "enum": ["paragraph", "heading", "image", "separator"] }
+            }
+          }
+        }
+      }
+    }
+  }
+}

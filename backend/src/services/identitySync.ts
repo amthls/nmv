@@ -1,6 +1,5 @@
-import amqp from 'amqplib';
 import { pool } from '../config/db';
-import { RABBITMQ_URL } from '../config/env';
+import { startEventConsumer } from './eventConsumer';
 import { internalAuthHeader } from '../middlewares/auth.middleware';
 import { disconnectUser } from './realtime';
 
@@ -13,11 +12,6 @@ import { disconnectUser } from './realtime';
  */
 
 const IDENTITY_URL = (process.env.IDENTITY_INTERNAL_URL || 'http://identity:8080').replace(/\/+$/, '');
-const EXCHANGE = 'novelhub.events';
-const QUEUE = 'backend.identity';
-const RETRY_QUEUE = 'backend.identity.retry';
-const DLQ = 'backend.identity.dlq';
-const MAX_ATTEMPTS = 5;
 
 export interface UserSnapshot {
   id: string;
@@ -153,51 +147,6 @@ export async function handleIdentityEvent(evt: any): Promise<string> {
   return outcome;
 }
 
-/** Worker: consume identity events with retries (10 s apart) and a dead-letter queue after MAX_ATTEMPTS. */
-export async function startIdentityConsumer(onClose: () => void): Promise<{ close: () => Promise<void> }> {
-  const conn: any = await amqp.connect(`${RABBITMQ_URL}${RABBITMQ_URL.includes('?') ? '&' : '?'}heartbeat=30`);
-  conn.on('error', (e: Error) => console.error('[identity-sync] connection error:', e.message));
-  conn.on('close', onClose);
-  const ch: any = await conn.createChannel();
-  await ch.assertExchange(EXCHANGE, 'topic', { durable: true });
-  await ch.assertQueue(DLQ, { durable: true });
-  await ch.assertQueue(RETRY_QUEUE, {
-    durable: true,
-    arguments: { 'x-message-ttl': 10_000, 'x-dead-letter-exchange': '', 'x-dead-letter-routing-key': QUEUE },
-  });
-  await ch.assertQueue(QUEUE, {
-    durable: true,
-    arguments: { 'x-dead-letter-exchange': '', 'x-dead-letter-routing-key': RETRY_QUEUE },
-  });
-  await ch.bindQueue(QUEUE, EXCHANGE, 'identity.user.*');
-  await ch.bindQueue(QUEUE, EXCHANGE, 'identity.alert');
-  await ch.prefetch(20);
-
-  const { consumerTag } = await ch.consume(QUEUE, async (msg: any) => {
-    if (!msg) return;
-    const attempts = ((msg.properties.headers?.['x-death'] || []).find((d: any) => d.queue === QUEUE)?.count || 0) + 1;
-    let evt: any = null;
-    try {
-      evt = JSON.parse(msg.content.toString());
-      const outcome = await handleIdentityEvent(evt);
-      if (outcome !== 'duplicate') console.log(`[identity-sync] ${evt.type} ${evt.data?.id || ''} v${evt.data?.version ?? '-'}: ${outcome}`);
-      ch.ack(msg);
-    } catch (err: any) {
-      if (attempts >= MAX_ATTEMPTS || !evt) {
-        console.error(`[identity-sync] event ${evt?.event_id || '(unparsable)'} failed ${attempts}x, moved to ${DLQ}: ${err.message}`);
-        ch.sendToQueue(DLQ, msg.content, { persistent: true, headers: { last_error: String(err.message).slice(0, 500) } });
-        ch.ack(msg);
-      } else {
-        console.warn(`[identity-sync] event ${evt.event_id} failed (attempt ${attempts}/${MAX_ATTEMPTS}), retrying: ${err.message}`);
-        ch.nack(msg, false, false); // dead-letters to the retry queue, back here after 10 s
-      }
-    }
-  });
-  return {
-    close: async () => {
-      try { await ch.cancel(consumerTag); } catch {}
-      try { await ch.close(); } catch {}
-      try { await conn.close(); } catch {}
-    },
-  };
-}
+/** Worker: identity.user.* -> the users/user_roles copy, identity.alert -> admin notifications. */
+export const startIdentityConsumer = (onClose: () => void) =>
+  startEventConsumer({ queue: 'backend.identity', bindings: ['identity.user.*', 'identity.alert'], label: 'identity-sync', handle: handleIdentityEvent, onClose });
