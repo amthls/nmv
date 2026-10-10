@@ -29,5 +29,6 @@
 - Gateway chỉ còn `127.0.0.1:3000`.
 
 ## Ghi chú cho người review
+- Không có SMTP: link đặt lại mật khẩu/xác thực email vẫn ghi vào log backend (dòng duy nhất cố ý không che, `services/mailer.ts`); logger che `token=` nên trước bản sửa này link bị mất.
 - **Đổi hành vi:** máy khác trong LAN không vào được web nữa trừ khi đặt `GATEWAY_BIND=0.0.0.0` (theo plan: cổng chỉ nghe máy/tunnel).
 - Volume `es_data` cũ: mật khẩu `elastic` lấy từ `ELASTIC_PASSWORD` ở lần chạy đầu có bảo mật; đổi `.env` sau đó không tự đổi mật khẩu.
