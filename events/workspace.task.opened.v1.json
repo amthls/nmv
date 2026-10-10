@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "workspace.task.opened.v1.json",
+  "title": "workspace.task.opened",
+  "description": "A workspace task (one workflow step of a chapter) opened or was assigned. The backend notifies the assignee, or else everyone in the story's group with that step's role.",
+  "allOf": [{ "$ref": "envelope.v1.json" }],
+  "properties": {
+    "type": { "const": "workspace.task.opened" },
+    "data": {
+      "type": "object",
+      "required": ["task_id", "job_id", "story_id", "kind", "chapter_number"],
+      "properties": {
+        "task_id": { "type": "string", "format": "uuid" },
+        "job_id": { "type": "string", "format": "uuid" },
+        "story_id": { "type": "string", "format": "uuid" },
+        "kind": { "enum": ["raw", "translate", "edit", "proofread"] },
+        "chapter_number": { "type": "number", "minimum": 0 },
+        "assignee_id": { "type": ["string", "null"] },
+        "actor_id": { "type": ["string", "null"] },
+        "note": { "type": ["string", "null"] },
+        "due_at": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

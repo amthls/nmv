@@ -241,11 +241,40 @@ chương đã có head; chạy trong `migrate.sh`/`launch.py` như identity. Nh�
       thẻ nháp trong tin nhắn, "Nháp của người đã rời" ở trang truyện
 - [x] Smoke, README, Branches; PR, tự merge
 
-### 4b, 4c
-- [ ] Giao việc / nhận chương; cảnh báo hai nháp cùng chương
-- [ ] Trang nhóm dịch: tổng hợp việc đang chờ của các truyện trong nhóm
-- [ ] Quy trình theo vai trò (RAW → DỊCH → BIÊN TẬP → HIỆU ĐÍNH → GỘP), nhóm tự chọn bước; xong bước tự mở việc bước sau
-- [ ] WS nhóm `/ws/nhom/:slug`: tổng quan, bảng việc dạng cột, đề xuất chờ gộp, hoạt động gần đây (`ws_activity`)
+### 4b. Việc, quy trình theo vai trò, WS nhóm (nhánh `feat/ws-tasks`)
+
+**Thiết kế (2026-10-10):**
+- **Quy trình** lưu ở catalog: `translation_groups.workflow TEXT[]` (migration `025`), bước theo thứ tự trong `raw, translate, edit, proofread`,
+  luôn kết thúc bằng **gộp** (mặc định `{translate}` = DỊCH → GỘP). Trưởng nhóm/Mod nhóm đổi ở trang nhóm (`PUT /groups/:id/workflow`).
+  Truyện không thuộc nhóm: chỉ DỊCH → GỘP. `/internal/permissions` trả thêm `role` (vai trò trong nhóm / owner / collaborator) và `workflow`.
+- **Ai nhận bước nào:** RAW = `raw_provider`, DỊCH = `translator`, BIÊN TẬP = `editor`, HIỆU ĐÍNH = `proofreader`; Trưởng nhóm/Mod nhóm,
+  thành viên thường (`member`), chủ truyện và cộng tác viên nhận được mọi bước. GỘP = người giữ truyện (như đề xuất).
+- **Việc** `chapter_tasks` (workspace, migration `005_tasks.sql`): một chuỗi việc cho một chương (`job_id`), mỗi bước một dòng
+  (`kind`, `status`: open → claimed → done | cancelled), người nhận, hạn (`due_at`), ghi chú, nháp gắn với chuỗi.
+  - Người giữ truyện **giao việc** (sửa chương N / chương mới N, chọn người hoặc để trống, hạn); người đóng góp **nhận chương** (tạo việc tự nhận).
+  - Bước đầu cần nháp: "Bắt đầu" tạo (hoặc dùng lại) nháp của người nhận, gắn vào chuỗi. Bước sau **dùng cùng nháp**: nhận việc = được chia
+    sẻ quyền sửa nháp đó.
+  - **Xong bước** → việc bước sau tự mở (`open`). Sau bước cuối: nháp tự **gửi đề xuất** (vòng mới, lời nhắn "xong quy trình"), người giữ
+    truyện gộp như giai đoạn 3; gộp → chuỗi xong; trả lại → mở lại việc của bước cuối cho đúng người đã làm.
+  - Mở việc → sự kiện `workspace.task.opened` (outbox) → worker backend báo **người được giao**, không ai được giao thì báo **mọi thành viên
+    có vai trò của bước** (+ Trưởng nhóm/Mod).
+  - RAW: không cần nháp nội dung dịch (đăng bản gốc ở ghi chú/đường dẫn): người nhận ghi link/ghi chú rồi "Xong bước".
+- **Cảnh báo trùng:** `GET /drafts/:id` trả `others` (nháp đang mở khác của cùng chương) và `claims` (việc đang có người nhận của chương);
+  trình soạn thảo hiện "đã có @X đang sửa / nhận chương này". Giao/nhận việc trùng chương đang có chuỗi chưa xong → 409.
+- **Hoạt động** `ws_activity` (truyện, ai, việc gì, lúc): gửi/trả lại/gộp đề xuất, giao/nhận/xong việc.
+- **WS nhóm** `/ws/nhom/[slug]`: tổng quan (đang làm, chờ gộp, sắp trễ hạn ≤ 24 giờ/trễ), **bảng việc 4 cột** (Chưa nhận / Đang làm / Chờ duyệt /
+  Đã đăng gần đây; lọc theo truyện, người), đề xuất chờ gộp, hoạt động gần đây, lối sang quản lý thành viên/chat nhóm và cài đặt quy trình.
+  Dữ liệu: `GET /api/ws/board?story_id=…` (workspace, chỉ truyện người xem đang tham gia). WS cá nhân `/ws`: "Việc của tôi".
+
+- [x] Backend: migration `025_group_workflow.sql`, `PUT /groups/:id/workflow`, `/internal/permissions` thêm `role`, `workflow`;
+      consumer `workspace.task.opened` → thông báo
+- [x] Workspace: migration `005_tasks.sql` (`chapter_tasks`, `ws_activity`); giao/nhận/bắt đầu/xong/hủy việc, bước sau tự mở, tự gửi đề xuất,
+      gộp/trả lại cập nhật chuỗi; `GET /tasks` (của tôi), `GET /board`; `others`/`claims`; sự kiện + schema; test
+- [x] Frontend: `/ws/nhom/[slug]` (bảng việc, đề xuất, hoạt động), mục việc ở `/ws` và `/ws/truyen/[slug]` (giao việc, nhận chương,
+      bắt đầu, xong bước), cài đặt quy trình ở trang nhóm, cảnh báo trùng trong trình soạn thảo
+- [x] Smoke, README, Branches; PR, tự merge
+
+### 4c. Hẹn giờ đăng (nhánh `feat/ws-schedule`)
 - [ ] Hẹn giờ đăng chương (đổi giờ / hủy trước khi đăng)
 
 ## Kết thúc mỗi giai đoạn

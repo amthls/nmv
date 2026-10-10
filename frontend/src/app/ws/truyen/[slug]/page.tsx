@@ -9,6 +9,8 @@ import { useAuth } from '@/context/AuthContext';
 import PageLoader from '@/components/common/PageLoader';
 import { DraftRow } from '@/components/workspace/DraftRow';
 import { CHOSEN_PARAM } from '@/lib/chapterUpload';
+import TaskCard from '@/components/workspace/TaskCard';
+import AssignForm from '@/components/workspace/AssignForm';
 
 /**
  * Workspace of one story (Plan/chapter-workspace.md, stage 2): its official chapters with their history, and my
@@ -21,12 +23,16 @@ const WS_URL = '/api/ws';
 export default function StoryWorkspacePage() {
   const slug = useParams()?.slug as string;
   const router = useRouter();
-  const { isAuthenticated, isLoading, openAuthModal, authFetch } = useAuth();
+  const { user, isAuthenticated, isLoading, openAuthModal, authFetch } = useAuth();
   const [story, setStory] = useState<any>(null);
   const [drafts, setDrafts] = useState<any[]>([]);
   const [proposals, setProposals] = useState<any[]>([]);
   const [orphans, setOrphans] = useState<any[]>([]); // keepers: drafts of people who left the story
   const [error, setError] = useState<string | null>(null);
+  // Stage 4b: the story's tasks (board), whether I keep it, the team to assign to
+  const [board, setBoard] = useState<{ tasks: any[]; keeper: boolean } | null>(null);
+  const [team, setTeam] = useState<{ id: string; name: string }[]>([]);
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -35,6 +41,16 @@ export default function StoryWorkspacePage() {
         if (!j.success) throw new Error(j.message || 'Không tìm thấy truyện.');
         setStory(j.data);
         if (j.data.can_manage) {
+          authFetch(`${WS_URL}/board?story_id=${j.data.id}`).then((r) => r.json())
+            .then((b) => b.success && setBoard({ tasks: b.data.tasks, keeper: b.data.keeper_of.includes(j.data.id) })).catch(() => {});
+          // who can be given a step: the group's members, or the owner and collaborators of a story without a group
+          const people = [{ id: j.data.uploader_id, name: j.data.uploader_name || 'Chủ truyện' },
+            ...(j.data.collaborators || []).map((c: any) => ({ id: c.user_id, name: c.display_name || c.username }))];
+          if (j.data.group_slug) {
+            fetch(`${API_BASE_URL}/groups/${j.data.group_slug}`).then((r) => r.json())
+              .then((g) => g.success && setTeam([...(g.data.members || []).map((m: any) => ({ id: m.user_id, name: `${m.display_name || m.username} (${m.role})` })), ...people.slice(1)]))
+              .catch(() => setTeam(people));
+          } else setTeam(people);
           authFetch(`${WS_URL}/proposals?story_id=${j.data.id}`).then((r) => r.json())
             .then((p) => p.success && setProposals(p.data)).catch(() => {});
           authFetch(`${WS_URL}/drafts/orphans?story_id=${j.data.id}`).then((r) => r.json())
@@ -44,7 +60,7 @@ export default function StoryWorkspacePage() {
       })
       .then((j) => j?.success && setDrafts(j.data))
       .catch((e) => setError(e.message));
-  }, [isAuthenticated, authFetch, slug]);
+  }, [isAuthenticated, authFetch, slug, reload]);
 
   if (isLoading || (isAuthenticated && !story && !error)) return <PageLoader label="Đang mở workspace của truyện..." />;
   if (!isAuthenticated) {
@@ -132,6 +148,28 @@ export default function StoryWorkspacePage() {
               </button>
             </div>
           ))}
+        </section>
+      )}
+
+      {board && (
+        <section className="p-5 rounded-3xl glass-panel border border-white/10 bg-glass space-y-3">
+          <h2 className="text-xs font-bold text-brand-400 uppercase tracking-wider">Việc của truyện</h2>
+          <AssignForm
+            storyId={story.id}
+            chapters={groups.flatMap((g) => g.chapters)}
+            members={team}
+            keeper={board.keeper}
+            authFetch={authFetch}
+            onDone={() => setReload((n) => n + 1)}
+          />
+          {board.tasks.filter((t) => t.status === 'open' || t.status === 'claimed').length === 0 && (
+            <p className="text-xs text-gray-500">Không có việc nào đang mở.</p>
+          )}
+          <div className="grid gap-2 md:grid-cols-2">
+            {board.tasks.filter((t) => t.status === 'open' || t.status === 'claimed').map((t) => (
+              <TaskCard key={t.id} t={t} me={user?.id} keeper={board.keeper} members={team} authFetch={authFetch} onChanged={() => setReload((n) => n + 1)} />
+            ))}
+          </div>
         </section>
       )}
 

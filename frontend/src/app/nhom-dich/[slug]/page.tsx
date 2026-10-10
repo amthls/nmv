@@ -41,6 +41,14 @@ export default function GroupDetailPage() {
 
   const [group, setGroup] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'stories' | 'chat' | 'members' | 'info'>('stories');
+  // links from the group workspace: #chat opens the chat, #quy-trinh the workflow settings
+  useEffect(() => {
+    const tab = { '#chat': 'chat', '#quy-trinh': 'info' }[window.location.hash] as 'chat' | 'info' | undefined;
+    if (tab) setActiveTab(tab);
+  }, []);
+  // The steps a chapter of this group goes through before a story keeper merges it (stage 4b)
+  const [workflowDraft, setWorkflowDraft] = useState<string[] | null>(null);
+  const [workflowMsg, setWorkflowMsg] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Chatroom State
@@ -449,6 +457,14 @@ export default function GroupDetailPage() {
               <FileText className="w-4 h-4 text-brand-400" />
               <span>Đăng Chương Mới</span>
             </Link>
+
+            <Link
+              href={`/ws/nhom/${group.slug}`}
+              className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs border border-white/15 flex items-center gap-2 transition"
+            >
+              <Users className="w-4 h-4 text-emerald-400" />
+              <span>Workspace nhóm</span>
+            </Link>
             </>)}
           </div>
 
@@ -836,6 +852,58 @@ export default function GroupDetailPage() {
       )}
 
       {/* TAB 5: RULES & INFO */}
+      {activeTab === 'info' && (
+        <div id="quy-trinh" className="p-6 rounded-3xl glass-panel border border-white/10 bg-glass space-y-3 max-w-3xl">
+          <h2 className="text-base font-bold text-white">Quy trình làm chương</h2>
+          <p className="text-xs text-gray-400">
+            Mỗi chương đi qua các bước theo thứ tự, mỗi bước là một việc cho đúng vai trò (Trưởng nhóm/Mod nhóm và thành viên thường nhận được mọi bước),
+            xong bước thì bước sau tự mở; cuối cùng là đề xuất để người giữ truyện gộp.
+          </p>
+          {(() => {
+            const steps = workflowDraft || group.workflow || ['translate'];
+            const all = [['raw', 'RAW', 'người cung cấp bản gốc'], ['translate', 'DỊCH', 'dịch giả'], ['edit', 'BIÊN TẬP', 'biên tập'], ['proofread', 'HIỆU ĐÍNH', 'hiệu đính']];
+            return (
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  {all.map(([key, label, role]) => (
+                    <label key={key} className={`px-3 py-2 rounded-xl border flex items-center gap-2 ${steps.includes(key) ? 'border-brand-500/60 bg-brand-500/10 text-white' : 'border-white/10 text-gray-400'} ${isLeaderOrMod ? 'cursor-pointer' : ''}`}>
+                      {isLeaderOrMod && (
+                        <input
+                          type="checkbox"
+                          checked={steps.includes(key)}
+                          onChange={(e) => setWorkflowDraft(e.target.checked ? [...steps, key] : steps.filter((x: string) => x !== key))}
+                        />
+                      )}
+                      <b>{label}</b> <span className="text-[10px] text-gray-400">({role})</span>
+                    </label>
+                  ))}
+                  <span className="px-3 py-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-200"><b>GỘP</b> <span className="text-[10px]">(người giữ truyện)</span></span>
+                </div>
+                {isLeaderOrMod && workflowDraft && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const res = await authFetch(`${API_BASE_URL}/groups/${group.id}/workflow`, {
+                        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ steps: workflowDraft }),
+                      });
+                      const json = await res.json().catch(() => ({}));
+                      setWorkflowMsg(json.message || (res.ok ? 'Đã lưu.' : 'Không lưu được.'));
+                      if (res.ok && json.success) {
+                        setGroup({ ...group, workflow: json.data.workflow });
+                        setWorkflowDraft(null);
+                      }
+                    }}
+                    className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow text-xs font-bold"
+                  >
+                    Lưu quy trình
+                  </button>
+                )}
+                {workflowMsg && <p className="text-xs text-gray-300">{workflowMsg}</p>}
+              </div>
+            );
+          })()}
+        </div>
+      )}
       {activeTab === 'info' && (
         <div className="p-6 rounded-3xl glass-panel border border-white/10 bg-glass space-y-4 max-w-3xl">
           <h2 className="text-base font-bold text-white">Nội Quy & Tiêu Chuẩn Dịch Thuật Của Nhóm</h2>

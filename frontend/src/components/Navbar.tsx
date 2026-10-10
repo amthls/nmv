@@ -152,6 +152,8 @@ export default function Navbar() {
       router.push(`/ws/de-xuat/${notif.reference_id}`); // a workspace proposal
     } else if (notif.reference_type === 'draft_edit' && notif.reference_id) {
       router.push(`/dang-chuong?draft=${notif.reference_id}`);
+    } else if (notif.reference_type === 'ws_story' && notif.story_slug) {
+      router.push(`/ws/truyen/${notif.story_slug}`); // a workspace task
     } else if (notif.story_slug && notif.chapter_slug) {
       router.push(`/truyen/${notif.story_slug}/${notif.chapter_slug}`);
     } else if (notif.story_slug) {

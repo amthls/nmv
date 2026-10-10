@@ -82,19 +82,10 @@ func (s *server) handleSubmit(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
-		if d.ChapterDeleted {
-			return errDeleted
-		}
-		if d.Meta.Title == "" {
-			return errEmptyTitle
-		}
-		meta, _ := json.Marshal(d.Meta)
-		if _, err := tx.Exec(ctx, `INSERT INTO draft_rounds (draft_id, round, base_version, meta, blocks, note) VALUES ($1, $2, $3, $4, $5, $6)`,
-			id, d.LastRound+1, d.BaseVersion, meta, hashes, nullable(b.Note)); err != nil {
+		if err := submitRound(ctx, tx, d, hashes, b.Note); err != nil {
 			return err
 		}
-		_, err = tx.Exec(ctx, `UPDATE chapter_drafts SET status = 'submitted', last_round = last_round + 1, updated_at = NOW() WHERE id = $1`, id)
-		return err
+		return logActivity(ctx, tx, d.StoryID, b.OwnerID, b.OwnerName, "proposal_submitted", d, nil)
 	})
 	if errors.Is(err, errEmptyTitle) {
 		fail(w, 400, "Chương cần có tiêu đề trước khi gửi đề xuất.")
@@ -105,6 +96,23 @@ func (s *server) handleSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.writeDraft(w, r, id, 200)
+}
+
+// submitRound freezes the draft as a new proposal round and locks it (status submitted).
+func submitRound(ctx context.Context, tx pgx.Tx, d *draft, hashes []string, note string) error {
+	if d.ChapterDeleted {
+		return errDeleted
+	}
+	if d.Meta.Title == "" {
+		return errEmptyTitle
+	}
+	meta, _ := json.Marshal(d.Meta)
+	if _, err := tx.Exec(ctx, `INSERT INTO draft_rounds (draft_id, round, base_version, meta, blocks, note) VALUES ($1, $2, $3, $4, $5, $6)`,
+		d.ID, d.LastRound+1, d.BaseVersion, meta, hashes, nullable(note)); err != nil {
+		return err
+	}
+	_, err := tx.Exec(ctx, `UPDATE chapter_drafts SET status = 'submitted', last_round = last_round + 1, lock_user = NULL, updated_at = NOW() WHERE id = $1`, d.ID)
+	return err
 }
 
 // decide closes the pending round of a submitted draft and opens the draft again (withdrawn by its owner, or
@@ -130,8 +138,13 @@ func (s *server) decide(w http.ResponseWriter, r *http.Request, decision string)
 			WHERE draft_id = $1 AND round = $2`, id, d.LastRound, decision, b.OwnerID, b.OwnerName, nullable(b.Note)); err != nil {
 			return err
 		}
-		_, err = tx.Exec(ctx, `UPDATE chapter_drafts SET status = 'open', updated_at = NOW() WHERE id = $1`, id)
-		return err
+		if _, err = tx.Exec(ctx, `UPDATE chapter_drafts SET status = 'open', updated_at = NOW() WHERE id = $1`, id); err != nil {
+			return err
+		}
+		if err := afterDecision(ctx, tx, id, decision, b.OwnerID, b.OwnerName); err != nil {
+			return err
+		}
+		return logActivity(ctx, tx, d.StoryID, b.OwnerID, b.OwnerName, "proposal_"+decision, d, nil)
 	})
 	if err != nil {
 		s.draftError(w, r, err)

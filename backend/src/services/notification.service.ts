@@ -15,7 +15,8 @@ export interface NotifyItem {
   title: string;
   message: string | null;
   // draft: a workspace proposal (/ws/de-xuat/:id); draft_edit: a draft to open in the editor (/dang-chuong?draft=:id)
-  referenceType: 'chapter' | 'post' | 'story' | 'group' | 'draft' | 'draft_edit' | null;
+  // ws_story: the story's workspace page (/ws/truyen/:slug), e.g. a task
+  referenceType: 'chapter' | 'post' | 'story' | 'group' | 'draft' | 'draft_edit' | 'ws_story' | null;
   referenceId: string | null;
   senderId: string | null;
   dedupeKey: string;

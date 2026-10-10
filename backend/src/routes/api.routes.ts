@@ -37,6 +37,7 @@ import {
   getGroupBySlug, 
   createGroup, 
   updateGroup,
+  updateGroupWorkflow,
   addGroupMember,
   updateGroupMemberRole,
   removeGroupMember,
@@ -298,6 +299,7 @@ router.get('/groups', optionalAuth, getGroups);
 router.get('/groups/:slug', optionalAuth, getGroupBySlug);
 router.post('/groups', requireAuth, createGroup);
 router.put('/groups/:id', requireAuth, updateGroup);
+router.put('/groups/:id/workflow', requireAuth, updateGroupWorkflow);
 router.post('/groups/:id/members', requireAuth, addGroupMember);
 router.put('/groups/:id/members/:memberUserId', requireAuth, updateGroupMemberRole);
 router.delete('/groups/:id/members/:memberUserId', requireAuth, removeGroupMember);

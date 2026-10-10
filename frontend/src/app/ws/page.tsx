@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { BookOpen, FileText, Plus } from 'lucide-react';
 import { DraftRow } from '@/components/workspace/DraftRow';
+import TaskCard from '@/components/workspace/TaskCard';
 import { useAuth } from '@/context/AuthContext';
 import PageLoader from '@/components/common/PageLoader';
 
@@ -16,10 +17,12 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/a
 const WS_URL = '/api/ws';
 
 export default function WorkspacePage() {
-  const { isAuthenticated, isLoading, openAuthModal, authFetch } = useAuth();
+  const { user, isAuthenticated, isLoading, openAuthModal, authFetch } = useAuth();
   const [drafts, setDrafts] = useState<any[] | null>(null);
   const [stories, setStories] = useState<any[] | null>(null);
   const [shared, setShared] = useState<any[]>([]); // drafts others shared with me (được nhờ)
+  const [myTasks, setMyTasks] = useState<any[]>([]); // workflow steps I took, in every group
+  const [reload, setReload] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -27,12 +30,14 @@ export default function WorkspacePage() {
     authFetch(`${WS_URL}/drafts`).then((r) => r.json())
       .then((j) => (j.success ? setDrafts(j.data) : setError(j.message || 'Không tải được bản nháp.')))
       .catch((e) => setError(e.message));
+    authFetch(`${WS_URL}/tasks?mine=1`).then((r) => r.json())
+      .then((j) => j.success && setMyTasks(j.data)).catch(() => {});
     authFetch(`${WS_URL}/drafts/shared`).then((r) => r.json())
       .then((j) => j.success && setShared(j.data)).catch(() => {});
     authFetch(`${API_BASE_URL}/stories/manageable`).then((r) => r.json())
       .then((j) => setStories(j.success ? j.data || [] : []))
       .catch(() => setStories([]));
-  }, [isAuthenticated, authFetch]);
+  }, [isAuthenticated, authFetch, reload]);
 
   if (isLoading) return <PageLoader label="Đang mở workspace..." />;
   if (!isAuthenticated) {
@@ -67,6 +72,16 @@ export default function WorkspacePage() {
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <section className="p-5 rounded-3xl glass-panel border border-white/10 bg-glass space-y-3">
+          {myTasks.length > 0 && (
+            <>
+              <h2 className="text-xs font-bold text-emerald-300 uppercase tracking-wider">Việc của tôi ({myTasks.length})</h2>
+              <div className="grid gap-2 md:grid-cols-2">
+                {myTasks.map((t) => (
+                  <TaskCard key={t.id} t={t} me={user?.id} keeper={false} storyTitle={storyTitle(t.story_id)} authFetch={authFetch} onChanged={() => setReload((n) => n + 1)} />
+                ))}
+              </div>
+            </>
+          )}
           <h2 className="text-xs font-bold text-brand-400 uppercase tracking-wider flex items-center gap-1.5">
             <FileText className="w-4 h-4" /> Nháp của tôi {drafts ? `(${drafts.length}/50)` : ''}
           </h2>
