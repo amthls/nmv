@@ -20,6 +20,7 @@ import {
   Sparkles,
   LogIn,
   Flag,
+  EyeOff,
   Dices,
   MessageCircle
 } from 'lucide-react';
@@ -485,6 +486,14 @@ export default function Navbar() {
                         >
                           <Flag className="w-4 h-4 text-amber-400" />
                           <span>Báo cáo vi phạm</span>
+                        </Link>
+                        <Link
+                          href="/da-go"
+                          onClick={() => setIsUserMenuOpen(false)}
+                          className="flex items-center gap-2.5 px-4 py-1.5 text-xs text-gray-300 hover:text-white hover:bg-white/5 transition"
+                        >
+                          <EyeOff className="w-4 h-4 text-rose-400" />
+                          <span>Nội dung đã gỡ</span>
                         </Link>
                       </div>
                     )}

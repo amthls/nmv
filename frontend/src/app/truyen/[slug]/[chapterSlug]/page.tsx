@@ -48,7 +48,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/a
 export default function ChapterReaderPage() {
   const params = useParams();
   const router = useRouter();
-  const { user, hasRole, authFetch, isAuthenticated, openAuthModal } = useAuth();
+  const { user, authFetch, isAuthenticated, openAuthModal } = useAuth();
   const { setSession: setReadingSession, updateScrollPercent } = useReadingSession();
 
   const storySlug = params?.slug as string;
@@ -320,11 +320,10 @@ export default function ChapterReaderPage() {
   }, [storySlug, chapterSlug, authFetch]);
 
   const canManage = Boolean(
-    hasRole('admin', 'mod') ||
-    (user && chapterData && (
+    user && chapterData && (
       user.id === chapterData.uploader_id ||
       user.id === chapterData.story?.uploader_id
-    ))
+    )
   );
 
   const handleDeleteCurrentChapter = async () => {
@@ -530,12 +529,12 @@ export default function ChapterReaderPage() {
               />
             )}
 
-            {/* Edit / Delete Chapter for Admin / Mod / Owner */}
+            {/* Edit / delete chapter: owner only */}
             {canManage && (
               <Link
                 href={`/dang-chuong?edit=${chapterData.id}`}
                 className="p-2 rounded-lg bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-400 border border-cyan-500/30 transition ml-1"
-                title="Sửa chương này (Chủ thầu / Admin / Mod)"
+                title="Sửa chương này"
               >
                 <Pencil className="w-4 h-4" />
               </Link>
@@ -544,7 +543,7 @@ export default function ChapterReaderPage() {
               <button
                 onClick={handleDeleteCurrentChapter}
                 className="p-2 rounded-lg bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 border border-rose-500/30 transition ml-1"
-                title="Xóa chương này (Chủ thầu / Admin / Mod)"
+                title="Xóa chương này"
               >
                 <Trash2 className="w-4 h-4" />
               </button>

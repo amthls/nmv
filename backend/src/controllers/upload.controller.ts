@@ -105,7 +105,7 @@ export const uploadMangaPages = async (req: AuthenticatedRequest, res: Response)
       cleanup();
       return res.status(400).json({ success: false, message: 'Thiếu hoặc sai story_id.' });
     }
-    if (!req.user || !(await canUserManageStory(req.user.id, storyId, req.user.roles || []))) {
+    if (!req.user || !(await canUserManageStory(req.user.id, storyId))) {
       cleanup();
       return res.status(403).json({ success: false, message: 'Bạn không có quyền đăng chương cho truyện này.' });
     }
