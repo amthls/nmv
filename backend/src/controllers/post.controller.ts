@@ -123,12 +123,7 @@ export const getPosts = async (req: AuthenticatedRequest, res: Response) => {
     const empty = () => res.json({ success: true, data: [], pagination: { page, limit, total: 0, totalPages: 1 } });
 
     let publicFeed = false;
-    if (filter_status === 'pending') {
-      if (!isStaff(req)) {
-        return res.status(403).json({ success: false, message: 'Chỉ Quản trị viên hoặc Kiểm duyệt viên mới có thể xem hàng chờ duyệt.' });
-      }
-      conditions.push("p.approval_status = 'pending'");
-    } else if (filter_status === 'drafts') {
+    if (filter_status === 'drafts') {
       if (!viewerId) return empty();
       add((n) => `p.user_id = $${n}`, viewerId);
       conditions.push('p.is_draft = true');
@@ -206,7 +201,7 @@ export const getPostBySlug = async (req: AuthenticatedRequest, res: Response) =>
  * GET /posts/sidebar : the real data for the fandom sidebars.
  *  - leaderboard: most active members of the last 30 days (posts, reactions and comments received)
  *  - stories: stories with the most approved discussions
- *  - counts: the viewer's drafts / posts, and the moderation queue for staff
+ *  - counts: the viewer's drafts / posts
  */
 export const getFandomSidebar = async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -234,7 +229,6 @@ export const getFandomSidebar = async (req: AuthenticatedRequest, res: Response)
         LIMIT 12`),
       pool.query(`
         SELECT
-          (SELECT count(*)::int FROM posts WHERE is_deleted = false AND approval_status = 'pending') AS pending,
           (SELECT count(*)::int FROM posts WHERE is_deleted = false AND is_draft AND user_id = $1::uuid) AS drafts,
           (SELECT count(*)::int FROM posts WHERE is_deleted = false AND NOT is_draft AND user_id = $1::uuid) AS mine,
           (SELECT count(*)::int FROM posts WHERE is_deleted = false AND approval_status = 'approved' AND is_published) AS total`,
@@ -246,7 +240,7 @@ export const getFandomSidebar = async (req: AuthenticatedRequest, res: Response)
       data: {
         leaderboard: leaders.rows,
         stories: stories.rows,
-        counts: { total: c.total, drafts: viewerId ? c.drafts : 0, mine: viewerId ? c.mine : 0, pending: isStaff(req) ? c.pending : null },
+        counts: { total: c.total, drafts: viewerId ? c.drafts : 0, mine: viewerId ? c.mine : 0 },
       },
     });
   } catch (error: any) {
@@ -260,19 +254,18 @@ export const createPost = async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user?.id) return res.status(401).json({ success: false, message: 'Bạn cần đăng nhập để đăng bài viết.' });
     const f = await readPostBody(req.body || {}, false);
-    const staff = isStaff(req);
-    // posts go live immediately; moderators can still hide them (reject) afterwards
+    // posts go live immediately; moderators can still take them down (reject) afterwards
     const status = f.is_draft ? 'draft' : 'approved';
     const published = status === 'approved';
 
     const insertRes = await insertWithUniqueSlug(pool, 'posts', slugify(f.title!) || 'bai-viet-fandom', (slug) => pool.query(
       `INSERT INTO posts (user_id, story_id, title, slug, content, category, cover_image_url, images, is_draft,
-                          approval_status, is_published, published_at, approved_by, approved_at)
+                          approval_status, is_published, published_at, approved_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10, $11,
-               CASE WHEN $11 THEN NOW() END, $12::uuid, CASE WHEN $11 THEN NOW() END)
+               CASE WHEN $11 THEN NOW() END, CASE WHEN $11 THEN NOW() END)
        RETURNING *`,
       [req.user!.id, f.story_id, f.title, slug, f.content, f.category, f.images![0] || null, JSON.stringify(f.images),
-        f.is_draft, status, published, published && staff ? req.user!.id : null],
+        f.is_draft, status, published],
     ));
 
     const message = f.is_draft ? 'Đã lưu bản nháp.' : 'Đã đăng bài viết.';
@@ -282,7 +275,7 @@ export const createPost = async (req: AuthenticatedRequest, res: Response) => {
   }
 };
 
-/** Only the fields sent are changed. Edits publish immediately, except on a post a moderator hid. */
+/** Author only. Only the fields sent are changed. Edits publish immediately, except on a post a moderator took down. */
 export const updatePost = async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user?.id) return res.status(401).json({ success: false, message: 'Bạn chưa đăng nhập.' });
@@ -290,20 +283,14 @@ export const updatePost = async (req: AuthenticatedRequest, res: Response) => {
     const checkRes = await pool.query(`SELECT * FROM posts WHERE id = $1 AND is_deleted = false`, [req.params.id]);
     const post = checkRes.rows[0];
     if (!post) return res.status(404).json({ success: false, message: 'Bài viết không tồn tại hoặc đã bị xóa.' });
-    const staff = isStaff(req);
-    if (post.user_id !== req.user.id && !staff) {
+    if (post.user_id !== req.user.id) {
       return res.status(403).json({ success: false, message: 'Bạn không có quyền chỉnh sửa bài viết của người khác.' });
     }
 
     const f = await readPostBody(req.body || {}, true);
     const draft = f.is_draft ?? post.is_draft;
-    let status: string = post.approval_status;
-    if (draft) status = 'draft';
-    else if (staff) status = 'approved';
-    // a post hidden by a moderator goes to them for another look when its author edits it;
-    // everything else is published straight away
-    else if (status === 'rejected' || status === 'pending') status = 'pending';
-    else status = 'approved';
+    // a post taken down by a moderator stays down until a moderator restores it
+    const status = post.approval_status === 'rejected' ? 'rejected' : draft ? 'draft' : 'approved';
     const published = status === 'approved';
 
     const updateRes = await pool.query(
@@ -327,7 +314,7 @@ export const updatePost = async (req: AuthenticatedRequest, res: Response) => {
     );
 
     const message = draft ? 'Đã lưu bản nháp.'
-      : status === 'pending' ? 'Đã cập nhật! Bài viết được gửi lại để Ban quản trị duyệt.'
+      : status === 'rejected' ? 'Đã lưu. Bài viết đang bị Ban quản trị gỡ nên chưa hiển thị lại.'
         : 'Đã cập nhật bài viết.';
     return res.json({ success: true, message, data: updateRes.rows[0] });
   } catch (error: any) {
@@ -342,8 +329,9 @@ export const deletePost = async (req: AuthenticatedRequest, res: Response) => {
     const checkRes = await pool.query(`SELECT id, user_id FROM posts WHERE id = $1 AND is_deleted = false`, [req.params.id]);
     const post = checkRes.rows[0];
     if (!post) return res.status(404).json({ success: false, message: 'Bài viết không tồn tại hoặc đã bị xóa.' });
-    if (post.user_id !== req.user.id && !isStaff(req)) {
-      return res.status(403).json({ success: false, message: 'Chỉ tác giả bài viết hoặc Admin/Mod mới có quyền xóa.' });
+    // Admin/Mod don't delete other people's posts, they take them down (reject) so it can be undone
+    if (post.user_id !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Chỉ tác giả mới xóa được bài viết. Ban quản trị chỉ gỡ bài vi phạm.' });
     }
     await pool.query(`UPDATE posts SET is_deleted = true, is_pinned = false, updated_at = NOW() WHERE id = $1`, [post.id]);
     return res.json({ success: true, message: 'Đã xóa bài viết.' });
@@ -376,13 +364,14 @@ async function review(req: AuthenticatedRequest, res: Response, approve: boolean
     const rows = (approve
       ? await pool.query(
         `UPDATE posts SET approval_status = 'approved', approved_by = $1, approved_at = NOW(), is_published = true, is_draft = false,
-           published_at = COALESCE(published_at, NOW()), rejection_reason = NULL, updated_at = NOW()
-         WHERE id = ANY($2::uuid[]) AND is_deleted = false AND approval_status <> 'draft'
+           published_at = COALESCE(published_at, NOW()), rejection_reason = NULL, removed_by = NULL, removed_at = NULL, updated_at = NOW()
+         WHERE id = ANY($2::uuid[]) AND is_deleted = false AND approval_status = 'rejected'
          RETURNING id, user_id, title`, [req.user!.id, ids])
       : await pool.query(
-        `UPDATE posts SET approval_status = 'rejected', is_published = false, is_pinned = false, rejection_reason = $2, updated_at = NOW()
+        `UPDATE posts SET approval_status = 'rejected', is_published = false, is_pinned = false, rejection_reason = $2,
+           removed_by = $3, removed_at = NOW(), updated_at = NOW()
          WHERE id = ANY($1::uuid[]) AND is_deleted = false AND approval_status <> 'draft'
-         RETURNING id, user_id, title`, [ids, reason])).rows;
+         RETURNING id, user_id, title`, [ids, reason, req.user!.id])).rows;
 
     enqueueNotificationJob({ kind: 'notify', items: postReviewNotifications(rows, approve, req.user!.id, reason) })
       .catch((err: any) => console.error('[Notification] enqueue failed:', err.message));
@@ -391,17 +380,16 @@ async function review(req: AuthenticatedRequest, res: Response, approve: boolean
     return res.json({
       success: true,
       count: rows.length,
-      message: approve ? `Đã duyệt ${rows.length} bài viết.` : `Đã từ chối ${rows.length} bài viết.`,
+      message: approve ? `Đã khôi phục ${rows.length} bài viết.` : `Đã gỡ ${rows.length} bài viết.`,
     });
   } catch (error: any) {
     return fail(res, error, approve ? 'approvePost' : 'rejectPost');
   }
 }
 
+/** Staff: take a post down (reject, with an optional reason) or restore it (approve). */
 export const approvePost = (req: AuthenticatedRequest, res: Response) => review(req, res, true);
 export const rejectPost = (req: AuthenticatedRequest, res: Response) => review(req, res, false);
-export const bulkApprovePosts = (req: AuthenticatedRequest, res: Response) => review(req, res, true);
-export const bulkRejectPosts = (req: AuthenticatedRequest, res: Response) => review(req, res, false);
 
 /** POST /posts/:id/pin (staff): pin / unpin a published post at the top of the feed. */
 export const togglePinPost = async (req: AuthenticatedRequest, res: Response) => {
