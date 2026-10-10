@@ -3,7 +3,7 @@
 - **Mục tiêu:** Workspace giai đoạn 2: nháp riêng theo đoạn, cập nhật theo bản chính (diff3), trang /ws
 - **Tạo từ:** `origin/main` @ 3b1481e, ngày 2026-10-10
 - **Trạng thái:** đã thử trên máy local, chủ dự án đã duyệt giao diện (2026-10-10), mở PR
-- **PR:** (chưa mở)
+- **PR:** https://github.com/amthls/nmv/pull/57
 - **Plan:** `Plan/chapter-workspace.md` (Giai đoạn 2)
 
 ## Thay đổi
