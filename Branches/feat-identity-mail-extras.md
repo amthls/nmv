@@ -3,7 +3,7 @@
 - **Mục tiêu:** identity: đổi email, giới hạn mail/ngày, token không nằm lại trên URL, Turnstile tùy chọn
 - **Tạo từ:** `origin/main`, ngày 2026-10-10
 - **Trạng thái:** xong, chờ CI
-- **PR:** (chưa mở)
+- **PR:** https://github.com/amthls/nmv/pull/66
 - **Plan:** `Plan/identity.md` (nhánh 4), `Plan/microservices.md` (mục "Mail tài khoản")
 
 ## Thay đổi
