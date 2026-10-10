@@ -3,7 +3,7 @@
 - **Mục tiêu:** Workspace giai đoạn 3: đề xuất, góp ý theo đoạn, trả lại, gộp; thông báo
 - **Tạo từ:** `origin/main` @ bca40d1, ngày 2026-10-10
 - **Trạng thái:** xong, đã thử local; tự merge
-- **PR:** (điền khi mở)
+- **PR:** https://github.com/amthls/nmv/pull/59
 - **Plan:** `Plan/chapter-workspace.md` (Giai đoạn 3)
 
 ## Thay đổi
