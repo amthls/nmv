@@ -1,9 +1,9 @@
 # feat/messaging-realtime
 
 - **Mục tiêu:** Giai đoạn E1: service messaging (Go) giữ WebSocket thường thay Socket.IO
-- **Tạo từ:** `origin/main`, ngày 2026-10-10
+- **Tạo từ:** `origin/main` @ 5c1735b, ngày 2026-10-10
 - **Trạng thái:** xong, chờ CI
-- **PR:** (chưa mở)
+- **PR:** https://github.com/amthls/nmv/pull/68
 - **Plan:** `Plan/messaging.md` (E1), `Plan/microservices.md` (giai đoạn E)
 
 ## Thay đổi
