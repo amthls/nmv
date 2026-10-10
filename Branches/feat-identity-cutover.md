@@ -3,7 +3,7 @@
 - **Mục tiêu:** Giai đoạn B, nhánh 2: chuyển hẳn đăng nhập sang service identity (gateway `auth_request`, backend đọc header ký + bản sao, frontend dùng cookie/refresh/CSRF)
 - **Tạo từ:** `feat/identity-service` (xếp chồng trên #53 → #52 → #51), ngày 2026-10-10. PR base = `feat/identity-service`
 - **Trạng thái:** đã chuyển và thử trên máy local; chờ chủ dự án duyệt giao diện
-- **PR:** (chưa mở)
+- **PR:** https://github.com/amthls/nmv/pull/54 (bản nháp)
 - **Plan:** `Plan/identity.md` (nhánh 2)
 
 ## Thay đổi
