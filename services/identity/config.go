@@ -9,7 +9,6 @@ import (
 type config struct {
 	Port            string
 	DatabaseURL     string // identity_db, as role identity
-	LegacyURL       string // novel_platform, only for `identity import-legacy`
 	RedisURL        string
 	RabbitURL       string
 	JWTSecret       []byte // signs nh_access
@@ -26,7 +25,6 @@ func loadConfig() (config, error) {
 	c := config{
 		Port:            env("PORT", "8080"),
 		DatabaseURL:     os.Getenv("IDENTITY_DATABASE_URL"),
-		LegacyURL:       os.Getenv("LEGACY_DATABASE_URL"),
 		RedisURL:        os.Getenv("REDIS_URL"),
 		RabbitURL:       os.Getenv("RABBITMQ_URL"),
 		JWTSecret:       []byte(os.Getenv("IDENTITY_JWT_SECRET")),

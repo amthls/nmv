@@ -303,6 +303,24 @@ func TestLegacyBcryptUpgradedOnLogin(t *testing.T) {
 	}
 }
 
+func TestSeedDemoOnlyIntoEmptyDB(t *testing.T) {
+	h := newHarness(t)
+	ctx := context.Background()
+	if err := seedDemo(ctx, h.s.db); err != nil {
+		t.Fatal(err)
+	}
+	h.client().want(200, "POST", "/login", map[string]any{"identifier": "admin", "password": "password123"}, false)
+	h.s.db.Exec(ctx, `DELETE FROM users WHERE username = 'reader_sora'`)
+	if err := seedDemo(ctx, h.s.db); err != nil {
+		t.Fatal(err)
+	}
+	var n int
+	h.s.db.QueryRow(ctx, `SELECT COUNT(*) FROM users`).Scan(&n)
+	if n != len(demoAccounts)-1 {
+		t.Fatalf("seed-demo re-added accounts into a non-empty database: %d", n)
+	}
+}
+
 func TestForgotAndReset(t *testing.T) {
 	h := newHarness(t)
 	old := h.register("lan")

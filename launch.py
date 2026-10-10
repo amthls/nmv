@@ -23,8 +23,8 @@ Options for "up": --no-build (reuse existing images), --timeout SECONDS (default
 After a successful start, scripts/crawler.py runs in the background (log: logs/crawler.log) and
 imports stories (MangaDex, TopTruyen, NetTruyen, Valvrare) until the site has --crawl-target stories; it exits at once
 when there are already enough.
-By default the seeders run only when the database has no stories yet (fresh install), because
-backend/scripts/seed-passwords.js resets EVERY user's password to "password123".
+By default the seeders run only when the database has no stories yet (fresh install).
+Sample accounts (password123) are created by `identity seed-demo`, only into an empty identity_db.
 Only the Python standard library is used.
 """
 import argparse
@@ -399,21 +399,16 @@ def apply_migrations(env):
     return all_ok
 
 
-def import_accounts(env):
-    """Accounts live in identity: copy those the backend database has and identity lacks (sample users, first move).
-    Only adds, never overwrites; run after migrations and seeders."""
-    url = (f"postgres://{env.get('POSTGRES_USER', 'postgres')}:{env['POSTGRES_PASSWORD']}@postgres:5432/"
-           f"{env.get('POSTGRES_DB', 'novel_platform')}")
-    res = subprocess.run(["docker", "compose", "run", "--rm", "--no-deps", "-e", f"LEGACY_DATABASE_URL={url}", "identity", "import-legacy"],
-                         cwd=ROOT, capture_output=True)
+def seed_accounts():
+    """Accounts live in identity: a fresh install gets the sample accounts there (only into an empty identity_db)."""
+    res = subprocess.run(["docker", "compose", "run", "--rm", "--no-deps", "identity", "seed-demo"], cwd=ROOT, capture_output=True)
     out = (res.stdout + res.stderr).decode(errors="replace")
-    summary = next((l for l in out.splitlines() if "import-legacy" in l), out.strip()[-300:])
+    summary = next((l for l in out.splitlines() if "seed-demo" in l), out.strip()[-300:])
     return res.returncode == 0, summary
 
 
 # Sample-data seeders from backend/scripts, run in order inside a one-off backend container.
 SEEDERS = [
-    ("demo passwords (password123)", ["node", "scripts/seed-passwords.js"]),
     ("sample stories, volumes, chapters", ["npx", "tsx", "scripts/seed-stories.ts"]),
     ("fandom posts", ["npx", "tsx", "scripts/seed-fandom.ts"]),
 ]
@@ -544,8 +539,8 @@ def run_checks(env, timeout, seed=None):
         elif seed is None:
             info(f"Database already has {count} stories, skipping seeders (use --seed to force)")
 
-        passed, detail = import_accounts(env)
-        record("accounts in identity (import-legacy)", passed, detail)
+        passed, detail = seed_accounts()
+        record("accounts in identity (seed-demo)", passed, detail)
 
         res = subprocess.run(["docker", "compose", "run", "--rm", "workspace", "import"], cwd=ROOT, capture_output=True)
         out = (res.stdout + res.stderr).decode(errors="replace")
@@ -589,9 +584,9 @@ def run_checks(env, timeout, seed=None):
     record("api      GET /api/v1/stories/explore?q=a (search)", code == 200, f"({code})")
 
     # Login with the seeded sample account (README: admin / password123)
-    code, body = http("POST", f"{gw}/api/v1/auth/login", {"identifier": "admin", "password": "password123"})
-    record("api      POST /api/v1/auth/login (sample admin)", code == 200,
-           f"({code})" if code == 200 else f"({code}: seeded hash is not 'password123'; see backend/scripts/seed-passwords.js)",
+    code, body = http("POST", f"{gw}/api/identity/login", {"identifier": "admin", "password": "password123"})
+    record("api      POST /api/identity/login (sample admin)", code == 200,
+           f"({code})" if code == 200 else f"({code}: admin is not 'password123' or was changed; see identity seed-demo)",
            soft=code in (400, 401))
 
     # Pages that exercise server-side rendering

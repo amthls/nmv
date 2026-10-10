@@ -361,7 +361,7 @@ export const addGroupMember = async (req: AuthenticatedRequest, res: Response) =
       return res.status(403).json({ success: false, message: 'Chỉ Trưởng nhóm hoặc Quản lý mới có quyền thêm thành viên' });
     }
 
-    const usernameOrEmail = requiredText(req.body?.username_or_email, 255, 'Username hoặc email');
+    const usernameOrEmail = requiredText(req.body?.username_or_email, 255, 'Tên đăng nhập');
     const role = req.body?.role ?? 'member';
     // A new leader is appointed by changing an existing member's role, not by adding someone
     if (!GROUP_ROLES.includes(role) || role === 'leader') {
@@ -372,7 +372,7 @@ export const addGroupMember = async (req: AuthenticatedRequest, res: Response) =
     // Exact (case-insensitive) match: no LIKE wildcards, so "%" can't pick a random user
     const userRes = await pool.query(`
       SELECT id, username, display_name, is_banned FROM users
-      WHERE lower(username) = lower($1) OR lower(email) = lower($1)
+      WHERE lower(username) = lower($1)
       LIMIT 1;
     `, [usernameOrEmail]);
 

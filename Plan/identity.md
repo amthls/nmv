@@ -70,8 +70,16 @@
       tab Bảo mật: danh sách thiết bị; quản trị: nhập lại mật khẩu
 - [x] Chuyển dữ liệu thật + thử: đăng nhập, khóa, thu hồi phiên, đặt lại mật khẩu, giả header, đổi id trên URL, CSRF, dùng lại refresh
 - [x] README, Branches, PR
-- [ ] Chủ dự án duyệt giao diện (đăng nhập/đăng ký, tab Bảo mật có danh sách thiết bị, hộp thoại nhập lại mật khẩu ở quản trị)
-- [ ] Nhánh sau: migration xóa `users.email/password_hash/tokens_valid_after/last_login_at` + `auth_tokens` khi đã xác nhận
+- [x] ~~Chủ dự án duyệt giao diện~~ (từ 2026-10-10 không duyệt nữa, tự merge: CLAUDE.md); đã chạy thật từ PR #56
+
+## Checklist: nhánh 3 `security/drop-legacy-credentials`
+Bản cài mới: `database.sql` seed tài khoản mẫu kèm mật khẩu rồi chính file đó xóa cột → `import-legacy` không còn gì để chép.
+Nên tài khoản mẫu do identity tự tạo: `identity seed-demo` (chỉ khi `identity_db` chưa có tài khoản nào, nên không bao giờ thêm lại
+tài khoản mẫu vào bản cài đang chạy thật).
+- [x] Migration `026_drop_legacy_credentials.sql` (+ `database.sql`): xóa `users.email/password_hash/tokens_valid_after/last_login_at`, bảng `auth_tokens`
+- [x] identity: `seed-demo` thay `import-legacy` (xóa `legacy.go`, `LegacyURL`); `migrate.sh`, `launch.py` gọi `seed-demo`; bỏ seeder `seed-passwords.js`
+- [x] Backend: thêm thành viên nhóm chỉ theo tên đăng nhập (bản sao không còn email), `RETURNING email`, `simulateReaders` không ghi mật khẩu
+- [x] Thử: migrate trên bản sao DB thật (chạy trên DB thật bị chặn, chủ dự án chạy `scripts/migrate.sh`), bản cài mới (DB trống) đăng nhập `admin`/`password123`, typecheck, go test; README, Branches; PR, tự merge
 
 ## Bẫy
 - Nginx `auth_request` đặt ở cấp server phải tắt (`auth_request off`) trong chính location `/_auth`, nếu không subrequest gọi lại chính nó.
