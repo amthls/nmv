@@ -11,6 +11,7 @@ logs/
 uploads/manga/
 exports/
 backend/exports/
+backups/
 scripts/__pycache__/
 __pycache__/
 .build-stamp.json

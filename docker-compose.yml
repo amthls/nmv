@@ -198,6 +198,7 @@ services:
       - ./uploads:/app/uploads
       - ./exports:/app/exports # built EPUB/PDF files (served only by the download endpoint)
       - image_cache:/app/.cache # resized copies of uploaded images (safe to delete)
+      - ./backups/status:/app/backup-status:ro # status.json written by the backup container
     depends_on:
       pgbouncer:
         condition: service_healthy
@@ -269,6 +270,37 @@ services:
       postgres:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - data
+
+  # ============================================================================
+  # 2d. Backup: nightly pg_dump of every database + uploads/ into an encrypted restic
+  #     repository at ./backups/repo (keep 14 daily / 8 weekly / 12 monthly), weekly
+  #     test restore, admin notification on failure. Restore: scripts/restore.sh
+  # ============================================================================
+  backup:
+    build:
+      context: ./backup
+    image: local/nmv-backup:latest
+    container_name: novel_backup
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Ho_Chi_Minh
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:-postgres}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (openssl rand -hex 24)}
+      POSTGRES_DB: ${POSTGRES_DB:-novel_platform}
+      RESTIC_REPOSITORY: /repo
+      RESTIC_PASSWORD: ${RESTIC_PASSWORD:?Set RESTIC_PASSWORD in .env (losing it makes the backups unreadable)}
+    volumes:
+      - ./backups/repo:/repo
+      - ./backups/status:/status
+      - ./uploads:/data/uploads:ro
+    depends_on:
+      postgres:
         condition: service_healthy
     security_opt:
       - no-new-privileges:true

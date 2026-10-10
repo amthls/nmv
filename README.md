@@ -9,7 +9,7 @@ Nền tảng đọc **Light Novel (truyện chữ)** và **Manga (truyện tranh
 2. [Cấu trúc thư mục](#-cấu-trúc-thư-mục)
 3. [Khởi chạy](#-khởi-chạy)
 4. [Biến môi trường](#-biến-môi-trường)
-5. [Chống lạm dụng & DDoS](#-chống-lạm-dụng--ddos) · [Hiệu năng & mở rộng](#-hiệu-năng--mở-rộng-redis-realtime-pgbouncer) · [CI/CD & migration](#-cicd--migration) · [Lộ trình bảo mật](#-lộ-trình-bảo-mật)
+5. [Chống lạm dụng & DDoS](#-chống-lạm-dụng--ddos) · [Hiệu năng & mở rộng](#-hiệu-năng--mở-rộng-redis-realtime-pgbouncer) · [CI/CD & migration](#-cicd--migration) · [Sao lưu & khôi phục](#-sao-lưu--khôi-phục) · [Lộ trình bảo mật](#-lộ-trình-bảo-mật)
 6. [Hàng đợi thông báo (RabbitMQ)](#-hàng-đợi-thông-báo-rabbitmq)
 7. [Tìm kiếm với Elasticsearch](#-tìm-kiếm-với-elasticsearch)
 8. [Trình soạn thảo rich text](#️-trình-soạn-thảo-rich-text-ckeditor-5) · [Độ phân giải ảnh](#-độ-phân-giải-ảnh-cho-người-đọc) · [Hiệu ứng tải trang](#-hiệu-ứng-tải-trang)
@@ -77,6 +77,8 @@ Trình duyệt gọi `/api/v1/...` và `/uploads/...` cùng origin; qua gateway 
 │   └── store.go                      # snapshot ra đĩa để sống sót qua restart container
 ├── sql/database.sql                  # schema + dữ liệu mẫu, tự nạp khi tạo volume Postgres mới
 ├── uploads/                          # ảnh người dùng tải lên (mount vào backend và frontend)
+├── backup/                           # container sao lưu: Dockerfile + backup.sh (xem Sao lưu & khôi phục)
+├── backups/                          # kho restic + status.json (không commit)
 ├── docker-compose.yml
 └── .env / .env.example
 ```
@@ -125,6 +127,7 @@ Chạy không qua Docker (cần Postgres sẵn): `yarn dev:local` (backend + fro
 | `SEARCH_INDEX` | `novel_stories` | Tên index |
 | `SEARCH_PORT` | `9201` | Cổng publish trên máy host (localhost) |
 | `REDIS_PASSWORD` / `REDIS_PORT` | *(không có)* / `6380` | **Bắt buộc** `REDIS_PASSWORD`. Compose tự ghép `REDIS_URL` cho backend và worker |
+| `RESTIC_PASSWORD` | *(không có)* | **Bắt buộc**, khóa mã hóa kho sao lưu `backups/repo`. `launch.py` tự sinh nếu thiếu và **không bao giờ đổi** (mật khẩu mới không mở được bản cũ). Mất nó là mất mọi bản sao lưu: chép ra nơi khác |
 | `REDIS_URL` | compose tự ghép | Để trống (chạy ngoài Docker) thì app vẫn chạy: không cache, rate limit trong RAM, ghi lượt xem thẳng DB, không đẩy realtime (trang tự hỏi lại định kỳ) |
 | `DB_POOL_MAX` | `50` | Số kết nối tối đa của mỗi tiến trình Node tới Postgres/PgBouncer |
 | `PGBOUNCER_MAX_CLIENT_CONN` / `PGBOUNCER_POOL_SIZE` / `PGBOUNCER_MAX_DB_CONN` | `1000` / `20` / `60` | Kết nối từ app vào PgBouncer / kết nối thật tới Postgres |
@@ -174,6 +177,29 @@ Mục tiêu: chịu được vài nghìn đến vài chục nghìn người onli
 - **CI** (`.github/workflows/ci.yml`, mọi push/PR): typecheck backend + frontend, test backend (`yarn test`: `tsx --test src/**/*.test.ts`) → `docker compose build` → quét image bằng Trivy (lỗi **CRITICAL đã có bản vá** thì fail; ngoại lệ có lý do và hạn dùng ở `.trivyignore`) → khởi động cả stack → `migrate.sh` → kiểm tra `/api/v1/health`, trang chủ, `/stories/trending`.
 - **CD** (`.github/workflows/deploy.yml`, push lên `main`): build và đẩy `ghcr.io/<owner>/nmv-backend` và `nmv-frontend` (tag = commit SHA và `latest`). Bước deploy qua SSH **chỉ chạy khi** biến repo `DEPLOY_ENABLED=true` và có secrets `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_PATH`: `git pull` → `docker compose pull` → `migrate.sh` → `up -d` → kiểm tra health. Server cần `IMAGE_REGISTRY=ghcr.io/<owner>` trong `.env` và đã `docker login ghcr.io`.
 - **Dependabot** (`.github/dependabot.yml`): mỗi tuần mở PR cập nhật npm, Docker và GitHub Actions; CI chạy trên từng PR.
+
+## 💾 Sao lưu & khôi phục
+
+Container `backup` (`backup/`: postgres:16-alpine + [restic](https://restic.net) + crond, giờ Việt Nam) sao lưu vào kho mã hóa `backups/repo` trên máy host:
+- **3:00 hằng ngày:** `pg_dumpall --globals-only` + `pg_dump` **từng database** (trừ `*_restored`) + thư mục `uploads/`. restic chỉ lưu phần mới (khử trùng lặp), rồi dọn theo lịch giữ **14 bản ngày · 8 bản tuần · 12 bản tháng**. Mất tối đa 1 ngày dữ liệu (không lưu WAL).
+- **5:00 Chủ nhật:** `restic check` + khôi phục dump mới nhất vào database tạm `restore_check`, so số bảng (phải bằng) và số dòng (≥ 90% bản thật), rồi xóa.
+- **Mỗi giờ:** quá 26 giờ không có bản thành công → thông báo hệ thống cho mọi Admin (một lần mỗi ngày). Sao lưu hoặc thử khôi phục lỗi cũng gửi thông báo.
+- **Trước migration:** `scripts/migrate.sh` chụp một bản (`pre-migrate`) trước khi chạy file mới, sao lưu lỗi thì không chạy (`SKIP_BACKUP=1` để bỏ qua); `launch.py` chụp mỗi lần chạy migration (lỗi chỉ cảnh báo).
+- **Trạng thái:** `backups/status/status.json`, hiện trong `/tai-khoan` → tab quản trị (Admin). Web **không** có nút khôi phục. Log: `docker compose logs backup`.
+- Không sao lưu (dựng lại được): Redis, Elasticsearch, RabbitMQ, cache ảnh, `exports/`.
+
+Chạy tay: `docker compose exec backup backup.sh run` · `docker compose exec backup backup.sh check`.
+
+**Khôi phục** (`scripts/restore.sh`):
+```sh
+sh scripts/restore.sh list db                       # các bản DB (giờ, mã snapshot)
+sh scripts/restore.sh db latest                     # khôi phục vào DB riêng novel_platform_restored, DB thật không đổi
+sh scripts/restore.sh db <mã> --replace             # THAY DB thật: hỏi xác nhận, chụp bản hiện tại, dừng app, khôi phục, xóa cache Redis, chạy lại app
+sh scripts/restore.sh uploads latest ./khoi-phuc    # ảnh ra ./khoi-phuc/data/uploads, chép lại bằng tay
+```
+Sau `--replace`: chỉ mục tìm kiếm Elasticsearch có thể lệch tới khi truyện được sửa/đánh index lại. Xóa DB thử sau khi xem xong: `docker compose exec backup psql -d postgres -c 'DROP DATABASE novel_platform_restored'`.
+
+**Rủi ro còn lại:** máy chỉ có một ổ, kho sao lưu nằm cùng ổ với dữ liệu: hỏng ổ, mất máy hay ransomware là mất cả hai. Có ổ thứ hai hoặc cloud thì thêm bản ngoài máy (`restic copy` sang kho mới). Nhớ cất `RESTIC_PASSWORD` ở nơi khác.
 
 ## 🔐 Lộ trình bảo mật
 
@@ -390,6 +416,7 @@ Ghi chú thực tế: bảng `users` **không có** cột `role`, `coins`, `exp_
 **Người dùng & Upload**
 - `GET /profile/me`, `PUT /profile/me`, `PUT /profile/me/settings`
 - `GET /users`, `GET /users/admin/all`, `POST /users/:userId/roles`
+- `GET /admin/backup-status` (Admin): trạng thái sao lưu do container `backup` ghi (`null` nếu chưa chạy lần nào)
 - `GET /codes/:code`: tra mã thông minh → `{ type, path }` (không phân biệt hoa thường, chỉ dựa vào số). Nội dung ẩn trả 404 như mã sai: truyện chưa duyệt, bài chưa duyệt (trừ tác giả/staff), album riêng tư (trừ chủ), người bị khóa/xóa và báo cáo (trừ Admin/Mod)
 - `GET /users/:username`: hồ sơ công khai (trang `/nguoi-dung/:username`), chỉ gồm tên, ảnh, giới thiệu, vai trò công khai, thống kê, nhóm dịch và truyện đã đăng; không có email/cài đặt/lịch sử. Admin/Mod nhận thêm khối `moderation` (email, trạng thái khóa, các thao tác được phép)
 - Quản trị người dùng (Admin/Mod): `POST /users/:userId/ban` (kèm `reason`), `POST /users/:userId/unban`, `DELETE /users/:userId` (xóa mềm: ẩn danh hóa và khóa tài khoản, giữ truyện; `purge_content: true` ẩn luôn bài viết và bình luận). Không ai tác động lên chính mình hoặc Admin; Mod chỉ tác động lên người dùng thường; Admin và Mod đều cấp được quyền Mod cho người dùng thường, chỉ Admin thu hồi quyền Mod (migration `sql/migrations/005_user_soft_delete.sql`)
@@ -419,6 +446,8 @@ Email có dạng `<tên ngắn>@novelhub.vn` (ví dụ `admin@novelhub.vn`, `sak
 - Tin nhắn riêng chưa có xóa/sửa tin, gửi ảnh hay báo cáo tin nhắn; chặn chỉ áp dụng cho tin nhắn (người bị chặn vẫn thấy bài viết, bình luận của bạn).
 - Test tự động mới chỉ có `isTokenRevoked` (`backend/src/middlewares/auth.middleware.test.ts`) và `parseCode` (`backend/src/controllers/code.controller.test.ts`).
 - Web miễn phí nên **không làm** hệ thống xu, nạp tiền, mua chương hay cấp độ.
+
+- Sao lưu chỉ nằm trên cùng ổ đĩa với web (chưa có bản ngoài máy), xem [Sao lưu & khôi phục](#-sao-lưu--khôi-phục).
 
 **Bảo mật (cần xử lý trước khi chạy thật)**
 - **Tài khoản mẫu vẫn dùng mật khẩu `password123`** (kể cả `admin`), bất kể danh sách demo đang tắt. Nếu website đang mở ra Internet (ví dụ qua tunnel), hãy đổi mật khẩu hoặc xóa các tài khoản này.
