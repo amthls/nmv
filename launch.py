@@ -463,7 +463,8 @@ def wait_until(desc, fn, timeout):
 # ----------------------------------------------------------------------- checks
 
 def run_checks(env, timeout, seed=None):
-    gw = f"http://localhost:{env.get('GATEWAY_PORT', 3000)}"
+    # 127.0.0.1, not localhost: the gateway listens on IPv4 loopback only, and Python tries ::1 first (seconds lost per call)
+    gw = f"http://127.0.0.1:{env.get('GATEWAY_PORT', 3000)}"
     be = f"http://127.0.0.1:{env.get('PORT', 5000)}"
     search = f"http://127.0.0.1:{env.get('SEARCH_PORT', 9201)}"
     results = []

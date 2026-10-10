@@ -455,6 +455,8 @@ Bẫy (backup):
 
 Bẫy (giai đoạn A):
 - nginx: `location` nào có `proxy_set_header` riêng thì **không kế thừa** header nào của `server` → lặp lại đủ ở location đó.
+- Gateway chỉ nghe `127.0.0.1`: trên Windows, công cụ không tự thử song song IPv4/IPv6 (Python `urllib`) gọi `localhost` mất ~10 giây vì thử `::1` trước
+  (Docker Desktop không nghe được `[::1]`) → script dùng `127.0.0.1`; trình duyệt, curl, Node không bị.
 - `fetch()` của Node từ chối URL có `user:pass@` → mật khẩu ES gửi qua header `Authorization`.
 - Đo tải từ một máy: đừng lách giới hạn theo IP (giả `CF-Connecting-IP`); đo độ trễ ở tốc độ dưới giới hạn.
 - Git Bash đổi đường dẫn trong `-v host:/ctr` → `MSYS_NO_PATHCONV=1` + `pwd -W`.
