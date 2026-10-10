@@ -643,7 +643,7 @@ func (s *server) handleBoard(w http.ResponseWriter, r *http.Request) {
 	rows, err := s.db.Query(ctx, `SELECT `+draftColumns+`, dr.note, dr.submitted_at
 		FROM chapter_drafts d LEFT JOIN chapter_heads h ON h.chapter_id = d.chapter_id
 		JOIN draft_rounds dr ON dr.draft_id = d.id AND dr.round = d.last_round
-		WHERE d.story_id = ANY($1) AND d.status = 'submitted' AND (d.story_id = ANY($2) OR d.owner_id = $3) ORDER BY dr.submitted_at`, stories, kept, user)
+		WHERE d.story_id = ANY($1) AND d.status IN ('submitted', 'scheduled') AND (d.story_id = ANY($2) OR d.owner_id = $3) ORDER BY dr.submitted_at`, stories, kept, user)
 	if err != nil {
 		internalError(w, r, err)
 		return

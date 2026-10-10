@@ -28,7 +28,11 @@ export function DraftRow({ d, storyTitle }: { d: any; storyTitle?: string }) {
           <span>· lưu {new Date(d.updated_at).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}</span>
         </div>
       </div>
-      {d.status === 'offered' ? (
+      {d.status === 'scheduled' ? (
+        <span className="shrink-0 text-[10px] font-bold text-violet-300 bg-violet-500/10 border border-violet-500/30 rounded-full px-2 py-0.5">
+          Hẹn đăng {new Date(d.publish_at).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}
+        </span>
+      ) : d.status === 'offered' ? (
         <span className="shrink-0 text-[10px] font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 rounded-full px-2 py-0.5">Đã gửi cho chủ nháp</span>
       ) : d.status === 'submitted' ? (
         <span className="shrink-0 text-[10px] font-bold text-sky-300 bg-sky-500/10 border border-sky-500/30 rounded-full px-2 py-0.5">Chờ duyệt</span>

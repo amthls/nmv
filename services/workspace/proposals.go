@@ -182,7 +182,7 @@ func (s *server) handleProposals(w http.ResponseWriter, r *http.Request) {
 	rows, err := s.db.Query(r.Context(), `SELECT `+draftColumns+`, dr.note, dr.submitted_at
 		FROM chapter_drafts d LEFT JOIN chapter_heads h ON h.chapter_id = d.chapter_id
 		JOIN draft_rounds dr ON dr.draft_id = d.id AND dr.round = d.last_round
-		WHERE d.story_id = $1 AND d.status = 'submitted' AND ($2 OR d.owner_id = $3) ORDER BY dr.submitted_at`, story, p.Keeper, user)
+		WHERE d.story_id = $1 AND d.status IN ('submitted', 'scheduled') AND ($2 OR d.owner_id = $3) ORDER BY dr.submitted_at`, story, p.Keeper, user)
 	if err != nil {
 		internalError(w, r, err)
 		return

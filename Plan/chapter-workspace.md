@@ -275,7 +275,18 @@ chương đã có head; chạy trong `migrate.sh`/`launch.py` như identity. Nh�
 - [x] Smoke, README, Branches; PR, tự merge
 
 ### 4c. Hẹn giờ đăng (nhánh `feat/ws-schedule`)
-- [ ] Hẹn giờ đăng chương (đổi giờ / hủy trước khi đăng)
+
+**Thiết kế (2026-10-10):** người giữ truyện bấm Đăng / Gộp kèm **giờ đăng** (1 phút – 1 năm tới): backend kiểm như khi đăng ngay (quyền,
+nội dung, tập, truyện chưa bị gỡ) rồi workspace đặt nháp `status = scheduled` + `publish_at`, `scheduled_by` (nháp khóa, không sửa).
+Vòng lặp trong workspace (30 giây/lần, `FOR UPDATE SKIP LOCKED`, chạy được nhiều bản) đến giờ thì **đăng như bấm tay** (cùng hàm: tự gộp diff3
+nếu là đề xuất, việc GỘP xong, nhật ký) → sự kiện `workspace.revision.merged` → backend dựng bản đọc + báo người theo dõi (chương mới).
+Không đăng được (bản chính đã đổi và sửa trùng, số chương bị chiếm, truyện bị gỡ…) → nháp về trạng thái trước (`open`/`submitted`) kèm
+`schedule_error`. Trước giờ đăng: người giữ truyện **đổi giờ** (đặt lại) hoặc **hủy hẹn** (nháp về trạng thái trước).
+
+- [x] Workspace: migration `006_schedule.sql`; tách hàm đăng dùng chung; đặt / đổi / hủy hẹn; vòng lặp đăng đến giờ; test
+- [x] Backend: `POST /drafts/:id/publish {publish_at}` → hẹn giờ
+- [x] Frontend: chọn giờ đăng ở trình soạn thảo và trang duyệt, banner "sẽ đăng lúc…" (đổi giờ, hủy), huy hiệu "Hẹn đăng" ở danh sách
+- [x] Smoke, README, Branches; PR, tự merge
 
 ## Kết thúc mỗi giai đoạn
-- [ ] Typecheck, build, migrate, thử API + trình duyệt; README; `Branches/<nhánh>.md`; chủ dự án duyệt giao diện trước khi push
+- [x] Typecheck, build, migrate, thử API + trình duyệt; README; `Branches/<nhánh>.md` (từ 2026-10-10 chủ dự án không duyệt giao diện nữa: tự merge, xem CLAUDE.md)
