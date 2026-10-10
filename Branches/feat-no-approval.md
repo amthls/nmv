@@ -3,7 +3,7 @@
 - **Mục tiêu:** Bỏ khâu duyệt truyện, chương, blog, nhóm dịch; admin/mod chỉ xoá/gỡ nội dung vi phạm
 - **Tạo từ:** `origin/main` @ e3c8402, ngày 2026-10-09
 - **Trạng thái:** xong, chủ dự án đã duyệt giao diện (2026-10-10), chờ review PR
-- **PR:** (chưa mở)
+- **PR:** https://github.com/amthls/nmv/pull/50
 - **Plan:** `Plan/no-approval.md`
 
 ## Thay đổi
