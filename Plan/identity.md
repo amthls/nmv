@@ -63,15 +63,22 @@
 - [x] README, Branches, PR
 
 ## Checklist: nhánh 2 `feat/identity-cutover`
-- [ ] Backend: middleware đọc `X-User-*` + kiểm chữ ký; consumer `identity.user.*` → `users`/`user_roles` (inbox + version); đọc xuyên
-- [ ] Backend: bỏ API `/auth/*` cũ, quản trị người dùng gọi sang identity; migration bỏ cột nhạy cảm + `auth_tokens`
-- [ ] Gateway: `auth_request` cho `/api/v1/` + `/socket.io/`, định tuyến `/api/identity/`
-- [ ] Frontend: AuthContext không token, refresh khi 401, header CSRF, đường dẫn mới; socket; upload XHR; trang quên/đặt lại/xác thực;
+- [x] Backend: middleware đọc `X-User-*` + kiểm chữ ký; consumer `identity.user.*` → `users`/`user_roles` (inbox + version); đọc xuyên
+- [x] Backend: bỏ API `/auth/*` cũ, quản trị người dùng gọi sang identity; migration bỏ cột nhạy cảm + `auth_tokens`
+- [x] Gateway: `auth_request` cho `/api/v1/` + `/socket.io/`, định tuyến `/api/identity/`
+- [x] Frontend: AuthContext không token, refresh khi 401, header CSRF, đường dẫn mới; socket; upload XHR; trang quên/đặt lại/xác thực;
       tab Bảo mật: danh sách thiết bị; quản trị: nhập lại mật khẩu
-- [ ] Chuyển dữ liệu thật + thử: đăng nhập, khóa, thu hồi phiên, đặt lại mật khẩu, giả header, đổi id trên URL, CSRF, dùng lại refresh
-- [ ] README, Branches, PR; chủ dự án duyệt giao diện
+- [x] Chuyển dữ liệu thật + thử: đăng nhập, khóa, thu hồi phiên, đặt lại mật khẩu, giả header, đổi id trên URL, CSRF, dùng lại refresh
+- [x] README, Branches, PR
+- [ ] Chủ dự án duyệt giao diện (đăng nhập/đăng ký, tab Bảo mật có danh sách thiết bị, hộp thoại nhập lại mật khẩu ở quản trị)
+- [ ] Nhánh sau: migration xóa `users.email/password_hash/tokens_valid_after/last_login_at` + `auth_tokens` khi đã xác nhận
 
 ## Bẫy
+- Nginx `auth_request` đặt ở cấp server phải tắt (`auth_request off`) trong chính location `/_auth`, nếu không subrequest gọi lại chính nó.
+- `error_page 403 = @…` ở cấp server chỉ bắt 403 do nginx tạo (subrequest), không bắt 403 của backend (không bật `proxy_intercept_errors`).
+- `sendBeacon` không gắn được header → request ghi bị chặn CSRF khi đã đăng nhập; dùng `fetch(..., { keepalive: true })`.
+- `export-worker` nạp `auth.middleware` gián tiếp (qua realtime): kiểm `AUTH_HEADER_KEY` lúc khởi động API (`server.ts`), không ở cấp module.
+- Script Python gọi `localhost` trên Windows chậm ~10 s/lần (gateway chỉ IPv4): dùng `127.0.0.1`.
 - Thư viện Go mới (x/crypto 0.57) đòi `go 1.26` → image build `golang:1.26.8-alpine3.24`; máy local Go 1.25 tự tải toolchain.
 - `docker compose up --wait` chấp nhận container một-lần (`db-init`) thoát mã 0.
 - Logger TS mới (PR #52) che `token=…` nên **link đặt lại mật khẩu không còn đọc được trong log backend** khi chưa có SMTP; identity giữ mail trong

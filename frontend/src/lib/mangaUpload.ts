@@ -1,6 +1,7 @@
 'use client';
 
 import { unzip } from 'fflate';
+import { csrfToken, refreshSession } from './session';
 
 /**
  * Helpers for the manga chapter uploader: collecting image files from drops / folders / zip
@@ -230,8 +231,25 @@ function explainStatus(status: number, serverMessage?: string): string {
   return serverMessage || `Lỗi không xác định (${status})`;
 }
 
-/** POST pages to /upload/manga-pages with byte-level progress (fetch cannot report upload progress). */
-export function uploadPageBatch(
+/**
+ * POST pages to /upload/manga-pages with byte-level progress (fetch cannot report upload progress).
+ * A 401 means the 15-minute session cookie ran out mid-upload: refresh it and send the batch once more.
+ */
+export async function uploadPageBatch(
+  apiBase: string,
+  storyId: string,
+  files: File[],
+  onProgress: (fraction: number) => void,
+): Promise<UploadedPage[]> {
+  try {
+    return await sendPageBatch(apiBase, storyId, files, onProgress);
+  } catch (err) {
+    if (!(err instanceof UploadError) || err.status !== 401 || !(await refreshSession())) throw err;
+    return sendPageBatch(apiBase, storyId, files, onProgress);
+  }
+}
+
+function sendPageBatch(
   apiBase: string,
   storyId: string,
   files: File[],
@@ -245,10 +263,7 @@ export function uploadPageBatch(
     const xhr = new XMLHttpRequest();
     xhr.open('POST', `${apiBase}/upload/manga-pages`);
     xhr.withCredentials = true;
-    try {
-      const token = localStorage.getItem('novelhub_token');
-      if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-    } catch {}
+    xhr.setRequestHeader('X-CSRF-Token', csrfToken());
     xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);
     xhr.onload = () => {
       let json: any = null;

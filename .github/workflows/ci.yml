@@ -97,7 +97,6 @@ jobs:
       - name: Test .env (random secrets)
         run: |
           {
-            echo "JWT_SECRET=$(openssl rand -hex 32)"
             echo "RABBITMQ_PASSWORD=$(openssl rand -hex 24)"
             echo "REDIS_PASSWORD=$(openssl rand -hex 24)"
             echo "POSTGRES_PASSWORD=$(openssl rand -hex 24)"

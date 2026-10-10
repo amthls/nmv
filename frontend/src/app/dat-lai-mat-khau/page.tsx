@@ -19,7 +19,7 @@ function ResetPasswordForm() {
     e.preventDefault();
     if (password !== confirm) return setResult({ ok: false, message: 'Mật khẩu xác nhận không khớp.' });
     setBusy(true);
-    setResult(await postAuth('/auth/reset-password', { token, new_password: password }));
+    setResult(await postAuth('/reset-password', { token, new_password: password }));
     setBusy(false);
   };
 
@@ -31,7 +31,7 @@ function ResetPasswordForm() {
         <button type="button" onClick={() => openAuthModal('login')} className={primaryButton}>Đăng nhập</button>
       ) : token && (
         <form onSubmit={submit} className="space-y-4">
-          <PasswordInput label="Mật khẩu mới (ít nhất 6 ký tự)" value={password} onChange={setPassword} autoComplete="new-password" />
+          <PasswordInput label="Mật khẩu mới (ít nhất 8 ký tự)" value={password} onChange={setPassword} autoComplete="new-password" />
           <PasswordInput label="Nhập lại mật khẩu mới" value={confirm} onChange={setConfirm} autoComplete="new-password" />
           <button type="submit" disabled={busy} className={primaryButton}>
             {busy ? 'Đang lưu...' : 'Lưu mật khẩu mới'}

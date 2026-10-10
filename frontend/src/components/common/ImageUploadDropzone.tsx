@@ -3,6 +3,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { UploadCloud, Image as ImageIcon, X, Loader2, AlertCircle, Check } from 'lucide-react';
 import SmartImage from './SmartImage';
+import { apiFetch } from '@/lib/session';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -46,7 +47,7 @@ export default function ImageUploadDropzone({
         formData.append('images', file);
       });
 
-      const res = await fetch(`${API_BASE_URL}/upload/images`, {
+      const res = await apiFetch(`${API_BASE_URL}/upload/images`, {
         method: 'POST',
         body: formData,
       });

@@ -82,6 +82,7 @@ services:
     depends_on:
       - frontend
       - backend
+      - identity # auth_request target for every API call
     security_opt:
       - no-new-privileges:true
     networks:
@@ -187,10 +188,10 @@ services:
       PORT: 5000
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (openssl rand -hex 24)}@pgbouncer:5432/${POSTGRES_DB:-novel_platform}?schema=public
       CORS_ORIGIN: http://localhost:3000
-      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (openssl rand -hex 32)}
+      AUTH_HEADER_KEY: ${AUTH_HEADER_KEY:?Set AUTH_HEADER_KEY in .env (openssl rand -hex 32)} # verifies the gateway's X-User-* headers
+      IDENTITY_INTERNAL_URL: http://identity:8080
       ENABLE_DEMO_ACCOUNTS: ${ENABLE_DEMO_ACCOUNTS:-false}
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672
-      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       SEARCH_URL: http://search:9200
       SEARCH_PASSWORD: ${ELASTIC_PASSWORD:?Set ELASTIC_PASSWORD in .env} # user elastic
       SEARCH_INDEX: ${SEARCH_INDEX:-novel_stories}
@@ -214,6 +215,8 @@ services:
         condition: service_started # search falls back to SQL ILIKE if this isn't ready yet
       redis:
         condition: service_started # cache/counters/realtime degrade gracefully without it
+      identity:
+        condition: service_started # read-through of accounts whose event is late
     security_opt:
       - no-new-privileges:true
     networks:
@@ -237,7 +240,8 @@ services:
       NODE_ENV: production
       SERVICE_NAME: worker # "service" field of its log lines
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (openssl rand -hex 24)}@postgres:5432/${POSTGRES_DB:-novel_platform}?schema=public
-      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (openssl rand -hex 32)}
+      AUTH_HEADER_KEY: ${AUTH_HEADER_KEY:?Set AUTH_HEADER_KEY in .env (openssl rand -hex 32)}
+      IDENTITY_INTERNAL_URL: http://identity:8080
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672
       REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}@redis:6379
     depends_on:
@@ -266,7 +270,6 @@ services:
       NODE_ENV: production
       SERVICE_NAME: export-worker
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (openssl rand -hex 24)}@postgres:5432/${POSTGRES_DB:-novel_platform}?schema=public
-      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (openssl rand -hex 32)}
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672
       EXPORT_CONCURRENCY: ${EXPORT_CONCURRENCY:-1}
       EXPORT_KEEP_DAYS: ${EXPORT_KEEP_DAYS:-7}
