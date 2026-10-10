@@ -70,6 +70,7 @@ jobs:
             echo "REDIS_PASSWORD=$(openssl rand -hex 24)"
             echo "POSTGRES_PASSWORD=$(openssl rand -hex 24)"
             echo "PGADMIN_DEFAULT_PASSWORD=$(openssl rand -hex 16)"
+            echo "RESTIC_PASSWORD=$(openssl rand -hex 24)"
           } > .env
 
       - name: Build images

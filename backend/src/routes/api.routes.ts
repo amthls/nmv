@@ -132,6 +132,7 @@ import {
   trainNow,
   getRecStatus
 } from '../controllers/recommendation.controller';
+import { getBackupStatus } from '../controllers/backup.controller';
 import { createExport, getExport, downloadExport } from '../controllers/export.controller';
 import {
   getConversations, getThread, sendDirectMessage,
@@ -264,6 +265,7 @@ router.get('/recommendations/related/:storyId', optionalAuth, getRelatedStories)
 router.post('/recommendations/events', optionalAuth, recEventLimiter, postRecEvents);
 router.post('/recommendations/train', requireAuth, requireRole('admin'), trainNow);
 router.get('/recommendations/status', requireAuth, requireRole('admin'), getRecStatus);
+router.get('/admin/backup-status', requireAuth, requireRole('admin'), getBackupStatus);
 
 // Comments
 router.get('/comments', getComments);
