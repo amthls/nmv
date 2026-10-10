@@ -54,5 +54,5 @@ Plan nằm trong nhánh của việc đó và được commit cùng code.
 - Express 4 không tự bắt lỗi của handler async: bọc `try/catch` hoặc `.catch(next)` (như route `/internal/...` trong `server.ts`).
 - Trên Windows (Git Bash) script nhiều lớp thoát ký tự dễ hỏng: dùng Edit hoặc file script riêng; file `*.sh` luôn LF (`.gitattributes`).
 - Chọn phiên bản thư viện đã phát hành ít nhất 2 tuần.
-- Đăng nhập ở service identity (Go, `identity_db` riêng): backend chỉ tin `X-User-*` có chữ ký `AUTH_HEADER_KEY`; bảng `users`/`user_roles` của backend là **bản sao** (sửa vai trò/khóa/xóa phải qua identity, không UPDATE thẳng). Xem `Plan/identity.md`.
+- Đăng nhập ở service identity (Go, `identity_db` riêng): mỗi service chỉ tin `X-User-*` có chữ ký bằng khóa riêng của nó (`USER_SIG_KEY_<svc>`), lời gọi nội bộ ký bằng `INTERNAL_KEY_<service nhận>`; bảng `users`/`user_roles` của backend là **bản sao** (sửa vai trò/khóa/xóa phải qua identity, không UPDATE thẳng). Xem `Plan/identity.md`.
 - Request ghi từ frontend phải qua `authFetch`/`apiFetch` (`src/lib/session.ts`): `fetch` thô thiếu header CSRF nên bị gateway trả 403 khi đã đăng nhập.

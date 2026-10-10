@@ -18,7 +18,7 @@ func (s *server) importChapters(ctx context.Context) error {
 	after, added, seen := "", 0, 0
 	for {
 		req, _ := http.NewRequestWithContext(ctx, "GET", s.cfg.BackendURL+"/internal/chapters/export?limit=100&after="+url.QueryEscape(after), nil)
-		req.Header.Set("X-Internal-Auth", internalAuth(s.cfg.HeaderKey, s.now()))
+		req.Header.Set("X-Internal-Auth", internalAuth(s.cfg.BackendKey, s.now()))
 		res, err := (&http.Client{Timeout: 30 * time.Second}).Do(req)
 		if err != nil {
 			return err

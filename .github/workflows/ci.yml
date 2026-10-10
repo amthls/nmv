@@ -135,7 +135,11 @@ jobs:
             echo "ELASTIC_PASSWORD=$(openssl rand -hex 24)"
             echo "IDENTITY_DB_PASSWORD=$(openssl rand -hex 32)"
             echo "IDENTITY_JWT_SECRET=$(openssl rand -hex 32)"
-            echo "AUTH_HEADER_KEY=$(openssl rand -hex 32)"
+            echo "USER_SIG_KEY_BACKEND=$(openssl rand -hex 32)"
+            echo "USER_SIG_KEY_WORKSPACE=$(openssl rand -hex 32)"
+            echo "INTERNAL_KEY_BACKEND=$(openssl rand -hex 32)"
+            echo "INTERNAL_KEY_IDENTITY=$(openssl rand -hex 32)"
+            echo "INTERNAL_KEY_WORKSPACE=$(openssl rand -hex 32)"
             echo "WORKSPACE_DB_PASSWORD=$(openssl rand -hex 32)"
           } > .env
 

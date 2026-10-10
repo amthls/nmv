@@ -13,10 +13,10 @@ import { notifyAdmins } from './identitySync';
  */
 
 const SERVICES = [
-  { name: 'identity', url: process.env.IDENTITY_INTERNAL_URL || 'http://identity:8080', what: 'tài khoản',
+  { name: 'identity' as const, url: process.env.IDENTITY_INTERNAL_URL || 'http://identity:8080', what: 'tài khoản',
     copy: `SELECT count(*)::bigint AS n, COALESCE(sum(identity_version), 0)::bigint AS v FROM users WHERE identity_version > 0`,
     count: (s: any) => s.users },
-  { name: 'workspace', url: process.env.WORKSPACE_INTERNAL_URL || 'http://workspace:8080', what: 'chương',
+  { name: 'workspace' as const, url: process.env.WORKSPACE_INTERNAL_URL || 'http://workspace:8080', what: 'chương',
     copy: `SELECT count(*)::bigint AS n, COALESCE(sum(version), 0)::bigint AS v FROM ws_chapter_versions`,
     count: (s: any) => s.chapters },
 ];
@@ -29,7 +29,7 @@ export async function reconcile(): Promise<string[]> {
   for (const svc of SERVICES) {
     try {
       const res = await fetch(`${svc.url.replace(/\/+$/, '')}/internal/stats`, {
-        headers: { 'X-Internal-Auth': internalAuthHeader() },
+        headers: { 'X-Internal-Auth': internalAuthHeader(svc.name) },
         signal: AbortSignal.timeout(10_000),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);

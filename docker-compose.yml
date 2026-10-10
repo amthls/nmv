@@ -189,7 +189,11 @@ services:
       PORT: 5000
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (openssl rand -hex 24)}@pgbouncer:5432/${POSTGRES_DB:-novel_platform}?schema=public
       CORS_ORIGIN: http://localhost:3000
-      AUTH_HEADER_KEY: ${AUTH_HEADER_KEY:?Set AUTH_HEADER_KEY in .env (openssl rand -hex 32)} # verifies the gateway's X-User-* headers
+      # One key per receiving service (the gateway's X-User-* signature, X-Internal-Auth): see README "Khóa giữa các service"
+      USER_SIG_KEY_BACKEND: ${USER_SIG_KEY_BACKEND:?Set USER_SIG_KEY_BACKEND in .env (openssl rand -hex 32)}
+      INTERNAL_KEY_BACKEND: ${INTERNAL_KEY_BACKEND:?Set INTERNAL_KEY_BACKEND in .env (openssl rand -hex 32)}
+      INTERNAL_KEY_IDENTITY: ${INTERNAL_KEY_IDENTITY:?Set INTERNAL_KEY_IDENTITY in .env (openssl rand -hex 32)}
+      INTERNAL_KEY_WORKSPACE: ${INTERNAL_KEY_WORKSPACE:?Set INTERNAL_KEY_WORKSPACE in .env (openssl rand -hex 32)}
       IDENTITY_INTERNAL_URL: http://identity:8080
       WORKSPACE_INTERNAL_URL: http://workspace:8080
       ENABLE_DEMO_ACCOUNTS: ${ENABLE_DEMO_ACCOUNTS:-false}
@@ -242,8 +246,12 @@ services:
       NODE_ENV: production
       SERVICE_NAME: worker # "service" field of its log lines
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (openssl rand -hex 24)}@postgres:5432/${POSTGRES_DB:-novel_platform}?schema=public
-      AUTH_HEADER_KEY: ${AUTH_HEADER_KEY:?Set AUTH_HEADER_KEY in .env (openssl rand -hex 32)}
+      USER_SIG_KEY_BACKEND: ${USER_SIG_KEY_BACKEND:?Set USER_SIG_KEY_BACKEND in .env (openssl rand -hex 32)}
+      INTERNAL_KEY_BACKEND: ${INTERNAL_KEY_BACKEND:?Set INTERNAL_KEY_BACKEND in .env (openssl rand -hex 32)}
+      INTERNAL_KEY_IDENTITY: ${INTERNAL_KEY_IDENTITY:?Set INTERNAL_KEY_IDENTITY in .env (openssl rand -hex 32)}
+      INTERNAL_KEY_WORKSPACE: ${INTERNAL_KEY_WORKSPACE:?Set INTERNAL_KEY_WORKSPACE in .env (openssl rand -hex 32)}
       IDENTITY_INTERNAL_URL: http://identity:8080
+      WORKSPACE_INTERNAL_URL: http://workspace:8080
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672
       REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}@redis:6379
     depends_on:
@@ -328,7 +336,9 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}@redis:6379/0
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672
       IDENTITY_JWT_SECRET: ${IDENTITY_JWT_SECRET:?Set IDENTITY_JWT_SECRET in .env (openssl rand -hex 32)}
-      AUTH_HEADER_KEY: ${AUTH_HEADER_KEY:?Set AUTH_HEADER_KEY in .env (openssl rand -hex 32)}
+      USER_SIG_KEY_BACKEND: ${USER_SIG_KEY_BACKEND:?Set USER_SIG_KEY_BACKEND in .env (openssl rand -hex 32)}
+      USER_SIG_KEY_WORKSPACE: ${USER_SIG_KEY_WORKSPACE:?Set USER_SIG_KEY_WORKSPACE in .env (openssl rand -hex 32)}
+      INTERNAL_KEY_IDENTITY: ${INTERNAL_KEY_IDENTITY:?Set INTERNAL_KEY_IDENTITY in .env (openssl rand -hex 32)}
       SMTP_URL: ${SMTP_URL:-}
       MAIL_FROM: ${MAIL_FROM:-NovelHub <no-reply@novelhub.local>}
       SITE_URL: ${SITE_URL:-http://localhost:3000}
@@ -361,7 +371,9 @@ services:
     environment:
       WORKSPACE_DATABASE_URL: postgres://workspace:${WORKSPACE_DB_PASSWORD:?Set WORKSPACE_DB_PASSWORD in .env}@postgres:5432/workspace_db
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672
-      AUTH_HEADER_KEY: ${AUTH_HEADER_KEY:?Set AUTH_HEADER_KEY in .env (openssl rand -hex 32)}
+      USER_SIG_KEY_WORKSPACE: ${USER_SIG_KEY_WORKSPACE:?Set USER_SIG_KEY_WORKSPACE in .env (openssl rand -hex 32)}
+      INTERNAL_KEY_WORKSPACE: ${INTERNAL_KEY_WORKSPACE:?Set INTERNAL_KEY_WORKSPACE in .env (openssl rand -hex 32)}
+      INTERNAL_KEY_BACKEND: ${INTERNAL_KEY_BACKEND:?Set INTERNAL_KEY_BACKEND in .env (openssl rand -hex 32)}
       BACKEND_INTERNAL_URL: http://backend:5000
     mem_limit: 128m
     depends_on:

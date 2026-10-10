@@ -18,7 +18,8 @@ func (s *server) signHeaders(h http.Header, uid, roles string) {
 	h.Set("X-User-Id", uid)
 	h.Set("X-User-Roles", roles)
 	h.Set("X-User-Exp", strconv.FormatInt(exp, 10))
-	h.Set("X-User-Sig", signUserHeaders(s.cfg.HeaderKey, uid, roles, exp))
+	h.Set("X-User-Sig", signUserHeaders(s.cfg.SigKeyBackend, uid, roles, exp))
+	h.Set("X-User-Sig-Ws", signUserHeaders(s.cfg.SigKeyWorkspace, uid, roles, exp)) // the gateway sends it to the workspace as X-User-Sig
 }
 
 // GET /internal/verify: nginx auth_request for every /api/v1 and /socket.io request (no body; the original
@@ -43,7 +44,7 @@ func (s *server) handleVerify(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Service-to-service calls carry X-Internal-Auth: "<exp>.<hmac(key, 'internal|'+exp)>" (shared AUTH_HEADER_KEY).
+// Service-to-service calls carry X-Internal-Auth: "<exp>.<hmac(key, 'internal|'+exp)>", key = the receiver's INTERNAL_KEY_*.
 func internalAuth(key []byte, now time.Time) string {
 	exp := strconv.FormatInt(now.Add(headerTTL).Unix(), 10)
 	m := hmac.New(sha256.New, key)
@@ -64,7 +65,7 @@ func internalAuthOK(key []byte, v string, now time.Time) bool {
 
 func (s *server) internal(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !internalAuthOK(s.cfg.HeaderKey, r.Header.Get("X-Internal-Auth"), s.now()) {
+		if !internalAuthOK(s.cfg.InternalKey, r.Header.Get("X-Internal-Auth"), s.now()) {
 			fail(w, 401, "unauthorized")
 			return
 		}

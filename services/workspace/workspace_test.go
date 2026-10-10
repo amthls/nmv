@@ -149,7 +149,12 @@ func TestMergeMeta(t *testing.T) {
 
 // ---- integration ----------------------------------------------------------------------------------------
 
-const testKey = "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
+// One key per job, as in production: a mix-up between them fails the tests
+const (
+	testKey         = "kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk" // user headers
+	testInternalKey = "iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii" // calls to the workspace
+	testBackendKey  = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" // calls to the backend
+)
 
 type wsHarness struct {
 	t        *testing.T
@@ -186,7 +191,7 @@ func newWS(t *testing.T) *wsHarness {
 	h.roles = map[string]string{h.keeper: "owner", h.member: "translator", h.helper: "editor"}
 	// The backend's /internal/permissions: keeper owns the story, member only contributes
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !internalAuthOK([]byte(testKey), r.Header.Get("X-Internal-Auth"), time.Now()) {
+		if !internalAuthOK([]byte(testBackendKey), r.Header.Get("X-Internal-Auth"), time.Now()) {
 			w.WriteHeader(401)
 			return
 		}
@@ -196,7 +201,7 @@ func newWS(t *testing.T) *wsHarness {
 		json.NewEncoder(w).Encode(map[string]any{"data": p})
 	}))
 	t.Cleanup(backend.Close)
-	h.s = &server{cfg: config{HeaderKey: []byte(testKey), BackendURL: backend.URL}, db: db, now: time.Now, perms: &permCache{m: map[string]permEntry{}}}
+	h.s = &server{cfg: config{SigKey: []byte(testKey), InternalKey: []byte(testInternalKey), BackendKey: []byte(testBackendKey), BackendURL: backend.URL}, db: db, now: time.Now, perms: &permCache{m: map[string]permEntry{}}}
 	h.srv = httptest.NewServer(withRequestLog(h.s.routes()))
 	t.Cleanup(h.srv.Close)
 	return h
@@ -210,7 +215,7 @@ func (h *wsHarness) call(method, path, user string, internal bool, body any) (in
 	}
 	req, _ := http.NewRequest(method, h.srv.URL+path, &buf)
 	if internal {
-		req.Header.Set("X-Internal-Auth", internalAuth([]byte(testKey), time.Now()))
+		req.Header.Set("X-Internal-Auth", internalAuth([]byte(testInternalKey), time.Now()))
 	}
 	if user != "" { // what the gateway adds after identity's verify
 		exp := strconv.FormatInt(time.Now().Add(time.Minute).Unix(), 10)

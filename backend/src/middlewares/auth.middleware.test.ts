@@ -1,7 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-process.env.AUTH_HEADER_KEY = 'k'.repeat(32);
+process.env.USER_SIG_KEY_BACKEND = 'k'.repeat(32);
+process.env.INTERNAL_KEY_BACKEND = 'b'.repeat(32);
+process.env.INTERNAL_KEY_WORKSPACE = 'w'.repeat(32);
 // Loaded after the key is set (the module reads it once)
 const auth = import('./auth.middleware');
 
@@ -23,8 +25,13 @@ test('tampered, expired, unsigned or foreign-key headers are a guest', async () 
 
 test('internal service auth', async () => {
   const { internalAuthOK, internalAuthHeader } = await auth;
-  assert.equal(internalAuthOK(internalAuthHeader()), true);
-  assert.equal(internalAuthOK(internalAuthHeader(), Date.now() + 5 * 60_000), false);
+  const crypto = await import('crypto');
+  const exp = String(Math.floor(Date.now() / 1000) + 120);
+  const fromWorkspace = `${exp}.${crypto.createHmac('sha256', 'b'.repeat(32)).update(`internal|${exp}`).digest('hex')}`;
+  assert.equal(internalAuthOK(fromWorkspace), true);
+  assert.equal(internalAuthOK(fromWorkspace, Date.now() + 5 * 60_000), false);
+  // what the backend sends to the workspace is signed with the workspace's key: no good here
+  assert.equal(internalAuthOK(internalAuthHeader('workspace')), false);
   assert.equal(internalAuthOK('123.abc'), false);
   assert.equal(internalAuthOK(undefined), false);
 });

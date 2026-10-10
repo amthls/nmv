@@ -23,7 +23,9 @@ type config struct {
 	Port        string
 	DatabaseURL string
 	RabbitURL   string
-	HeaderKey   []byte // AUTH_HEADER_KEY: verifies the gateway's X-User-* headers and signs/verifies X-Internal-Auth
+	SigKey      []byte // USER_SIG_KEY_WORKSPACE: verifies the gateway's X-User-* headers (identity signs them for us alone)
+	InternalKey []byte // INTERNAL_KEY_WORKSPACE: verifies X-Internal-Auth of calls to us
+	BackendKey  []byte // INTERNAL_KEY_BACKEND: signs our calls to the backend
 	BackendURL  string
 }
 
@@ -32,11 +34,13 @@ func loadConfig() (config, error) {
 		Port:        env("PORT", "8080"),
 		DatabaseURL: os.Getenv("WORKSPACE_DATABASE_URL"),
 		RabbitURL:   os.Getenv("RABBITMQ_URL"),
-		HeaderKey:   []byte(os.Getenv("AUTH_HEADER_KEY")),
+		SigKey:      []byte(os.Getenv("USER_SIG_KEY_WORKSPACE")),
+		InternalKey: []byte(os.Getenv("INTERNAL_KEY_WORKSPACE")),
+		BackendKey:  []byte(os.Getenv("INTERNAL_KEY_BACKEND")),
 		BackendURL:  strings.TrimRight(env("BACKEND_INTERNAL_URL", "http://backend:5000"), "/"),
 	}
-	if c.DatabaseURL == "" || len(c.HeaderKey) < 32 {
-		return c, errors.New("WORKSPACE_DATABASE_URL and AUTH_HEADER_KEY (>= 32 chars) are required")
+	if c.DatabaseURL == "" || len(c.SigKey) < 32 || len(c.InternalKey) < 32 || len(c.BackendKey) < 32 {
+		return c, errors.New("WORKSPACE_DATABASE_URL, USER_SIG_KEY_WORKSPACE, INTERNAL_KEY_WORKSPACE and INTERNAL_KEY_BACKEND (>= 32 chars) are required")
 	}
 	return c, nil
 }
@@ -106,7 +110,7 @@ func (s *server) userFrom(r *http.Request) string {
 	if id == "" || err != nil || s.now().Unix() > n {
 		return ""
 	}
-	m := hmac.New(sha256.New, s.cfg.HeaderKey)
+	m := hmac.New(sha256.New, s.cfg.SigKey)
 	m.Write([]byte(id + "|" + roles + "|" + exp))
 	if !hmac.Equal([]byte(hex.EncodeToString(m.Sum(nil))), []byte(strings.ToLower(sig))) {
 		return ""
@@ -135,7 +139,7 @@ func internalAuthOK(key []byte, v string, now time.Time) bool {
 // internal guards the backend-only endpoints (the gateway also answers 404 for /internal from outside).
 func (s *server) internal(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !internalAuthOK(s.cfg.HeaderKey, r.Header.Get("X-Internal-Auth"), s.now()) {
+		if !internalAuthOK(s.cfg.InternalKey, r.Header.Get("X-Internal-Auth"), s.now()) {
 			fail(w, 401, "unauthorized")
 			return
 		}
@@ -175,7 +179,7 @@ func (s *server) permission(ctx context.Context, user, story string) (perm, erro
 	s.perms.mu.Unlock()
 
 	req, _ := http.NewRequestWithContext(ctx, "GET", s.cfg.BackendURL+"/internal/permissions?user="+url.QueryEscape(user)+"&story="+url.QueryEscape(story), nil)
-	req.Header.Set("X-Internal-Auth", internalAuth(s.cfg.HeaderKey, s.now()))
+	req.Header.Set("X-Internal-Auth", internalAuth(s.cfg.BackendKey, s.now()))
 	if rid, _ := ctx.Value(requestIDKey).(string); rid != "" {
 		req.Header.Set("X-Request-Id", rid)
 	}

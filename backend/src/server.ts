@@ -14,9 +14,11 @@ import { identityFromHeaders, internalAuthOK } from './middlewares/auth.middlewa
 import { permissions, exportChapters } from './controllers/internal.controller';
 import { deleteCheck } from './controllers/user.controller';
 
-// Without the key that verifies the gateway's identity headers nobody is ever signed in: refuse to start
-if (process.env.NODE_ENV === 'production' && (process.env.AUTH_HEADER_KEY || '').length < 32) {
-  throw new Error('AUTH_HEADER_KEY is missing or shorter than 32 characters (launch.py generates it; same value as identity).');
+// Without the keys that verify the gateway's identity headers and internal calls nobody is ever signed in: refuse to start
+for (const k of ['USER_SIG_KEY_BACKEND', 'INTERNAL_KEY_BACKEND', 'INTERNAL_KEY_IDENTITY', 'INTERNAL_KEY_WORKSPACE']) {
+  if (process.env.NODE_ENV === 'production' && (process.env[k] || '').length < 32) {
+    throw new Error(`${k} is missing or shorter than 32 characters (launch.py generates it).`);
+  }
 }
 
 const app = express();
