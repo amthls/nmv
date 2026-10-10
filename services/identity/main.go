@@ -125,6 +125,7 @@ func (s *server) routes() http.Handler {
 
 	m.HandleFunc("GET /internal/verify", s.handleVerify)
 	m.HandleFunc("GET /internal/users/{id}", s.internal(s.handleInternalUser))
+	m.HandleFunc("POST /internal/users/{id}/roles", s.internal(s.handleInternalGrant))
 	return m
 }
 

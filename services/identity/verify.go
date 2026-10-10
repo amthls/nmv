@@ -95,3 +95,35 @@ func (s *server) handleInternalUser(w http.ResponseWriter, r *http.Request) {
 	w.Write(data)
 	w.Write([]byte(`}`))
 }
+
+// POST /internal/users/{id}/roles {role}: the backend grants a publishing badge (author on a first own story,
+// translator on a first group story). Grant only, idempotent; revoking stays an admin action with a password.
+func (s *server) handleInternalGrant(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	var b struct {
+		Role string `json:"role"`
+	}
+	if !isUUID(id) || readJSON(w, r, &b) != nil || (b.Role != "author" && b.Role != "translator") {
+		fail(w, 400, "invalid")
+		return
+	}
+	ctx := r.Context()
+	granted := false
+	err := pgx.BeginFunc(ctx, s.db, func(tx pgx.Tx) error {
+		tag, err := tx.Exec(ctx, `INSERT INTO user_roles (user_id, role) SELECT id, $2 FROM users WHERE id = $1 AND deleted_at IS NULL
+			ON CONFLICT DO NOTHING`, id, b.Role)
+		if err != nil || tag.RowsAffected() == 0 {
+			return err
+		}
+		granted = true
+		return userEvent(ctx, tx, id, "updated", nil)
+	})
+	if err != nil {
+		internalError(w, r, err)
+		return
+	}
+	if granted {
+		s.forgetRoles(ctx, id)
+	}
+	ok(w, "", map[string]any{"granted": granted})
+}
