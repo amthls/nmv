@@ -5,30 +5,37 @@ import { isUuid } from '../utils/validation';
 // Service-to-service endpoints (X-Internal-Auth, mounted under /internal in server.ts; the gateway answers 404
 // for /internal from outside). Stories and groups live here, so the workspace asks.
 
+export interface StoryRole { keeper: boolean; contributor: boolean; removed: boolean; name: string; keeperIds: string[] }
+
 /**
- * GET /internal/permissions?user=&story= -> {keeper, contributor, removed, name}
- * keeper: story owner, or leader/mod of the story's group (rewinds and, later, merges);
- * contributor: keeper, any member of that group or a collaborator (reads history, later writes drafts).
+ * A user's place in a story's workspace. keeper: story owner, or leader/mod of the story's group (merges, rewinds);
+ * contributor: keeper, any member of that group or a collaborator (drafts, proposals, history).
+ * keeperIds: everyone who keeps the story (who to tell about a proposal).
  */
-export const permissions = async (req: Request, res: Response) => {
-  const user = String(req.query.user || '');
-  const story = String(req.query.story || '');
-  const none = { keeper: false, contributor: false, removed: false, name: '' };
-  if (!isUuid(user) || !isUuid(story)) return res.json({ success: true, data: none });
+export async function storyRole(user: string, story: string): Promise<StoryRole> {
+  const none = { keeper: false, contributor: false, removed: false, name: '', keeperIds: [] };
+  if (!isUuid(user) || !isUuid(story)) return none;
   const r = await pool.query(`
     SELECT s.uploader_id = $1 AS owner,
            s.approval_status = 'rejected' AS removed,
            (SELECT role FROM group_members WHERE group_id = s.group_id AND user_id = $1) AS group_role,
            EXISTS (SELECT 1 FROM story_collaborators WHERE story_id = s.id AND user_id = $1) AS collaborator,
-           (SELECT COALESCE(display_name, username) FROM users WHERE id = $1) AS name
+           (SELECT COALESCE(display_name, username) FROM users WHERE id = $1) AS name,
+           ARRAY(SELECT s.uploader_id UNION SELECT user_id FROM group_members WHERE group_id = s.group_id AND role IN ('leader', 'mod'))::text[] AS keepers
     FROM stories s WHERE s.id = $2`, [user, story]);
   const row = r.rows[0];
-  if (!row) return res.json({ success: true, data: none });
+  if (!row) return none;
   const keeper = row.owner || ['leader', 'mod'].includes(row.group_role);
-  res.json({
-    success: true,
-    data: { keeper, contributor: keeper || Boolean(row.group_role) || row.collaborator, removed: row.removed, name: row.name || '' },
-  });
+  return {
+    keeper, contributor: keeper || Boolean(row.group_role) || row.collaborator, removed: row.removed, name: row.name || '',
+    keeperIds: (row.keepers || []).filter(Boolean),
+  };
+}
+
+/** GET /internal/permissions?user=&story= -> {keeper, contributor, removed, name} (the workspace caches it 30 s). */
+export const permissions = async (req: Request, res: Response) => {
+  const { keeper, contributor, removed, name } = await storyRole(String(req.query.user || ''), String(req.query.story || ''));
+  res.json({ success: true, data: { keeper, contributor, removed, name } });
 };
 
 /**

@@ -99,6 +99,8 @@ func TestMerge3(t *testing.T) {
 		{"different paragraphs", "abcde", "aXcde", "abcYe", "aXcYe"},
 		{"both the same change", "abc", "aXc", "aXc", "aXc"},
 		{"both changed one paragraph", "abc", "aXc", "aYc", "a<b|X|Y>c"},
+		{"neighbouring paragraphs, one each", "abcd", "aXcd", "abYd", "aXYd"},
+		{"neighbours, one clash", "abcd", "aXYd", "aXZd", "aX<c|Y|Z>d"},
 		{"ours inserted, theirs deleted elsewhere", "abcd", "abXcd", "abc", "abXc"},
 		{"theirs inserted at the end", "ab", "Ab", "abZ", "AbZ"},
 		{"both inserted at the same place", "ab", "aXb", "aYb", "a<|X|Y>b"},
@@ -410,4 +412,76 @@ func TestDraftLifecycle(t *testing.T) {
 	}
 	h.want(409, "GET", "/drafts/"+nd["id"].(string)+"/pull", h.member, false, nil) // published: closed
 	h.want(401, "GET", "/drafts", "", false, nil)
+}
+
+func TestProposals(t *testing.T) {
+	h := newWS(t)
+	meta := map[string]any{"title": "Mở đầu", "chapter_number": 1}
+	id := h.want(201, "POST", "/internal/chapters", "", true, map[string]any{"story_id": h.story, "meta": meta, "blocks": para("A", "B", "C")})["chapter_id"].(string)
+
+	// The member drafts a change and proposes it; the draft is locked while waiting
+	did := h.want(201, "POST", "/internal/drafts", "", true, map[string]any{"owner_id": h.member, "story_id": h.story, "chapter_id": id})["id"].(string)
+	h.want(200, "PUT", "/internal/drafts/"+did, "", true, map[string]any{"owner_id": h.member, "meta": meta, "blocks": para("A", "B (thành viên)", "C"), "expected_version": 1})
+	h.want(404, "GET", "/drafts/"+did+"/review", h.member, false, nil) // nothing sent yet
+	sub := h.want(200, "POST", "/internal/drafts/"+did+"/submit", "", true, map[string]any{"owner_id": h.member, "note": "Sửa lỗi chính tả"})
+	if sub["status"] != "submitted" || sub["last_round"].(float64) != 1 {
+		t.Fatalf("submit: %v", sub)
+	}
+	h.want(409, "PUT", "/internal/drafts/"+did, "", true, map[string]any{"owner_id": h.member, "meta": meta, "blocks": para("x"), "expected_version": 2})
+	h.want(409, "POST", "/internal/drafts/"+did+"/submit", "", true, map[string]any{"owner_id": h.member})
+
+	// Keepers list and review it; strangers cannot; the member sees only their own
+	list := h.want(200, "GET", "/proposals?story_id="+h.story, h.keeper, false, nil)["data"].([]any)
+	if len(list) != 1 || list[0].(map[string]any)["note"] != "Sửa lỗi chính tả" {
+		t.Fatalf("proposals: %v", list)
+	}
+	h.want(403, "GET", "/proposals?story_id="+h.story, newUUID(), false, nil)
+	rv := h.want(200, "GET", "/drafts/"+did+"/review", h.keeper, false, nil)
+	if rv["can_merge"] != true || rv["is_owner"] != false || len(rv["changes"].([]any)) != 4 { // same, del, ins, same
+		t.Fatalf("review: %v", rv)
+	}
+	h.want(403, "GET", "/drafts/"+did+"/review", newUUID(), false, nil)
+
+	// A comment on the changed paragraph, then returned with a note; the member fixes it and sends round 2
+	changed := ""
+	for _, o := range rv["changes"].([]any) {
+		if o.(map[string]any)["op"] == "ins" {
+			changed = o.(map[string]any)["hash"].(string)
+		}
+	}
+	h.want(201, "POST", "/drafts/"+did+"/comments", h.keeper, false, map[string]any{"body": "Viết hoa chữ đầu", "block_hash": changed})
+	h.want(400, "POST", "/drafts/"+did+"/comments", h.keeper, false, map[string]any{"body": "  "})
+	h.want(200, "POST", "/internal/drafts/"+did+"/return", "", true, map[string]any{"owner_id": h.keeper, "note": "Xem góp ý"})
+	h.want(200, "PUT", "/internal/drafts/"+did, "", true, map[string]any{"owner_id": h.member, "meta": meta, "blocks": para("A", "B (Thành viên)", "C"), "expected_version": 2})
+	h.want(200, "POST", "/internal/drafts/"+did+"/submit", "", true, map[string]any{"owner_id": h.member})
+	rv = h.want(200, "GET", "/drafts/"+did+"/review", h.member, false, nil)
+	if rv["round"].(float64) != 2 || len(rv["since_previous"].([]any)) != 4 || len(rv["comments"].([]any)) != 1 || len(rv["rounds"].([]any)) != 2 {
+		t.Fatalf("round 2: %v", rv)
+	}
+
+	// The official line moves elsewhere: the keeper's merge still goes through (clean diff3)
+	h.want(200, "POST", "/internal/chapters/"+id+"/revisions", "", true, map[string]any{"meta": meta, "blocks": para("A", "B", "C mới"), "expected_version": 1})
+	merged := h.want(200, "POST", "/internal/drafts/"+did+"/publish", "", true, map[string]any{"owner_id": h.keeper})
+	texts := []string{}
+	for _, b := range merged["blocks"].([]any) {
+		texts = append(texts, b.(map[string]any)["text"].(string))
+	}
+	if strings.Join(texts, "|") != "A|B (Thành viên)|C mới" || merged["version"].(float64) != 3 || merged["author_id"] != h.member {
+		t.Fatalf("merged: %v %v", texts, merged)
+	}
+
+	// A proposal that clashes with the official line cannot be merged; withdraw reopens it for its owner only
+	d2 := h.want(201, "POST", "/internal/drafts", "", true, map[string]any{"owner_id": h.member, "story_id": h.story, "chapter_id": id})["id"].(string)
+	h.want(200, "PUT", "/internal/drafts/"+d2, "", true, map[string]any{"owner_id": h.member, "meta": meta, "blocks": para("A", "B (Thành viên)", "C của tôi"), "expected_version": 1})
+	h.want(200, "POST", "/internal/drafts/"+d2+"/submit", "", true, map[string]any{"owner_id": h.member})
+	h.want(200, "POST", "/internal/chapters/"+id+"/revisions", "", true, map[string]any{"meta": meta, "blocks": para("A", "B (Thành viên)", "C khác"), "expected_version": 3})
+	if rv := h.want(200, "GET", "/drafts/"+d2+"/review", h.keeper, false, nil); rv["merge_conflicts"].(float64) != 1 {
+		t.Fatalf("conflicts: %v", rv["merge_conflicts"])
+	}
+	h.want(409, "POST", "/internal/drafts/"+d2+"/publish", "", true, map[string]any{"owner_id": h.keeper})
+	h.want(403, "POST", "/internal/drafts/"+d2+"/withdraw", "", true, map[string]any{"owner_id": h.keeper})
+	h.want(200, "POST", "/internal/drafts/"+d2+"/withdraw", "", true, map[string]any{"owner_id": h.member})
+	h.want(409, "POST", "/internal/drafts/"+d2+"/return", "", true, map[string]any{"owner_id": h.keeper})
+	// An open draft is published by its owner only
+	h.want(403, "POST", "/internal/drafts/"+d2+"/publish", "", true, map[string]any{"owner_id": h.keeper})
 }

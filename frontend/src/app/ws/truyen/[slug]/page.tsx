@@ -3,7 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ArrowLeft, FileText, History, Pencil, Plus } from 'lucide-react';
+import { ArrowLeft, FileText, GitMerge, History, Pencil, Plus } from 'lucide-react';
+import { draftLabel } from '@/components/workspace/DraftRow';
 import { useAuth } from '@/context/AuthContext';
 import PageLoader from '@/components/common/PageLoader';
 import { DraftRow } from '@/components/workspace/DraftRow';
@@ -22,6 +23,7 @@ export default function StoryWorkspacePage() {
   const { isAuthenticated, isLoading, openAuthModal, authFetch } = useAuth();
   const [story, setStory] = useState<any>(null);
   const [drafts, setDrafts] = useState<any[]>([]);
+  const [proposals, setProposals] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -30,6 +32,10 @@ export default function StoryWorkspacePage() {
       .then((j) => {
         if (!j.success) throw new Error(j.message || 'Không tìm thấy truyện.');
         setStory(j.data);
+        if (j.data.can_manage) {
+          authFetch(`${WS_URL}/proposals?story_id=${j.data.id}`).then((r) => r.json())
+            .then((p) => p.success && setProposals(p.data)).catch(() => {});
+        }
         return authFetch(`${WS_URL}/drafts?story_id=${j.data.id}`).then((r) => r.json());
       })
       .then((j) => j?.success && setDrafts(j.data))
@@ -80,6 +86,23 @@ export default function StoryWorkspacePage() {
           </Link>
         )}
       </div>
+
+      {proposals.length > 0 && (
+        <section className="p-5 rounded-3xl glass-panel border border-sky-500/20 bg-glass space-y-3">
+          <h2 className="text-xs font-bold text-sky-300 uppercase tracking-wider flex items-center gap-1.5">
+            <GitMerge className="w-4 h-4" /> Đề xuất chờ gộp ({proposals.length})
+          </h2>
+          {proposals.map((p) => (
+            <Link key={p.id} href={`/ws/de-xuat/${p.id}`} className="block p-3.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 transition">
+              <div className="text-sm font-bold text-white truncate">{draftLabel(p)}</div>
+              <div className="text-[11px] text-gray-400">
+                {p.owner_name || 'Người viết'} · lần {p.last_round} · gửi {new Date(p.submitted_at).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}
+                {p.note ? ` · “${p.note.slice(0, 80)}”` : ''}
+              </div>
+            </Link>
+          ))}
+        </section>
+      )}
 
       {drafts.length > 0 && (
         <section className="p-5 rounded-3xl glass-panel border border-white/10 bg-glass space-y-3">

@@ -131,6 +131,9 @@ function ChapterEditorContent() {
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [showPull, setShowPull] = useState(false);
+  // Stage 3: the latest round of my proposal (returned with a note?) and the note I send with the next one
+  const [lastRound, setLastRound] = useState<any>(null);
+  const [proposalNote, setProposalNote] = useState('');
   const setDraftInfo = (d: any) => { draftRef.current = d; setDraft(d); };
 
   const formattedBlocks = useMemo(() => editorBlocks.map((b, idx) => ({
@@ -235,6 +238,9 @@ function ChapterEditorContent() {
         if (d) setDraftInfo({ ...d, version: json.data.version });
         else {
           setDraftInfo(json.data);
+          authFetch(`${WS_URL}/drafts/${json.data.id}`).then((r) => r.json())
+            .then((j) => j.success && draftRef.current?.id === j.data.id && setDraftInfo({ ...draftRef.current, can_merge: j.data.can_merge }))
+            .catch(() => {});
           // keep typing undisturbed: only the address changes, so a reload reopens this draft
           window.history.replaceState(null, '', `/dang-chuong?draft=${json.data.id}`);
         }
@@ -434,7 +440,13 @@ function ChapterEditorContent() {
   const showDraft = (d: any) => {
     setDraftInfo({ ...d, blocks: undefined });
     stopSaving.current = d.status !== 'open';
-    if (d.status !== 'open') setErrorMsg('Bản nháp này đã đăng hoặc đã bỏ, chỉ xem được.');
+    if (d.status === 'published' || d.status === 'discarded') setErrorMsg('Bản nháp này đã đăng hoặc đã bỏ, chỉ xem được.');
+    setLastRound(null);
+    if (d.last_round > 0) {
+      authFetch(`${WS_URL}/drafts/${d.id}/review`).then((r) => r.json())
+        .then((j) => j.success && setLastRound({ ...j.data.rounds[j.data.rounds.length - 1], comments: j.data.comments.length }))
+        .catch(() => {});
+    }
     setSelectedStoryId(d.story_id);
     fillForm(d.blocks || [], d.meta);
     setEditLoadState('ready');
@@ -543,6 +555,48 @@ function ChapterEditorContent() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Contributors: send the draft to the story keepers (it is locked until they decide or I withdraw it)
+  const handlePropose = async () => {
+    if (!chapterTitle.trim() || isSubmitting) return;
+    if (!hasText) {
+      setErrorMsg('Nội dung chương đang trống.');
+      return;
+    }
+    setIsSubmitting(true);
+    setErrorMsg(null);
+    try {
+      if (!(await saveDraftNow()) || !draftRef.current) return;
+      const res = await authFetch(`${API_BASE_URL}/drafts/${draftRef.current.id}/submit`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ note: proposalNote }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success) {
+        setErrorMsg(json.message || 'Không gửi được đề xuất.');
+        return;
+      }
+      setProposalNote('');
+      setFeedback(json.message || 'Đã gửi đề xuất.');
+      showDraft({ ...json.data, can_merge: draftRef.current.can_merge });
+    } catch (e: any) {
+      setErrorMsg('Lỗi: ' + e.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const withdrawProposal = async () => {
+    const d = draftRef.current;
+    if (!d) return;
+    const res = await authFetch(`${API_BASE_URL}/drafts/${d.id}/withdraw`, { method: 'POST' });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || !json.success) {
+      setErrorMsg(json.message || 'Không rút được đề xuất.');
+      return;
+    }
+    setFeedback(json.message || 'Đã rút đề xuất.');
+    showDraft({ ...json.data, can_merge: d.can_merge });
   };
 
   const discardDraft = async () => {
@@ -697,6 +751,26 @@ function ChapterEditorContent() {
       {draft?.chapter_deleted && (
         <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-200 text-xs font-semibold">
           Chương này đã bị xóa khỏi bản chính thức nên bản nháp không đăng được nữa. Người giữ truyện có thể khôi phục chương trong lịch sử.
+        </div>
+      )}
+
+      {draft?.status === 'submitted' && (
+        <div className="p-4 rounded-2xl bg-sky-500/10 border border-sky-500/30 text-sky-100 text-xs font-semibold flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <span>Đã gửi đề xuất (lần {draft.last_round}), đang chờ người giữ truyện duyệt. Nháp bị khóa: muốn sửa tiếp thì rút lại.</span>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link href={`/ws/de-xuat/${draft.id}`} className="px-3 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-ink font-bold text-[11px]">Xem đề xuất</Link>
+            <button type="button" onClick={withdrawProposal} className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white font-bold text-[11px]">Rút lại để sửa</button>
+          </div>
+        </div>
+      )}
+
+      {draft?.status === 'open' && lastRound?.decision === 'returned' && (
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-100 text-xs font-semibold flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <span>
+            {lastRound.decided_name || 'Người giữ truyện'} đã trả lại đề xuất{lastRound.decision_note ? `: “${lastRound.decision_note}”` : '.'}
+            {lastRound.comments > 0 ? ` Có ${lastRound.comments} góp ý.` : ''} Sửa xong thì gửi lại.
+          </span>
+          <Link href={`/ws/de-xuat/${draft.id}`} className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-ink font-bold text-[11px] shrink-0">Xem góp ý</Link>
         </div>
       )}
 
@@ -1076,7 +1150,7 @@ function ChapterEditorContent() {
         {/* Action Toolbar */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-white/10">
           <div className="text-xs text-gray-400">
-            * Chỉ chủ truyện, thành viên nhóm dịch hoặc cộng tác viên mới đăng được chương.
+            * Người giữ truyện (chủ truyện, Trưởng nhóm/Mod nhóm) đăng thẳng; thành viên nhóm và cộng tác viên gửi đề xuất để họ duyệt.
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
@@ -1093,16 +1167,38 @@ function ChapterEditorContent() {
             </button>
             )}
 
+            {!isMangaEdit && draft?.can_merge === false ? (
+              <>
+                <input
+                  value={proposalNote}
+                  onChange={(e) => setProposalNote(e.target.value)}
+                  maxLength={2000}
+                  placeholder="Lời nhắn cho người duyệt (tùy chọn)"
+                  className="h-10 min-w-0 flex-1 sm:w-64 px-3 rounded-xl bg-white/5 border border-white/10 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-500"
+                />
+                <button
+                  type="button"
+                  onClick={handlePropose}
+                  disabled={!chapterTitle.trim() || isSubmitting || Boolean(draft?.chapter_deleted) || draft.status !== 'open' || editLoadState !== 'ready'}
+                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 disabled:opacity-40 text-snow font-bold text-xs shadow-xl shadow-brand-500/25 flex items-center gap-2 transition"
+                  title="Người giữ truyện (chủ truyện, Trưởng nhóm/Mod nhóm) sẽ xem và gộp vào bản chính"
+                >
+                  <Send className="w-4 h-4" />
+                  <span>{isSubmitting ? 'Đang gửi...' : draft.last_round > 0 ? 'Gửi lại đề xuất' : 'Gửi đề xuất'}</span>
+                </button>
+              </>
+            ) : (
             <button
-              type="button"
-              onClick={handlePublish}
-              disabled={!selectedStoryId || !chapterTitle.trim() || isSubmitting || behind || Boolean(draft?.chapter_deleted) || (draft && draft.status !== 'open') || ((isEditMode || Boolean(draftParam)) && editLoadState !== 'ready')}
-              title={behind ? 'Cập nhật theo bản chính trước khi đăng' : undefined}
-              className="px-8 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 disabled:opacity-40 text-snow font-bold text-xs shadow-xl shadow-brand-500/25 flex items-center gap-2 transition hover:scale-105"
-            >
-              <Send className="w-4 h-4" />
-              <span>{isSubmitting ? 'Đang gửi...' : isMangaEdit ? 'Lưu Thay Đổi' : draft?.chapter_id ? 'Đăng bản sửa' : 'Đăng Chương'}</span>
-            </button>
+                type="button"
+                onClick={handlePublish}
+                disabled={!selectedStoryId || !chapterTitle.trim() || isSubmitting || behind || Boolean(draft?.chapter_deleted) || (draft && draft.status !== 'open') || ((isEditMode || Boolean(draftParam)) && editLoadState !== 'ready')}
+                title={behind ? 'Cập nhật theo bản chính trước khi đăng' : undefined}
+                className="px-8 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 disabled:opacity-40 text-snow font-bold text-xs shadow-xl shadow-brand-500/25 flex items-center gap-2 transition hover:scale-105"
+              >
+                <Send className="w-4 h-4" />
+                <span>{isSubmitting ? 'Đang gửi...' : isMangaEdit ? 'Lưu Thay Đổi' : draft?.chapter_id ? 'Đăng bản sửa' : 'Đăng Chương'}</span>
+              </button>
+            )}
           </div>
         </div>
 

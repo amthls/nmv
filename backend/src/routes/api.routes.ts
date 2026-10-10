@@ -81,6 +81,9 @@ import {
   createDraft,
   saveDraft,
   publishDraft,
+  submitDraft,
+  withdrawDraft,
+  returnDraft,
 } from '../controllers/chapter.controller';
 import { 
   getReadingHistory, 
@@ -201,6 +204,9 @@ router.delete('/chapters/:id', requireAuth, deleteChapter);
 router.post('/drafts', requireAuth, createDraft);
 router.put('/drafts/:id', requireAuth, saveDraft);
 router.post('/drafts/:id/publish', requireAuth, publishDraft);
+router.post('/drafts/:id/submit', requireAuth, submitDraft);
+router.post('/drafts/:id/withdraw', requireAuth, withdrawDraft);
+router.post('/drafts/:id/return', requireAuth, returnDraft);
 
 
 // Notifications

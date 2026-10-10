@@ -14,7 +14,7 @@ export interface NotifyItem {
   type: 'system' | 'chapter_update' | 'comment_reply' | 'post_reaction' | 'post_comment' | 'group_join_request' | 'group_member_add';
   title: string;
   message: string | null;
-  referenceType: 'chapter' | 'post' | 'story' | 'group' | null;
+  referenceType: 'chapter' | 'post' | 'story' | 'group' | 'draft' | null; // draft: a workspace proposal (/ws/de-xuat/:id)
   referenceId: string | null;
   senderId: string | null;
   dedupeKey: string;
@@ -258,4 +258,27 @@ export function groupJoinDecisionNotification(input: {
     referenceType: 'group', referenceId: input.groupId, senderId: input.reviewerId,
     dedupeKey: `group-join-decision:${input.requestId}`,
   }];
+}
+
+/**
+ * Workspace proposals (Plan/chapter-workspace.md, stage 3): a submitted draft goes to the story keepers;
+ * a return or a merge goes back to its author. Opens the review page /ws/de-xuat/:draftId.
+ */
+export function draftNotifications(input: {
+  event: 'submitted' | 'returned' | 'merged'; draftId: string; round: number; recipientIds: string[]; actorId: string;
+  actorName: string; chapterLabel: string; storyTitle: string; note?: string | null;
+}): NotifyItem[] {
+  const title = {
+    submitted: `${input.actorName} gửi đề xuất ${input.chapterLabel} (${input.storyTitle})`,
+    returned: `Đề xuất ${input.chapterLabel} được trả lại để sửa`,
+    merged: `Đề xuất ${input.chapterLabel} đã được gộp vào bản chính`,
+  }[input.event];
+  return [...new Set(input.recipientIds)]
+    .filter((id) => id && id !== input.actorId)
+    .map((userId) => ({
+      userId, type: 'system' as const, title,
+      message: input.note ? `"${snippet(input.note, 160)}"` : input.event === 'submitted' ? 'Mở để xem thay đổi và gộp hoặc trả lại.' : null,
+      referenceType: 'draft' as const, referenceId: input.draftId, senderId: input.actorId,
+      dedupeKey: `draft:${input.draftId}:${input.round}:${input.event}:${userId}`,
+    }));
 }
