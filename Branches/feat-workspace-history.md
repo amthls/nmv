@@ -2,7 +2,8 @@
 
 - **Mục tiêu:** Giai đoạn C, workspace giai đoạn 1: lịch sử phiên bản chương (service Go `workspace`, `workspace_db`)
 - **Tạo từ:** `feat/identity-cutover` + gộp `feat/no-approval`, ngày 2026-10-10
-- **Trạng thái:** đã chuyển và thử trên máy local; còn README + PR + duyệt giao diện
+- **Trạng thái:** đã chuyển và thử trên máy local, README xong; chủ dự án đã duyệt giao diện (2026-10-10), mở PR
+- **Biến môi trường mới:** `WORKSPACE_DB_PASSWORD` (launch.py tự sinh). **Migration:** `023_ws_chapter_versions.sql` + `workspace import`
 - **PR:** (chưa mở)
 - **Plan:** `Plan/chapter-workspace.md` (Thiết kế chốt + Giai đoạn 1)
 

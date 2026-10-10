@@ -159,7 +159,8 @@ chương đã có head; chạy trong `migrate.sh`/`launch.py` như identity. Nh�
       rồi áp dụng revision; consumer `workspace.revision.merged`; migration `chapters.ws_version`
 - [x] Gateway `/api/ws/*`; frontend: trang lịch sử chương (danh sách, so sánh hai bản, khôi phục) + nút ở trang đọc cho người giữ truyện
 - [x] Chuyển thật + thử (`scripts/workspace-smoke.py` 20/20)
-- [ ] README (mục workspace), Branches, PR; chủ dự án duyệt giao diện trang lịch sử
+- [x] README (mục Service workspace), Branches
+- [x] Chủ dự án duyệt giao diện trang lịch sử (2026-10-10) → commit, push, PR
 
 ## Giai đoạn 2: workspace cá nhân + nháp riêng + pull
 - [ ] Vai trò người giữ truyện / người đóng góp (hàm quyền dùng chung)
