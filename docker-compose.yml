@@ -285,6 +285,63 @@ services:
       - data
 
   # ============================================================================
+  # 2e. db-init (one-shot): each service gets its own database + login role (postgres/provision.sh).
+  #     Runs on every `up`; services with a database start after it has finished.
+  # ============================================================================
+  db-init:
+    image: postgres:16-alpine
+    container_name: novel_db_init
+    restart: "no"
+    entrypoint: ["sh", "/provision.sh"]
+    environment:
+      PGUSER: ${POSTGRES_USER:-postgres}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (openssl rand -hex 24)}
+      POSTGRES_DB: ${POSTGRES_DB:-novel_platform}
+      SERVICE_DBS: identity
+      IDENTITY_DB_PASSWORD: ${IDENTITY_DB_PASSWORD:?Set IDENTITY_DB_PASSWORD in .env}
+    volumes:
+      - ./postgres/provision.sh:/provision.sh:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - data
+
+  # ============================================================================
+  # 2f. identity (Go): accounts, passwords, sessions, site roles, account mail. Own database identity_db
+  #     (role identity, straight to Postgres: no PgBouncer pool per database yet). See Plan/identity.md.
+  # ============================================================================
+  identity:
+    build:
+      context: ./services/identity
+    image: ${IMAGE_REGISTRY:-local}/nmv-identity:${IMAGE_TAG:-latest}
+    container_name: novel_identity
+    restart: unless-stopped
+    environment:
+      IDENTITY_DATABASE_URL: postgres://identity:${IDENTITY_DB_PASSWORD:?Set IDENTITY_DB_PASSWORD in .env}@postgres:5432/identity_db
+      REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}@redis:6379/0
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672
+      IDENTITY_JWT_SECRET: ${IDENTITY_JWT_SECRET:?Set IDENTITY_JWT_SECRET in .env (openssl rand -hex 32)}
+      AUTH_HEADER_KEY: ${AUTH_HEADER_KEY:?Set AUTH_HEADER_KEY in .env (openssl rand -hex 32)}
+      SMTP_URL: ${SMTP_URL:-}
+      MAIL_FROM: ${MAIL_FROM:-NovelHub <no-reply@novelhub.local>}
+      SITE_URL: ${SITE_URL:-http://localhost:3000}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+    mem_limit: 128m
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started # cache only; revocation falls back to the database
+      rabbitmq:
+        condition: service_started # events wait in the outbox until the broker is back
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - edge
+      - data
+
+  # ============================================================================
   # 2d. Backup: nightly pg_dump of every database + uploads/ into an encrypted restic
   #     repository at ./backups/repo (keep 14 daily / 8 weekly / 12 monthly), weekly
   #     test restore, admin notification on failure. Restore: scripts/restore.sh

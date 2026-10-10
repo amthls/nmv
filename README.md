@@ -9,7 +9,7 @@ Nền tảng đọc **Light Novel (truyện chữ)** và **Manga (truyện tranh
 2. [Cấu trúc thư mục](#-cấu-trúc-thư-mục)
 3. [Khởi chạy](#-khởi-chạy)
 4. [Biến môi trường](#-biến-môi-trường)
-5. [Chống lạm dụng & DDoS](#-chống-lạm-dụng--ddos) · [Hiệu năng & mở rộng](#-hiệu-năng--mở-rộng-redis-realtime-pgbouncer) · [CI/CD & migration](#-cicd--migration) · [Sao lưu & khôi phục](#-sao-lưu--khôi-phục) · [Lộ trình bảo mật](#-lộ-trình-bảo-mật)
+5. [Chống lạm dụng & DDoS](#-chống-lạm-dụng--ddos) · [Hiệu năng & mở rộng](#-hiệu-năng--mở-rộng-redis-realtime-pgbouncer) · [CI/CD & migration](#-cicd--migration) · [Service identity](#-service-identity-đang-chuyển-chưa-nhận-traffic) · [Sao lưu & khôi phục](#-sao-lưu--khôi-phục) · [Lộ trình bảo mật](#-lộ-trình-bảo-mật)
 6. [Hàng đợi thông báo (RabbitMQ)](#-hàng-đợi-thông-báo-rabbitmq)
 7. [Tìm kiếm với Elasticsearch](#-tìm-kiếm-với-elasticsearch)
 8. [Trình soạn thảo rich text](#️-trình-soạn-thảo-rich-text-ckeditor-5) · [Độ phân giải ảnh](#-độ-phân-giải-ảnh-cho-người-đọc) · [Hiệu ứng tải trang](#-hiệu-ứng-tải-trang)
@@ -77,6 +77,9 @@ Trình duyệt gọi `/api/v1/...` và `/uploads/...` cùng origin; qua gateway 
 │   └── store.go                      # snapshot ra đĩa để sống sót qua restart container
 ├── sql/database.sql                  # schema + dữ liệu mẫu, tự nạp khi tạo volume Postgres mới
 ├── uploads/                          # ảnh người dùng tải lên (mount vào backend và frontend)
+├── services/identity/                # service Go: tài khoản, mật khẩu, phiên, vai trò (xem mục Service identity)
+├── events/                           # JSON Schema của mọi sự kiện trên exchange novelhub.events
+├── postgres/provision.sh             # container db-init: mỗi service một database + role riêng
 ├── backup/                           # container sao lưu: Dockerfile + backup.sh (xem Sao lưu & khôi phục)
 ├── backups/                          # kho restic + status.json (không commit)
 ├── docker-compose.yml
@@ -126,6 +129,7 @@ Chạy không qua Docker (cần Postgres sẵn): `yarn dev:local` (backend + fro
 | `SEARCH_URL` | `http://search:9200` (trong compose) | **Để trống để tắt Elasticsearch** và dùng SQL `ILIKE` |
 | `SEARCH_INDEX` | `novel_stories` | Tên index |
 | `SEARCH_PORT` | `9201` | Cổng publish trên máy host (localhost) |
+| `IDENTITY_DB_PASSWORD` / `IDENTITY_JWT_SECRET` / `AUTH_HEADER_KEY` | *(không có)* | **Bắt buộc**, service identity: mật khẩu role `identity`, khóa ký cookie `nh_access`, khóa ký header `X-User-*` (dùng chung identity + backend). `launch.py` tự sinh |
 | `ELASTIC_PASSWORD` | *(không có)* | **Bắt buộc**, mật khẩu user `elastic` của Elasticsearch (compose truyền cho backend thành `SEARCH_PASSWORD`). `launch.py` tự sinh. Cố định khi volume `es_data` lần đầu chạy có bảo mật: đổi sau đó phải đổi trong ES hoặc xóa volume (index dựng lại được) |
 | `GATEWAY_BIND` / `GATEWAY_PORT` | `127.0.0.1` / `3000` | Địa chỉ/cổng gateway trên máy host. Mặc định chỉ máy này vào được (đường công khai là Cloudflare tunnel); `GATEWAY_BIND=0.0.0.0` để máy khác trong LAN vào |
 | `SERVICE_NAME` | `backend` | Trường `service` trong log JSON (compose đặt `worker`, `export-worker`) |
@@ -183,6 +187,22 @@ Mục tiêu: chịu được vài nghìn đến vài chục nghìn người onli
 - **CI** (`.github/workflows/ci.yml`, mọi push/PR): typecheck backend + frontend, test backend (`yarn test`: `tsx --test src/**/*.test.ts`) → `docker compose build` → quét image bằng Trivy (lỗi **CRITICAL đã có bản vá** thì fail; ngoại lệ có lý do và hạn dùng ở `.trivyignore`) → khởi động cả stack → `migrate.sh` → kiểm tra `/api/v1/health`, trang chủ, `/stories/trending`.
 - **CD** (`.github/workflows/deploy.yml`, push lên `main`): build và đẩy `ghcr.io/<owner>/nmv-backend` và `nmv-frontend` (tag = commit SHA và `latest`). Bước deploy qua SSH **chỉ chạy khi** biến repo `DEPLOY_ENABLED=true` và có secrets `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_PATH`: `git pull` → `docker compose pull` → `migrate.sh` → `up -d` → kiểm tra health. Server cần `IMAGE_REGISTRY=ghcr.io/<owner>` trong `.env` và đã `docker login ghcr.io`.
 - **Dependabot** (`.github/dependabot.yml`): mỗi tuần mở PR cập nhật npm, Docker và GitHub Actions; CI chạy trên từng PR.
+
+## 🔑 Service identity (đang chuyển, chưa nhận traffic)
+
+Bước đầu của việc tách service (`Plan/microservices.md`, chi tiết `Plan/identity.md`). **Hiện chạy trong compose nhưng gateway chưa chuyển yêu cầu nào tới**: đăng nhập vẫn do backend làm cho tới nhánh `feat/identity-cutover`.
+
+- `services/identity/` (Go, ~25 MB RAM, image `scratch`, chạy bằng user nobody). Database riêng `identity_db`, role Postgres riêng `identity` (không kết nối được `novel_platform`); bảng tạo bằng migration nhúng trong service (`services/identity/migrations/`), chạy lúc khởi động trong một transaction có khóa.
+- Container một-lần **`db-init`** (`postgres/provision.sh`) tạo role + database cho mọi service trong `SERVICE_DBS` mỗi lần `docker compose up` (đổi mật khẩu trong `.env` là tự áp dụng), và bỏ quyền `CONNECT` mặc định trên `novel_platform`. Backup đã dump mọi database.
+- Giữ: tài khoản, email, mật khẩu (**argon2id**; băm bcrypt cũ vẫn đăng nhập được và tự đổi sang argon2id), xác thực email, vai trò site, khóa/xóa tài khoản, phiên đăng nhập (mỗi thiết bị một dòng), token đặt lại mật khẩu/xác thực email, nhật ký bảo mật 90 ngày, mail tài khoản.
+- Phiên: cookie `nh_access` (JWT 15 phút, chỉ mã người dùng + mã phiên), `nh_refresh` (30 ngày, chỉ gửi tới `/api/identity`, **xoay vòng** mỗi lần dùng; dùng lại token cũ sau 30 giây = bị lộ → thu hồi cả phiên), `nh_csrf` (gửi lại qua header `X-CSRF-Token` cho request ghi). Thu hồi có hiệu lực ngay (Redis `identity:revoked:`, không có Redis thì đọc Postgres).
+- Mật khẩu mới: 8–128 ký tự, không nằm trong ~2.100 mật khẩu phổ biến, không chứa tên đăng nhập/phần đầu email. Sai 5 lần trong 15 phút → khóa tạm 15 phút. Đổi vai trò, khóa/mở khóa, xóa tài khoản, thu hồi mọi phiên toàn hệ thống: **nhập lại mật khẩu**.
+- API (sau khi chuyển sẽ ở `/api/identity/*`): `POST /register|login|logout|refresh|forgot-password|reset-password|verify-email`, `GET /me`, `GET /sessions`, `DELETE /sessions/:id`, `POST /logout-all|change-password|resend-verification`, quản trị `POST /users/:id/roles|ban|unban`, `DELETE /users/:id`, `GET /users/:id/private`, `GET /admin/users?q=` (tìm theo email, Admin/Mod), `POST /admin/revoke-all-sessions`. Nội bộ: `GET /internal/verify` (cho `auth_request` của gateway: trả `X-User-Id/Roles/Exp/Sig` ký HMAC bằng `AUTH_HEADER_KEY`), `GET /internal/users/:id`. `/health`, `/ready`.
+- **Sự kiện** qua outbox (ghi cùng transaction) → exchange topic `novelhub.events` (có xác nhận của RabbitMQ): `identity.user.created|updated|deleted` (ảnh chụp công khai, **không email**), `identity.alert`. Schema ở `events/`; test hợp đồng kiểm mọi sự kiện identity ghi ra.
+- **Mail** nằm trong `mail_outbox` (ghi cùng transaction với token), gửi lại chờ tăng dần ~1 giờ, hỏng hẳn → `identity.alert`. Không có `SMTP_URL` thì không gửi; đọc link bằng: `docker compose exec postgres psql -U identity -d identity_db -c "SELECT to_addr, body_text FROM mail_outbox ORDER BY id DESC LIMIT 1"` (link không bao giờ ghi vào log).
+- Chuyển dữ liệu (lúc chuyển hẳn): `identity import-legacy` chép users/user_roles/token chưa dùng từ `novel_platform`, giữ UUID, chỉ thêm phần thiếu (chạy lại an toàn).
+- Test: `cd services/identity && go test ./...` (test đơn vị); thêm `IDENTITY_TEST_DATABASE_URL=postgres://…/identity_test` (+ `IDENTITY_TEST_REDIS_URL`) để chạy test tích hợp (**xóa sạch database đó**). CI chạy cả hai với Postgres/Redis riêng.
+- Biến môi trường mới (launch.py tự sinh): `IDENTITY_DB_PASSWORD`, `IDENTITY_JWT_SECRET`, `AUTH_HEADER_KEY`.
 
 ## 💾 Sao lưu & khôi phục
 
