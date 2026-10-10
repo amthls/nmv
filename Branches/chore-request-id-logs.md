@@ -3,7 +3,7 @@
 - **Mục tiêu:** Giai đoạn A (phần gateway + log + bảo mật nền): `request_id` xuyên suốt, log JSON che dữ liệu nhạy cảm, gateway chặn `/internal` và `X-User-*` giả, mật khẩu Elasticsearch, mốc đo độ trễ
 - **Tạo từ:** `chore/backup` @ 64356d1 (xếp chồng: plan nằm ở nhánh đó, PR #51 chưa merge), ngày 2026-10-10. PR base = `chore/backup`
 - **Trạng thái:** xong, chờ review PR
-- **PR:** (chưa mở)
+- **PR:** https://github.com/amthls/nmv/pull/52
 - **Plan:** `Plan/microservices.md` (Giai đoạn A)
 
 ## Thay đổi
