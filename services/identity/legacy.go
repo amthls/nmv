@@ -25,7 +25,8 @@ func importLegacy(ctx context.Context, db *pgxpool.Pool, legacyURL string) error
 
 	rows, err := old.Query(ctx, `SELECT id, username, email, password_hash, display_name, COALESCE(email_verified, false),
 		COALESCE(is_banned, false), ban_reason, banned_at, banned_by, deleted_at, deleted_by, last_login_at, created_at, COALESCE(updated_at, created_at)
-		FROM users ORDER BY created_at`)
+		FROM users WHERE email IS NOT NULL AND password_hash IS NOT NULL ORDER BY created_at`) // after the switch the backend copy
+	// also holds accounts created in identity (no email or hash there): those are identity's already
 	if err != nil {
 		return err
 	}
