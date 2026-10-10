@@ -24,6 +24,9 @@
 - `scripts/migrate.sh` + `launch.py` chạy `identity import-legacy` (chỉ thêm tài khoản còn thiếu). `scripts/auth-smoke.py`: kiểm tra bảo mật qua gateway.
 - README, CLAUDE.md (lệnh gọi API như người dùng, bẫy mới).
 
+- Sửa sau khi chuyển: huy hiệu tác giả/dịch giả khi đăng truyện (`grantPublisherRole`) không còn ghi thẳng vào bảng bản sao `user_roles`
+  (sự kiện sau sẽ xóa mất) mà gọi `POST identity /internal/users/:id/roles`. `.gitattributes`: file Go luôn LF (gofmt trên Windows).
+
 ## Migration / biến môi trường mới
 - `sql/migrations/022_identity_copy.sql` (019–021 đã dùng ở #50): `users.email`/`password_hash` cho phép NULL, `users.identity_version`,
   bảng `processed_events`. Cột cũ chưa xóa (đường lui), xóa ở nhánh sau khi xác nhận.
