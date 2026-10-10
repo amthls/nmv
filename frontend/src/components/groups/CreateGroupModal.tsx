@@ -86,7 +86,7 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess }: CreateG
             <div>
               <h3 className="text-base font-bold text-white">Thành Lập Nhóm Dịch Mới</h3>
               <p className="text-[11px] text-gray-400">
-                Nhóm dịch mới sẽ được gửi đến Admin phê duyệt trước khi công khai
+                Nhóm hiển thị công khai ngay, bạn là Trưởng nhóm
               </p>
             </div>
           </div>

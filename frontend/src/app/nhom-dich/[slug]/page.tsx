@@ -7,7 +7,6 @@ import {
   Users, 
   BookOpen, 
   MessageSquare, 
-  ShieldCheck, 
   UserPlus, 
   Send, 
   Plus, 
@@ -38,10 +37,10 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/a
 export default function GroupDetailPage() {
   const params = useParams();
   const slug = params?.slug as string;
-  const { user, isAuthenticated, hasRole, authFetch, openAuthModal } = useAuth();
+  const { user, isAuthenticated, authFetch, openAuthModal } = useAuth();
 
   const [group, setGroup] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'stories' | 'chat' | 'submissions' | 'members' | 'info'>('stories');
+  const [activeTab, setActiveTab] = useState<'stories' | 'chat' | 'members' | 'info'>('stories');
   const [isLoading, setIsLoading] = useState(true);
 
   // Chatroom State
@@ -50,16 +49,11 @@ export default function GroupDetailPage() {
   const [isSendingMsg, setIsSendingMsg] = useState(false);
   const [chatFeedback, setChatFeedback] = useState<string | null>(null);
 
-  // Submissions State
-  const [submissions, setSubmissions] = useState<any[]>([]);
-  const [isApproving, setIsApproving] = useState<string | null>(null);
-
   // Add Member State
   const [newMemberInput, setNewMemberInput] = useState('');
   const [newMemberRole, setNewMemberRole] = useState('translator');
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [memberFeedback, setMemberFeedback] = useState<string | null>(null);
-  const [submissionFeedback, setSubmissionFeedback] = useState<string | null>(null);
 
   // Join Request State
   const [joinRequests, setJoinRequests] = useState<any[]>([]);
@@ -68,20 +62,18 @@ export default function GroupDetailPage() {
   const [reviewingRequestId, setReviewingRequestId] = useState<string | null>(null);
 
   const currentMembership = group?.members?.find((m: any) => m.user_id === user?.id);
-  // Mirrors the server: group leader/mod or site admin manage the group; only the leader (or admin)
-  // manages other managers; site mods may publish into any group but don't run it.
-  const isSiteAdmin = hasRole('admin');
-  const isLeaderOrMod = isSiteAdmin || ['leader', 'mod'].includes(currentMembership?.role);
-  const isGroupLeader = isSiteAdmin || currentMembership?.role === 'leader';
-  const isMember = isAuthenticated && (hasRole('mod') || isLeaderOrMod || Boolean(currentMembership));
-  const canSeeInternal = isAuthenticated && (isSiteAdmin || Boolean(currentMembership)); // chat
-  // Same rules as the server: admins manage anyone, leaders anyone but other leaders, group mods
-  // only regular members; your own card lets a leader/mod step down (never promote themselves).
+  // Mirrors the server: only the group's leader/mod manage it (site admin/mod get no extra rights here);
+  // only the leader manages other managers; only members publish stories and chapters into the group.
+  const isLeaderOrMod = ['leader', 'mod'].includes(currentMembership?.role);
+  const isGroupLeader = currentMembership?.role === 'leader';
+  const isMember = isAuthenticated && Boolean(currentMembership);
+  const canSeeInternal = isMember; // chat
+  // Same rules as the server: leaders manage anyone but other leaders, group mods only regular
+  // members; your own card lets a leader/mod step down (never promote themselves).
   const leaderCount = group?.members?.filter((m: any) => m.role === 'leader').length || 0;
   const canManageMember = (m: any) =>
     m.user_id !== user?.id && (
-      isSiteAdmin ? true
-      : currentMembership?.role === 'leader' ? m.role !== 'leader'
+      currentMembership?.role === 'leader' ? m.role !== 'leader'
       : isLeaderOrMod && !['leader', 'mod'].includes(m.role)
     );
   const canStepDown = (m: any) =>
@@ -136,49 +128,6 @@ export default function GroupDetailPage() {
     if (isLeaderOrMod && group?.id) fetchJoinRequests();
     else setJoinRequests([]);
   }, [isLeaderOrMod, group?.id]);
-
-  // Stories posted to the group by members, waiting for the leader/vice leader (no admin review)
-  const [pendingStories, setPendingStories] = useState<any[]>([]);
-  const [reviewingStoryId, setReviewingStoryId] = useState<string | null>(null);
-  const [storyFeedback, setStoryFeedback] = useState<string | null>(null);
-
-  const fetchPendingStories = async () => {
-    if (!group?.id) return;
-    try {
-      const res = await authFetch(`${API_BASE_URL}/groups/${group.id}/pending-stories`);
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success) setPendingStories(json.data || []);
-      }
-    } catch (e) {}
-  };
-
-  useEffect(() => {
-    if (isLeaderOrMod && group?.id) fetchPendingStories();
-    else setPendingStories([]);
-  }, [isLeaderOrMod, group?.id]);
-
-  const handleReviewStory = async (storyId: string, approve: boolean) => {
-    let reason: string | null = null;
-    if (!approve) {
-      reason = prompt('Lý do từ chối (không bắt buộc):');
-      if (reason === null) return;
-    }
-    setReviewingStoryId(storyId);
-    try {
-      const res = await authFetch(`${API_BASE_URL}/stories/${storyId}/${approve ? 'approve' : 'reject'}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason }),
-      });
-      const json = await res.json();
-      setStoryFeedback(json.message || null);
-      fetchPendingStories();
-      if (res.ok && approve) fetchGroup();
-    } catch (e) {} finally {
-      setReviewingStoryId(null);
-    }
-  };
 
   const handleRequestJoin = async () => {
     if (!isAuthenticated) {
@@ -244,28 +193,13 @@ export default function GroupDetailPage() {
     } catch (e) {}
   };
 
-  // Fetch Chapter Submissions
-  const fetchSubmissions = async () => {
-    if (!group?.id || !isMember) return;
-    try {
-      const res = await authFetch(`${API_BASE_URL}/chapters/submissions?group_id=${group.id}`);
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success) setSubmissions(json.data || []);
-      }
-    } catch (e) {}
-  };
-
   useEffect(() => {
     if (activeTab === 'chat' && group?.id && canSeeInternal) {
       fetchMessages();
       const interval = setInterval(fetchMessages, 30000); // fallback; new messages are pushed
       return () => clearInterval(interval);
     }
-    if (activeTab === 'submissions' && group?.id && isMember) {
-      fetchSubmissions();
-    }
-  }, [activeTab, group?.id, canSeeInternal, isMember]);
+  }, [activeTab, group?.id, canSeeInternal]);
 
   useRealtime('group_message', (data) => {
     if (data?.groupId === group?.id && activeTab === 'chat') fetchMessages();
@@ -377,53 +311,6 @@ export default function GroupDetailPage() {
       setJoinFeedback(json.message || null);
       if (res.ok) fetchGroup();
     } catch (e) {}
-  };
-
-  const handleApproveSubmission = async (submissionId: string) => {
-    if (!isAuthenticated) {
-      openAuthModal('login');
-      return;
-    }
-    setIsApproving(submissionId);
-    try {
-      const res = await authFetch(`${API_BASE_URL}/chapters/submissions/${submissionId}/approve-active`, {
-        method: 'POST',
-      });
-      const json = await res.json();
-      if (res.ok && json.success) {
-        setSubmissionFeedback(null);
-        fetchSubmissions();
-      } else {
-        setSubmissionFeedback(json.message || 'Không thể duyệt bản dịch này.');
-      }
-    } catch (e) {} finally {
-      setIsApproving(null);
-    }
-  };
-
-  const handleRejectSubmission = async (submissionId: string) => {
-    if (!isAuthenticated) {
-      openAuthModal('login');
-      return;
-    }
-    const reason = prompt('Lý do từ chối bản dịch này (không bắt buộc):') || '';
-    setIsApproving(submissionId);
-    try {
-      const res = await authFetch(`${API_BASE_URL}/chapters/submissions/${submissionId}/reject`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason }),
-      });
-      const json = await res.json();
-      if (res.ok && json.success) {
-        setSubmissionFeedback(null);
-        fetchSubmissions();
-      } else {
-        setSubmissionFeedback(json.message || 'Không thể từ chối bản dịch này.');
-      }
-    } catch (e) {} finally {
-      setIsApproving(null);
-    }
   };
 
   if (isLoading) {
@@ -578,11 +465,6 @@ export default function GroupDetailPage() {
           >
             <BookOpen className="w-4 h-4" />
             <span>Tác Phẩm ({group.stories?.length || 0})</span>
-            {isLeaderOrMod && pendingStories.length > 0 && (
-              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500 text-ink" title="Truyện đang chờ duyệt">
-                {pendingStories.length}
-              </span>
-            )}
           </button>
 
           <button
@@ -593,16 +475,6 @@ export default function GroupDetailPage() {
           >
             <MessageSquare className="w-4 h-4 text-cyan-400" />
             <span>Chatroom Nội Bộ</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('submissions')}
-            className={`py-3.5 px-3 border-b-2 flex items-center gap-1.5 transition whitespace-nowrap ${
-              activeTab === 'submissions' ? 'border-brand-500 text-brand-400' : 'border-transparent text-gray-400 hover:text-white'
-            }`}
-          >
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span>Duyệt Bản Dịch Chương</span>
           </button>
 
           <button
@@ -649,49 +521,6 @@ export default function GroupDetailPage() {
             </Link>
             )}
           </div>
-
-          {/* Pending stories (leader/vice leader only) */}
-          {isLeaderOrMod && (pendingStories.length > 0 || storyFeedback) && (
-            <div className="p-5 rounded-3xl glass-panel border border-white/10 bg-glass space-y-3">
-              <h3 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                <Clock className="w-4 h-4" /> Truyện Đang Chờ Duyệt ({pendingStories.length})
-              </h3>
-              {storyFeedback && <p className="text-xs text-emerald-300">{storyFeedback}</p>}
-              <div className="space-y-2">
-                {pendingStories.map((s) => (
-                  <div key={s.id} className="p-3 rounded-2xl bg-white/5 border border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-14 rounded-lg overflow-hidden bg-gray-900 shrink-0">
-                        <SmartImage src={s.cover_image_url} alt={s.title} className="w-full h-full object-cover" />
-                      </div>
-                      <div className="min-w-0 text-xs space-y-0.5">
-                        <Link href={`/truyen/${s.slug}`} className="font-bold text-white hover:text-brand-300 line-clamp-2">{s.title}</Link>
-                        <div className="text-gray-500 text-[10px]">
-                          Đăng bởi {s.uploader_name || s.uploader_username} • {new Date(s.updated_at || s.created_at).toLocaleDateString('vi-VN')}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        onClick={() => handleReviewStory(s.id, true)}
-                        disabled={reviewingStoryId === s.id}
-                        className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-snow text-xs font-bold transition flex items-center gap-1.5"
-                      >
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Duyệt
-                      </button>
-                      <button
-                        onClick={() => handleReviewStory(s.id, false)}
-                        disabled={reviewingStoryId === s.id}
-                        className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-rose-500/20 border border-white/10 hover:border-rose-500/40 text-gray-300 hover:text-rose-300 disabled:opacity-40 text-xs font-bold transition flex items-center gap-1.5"
-                      >
-                        <XCircle className="w-3.5 h-3.5" /> Từ chối
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           {group.stories && group.stories.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -837,118 +666,6 @@ export default function GroupDetailPage() {
             </div>
           )}
 
-        </div>
-      )}
-
-      {/* TAB 3: CHAPTER SUBMISSIONS APPROVAL WORKFLOW */}
-      {activeTab === 'submissions' && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-bold text-white">Quản Lý & Duyệt Bản Dịch Chương Của Thành Viên</h2>
-              <p className="text-xs text-gray-400">Khi một chương có nhiều thành viên nộp bản dịch, Trưởng nhóm/Mod sẽ duyệt chọn bản dịch chính thức để hiển thị cho độc giả</p>
-            </div>
-            {isMember && (
-            <Link
-              href={`/dang-chuong?group_id=${group.id}`}
-              className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow text-xs font-bold transition flex items-center gap-1.5"
-            >
-              <Plus className="w-3.5 h-3.5" /> Nộp bản dịch mới
-            </Link>
-            )}
-          </div>
-
-          {submissionFeedback && (
-            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-semibold">
-              {submissionFeedback}
-            </div>
-          )}
-
-          {!isMember ? (
-            <div className="p-12 text-center rounded-3xl glass-panel border border-white/10 space-y-3">
-              <Lock className="w-12 h-12 text-brand-400 mx-auto opacity-60" />
-              <h3 className="text-base font-bold text-white">Chỉ thành viên nhóm mới xem được các bản dịch đang chờ duyệt</h3>
-            </div>
-          ) : submissions.length === 0 ? (
-            <div className="p-12 text-center rounded-3xl glass-panel border border-white/10 space-y-3">
-              <ShieldCheck className="w-12 h-12 text-brand-400 mx-auto opacity-60" />
-              <h3 className="text-base font-bold text-white">Không có bản dịch nào đang chờ duyệt</h3>
-              <p className="text-xs text-gray-400">Tất cả các chương đã được xuất bản chính thức hoặc chưa có thành viên nộp bản thảo mới.</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {submissions.map((sub) => (
-                <div key={sub.id} className="p-4 rounded-2xl glass-panel border border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-surface-2/85">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-bold text-brand-400">[{sub.story_title}]</span>
-                      <span className="text-xs font-bold text-white">Chương {sub.chapter_number}: {sub.title}</span>
-                      {sub.is_active && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
-                          <CheckCircle2 className="w-3 h-3" /> Đang hiển thị chính thức
-                        </span>
-                      )}
-                      {sub.approval_status === 'rejected' && (
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30 flex items-center gap-1">
-                          <XCircle className="w-3 h-3" /> Đã từ chối
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-[11px] text-gray-400 flex items-center gap-3">
-                      <span>Người dịch: <strong className="text-gray-200">{sub.uploader_name || sub.uploader_username}</strong></span>
-                      <span>•</span>
-                      <span>{sub.word_count?.toLocaleString()} chữ</span>
-                      <span>•</span>
-                      <span>{new Date(sub.created_at).toLocaleDateString('vi-VN')}</span>
-                    </div>
-                    {sub.approval_status === 'rejected' && sub.rejection_reason && (
-                      <div className="text-[11px] text-rose-300 italic">Lý do từ chối: {sub.rejection_reason}</div>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    {sub.is_active ? (
-                      <span className="text-xs text-emerald-400 font-bold px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                        Bản Chính Thức
-                      </span>
-                    ) : !isLeaderOrMod ? (
-                      <span className="text-xs text-gray-400 font-semibold px-3 py-1.5">
-                        {sub.approval_status === 'rejected' ? 'Đã từ chối' : 'Đang chờ Trưởng nhóm duyệt'}
-                      </span>
-                    ) : sub.approval_status === 'rejected' ? (
-                      <button
-                        onClick={() => handleApproveSubmission(sub.id)}
-                        disabled={isApproving === sub.id}
-                        className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-snow text-xs font-bold shadow-md shadow-emerald-500/20 transition flex items-center gap-1.5"
-                      >
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        <span>{isApproving === sub.id ? 'Đang duyệt...' : 'Duyệt Lại Bản Này'}</span>
-                      </button>
-                    ) : (
-                      <>
-                        <button
-                          onClick={() => handleApproveSubmission(sub.id)}
-                          disabled={isApproving === sub.id}
-                          className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-snow text-xs font-bold shadow-md shadow-emerald-500/20 transition flex items-center gap-1.5"
-                        >
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>{isApproving === sub.id ? 'Đang duyệt...' : 'Duyệt Bản Này'}</span>
-                        </button>
-                        <button
-                          onClick={() => handleRejectSubmission(sub.id)}
-                          disabled={isApproving === sub.id}
-                          className="px-4 py-2 rounded-xl bg-white/5 hover:bg-rose-500/20 border border-white/10 hover:border-rose-500/40 text-gray-300 hover:text-rose-300 text-xs font-bold transition flex items-center gap-1.5"
-                        >
-                          <XCircle className="w-3.5 h-3.5" />
-                          <span>Từ Chối</span>
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       )}
 

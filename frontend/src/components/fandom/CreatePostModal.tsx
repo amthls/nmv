@@ -28,7 +28,7 @@ export default function CreatePostModal({
   editPostData,
   presetStory,
 }: CreatePostModalProps) {
-  const { user, isAuthenticated, authFetch, openAuthModal, hasRole } = useAuth();
+  const { user, isAuthenticated, authFetch, openAuthModal } = useAuth();
 
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -47,9 +47,9 @@ export default function CreatePostModal({
   // Sync edit mode initial data
   useEffect(() => {
     if (editPostData) {
+      // Only the author edits a post (Admin/Mod may take it down or delete it, not edit it)
       const isAuthor = isAuthenticated && user && user.id === editPostData.user_id;
-      const isAdminOrMod = hasRole('admin', 'mod');
-      if (!isAuthor && !isAdminOrMod) {
+      if (!isAuthor) {
         onClose();
         return;
       }
