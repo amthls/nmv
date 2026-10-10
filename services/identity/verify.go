@@ -21,6 +21,7 @@ func (s *server) signHeaders(h http.Header, uid, roles string) {
 	h.Set("X-User-Sig", signUserHeaders(s.cfg.SigKeyBackend, uid, roles, exp))
 	h.Set("X-User-Sig-Ws", signUserHeaders(s.cfg.SigKeyWorkspace, uid, roles, exp)) // the gateway sends it to the workspace as X-User-Sig
 	h.Set("X-User-Sig-Media", signUserHeaders(s.cfg.SigKeyMedia, uid, roles, exp))
+	h.Set("X-User-Sig-Msg", signUserHeaders(s.cfg.SigKeyMsg, uid, roles, exp))
 }
 
 // GET /internal/verify: nginx auth_request for every /api/v1 and /socket.io request (no body; the original

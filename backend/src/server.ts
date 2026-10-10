@@ -6,7 +6,6 @@ import { applySecurity, globalApiLimiter, writeLimiter } from './middlewares/sec
 import { connectQueue } from './services/queue.service';
 import { startSearchSync } from './services/search.service';
 import { visitorCookie } from './services/recommender/events';
-import { attachRealtime } from './services/realtime';
 import { requestContext } from './utils/logger';
 import { identityFromHeaders, internalAuthOK } from './middlewares/auth.middleware';
 import { permissions, exportChapters, exportSource, exportBook } from './controllers/internal.controller';
@@ -117,10 +116,9 @@ const server = app.listen(PORT, () => {
   connectQueue();
 });
 
-attachRealtime(server);
 
 // Slow-connection (slowloris) protection: never wait forever for headers or a request body
 server.headersTimeout = 15_000;
-server.requestTimeout = 120_000; // uploads of 25MB on a slow line still fit
+server.requestTimeout = 60_000; // JSON only (uploads go to the media service)
 server.keepAliveTimeout = 5_000;
 server.maxHeadersCount = 60;

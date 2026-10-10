@@ -210,7 +210,8 @@ export default function GroupDetailPage() {
   }, [activeTab, group?.id, canSeeInternal]);
 
   useRealtime('group_message', (data) => {
-    if (data?.groupId === group?.id && activeTab === 'chat') fetchMessages();
+    // no groupId: the socket just reconnected, anything may have changed
+    if ((!data?.groupId || data.groupId === group?.id) && activeTab === 'chat') fetchMessages();
   });
 
   const handleSendMessage = async (e: React.FormEvent) => {

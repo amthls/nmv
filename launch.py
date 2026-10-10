@@ -114,7 +114,7 @@ def ensure_env():
             env = read_env(ENV_FILE)
         # identity service secrets: added to older .env files instead of refusing to start
         added = {k: secrets.token_hex(32) for k in ("IDENTITY_DB_PASSWORD", "IDENTITY_JWT_SECRET", "WORKSPACE_DB_PASSWORD", "MEDIA_DB_PASSWORD",
-                                                         "USER_SIG_KEY_BACKEND", "USER_SIG_KEY_WORKSPACE", "USER_SIG_KEY_MEDIA",
+                                                         "USER_SIG_KEY_BACKEND", "USER_SIG_KEY_WORKSPACE", "USER_SIG_KEY_MEDIA", "USER_SIG_KEY_MESSAGING",
                                                          "INTERNAL_KEY_BACKEND", "INTERNAL_KEY_IDENTITY", "INTERNAL_KEY_WORKSPACE")
                  if not env.get(k) or env[k] == "change-me"}
         if added:
@@ -160,6 +160,7 @@ def ensure_env():
         "USER_SIG_KEY_BACKEND": secrets.token_hex(32),
         "USER_SIG_KEY_WORKSPACE": secrets.token_hex(32),
         "USER_SIG_KEY_MEDIA": secrets.token_hex(32),
+        "USER_SIG_KEY_MESSAGING": secrets.token_hex(32),
         "INTERNAL_KEY_BACKEND": secrets.token_hex(32),
         "INTERNAL_KEY_IDENTITY": secrets.token_hex(32),
         "INTERNAL_KEY_WORKSPACE": secrets.token_hex(32),
