@@ -3,10 +3,11 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import sharp from 'sharp';
-import { readImageSize } from '../services/image.service';
-import { AuthenticatedRequest } from '../middlewares/auth.middleware';
-import { canUserManageStory } from './story.controller';
-import { isUuid } from '../utils/validation';
+import { readImageSize } from './image';
+import { AuthedRequest, isContributor } from './auth';
+import { UPLOAD_DIR } from './config';
+
+const isUuid = (v: unknown): v is string => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 
 /** The declared MIME type is client-controlled: keep a file only if it really decodes as an image. */
 async function keepOnlyRealImages(files: Express.Multer.File[]): Promise<Express.Multer.File[]> {
@@ -96,7 +97,7 @@ const STRIP_PART_HEIGHT = 4000;
  * Each page is auto-rotated, scaled to at most 1600px wide and re-encoded (WebP, or JPEG for very
  * tall strips) into uploads/manga/<story_id>/. Results come back in the order the files were sent.
  */
-export const uploadMangaPages = async (req: AuthenticatedRequest, res: Response) => {
+export const uploadMangaPages = async (req: AuthedRequest, res: Response) => {
   const files = (req.files as Express.Multer.File[]) || [];
   const cleanup = () => files.forEach((f) => fs.rmSync(f.path, { force: true }));
   try {
@@ -105,7 +106,7 @@ export const uploadMangaPages = async (req: AuthenticatedRequest, res: Response)
       cleanup();
       return res.status(400).json({ success: false, message: 'Thiếu hoặc sai story_id.' });
     }
-    if (!req.user || !(await canUserManageStory(req.user.id, storyId))) {
+    if (!req.userId || !(await isContributor(req.userId, storyId))) {
       cleanup();
       return res.status(403).json({ success: false, message: 'Bạn không có quyền đăng chương cho truyện này.' });
     }
@@ -113,7 +114,7 @@ export const uploadMangaPages = async (req: AuthenticatedRequest, res: Response)
       return res.status(400).json({ success: false, message: 'Không có trang nào được gửi lên.' });
     }
 
-    const dir = path.resolve(process.cwd(), 'uploads', 'manga', storyId);
+    const dir = path.join(UPLOAD_DIR, 'manga', storyId);
     fs.mkdirSync(dir, { recursive: true });
 
     type Part = { url: string; width: number; height: number; size: number };

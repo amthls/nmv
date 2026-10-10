@@ -1,9 +1,10 @@
 import { Request, Response } from 'express';
 import { pool } from '../config/db';
 import { isUuid } from '../utils/validation';
+import { listExportableChapters, loadBook, storyFingerprint } from '../services/exportSource';
 
 // Service-to-service endpoints (X-Internal-Auth, mounted under /internal in server.ts; the gateway answers 404
-// for /internal from outside). Stories and groups live here, so the workspace asks.
+// for /internal from outside). Stories and groups live here, so the workspace and the media service ask.
 
 export interface StoryRole {
   keeper: boolean; contributor: boolean; removed: boolean; name: string; keeperIds: string[];
@@ -87,4 +88,39 @@ export const exportChapters = async (req: Request, res: Response) => {
       };
     }),
   });
+};
+
+/**
+ * POST /internal/exports/source {slug | story_id, chapter_ids: uuid[] | null}: what the media service needs to accept an
+ * EPUB/PDF request (may the story be downloaded, which chapters, their fingerprints). chapter_ids [] = the story only
+ * (checked again before a file is handed out).
+ */
+export const exportSource = async (req: Request, res: Response) => {
+  const { slug, story_id, chapter_ids } = req.body || {};
+  const ids: string[] | null = Array.isArray(chapter_ids) ? chapter_ids.filter(isUuid) : null;
+  const r = isUuid(story_id)
+    ? await pool.query(`SELECT id, allow_download, approval_status FROM stories WHERE id = $1`, [story_id])
+    : await pool.query(`SELECT id, allow_download, approval_status FROM stories WHERE slug = $1`, [String(slug || '')]);
+  const s = r.rows[0];
+  if (!s) return res.status(404).json({ success: false, message: 'Không tìm thấy truyện.' });
+  const open = s.approval_status === 'approved' && s.allow_download;
+  res.json({
+    success: true,
+    data: {
+      story_id: s.id,
+      approved: s.approval_status === 'approved',
+      allow_download: Boolean(s.allow_download),
+      fingerprint: open ? await storyFingerprint(s.id) : '',
+      chapters: open && !(ids && ids.length === 0) ? await listExportableChapters(s.id, ids) : [],
+    },
+  });
+};
+
+/** POST /internal/exports/book {story_id, chapter_ids}: the chapters' content, normalised for the EPUB/PDF writers. */
+export const exportBook = async (req: Request, res: Response) => {
+  const { story_id, chapter_ids } = req.body || {};
+  if (!isUuid(story_id) || !Array.isArray(chapter_ids) || !chapter_ids.every(isUuid)) {
+    return res.status(400).json({ success: false, message: 'story_id, chapter_ids' });
+  }
+  res.json({ success: true, data: await loadBook(story_id, chapter_ids) });
 };

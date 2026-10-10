@@ -26,7 +26,7 @@ case "${1:-}" in
       read -r answer
       [ "$answer" = "$DB" ] || { echo "aborted"; exit 1; }
       ex backup.sh run pre-restore # current state, in case the chosen snapshot is the wrong one
-      docker compose stop backend worker export-worker pgbouncer
+      docker compose stop backend worker media pgbouncer
     elif [ "$target" = "$DB" ]; then
       echo "target is the live database: use --replace" >&2; exit 1
     fi
@@ -36,7 +36,7 @@ case "${1:-}" in
     ex sh -c "restic dump -q --host nmv --path '/$DB.dump' '$snap' '/$DB.dump' | pg_restore --no-owner --exit-on-error -d '$target'"
     echo "[restore] snapshot $snap restored into database $target"
     if $replace; then
-      docker compose start pgbouncer backend worker export-worker
+      docker compose start pgbouncer backend worker media
       docker compose exec -T redis sh -c 'redis-cli -a "$REDIS_PASSWORD" --no-auth-warning FLUSHDB' >/dev/null # drop cached pages of the old data
     fi
     ;;

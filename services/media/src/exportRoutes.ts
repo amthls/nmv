@@ -1,11 +1,11 @@
 import { Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
-import { pool } from '../config/db';
-import { AuthenticatedRequest } from '../middlewares/auth.middleware';
-import { isUuid } from '../utils/validation';
-import { EXPORT_DIR, ExportRequestError, MIME, requestExport } from '../services/export';
-import { MAX_EXPORT_CHAPTERS } from '../services/export/content';
+import { EXPORT_DIR, pool } from './config';
+import { AuthedRequest } from './auth';
+import { exportSource, ExportRequestError, MAX_EXPORT_CHAPTERS, MIME, requestExport } from './export';
+
+const isUuid = (v: unknown): v is string => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 
 function serialize(row: any) {
   return {
@@ -22,7 +22,7 @@ function serialize(row: any) {
 }
 
 /** POST /stories/:slug/exports  { format: 'epub'|'pdf', mode: 'merged'|'single', chapter_ids?: uuid[] } */
-export const createExport = async (req: AuthenticatedRequest, res: Response) => {
+export const createExport = async (req: AuthedRequest, res: Response) => {
   try {
     const { slug } = req.params;
     const { format, mode, chapter_ids } = req.body || {};
@@ -43,25 +43,15 @@ export const createExport = async (req: AuthenticatedRequest, res: Response) => 
       chapterIds = Array.from(new Set<string>(chapter_ids));
     }
 
-    const storyRes = await pool.query(
-      `SELECT id, allow_download, approval_status FROM stories WHERE slug = $1`,
-      [slug]
-    );
-    const story = storyRes.rows[0];
-    if (!story || story.approval_status !== 'approved') {
+    const source = await exportSource({ slug }, chapterIds);
+    if (!source || !source.approved) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy truyện.' });
     }
-    if (!story.allow_download) {
+    if (!source.allow_download) {
       return res.status(403).json({ success: false, message: 'Truyện này chưa bật tính năng tải xuống.' });
     }
 
-    const row = await requestExport({
-      storyId: story.id,
-      format,
-      mode,
-      chapterIds,
-      userId: req.user?.id || null,
-    });
+    const row = await requestExport({ source, format, mode, userId: req.userId || null });
     res.json({ success: true, data: serialize(row) });
   } catch (err: any) {
     if (err instanceof ExportRequestError) return res.status(err.status).json({ success: false, message: err.message });
@@ -95,15 +85,10 @@ function contentDisposition(fileName: string) {
 export const downloadExport = async (req: Request, res: Response) => {
   const { id } = req.params;
   if (!isUuid(id)) return res.status(404).json({ success: false, message: 'Không tìm thấy tệp.' });
-  const r = await pool.query(
-    `SELECT e.*, s.allow_download, s.approval_status
-       FROM story_exports e JOIN stories s ON s.id = e.story_id
-      WHERE e.id = $1`,
-    [id]
-  );
-  const row = r.rows[0];
-  if (!row || row.approval_status !== 'approved') return res.status(404).json({ success: false, message: 'Không tìm thấy tệp.' });
-  if (!row.allow_download) return res.status(403).json({ success: false, message: 'Truyện này đã tắt tính năng tải xuống.' });
+  const row = (await pool.query(`SELECT * FROM story_exports WHERE id = $1`, [id])).rows[0];
+  const story = row ? await exportSource({ story_id: row.story_id }, []) : null; // the story only: still downloadable?
+  if (!row || !story?.approved) return res.status(404).json({ success: false, message: 'Không tìm thấy tệp.' });
+  if (!story.allow_download) return res.status(403).json({ success: false, message: 'Truyện này đã tắt tính năng tải xuống.' });
   if (row.status !== 'ready' || !row.file_path) return res.status(409).json({ success: false, message: 'Tệp chưa sẵn sàng.' });
 
   const filePath = path.resolve(EXPORT_DIR, row.file_path);

@@ -2,8 +2,9 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
+import { UPLOAD_DIR } from './config';
 
-const uploadsDir = path.resolve(process.cwd(), 'uploads', 'posts');
+const uploadsDir = path.join(UPLOAD_DIR, 'posts');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }

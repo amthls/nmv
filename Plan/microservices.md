@@ -85,6 +85,8 @@ bộ gom log từ Docker; ~100–200 MB) → **~21–22**~~ (**bỏ bộ giám s
 **Ước tính RAM lúc rảnh:** hiện tại ~1,3 GB (đo 2026-10-09) → sau khi chuyển ~1,9–2,2 GB (không còn bộ giám sát; ES ~670 MB vẫn là lớn nhất; 6 service Go
 ~15–25 MB mỗi cái; 3 service TS ~70–100 MB; recommender-api ~70 MB). Máy hiện có ~7,6 GB. Mọi container đặt `mem_limit`.
 - [ ] Đo lại RAM thực tế sau mỗi giai đoạn tách, ghi vào đây.
+  - 2026-10-10 sau B (identity) + C (workspace): tổng ~1,36 GB; identity 45 MB, workspace 8 MB, backend 64 MB, export-worker 40 MB.
+  - 2026-10-10 sau D (media): backend 39 MB, media 99 MB (sau khi dựng EPUB+PDF), không còn export-worker; tổng ~1,34 GB.
 
 ## Sơ đồ
 
@@ -517,7 +519,7 @@ Bẫy (giai đoạn A):
 - [x] Các giai đoạn 1–4 của plan workspace; chuyển một lần, tắt đường đăng/sửa chương cũ
 
 ### Giai đoạn D: media
-- [ ] Upload, đổi kích thước ảnh, xuất EPUB/PDF (export-worker hiện có chuyển sang đây); gateway định tuyến `/uploads`, `/api/media`
+- [x] Upload, đổi kích thước ảnh, xuất EPUB/PDF (export-worker hiện có chuyển sang đây); gateway định tuyến `/uploads`, `/api/media` (`Plan/media.md`, 2026-10-10)
 
 ### Giai đoạn E: messaging
 - [ ] Tin nhắn riêng, chat nhóm, hộp thông báo, worker phân phát thông báo (worker hiện có chuyển sang đây), viết bằng Go

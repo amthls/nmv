@@ -107,33 +107,6 @@ export const accountTokenLimiter = limiter({
   message: 'Thử quá nhiều lần. Vui lòng thử lại sau 15 phút.',
 });
 
-export const uploadLimiter = limiter({
-  windowMs: 10 * 60_000,
-  limit: 30,
-  message: 'Bạn tải ảnh lên quá nhiều. Vui lòng thử lại sau ít phút.',
-});
-
-/** Manga chapters are dozens of pages: a separate, larger budget (20 pages per request). */
-export const mangaUploadLimiter = limiter({
-  windowMs: 10 * 60_000,
-  limit: 120,
-  message: 'Bạn tải trang truyện lên quá nhiều. Vui lòng thử lại sau ít phút.',
-});
-
-/** Resized-image requests are CPU work (sharp): cap per address. */
-export const imageResizeLimiter = limiter({
-  windowMs: 60_000,
-  limit: 300,
-  message: 'Quá nhiều yêu cầu tải ảnh. Vui lòng thử lại sau.',
-});
-
-/** EPUB/PDF builds: each new selection costs a build, polling and downloads are cheap. */
-export const exportLimiter = limiter({
-  windowMs: 10 * 60_000,
-  limit: 30,
-  message: 'Bạn yêu cầu tải quá nhiều lần. Vui lòng thử lại sau ít phút.',
-});
-
 export const searchLimiter = limiter({
   windowMs: 60_000,
   limit: 90,

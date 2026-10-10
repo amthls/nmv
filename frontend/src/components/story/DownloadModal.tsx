@@ -5,6 +5,7 @@ import { X, Download, FileText, BookOpen, Check, Minus, ChevronDown, Loader2, Al
 import { useAuth } from '@/context/AuthContext';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+const MEDIA_URL = '/api/media'; // uploads and EPUB/PDF downloads: the media service
 
 type Format = 'epub' | 'pdf';
 type Mode = 'merged' | 'single';
@@ -109,7 +110,7 @@ export default function DownloadModal({ isOpen, onClose, storySlug, story: story
     };
   }, [isOpen, onClose]);
 
-  const downloadUrl = (id: string) => `${API_BASE_URL}/exports/${id}/download`;
+  const downloadUrl = (id: string) => `${MEDIA_URL}/exports/${id}/download`;
 
   const startDownload = (j: ExportJob) => {
     if (autoDownloaded.current === j.id) return;
@@ -126,7 +127,7 @@ export default function DownloadModal({ isOpen, onClose, storySlug, story: story
     pollRef.current = setTimeout(async () => {
       if (gen !== pollGen.current) return;
       try {
-        const res = await fetch(`${API_BASE_URL}/exports/${id}`);
+        const res = await fetch(`${MEDIA_URL}/exports/${id}`);
         const json = await res.json();
         if (gen !== pollGen.current) return; // dialog closed or a new request started meanwhile
         if (!json.success) throw new Error(json.message);
@@ -151,7 +152,7 @@ export default function DownloadModal({ isOpen, onClose, storySlug, story: story
     if (pollRef.current) clearTimeout(pollRef.current);
     try {
       const ordered = allIds.filter((id) => selected.has(id));
-      const res = await authFetch(`${API_BASE_URL}/stories/${storySlug}/exports`, {
+      const res = await authFetch(`${MEDIA_URL}/stories/${storySlug}/exports`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ format, mode, chapter_ids: ordered.length === allIds.length ? 'all' : ordered }),

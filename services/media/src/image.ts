@@ -3,6 +3,7 @@ import sharp from 'sharp';
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import { CACHE_DIR, UPLOAD_DIR } from './config';
 
 /**
  * On-the-fly image resizing for uploaded images.
@@ -15,22 +16,10 @@ import path from 'path';
 export const IMAGE_WIDTHS = [480, 800, 1280, 1920];
 
 const RESIZABLE_EXT = new Set(['.jpg', '.jpeg', '.png', '.webp', '.avif']);
-const CACHE_DIR = path.resolve(process.cwd(), '.cache', 'images');
-
-// Same roots server.ts serves statically, in the same order.
-const UPLOAD_ROOTS = [
-  path.resolve(__dirname, '../../../uploads'),
-  path.resolve(__dirname, '../../uploads'),
-  path.resolve(__dirname, '../uploads'),
-];
-
 function resolveUpload(relPath: string): string | null {
-  for (const root of UPLOAD_ROOTS) {
-    const candidate = path.resolve(root, '.' + path.sep + relPath);
-    if (!candidate.startsWith(root + path.sep)) return null; // path traversal
-    if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return candidate;
-  }
-  return null;
+  const candidate = path.resolve(UPLOAD_DIR, '.' + path.sep + relPath);
+  if (!candidate.startsWith(UPLOAD_DIR + path.sep)) return null; // path traversal
+  return fs.existsSync(candidate) && fs.statSync(candidate).isFile() ? candidate : null;
 }
 
 const inFlight = new Map<string, Promise<void>>();

@@ -38,7 +38,7 @@ Plan nằm trong nhánh của việc đó và được commit cùng code.
 | Việc | Lệnh |
 |---|---|
 | Chạy/cập nhật toàn bộ | `python launch.py` (tự sinh `.env`, đồng bộ mật khẩu Postgres, build, migrate, kiểm tra) |
-| Build lại sau khi sửa code | `docker compose up -d --build backend frontend` (thêm `worker export-worker` nếu sửa worker) |
+| Build lại sau khi sửa code | `docker compose up -d --build backend frontend` (thêm `worker` nếu sửa worker, `media` nếu sửa `services/media`) |
 | Typecheck | `cd backend && npx tsc --noEmit`, `cd frontend && npx tsc --noEmit` |
 | Migration | Thêm `sql/migrations/NNN_ten.sql` (idempotent), **chép nội dung vào `sql/database.sql`**, chạy `sh scripts/migrate.sh` |
 | nginx đổi cấu hình | `docker exec novel_gateway nginx -s reload` (file được mount, `up -d` không tự nạp) |

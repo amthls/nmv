@@ -55,7 +55,7 @@ BUILD_INPUTS = ["backend", "frontend", "nginx", "docker-compose.yml"]
 SKIP_DIRS = {"node_modules", ".next", "dist", "build", "__pycache__", ".git"}
 SKIP_FILES = {"tsconfig.tsbuildinfo"}
 
-SERVICES = ["postgres", "search", "rabbitmq", "backend", "worker", "export-worker", "frontend", "gateway"]
+SERVICES = ["postgres", "search", "rabbitmq", "backend", "worker", "media", "frontend", "gateway"]
 
 GREEN, RED, YELLOW, BOLD, RESET = "\033[32m", "\033[31m", "\033[33m", "\033[1m", "\033[0m"
 if not sys.stdout.isatty():
@@ -113,8 +113,9 @@ def ensure_env():
             info("Added a random REDIS_PASSWORD to .env")
             env = read_env(ENV_FILE)
         # identity service secrets: added to older .env files instead of refusing to start
-        added = {k: secrets.token_hex(32) for k in ("IDENTITY_DB_PASSWORD", "IDENTITY_JWT_SECRET", "WORKSPACE_DB_PASSWORD",
-                                                         "USER_SIG_KEY_BACKEND", "USER_SIG_KEY_WORKSPACE", "INTERNAL_KEY_BACKEND", "INTERNAL_KEY_IDENTITY", "INTERNAL_KEY_WORKSPACE")
+        added = {k: secrets.token_hex(32) for k in ("IDENTITY_DB_PASSWORD", "IDENTITY_JWT_SECRET", "WORKSPACE_DB_PASSWORD", "MEDIA_DB_PASSWORD",
+                                                         "USER_SIG_KEY_BACKEND", "USER_SIG_KEY_WORKSPACE", "USER_SIG_KEY_MEDIA",
+                                                         "INTERNAL_KEY_BACKEND", "INTERNAL_KEY_IDENTITY", "INTERNAL_KEY_WORKSPACE")
                  if not env.get(k) or env[k] == "change-me"}
         if added:
             set_env_values(added)
@@ -158,10 +159,12 @@ def ensure_env():
         "IDENTITY_JWT_SECRET": secrets.token_hex(32),
         "USER_SIG_KEY_BACKEND": secrets.token_hex(32),
         "USER_SIG_KEY_WORKSPACE": secrets.token_hex(32),
+        "USER_SIG_KEY_MEDIA": secrets.token_hex(32),
         "INTERNAL_KEY_BACKEND": secrets.token_hex(32),
         "INTERNAL_KEY_IDENTITY": secrets.token_hex(32),
         "INTERNAL_KEY_WORKSPACE": secrets.token_hex(32),
         "WORKSPACE_DB_PASSWORD": secrets.token_hex(32),
+        "MEDIA_DB_PASSWORD": secrets.token_hex(32),
         "POSTGRES_PASSWORD": pg_pw,
         "DATABASE_URL": f"postgresql://postgres:{pg_pw}@localhost:5432/novel_platform?schema=public",
         "PGADMIN_DEFAULT_PASSWORD": secrets.token_hex(16),
