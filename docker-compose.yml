@@ -86,6 +86,8 @@ services:
       - workspace
     security_opt:
       - no-new-privileges:true
+    ulimits:
+      nofile: 65536 # WebSockets: one per open browser tab, plus its upstream
     networks:
       - edge
 
@@ -337,6 +339,7 @@ services:
       USER_SIG_KEY_BACKEND: ${USER_SIG_KEY_BACKEND:?Set USER_SIG_KEY_BACKEND in .env (openssl rand -hex 32)}
       USER_SIG_KEY_WORKSPACE: ${USER_SIG_KEY_WORKSPACE:?Set USER_SIG_KEY_WORKSPACE in .env (openssl rand -hex 32)}
       USER_SIG_KEY_MEDIA: ${USER_SIG_KEY_MEDIA:?Set USER_SIG_KEY_MEDIA in .env (openssl rand -hex 32)}
+      USER_SIG_KEY_MESSAGING: ${USER_SIG_KEY_MESSAGING:?Set USER_SIG_KEY_MESSAGING in .env (openssl rand -hex 32)}
       INTERNAL_KEY_IDENTITY: ${INTERNAL_KEY_IDENTITY:?Set INTERNAL_KEY_IDENTITY in .env (openssl rand -hex 32)}
       SMTP_URL: ${SMTP_URL:-}
       MAIL_FROM: ${MAIL_FROM:-NovelHub <no-reply@novelhub.local>}
@@ -381,6 +384,31 @@ services:
         condition: service_completed_successfully
       rabbitmq:
         condition: service_started # events wait in the outbox until the broker is back
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - edge
+      - data
+
+  # ============================================================================
+  # 2h. messaging (Go): browsers' WebSockets for realtime pings (published on Redis rt:events by any process).
+  #     Later: direct messages, group chat, notifications. See Plan/messaging.md.
+  # ============================================================================
+  messaging:
+    build:
+      context: ./services/messaging
+    image: ${IMAGE_REGISTRY:-local}/nmv-messaging:${IMAGE_TAG:-latest}
+    container_name: novel_messaging
+    restart: unless-stopped
+    environment:
+      REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}@redis:6379
+      USER_SIG_KEY_MESSAGING: ${USER_SIG_KEY_MESSAGING:?Set USER_SIG_KEY_MESSAGING in .env (openssl rand -hex 32)}
+    ulimits:
+      nofile: 65536 # one per open socket
+    mem_limit: ${MESSAGING_MEMORY:-512m} # ~37 KB per open socket (2,000 measured): ~10k sockets
+    depends_on:
+      redis:
+        condition: service_started
     security_opt:
       - no-new-privileges:true
     networks:

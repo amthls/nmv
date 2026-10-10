@@ -523,8 +523,8 @@ Bẫy (giai đoạn A):
 
 ### Giai đoạn E: messaging
 - [ ] Tin nhắn riêng, chat nhóm, hộp thông báo, worker phân phát thông báo (worker hiện có chuyển sang đây), viết bằng Go
-- [ ] Realtime: WebSocket thường (Go) thay Socket.IO; sửa client realtime ở frontend (kết nối lại tự động, nhận sự kiện theo loại)
-- [ ] Chịu tải: `ulimit -n` cho container, nginx `worker_connections`/`worker_rlimit_nofile`, chỉ người đăng nhập mới mở kết nối,
+- [x] Realtime: WebSocket thường (Go) thay Socket.IO; sửa client realtime ở frontend (kết nối lại tự động, nhận sự kiện theo loại) (`Plan/messaging.md` E1)
+- [x] Chịu tải: `ulimit -n` cho container, nginx `worker_connections`/`worker_rlimit_nofile`, chỉ người đăng nhập mới mở kết nối,
       đóng khi tab ẩn lâu, ping ~30s, giới hạn số tab/tài khoản, client kết nối lại **chờ ngẫu nhiên tăng dần**, kênh Redis theo user/hội thoại
 - [ ] **Thử tải thật** (client giả lập bằng Go/k6): 10k → 30k → 100k kết nối giữ lâu + gửi tin + thông báo hàng loạt; ghi RAM/CPU
       mỗi kết nối, độ trễ; ước tính máy hiện tại (~7,6 GB) chịu ~10–30k, trên 100k cần nhiều bản `messaging-realtime` ở máy riêng

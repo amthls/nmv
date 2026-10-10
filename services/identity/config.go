@@ -15,6 +15,7 @@ type config struct {
 	SigKeyBackend   []byte // signs X-User-* for the backend (USER_SIG_KEY_BACKEND, the backend has it too)
 	SigKeyWorkspace []byte // signs them again for the workspace (USER_SIG_KEY_WORKSPACE): neither can forge for the other
 	SigKeyMedia     []byte // and for the media service (USER_SIG_KEY_MEDIA)
+	SigKeyMsg       []byte // and for messaging (USER_SIG_KEY_MESSAGING)
 	InternalKey     []byte // verifies X-Internal-Auth of calls to identity (INTERNAL_KEY_IDENTITY)
 	BackendURL      string // internal calls (account delete pre-check)
 	SMTPURL         string
@@ -35,6 +36,7 @@ func loadConfig() (config, error) {
 		SigKeyBackend:   []byte(os.Getenv("USER_SIG_KEY_BACKEND")),
 		SigKeyWorkspace: []byte(os.Getenv("USER_SIG_KEY_WORKSPACE")),
 		SigKeyMedia:     []byte(os.Getenv("USER_SIG_KEY_MEDIA")),
+		SigKeyMsg:       []byte(os.Getenv("USER_SIG_KEY_MESSAGING")),
 		InternalKey:     []byte(os.Getenv("INTERNAL_KEY_IDENTITY")),
 		BackendURL:      env("BACKEND_INTERNAL_URL", "http://backend:5000"),
 		SMTPURL:         os.Getenv("SMTP_URL"),
@@ -48,7 +50,7 @@ func loadConfig() (config, error) {
 		return c, fmt.Errorf("IDENTITY_DATABASE_URL is required")
 	}
 	for k, v := range map[string][]byte{"IDENTITY_JWT_SECRET": c.JWTSecret, "USER_SIG_KEY_BACKEND": c.SigKeyBackend,
-		"USER_SIG_KEY_WORKSPACE": c.SigKeyWorkspace, "USER_SIG_KEY_MEDIA": c.SigKeyMedia, "INTERNAL_KEY_IDENTITY": c.InternalKey} {
+		"USER_SIG_KEY_WORKSPACE": c.SigKeyWorkspace, "USER_SIG_KEY_MEDIA": c.SigKeyMedia, "USER_SIG_KEY_MESSAGING": c.SigKeyMsg, "INTERNAL_KEY_IDENTITY": c.InternalKey} {
 		if len(v) < 32 {
 			return c, fmt.Errorf("%s must be at least 32 characters", k)
 		}

@@ -61,7 +61,7 @@ func newHarness(t *testing.T) *harness {
 	t.Cleanup(backend.Close)
 	s := &server{db: db, now: time.Now, cfg: config{
 		JWTSecret: []byte(strings.Repeat("j", 32)), SigKeyBackend: []byte(strings.Repeat("k", 32)),
-		SigKeyWorkspace: []byte(strings.Repeat("w", 32)), SigKeyMedia: []byte(strings.Repeat("m", 32)), InternalKey: []byte(strings.Repeat("i", 32)),
+		SigKeyWorkspace: []byte(strings.Repeat("w", 32)), SigKeyMedia: []byte(strings.Repeat("m", 32)), SigKeyMsg: []byte(strings.Repeat("g", 32)), InternalKey: []byte(strings.Repeat("i", 32)),
 		SiteURL: "http://site", BackendURL: backend.URL,
 	}}
 	if rURL := os.Getenv("IDENTITY_TEST_REDIS_URL"); rURL != "" {

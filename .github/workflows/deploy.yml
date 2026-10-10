@@ -80,6 +80,15 @@ jobs:
             ${{ steps.reg.outputs.registry }}/nmv-media:latest
           cache-from: type=gha,scope=media
           cache-to: type=gha,scope=media,mode=max
+      - uses: docker/build-push-action@v6
+        with:
+          context: services/messaging
+          push: true
+          tags: |
+            ${{ steps.reg.outputs.registry }}/nmv-messaging:${{ github.sha }}
+            ${{ steps.reg.outputs.registry }}/nmv-messaging:latest
+          cache-from: type=gha,scope=messaging
+          cache-to: type=gha,scope=messaging,mode=max
 
   deploy:
     needs: images
@@ -97,7 +106,7 @@ jobs:
             cd "${{ secrets.DEPLOY_PATH }}"
             git pull --ff-only
             export IMAGE_TAG="${{ github.sha }}"
-            docker compose pull backend worker identity workspace media frontend
+            docker compose pull backend worker identity workspace media messaging frontend
             sh scripts/migrate.sh   # schema first: the new code may need it (Postgres is already running)
             docker compose up -d --no-build
             for i in $(seq 1 30); do curl -fsS http://localhost:3000/api/v1/health >/dev/null && exit 0; sleep 5; done
