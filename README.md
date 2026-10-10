@@ -9,7 +9,7 @@ Nền tảng đọc **Light Novel (truyện chữ)** và **Manga (truyện tranh
 2. [Cấu trúc thư mục](#-cấu-trúc-thư-mục)
 3. [Khởi chạy](#-khởi-chạy)
 4. [Biến môi trường](#-biến-môi-trường)
-5. [Chống lạm dụng & DDoS](#-chống-lạm-dụng--ddos) · [Hiệu năng & mở rộng](#-hiệu-năng--mở-rộng-redis-realtime-pgbouncer) · [CI/CD & migration](#-cicd--migration) · [Service identity](#-service-identity) · [Sao lưu & khôi phục](#-sao-lưu--khôi-phục) · [Lộ trình bảo mật](#-lộ-trình-bảo-mật)
+5. [Chống lạm dụng & DDoS](#-chống-lạm-dụng--ddos) · [Hiệu năng & mở rộng](#-hiệu-năng--mở-rộng-redis-realtime-pgbouncer) · [CI/CD & migration](#-cicd--migration) · [Service identity](#-service-identity) · [Service workspace](#-service-workspace-lịch-sử-chương) · [Sao lưu & khôi phục](#-sao-lưu--khôi-phục) · [Lộ trình bảo mật](#-lộ-trình-bảo-mật)
 6. [Hàng đợi thông báo (RabbitMQ)](#-hàng-đợi-thông-báo-rabbitmq)
 7. [Tìm kiếm với Elasticsearch](#-tìm-kiếm-với-elasticsearch)
 8. [Trình soạn thảo rich text](#️-trình-soạn-thảo-rich-text-ckeditor-5) · [Độ phân giải ảnh](#-độ-phân-giải-ảnh-cho-người-đọc) · [Hiệu ứng tải trang](#-hiệu-ứng-tải-trang)
@@ -78,6 +78,7 @@ Trình duyệt gọi `/api/v1/...` và `/uploads/...` cùng origin; qua gateway 
 ├── sql/database.sql                  # schema + dữ liệu mẫu, tự nạp khi tạo volume Postgres mới
 ├── uploads/                          # ảnh người dùng tải lên (mount vào backend và frontend)
 ├── services/identity/                # service Go: tài khoản, mật khẩu, phiên, vai trò (xem mục Service identity)
+├── services/workspace/               # service Go: nội dung chương + mọi phiên bản (xem mục Service workspace)
 ├── events/                           # JSON Schema của mọi sự kiện trên exchange novelhub.events
 ├── postgres/provision.sh             # container db-init: mỗi service một database + role riêng
 ├── backup/                           # container sao lưu: Dockerfile + backup.sh (xem Sao lưu & khôi phục)
@@ -128,6 +129,7 @@ Chạy không qua Docker (cần Postgres sẵn): `yarn dev:local` (backend + fro
 | `SEARCH_INDEX` | `novel_stories` | Tên index |
 | `SEARCH_PORT` | `9201` | Cổng publish trên máy host (localhost) |
 | `IDENTITY_DB_PASSWORD` / `IDENTITY_JWT_SECRET` / `AUTH_HEADER_KEY` | *(không có)* | **Bắt buộc**, service identity: mật khẩu role `identity`, khóa ký cookie `nh_access`, khóa ký header `X-User-*` (dùng chung identity + backend). `launch.py` tự sinh |
+| `WORKSPACE_DB_PASSWORD` | *(không có)* | **Bắt buộc**, mật khẩu role `workspace` (database `workspace_db`). `launch.py` tự sinh |
 | `ELASTIC_PASSWORD` | *(không có)* | **Bắt buộc**, mật khẩu user `elastic` của Elasticsearch (compose truyền cho backend thành `SEARCH_PASSWORD`). `launch.py` tự sinh. Cố định khi volume `es_data` lần đầu chạy có bảo mật: đổi sau đó phải đổi trong ES hoặc xóa volume (index dựng lại được) |
 | `GATEWAY_BIND` / `GATEWAY_PORT` | `127.0.0.1` / `3000` | Địa chỉ/cổng gateway trên máy host. Mặc định chỉ máy này vào được (đường công khai là Cloudflare tunnel); `GATEWAY_BIND=0.0.0.0` để máy khác trong LAN vào |
 | `SERVICE_NAME` | `backend` | Trường `service` trong log JSON (compose đặt `worker`, `export-worker`) |
@@ -203,6 +205,20 @@ Service đầu tiên tách khỏi backend (`Plan/microservices.md`, chi tiết `
 - Chuyển dữ liệu: `identity import-legacy` chép users/user_roles/token chưa dùng từ `novel_platform`, giữ UUID, chỉ thêm phần thiếu (chạy lại an toàn). `scripts/migrate.sh` và `launch.py` chạy nó mỗi lần (nhờ vậy tài khoản mẫu của bản cài mới cũng có trong identity). Lần chuyển đầu: mọi người **đăng nhập lại một lần** (token JWT cũ không còn dùng).
 - Test: `cd services/identity && go test ./...` (test đơn vị); thêm `IDENTITY_TEST_DATABASE_URL=postgres://…/identity_test` (+ `IDENTITY_TEST_REDIS_URL`) để chạy test tích hợp (**xóa sạch database đó**). CI chạy cả hai với Postgres/Redis riêng.
 - Biến môi trường mới (launch.py tự sinh): `IDENTITY_DB_PASSWORD`, `IDENTITY_JWT_SECRET`, `AUTH_HEADER_KEY`.
+
+## 📝 Service workspace (lịch sử chương)
+
+Service thứ hai tách khỏi backend (`Plan/chapter-workspace.md`, giai đoạn 1). Workspace là **nơi duy nhất giữ nội dung chương** và mọi phiên bản của nó; bảng `chapters` ở backend chỉ là **bản đọc** (độc giả vẫn đọc từ đó, có cache, không chậm đi).
+
+- `services/workspace/` (Go, image `scratch`, `mem_limit: 128m`). Database riêng `workspace_db`, role riêng `workspace` (`db-init` tạo); migration nhúng (`services/workspace/migrations/`).
+- **Lưu theo đoạn, khóa là hash:** `content_blocks(hash, data)` (sha256 của JSON chuẩn hóa của đoạn), mỗi phiên bản chỉ là mảng hash (`chapter_revisions`), `chapter_heads` giữ phiên bản hiện tại. Bản chính thức **không bao giờ bị ghi đè**: tạo, sửa, khôi phục bản cũ (rewind), xóa, khôi phục chương xóa đều là **phiên bản mới** (`source` = `import|create|edit|rewind|delete|restore`). Giữ lịch sử mãi.
+- **Đường ghi:** nội dung luôn đi qua backend (lọc HTML bằng bộ lọc sẵn có) → API nội bộ của workspace (`X-Internal-Auth` ký HMAC bằng `AUTH_HEADER_KEY`, hạn 2 phút): `POST /internal/chapters` (đăng = v1), `POST /internal/chapters/:id/revisions` (sửa, kèm `expected_version`: hai người sửa cùng lúc thì người sau nhận 409 thay vì đè), `POST /internal/chapters/:id/delete`, `GET /internal/chapters/:id`. Backend áp phiên bản trả về vào `chapters` **ngay** (người sửa được chuyển tới chương mới không phải chờ), rồi lần nữa qua sự kiện (lúc đó bỏ qua vì đã có).
+- **Sự kiện** `workspace.revision.merged` (outbox → `novelhub.events`, schema ở `events/`) mang cả phiên bản (meta + mọi đoạn). Worker backend (hàng đợi `backend.workspace`) áp dụng khi `version` mới hơn số đã ghi ở `ws_chapter_versions` (nhớ cả chương đã xóa, nên sự kiện trễ không làm sống lại chương). Xóa chương: xóa dòng đọc nhưng **giữ bình luận** (khôi phục cùng UUID thì bình luận gắn lại). Chỉ chương mới (`create`) mới báo người theo dõi.
+- **API công khai** `/api/ws/*` (gateway bỏ tiền tố, vẫn qua `auth_request` nên có header danh tính ký): `GET /chapters/:id/revisions` (danh sách phiên bản), `GET /chapters/:id/revisions/:v`, `GET /chapters/:id/compare?from=&to=` (so theo đoạn bằng hash, LCS; so từng chữ làm ở trình duyệt), `POST /chapters/:id/rewind {to_version}`.
+- **Quyền** hỏi backend `GET /internal/permissions?user=&story=` (cache 30 giây trong workspace): *người đóng góp* (chủ truyện, thành viên nhóm, cộng tác viên) xem lịch sử và so sánh; *người giữ truyện* (chủ truyện, Trưởng nhóm/Mod nhóm) khôi phục bản cũ. Truyện đang bị gỡ thì không khôi phục được (409).
+- **Chuyển dữ liệu:** `workspace import` đọc `GET backend /internal/chapters/export` (phân trang), mỗi chương chưa có thành v1 (`source=import`); `scripts/migrate.sh` và `launch.py` chạy mỗi lần (an toàn khi chạy lại, cần backend đang chạy).
+- Giao diện: trang `/truyen/[slug]/lich-su/[chapterId]` (nút **Lịch sử** ở trang đọc cho người đóng góp). Thử nhanh: `python scripts/workspace-smoke.py`.
+- Test: `cd services/workspace && go test ./...`; thêm `WORKSPACE_TEST_DATABASE_URL=postgres://…/workspace_test` để chạy test tích hợp (**xóa sạch database đó**). CI chạy cả hai và quét image bằng Trivy.
 
 ## 💾 Sao lưu & khôi phục
 
@@ -320,6 +336,7 @@ Các trang danh sách/chi tiết vẫn giữ khung xám nhấp nháy (skeleton) 
 | `/kham-pha` | Khám phá: tìm kiếm, lọc (loại, tình trạng, ngôn ngữ, số chương, thể loại gồm/loại trừ), sắp xếp, xem lưới/danh sách, phân trang |
 | `/truyen/[slug]` | Chi tiết truyện: danh sách tập/chương (kèm mục "Chưa phân tập"), banner (thống kê lượt xem, người theo dõi, chương; đọc tiếp/đọc từ đầu/chương mới nhất; thanh công cụ theo dõi, lưu vào album, thảo luận Fandom, tải xuống, báo cáo vi phạm), thanh Quản lý dưới banner cho nhóm truyện/Admin/Mod, tag thể loại rồi đến tóm tắt, bình luận; người quản lý được sửa/xóa chương, đổi tên/xóa/sắp xếp lại tập |
 | `/truyen/[slug]/[chapterSlug]` | Đọc truyện chữ (cỡ chữ, font, nền, giãn dòng) và manga, bookmark từng dòng, ghi chú dịch giả, bình luận theo chương, báo cáo, sửa/xóa chương |
+| `/truyen/[slug]/lich-su/[chapterId]` | Lịch sử phiên bản của chương (người đóng góp của truyện): danh sách phiên bản, so sánh hai bản (theo đoạn và từng chữ), người giữ truyện khôi phục bản cũ thành phiên bản mới |
 | `/bookmark` | Tủ truyện theo dõi và danh sách dòng đã bookmark |
 | `/lich-su` | Lịch sử đọc, "đọc tiếp", xóa từng mục hoặc toàn bộ |
 | `/dang-truyen`, `/dang-truyen/sua/[slug]` | Đăng truyện mới, sửa thông tin truyện, thể loại, cộng tác viên |
@@ -349,7 +366,7 @@ Admin/Mod cũng không có quyền gì đặc biệt trong nhóm dịch (sửa n
 - Khi chương được xuất bản, hệ thống tạo thông báo `chapter_update` cho người theo dõi truyện.
 - **Xóa truyện** (xóa hẳn): chỉ người đăng truyện. **Gỡ truyện**: Admin/Mod (`POST /stories/:id/remove`, `approval_status = rejected`, ghi `removed_by/removed_at`), mọi danh sách, tìm kiếm, gợi ý bỏ qua nó; trang truyện vẫn mở được cho nhóm đăng truyện và Admin/Mod, kèm banner. Khôi phục: `POST /stories/:id/restore`.
 - **Xóa chương**: người đăng chương, chủ truyện, leader/mod của nhóm (Admin/Mod không xóa chương, họ gỡ cả truyện).
-- **Sửa chương đã đăng** (`PUT /chapters/:id`): người đăng chương, chủ truyện, leader/mod của nhóm. Sửa trực tiếp, có hiệu lực ngay, **không** gửi lại thông báo và không đổi `last_chapter_at`. Đổi sang số chương đã tồn tại sẽ bị từ chối (409).
+- **Sửa chương đã đăng** (`PUT /chapters/:id`): người đăng chương, chủ truyện, leader/mod của nhóm. Có hiệu lực ngay, mỗi lần lưu là một **phiên bản mới** ở service workspace (bản cũ còn trong lịch sử, khôi phục được), **không** gửi lại thông báo và không đổi `last_chapter_at`. Đổi sang số chương đã tồn tại sẽ bị từ chối (409).
 - **Quản lý tập**: ai quản lý được truyện thì đổi tên, xóa, sắp xếp lại được các tập. Xóa tập **không xóa chương**: các chương chuyển sang mục "Chưa phân tập" (API trả về ở `unassigned_chapters`).
 - **Bình luận**: chỉ tác giả được sửa; tác giả hoặc Admin/Mod được xóa (xóa mềm, kéo theo các trả lời và trừ lại bộ đếm).
 - **Báo cáo vi phạm**: mọi người dùng đã đăng nhập báo cáo được truyện, chương, bình luận, bài viết (mỗi người một báo cáo đang chờ cho mỗi nội dung); chỉ Admin/Mod xem và xử lý. Chống spam: tối đa 10 báo cáo/giờ và 30 báo cáo/24 giờ mỗi người; mỗi người chỉ một báo cáo đang chờ cho mỗi nội dung (unique index `uq_reports_pending`, bấm nhiều lần cũng chỉ ghi một); báo cáo cũ vừa được xử lý thì phải chờ 24 giờ mới báo cáo lại nội dung đó.
@@ -369,6 +386,7 @@ Schema thật gồm 31 bảng và 2 view (`sql/database.sql`). Nhóm chính:
 | Tương tác | `bookmarks`, `reading_history`, `comments`, `comment_likes`, `notifications`, `broadcast_notifications`* |
 | Fandom | `posts`, `post_tags`, `post_reactions` |
 | Kiểm duyệt | `reports` |
+| Workspace | `ws_chapter_versions` (migration `023_ws_chapter_versions.sql`): phiên bản workspace mới nhất đã áp vào bản đọc `chapters`, gồm cả chương đã xóa. Nội dung và lịch sử nằm ở `workspace_db` (xem [Service workspace](#-service-workspace-lịch-sử-chương)) |
 | View | `v_trending_stories`, `v_recently_updated_stories` |
 
 `*` = bảng đã có trong DB nhưng **chưa có API hay giao diện nào dùng** (xem Hạn chế).
@@ -412,7 +430,8 @@ Ghi chú thực tế: bảng `users` **không có** cột `role`, `coins`, `exp_
 
 **Chương**
 - `POST /chapters/submissions` (Auth, đăng chương: xuất bản ngay, hoặc lưu nháp với `is_draft`)
-- `GET /chapters/:id` (Auth, dữ liệu để sửa), `PUT /chapters/:id` (Auth, sửa chương đã đăng), `DELETE /chapters/:id` (Auth)
+- `GET /chapters/:id` (Auth, dữ liệu để sửa, kèm `ws_version`), `PUT /chapters/:id` (Auth, sửa chương đã đăng; gửi lại `expected_version` = `ws_version`, đã có người sửa trước thì 409), `DELETE /chapters/:id` (Auth)
+- Lịch sử, so sánh, khôi phục bản cũ: `/api/ws/*` (xem [Service workspace](#-service-workspace-lịch-sử-chương))
 
 **Theo dõi, Bookmark, Lịch sử**
 - `GET /favorites`, `POST /favorites/toggle`, `GET /favorites/status/:storyId`
@@ -473,8 +492,8 @@ Email có dạng `<tên ngắn>@novelhub.vn` (ví dụ `admin@novelhub.vn`, `sak
 ## ⚠️ Hạn chế đã biết
 
 **Chưa có chức năng**
-- Sửa chương chưa có lịch sử phiên bản (sửa là ghi đè).
-- Bản nháp chương lưu trên server (`chapter_submissions` trạng thái `draft`) chưa có trang nào để xem lại; nháp trong trình duyệt (`localStorage`) thì trang đăng chương tự gợi ý khôi phục.
+- Workspace mới có lịch sử bản chính thức (giai đoạn 1): chưa có nháp riêng, đề xuất/gộp, giao việc (giai đoạn 2–4 trong `Plan/chapter-workspace.md`).
+- Bản nháp chương lưu trên server (`chapter_submissions` trạng thái `draft`, chưa chuyển sang workspace) chưa có trang nào để xem lại; nháp trong trình duyệt (`localStorage`) thì trang đăng chương tự gợi ý khôi phục.
 - Chương không gỡ riêng được: Admin/Mod chỉ gỡ cả truyện. Bài viết do tác giả tự xóa hoặc bị ẩn khi xóa tài khoản (`purge_content`) không nằm trong `/da-go`.
 - Báo cáo vi phạm chưa tự ẩn/xóa nội dung: Admin/Mod phải tự xử lý rồi đánh dấu báo cáo.
 - Các bảng `user_follows`, `broadcast_notifications` chưa được code sử dụng.

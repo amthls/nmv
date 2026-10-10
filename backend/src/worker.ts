@@ -5,6 +5,7 @@ import { insertNotifications, processNotificationJob, NotifyItem } from './servi
 import { scheduleRecommender } from './services/recommender/train';
 import { flushViews } from './services/viewCounter';
 import { startIdentityConsumer } from './services/identitySync';
+import { startWorkspaceConsumer } from './services/workspaceSync';
 
 /**
  * Queue worker: `node dist/worker.js` (its own container in docker-compose, same image as the API).
@@ -119,19 +120,23 @@ async function main() {
       await new Promise((r) => setTimeout(r, Math.min(2000 * attempt, 15000)));
     }
   }
-  // identity.user.* -> the users/user_roles copy, identity.alert -> admin notifications
-  let identityConsumer: { close: () => Promise<void> } | null = null;
-  for (let attempt = 1; !identityConsumer; attempt++) {
-    try {
-      identityConsumer = await startIdentityConsumer(() => {
-        if (!shuttingDown) {
-          console.error('[Worker] identity event connection lost, exiting so the container restarts');
-          process.exit(1);
-        }
-      });
-    } catch (err: any) {
-      console.warn(`[Worker] cannot start identity consumer (attempt ${attempt}): ${err.message}`);
-      await new Promise((r) => setTimeout(r, Math.min(2000 * attempt, 15000)));
+  // Other services' events: identity.* -> users/user_roles copy + admin alerts, workspace.* -> chapters reading copy
+  const eventConsumers: { close: () => Promise<void> }[] = [];
+  const lost = (what: string) => () => {
+    if (!shuttingDown) {
+      console.error(`[Worker] ${what} event connection lost, exiting so the container restarts`);
+      process.exit(1);
+    }
+  };
+  for (const [name, start] of [['identity', startIdentityConsumer], ['workspace', startWorkspaceConsumer]] as const) {
+    for (let attempt = 1; ; attempt++) {
+      try {
+        eventConsumers.push(await start(lost(name)));
+        break;
+      } catch (err: any) {
+        console.warn(`[Worker] cannot start ${name} consumer (attempt ${attempt}): ${err.message}`);
+        await new Promise((r) => setTimeout(r, Math.min(2000 * attempt, 15000)));
+      }
     }
   }
 
@@ -155,7 +160,7 @@ async function main() {
     shuttingDown = true;
     console.log(`[Worker] ${signal}: draining...`);
     await consumer?.close();
-    await identityConsumer?.close();
+    for (const c of eventConsumers) await c.close();
     await flush();
     await flushViewCounts();
     while (heavyActive > 0) await new Promise((r) => setTimeout(r, 200));

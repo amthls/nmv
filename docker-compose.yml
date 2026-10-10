@@ -83,6 +83,7 @@ services:
       - frontend
       - backend
       - identity # auth_request target for every API call
+      - workspace
     security_opt:
       - no-new-privileges:true
     networks:
@@ -190,6 +191,7 @@ services:
       CORS_ORIGIN: http://localhost:3000
       AUTH_HEADER_KEY: ${AUTH_HEADER_KEY:?Set AUTH_HEADER_KEY in .env (openssl rand -hex 32)} # verifies the gateway's X-User-* headers
       IDENTITY_INTERNAL_URL: http://identity:8080
+      WORKSPACE_INTERNAL_URL: http://workspace:8080
       ENABLE_DEMO_ACCOUNTS: ${ENABLE_DEMO_ACCOUNTS:-false}
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672
       SEARCH_URL: http://search:9200
@@ -300,8 +302,9 @@ services:
       PGUSER: ${POSTGRES_USER:-postgres}
       PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (openssl rand -hex 24)}
       POSTGRES_DB: ${POSTGRES_DB:-novel_platform}
-      SERVICE_DBS: identity
+      SERVICE_DBS: identity workspace
       IDENTITY_DB_PASSWORD: ${IDENTITY_DB_PASSWORD:?Set IDENTITY_DB_PASSWORD in .env}
+      WORKSPACE_DB_PASSWORD: ${WORKSPACE_DB_PASSWORD:?Set WORKSPACE_DB_PASSWORD in .env}
     volumes:
       - ./postgres/provision.sh:/provision.sh:ro
     depends_on:
@@ -336,6 +339,34 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_started # cache only; revocation falls back to the database
+      rabbitmq:
+        condition: service_started # events wait in the outbox until the broker is back
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - edge
+      - data
+
+  # ============================================================================
+  # 2g. workspace (Go): chapter versions (later drafts, proposals, tasks). Own database workspace_db.
+  #     Chapter content always comes through the backend (it sanitizes HTML) on /internal; history, compare
+  #     and rewind are public on /api/ws/*. See Plan/chapter-workspace.md.
+  # ============================================================================
+  workspace:
+    build:
+      context: ./services/workspace
+    image: ${IMAGE_REGISTRY:-local}/nmv-workspace:${IMAGE_TAG:-latest}
+    container_name: novel_workspace
+    restart: unless-stopped
+    environment:
+      WORKSPACE_DATABASE_URL: postgres://workspace:${WORKSPACE_DB_PASSWORD:?Set WORKSPACE_DB_PASSWORD in .env}@postgres:5432/workspace_db
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672
+      AUTH_HEADER_KEY: ${AUTH_HEADER_KEY:?Set AUTH_HEADER_KEY in .env (openssl rand -hex 32)}
+      BACKEND_INTERNAL_URL: http://backend:5000
+    mem_limit: 128m
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
       rabbitmq:
         condition: service_started # events wait in the outbox until the broker is back
     security_opt:

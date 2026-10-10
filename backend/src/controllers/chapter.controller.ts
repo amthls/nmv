@@ -10,8 +10,9 @@ import { InputError, isUuid, optionalUrl, requiredText } from '../utils/validati
 import { insertWithUniqueSlug } from '../utils/ids';
 import { indexStory } from '../services/search.service';
 import { sanitizeRichText, sanitizeChapterHtml, richTextToPlain } from '../utils/richText';
+import { callWorkspace, applyRevisionNow, Revision } from '../services/workspaceSync';
 
-function slugify(text: string) {
+export function slugify(text: string) {
   return text
     .toString()
     .toLowerCase()
@@ -35,7 +36,6 @@ export interface ContentBlock {
 
 const pixelSize = (v: unknown) => (Number.isInteger(v) && (v as number) > 0 && (v as number) <= 100000 ? (v as number) : undefined);
 
-type Db = { query: (text: string, params?: any[]) => Promise<any> };
 
 const BLOCK_TYPES = ['paragraph', 'heading', 'image', 'separator'];
 
@@ -102,7 +102,7 @@ function checkBlocksMatchStoryType(storyType: string, blocks: ContentBlock[], is
 }
 
 /** Plain text of the blocks (inline images as markdown) for search, word count and the `content` column. */
-function blocksToPlainText(blocks: ContentBlock[]): string {
+export function blocksToPlainText(blocks: ContentBlock[]): string {
   return blocks
     .map((b) => {
       let line = b.text || '';
@@ -111,6 +111,20 @@ function blocksToPlainText(blocks: ContentBlock[]): string {
     })
     .filter(Boolean)
     .join('\n\n');
+}
+
+/** Old plain-text body (no blocks): one paragraph block per blank-line-separated paragraph. */
+function textToBlocks(text: string): ContentBlock[] {
+  return text.split(/\n\s*\n/).map((t) => t.trim()).filter(Boolean)
+    .map((t, i) => ({ id: `b${i + 1}`, type: 'paragraph' as const, text: t }));
+}
+
+const authorOf = (req: AuthenticatedRequest) => ({ author_id: req.user!.id, author_name: req.user!.display_name || req.user!.username });
+
+/** A workspace refusal (409 number taken / edited meanwhile / deleted, 404) is the user's to read; anything else is ours. */
+function workspaceFailure(res: Response, r: { status: number; json: any }) {
+  if (r.status === 409 || r.status === 404) return res.status(r.status).json({ success: false, message: r.json?.message || 'Không lưu được chương.' });
+  throw new Error(`workspace ${r.status}: ${r.json?.message || ''}`);
 }
 
 /** Optional translator message shown before / after the chapter text (rich text, may be cleared). */
@@ -199,63 +213,45 @@ export const submitChapter = async (req: AuthenticatedRequest, res: Response) =>
     let fullPlainText = blocksToPlainText(blocks);
     if (blocks.length === 0 && typeof raw_content === 'string') fullPlainText = raw_content;
     const calculatedWordCount = fullPlainText.split(/\s+/).filter(Boolean).length;
-
     const chapterSlug = `chuong-${chapterNumber}-${slugify(title)}`.slice(0, 500);
-    const actualGroupId = story.group_id;
 
-    const initialApproval = isDraft ? 'draft' : 'approved';
-
-    // Submission and (when approved) the public chapter are written together or not at all
-    const client = await pool.connect();
-    let submission: any;
-    let publishedChapterId: string | undefined;
-    try {
-      await client.query('BEGIN');
-      const submissionRes = await client.query(`
-        INSERT INTO chapter_submissions (
-          story_id, volume_id, chapter_number, title, slug,
-          content_blocks, raw_content, word_count,
-          uploader_id, group_id, approval_status, is_active, intro_note, outro_note
-        ) VALUES (
-          $1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10, $11, $12, $13, $14
-        ) RETURNING *;
-      `, [
+    if (!isDraft) {
+      // Publishing: version 1 in the workspace (the content's home), then the reading copy at once
+      const r = await callWorkspace('POST', '/internal/chapters', {
         story_id,
-        volume_id || null,
-        chapterNumber,
-        title,
-        chapterSlug,
-        JSON.stringify(blocks),
-        fullPlainText,
-        calculatedWordCount,
-        uploaderId,
-        actualGroupId || null,
-        initialApproval,
-        initialApproval === 'approved',
-        introNote,
-        outroNote,
-      ]);
-      submission = submissionRes.rows[0];
-
-      if (initialApproval === 'approved') {
-        publishedChapterId = await syncSubmissionToPublicChapter(client, submission);
-      }
-      await client.query('COMMIT');
-    } catch (txErr) {
-      await client.query('ROLLBACK');
-      throw txErr;
-    } finally {
-      client.release();
+        meta: { title, chapter_number: chapterNumber, volume_id: volume_id || null, intro_note: introNote, outro_note: outroNote },
+        blocks: blocks.length === 0 && typeof raw_content === 'string' ? textToBlocks(raw_content) : blocks,
+        ...authorOf(req),
+      });
+      if (r.status !== 201) return workspaceFailure(res, r);
+      const rev: Revision = r.json.data;
+      await applyRevisionNow(rev);
+      return res.status(201).json({
+        success: true,
+        message: 'Đăng chương thành công và đã xuất bản cho độc giả',
+        data: { id: rev.chapter_id, story_id, chapter_number: chapterNumber, title, slug: chapterSlug, version: rev.version },
+      });
     }
 
-    if (publishedChapterId) notifyChapterPublished(submission, publishedChapterId);
+    // Drafts stay in chapter_submissions until workspace drafts replace them (Plan/chapter-workspace.md, stage 2)
+    const submissionRes = await pool.query(`
+      INSERT INTO chapter_submissions (
+        story_id, volume_id, chapter_number, title, slug,
+        content_blocks, raw_content, word_count,
+        uploader_id, group_id, approval_status, is_active, intro_note, outro_note
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10, 'draft', false, $11, $12
+      ) RETURNING *;
+    `, [
+      story_id, volume_id || null, chapterNumber, title, chapterSlug,
+      JSON.stringify(blocks), fullPlainText, calculatedWordCount,
+      uploaderId, story.group_id || null, introNote, outroNote,
+    ]);
 
     res.status(201).json({
       success: true,
-      message: isDraft
-        ? 'Đã lưu bản nháp chương thành công'
-        : 'Đăng chương thành công và đã xuất bản cho độc giả',
-      data: submission,
+      message: 'Đã lưu bản nháp chương thành công',
+      data: submissionRes.rows[0],
     });
   } catch (error: any) {
     if (sendClientError(res, error)) return;
@@ -263,85 +259,8 @@ export const submitChapter = async (req: AuthenticatedRequest, res: Response) =>
   }
 };
 
-/** Publishes a submission as the public chapter (run inside the caller's transaction). */
-async function syncSubmissionToPublicChapter(db: Db, sub: any): Promise<string | undefined> {
-  // Extract line annotations and inline images
-  const translatorNotes = sub.content_blocks
-    ? sub.content_blocks.filter((b: any) => b.note).map((b: any) => ({ text: b.text, note: b.note }))
-    : [];
-
-  const chapterRes = await db.query(`
-    INSERT INTO chapters (
-      story_id, volume_id, chapter_number, title, slug,
-      content, content_blocks, word_count, is_published,
-      approval_status, uploader_id, group_id, translator_notes, intro_note, outro_note, published_at
-    ) VALUES (
-      $1, $2, $3, $4, $5, $6, $7::jsonb, $8, true, 'approved', $9, $10, $11::jsonb, $12, $13, NOW()
-    )
-    ON CONFLICT (story_id, chapter_number) DO UPDATE SET
-      volume_id = EXCLUDED.volume_id,
-      title = EXCLUDED.title,
-      slug = EXCLUDED.slug,
-      content = EXCLUDED.content,
-      content_blocks = EXCLUDED.content_blocks,
-      word_count = EXCLUDED.word_count,
-      uploader_id = EXCLUDED.uploader_id,
-      group_id = EXCLUDED.group_id,
-      translator_notes = EXCLUDED.translator_notes,
-      intro_note = EXCLUDED.intro_note,
-      outro_note = EXCLUDED.outro_note,
-      updated_at = NOW()
-    RETURNING id;
-  `, [
-    sub.story_id,
-    sub.volume_id || null,
-    sub.chapter_number,
-    sub.title,
-    sub.slug,
-    sub.raw_content,
-    JSON.stringify(sub.content_blocks || []),
-    sub.word_count,
-    sub.uploader_id,
-    sub.group_id,
-    JSON.stringify(translatorNotes),
-    sub.intro_note || null,
-    sub.outro_note || null,
-  ]);
-
-  const chapterId = chapterRes.rows[0]?.id;
-
-  // Rebuild inline-image pages (a new version may have fewer images than the old one)
-  if (chapterId) await db.query(`DELETE FROM chapter_pages WHERE chapter_id = $1`, [chapterId]);
-  if (chapterId && Array.isArray(sub.content_blocks)) {
-    const inlineImages = sub.content_blocks.filter((b: any) => b.image_url);
-    for (let i = 0; i < inlineImages.length; i++) {
-      await db.query(`
-        INSERT INTO chapter_pages (chapter_id, page_number, image_url, width, height)
-        VALUES ($1, $2, $3, $4, $5);
-      `, [chapterId, i + 1, inlineImages[i].image_url, inlineImages[i].width || null, inlineImages[i].height || null]);
-    }
-  }
-
-  // Update story total chapters and last_chapter_at
-  await db.query(`
-    UPDATE stories SET
-      total_chapters = (SELECT count(*) FROM chapters WHERE story_id = $1 AND is_published = true),
-      last_chapter_at = NOW(),
-      updated_at = NOW()
-    WHERE id = $1;
-  `, [sub.story_id]);
-
-  // Mark this submission as active
-  await db.query(`
-    UPDATE chapter_submissions SET is_active = (id = $1)
-    WHERE story_id = $2 AND chapter_number = $3;
-  `, [sub.id, sub.story_id, sub.chapter_number]);
-
-  return chapterId;
-}
-
 /** Fan-out to followers is queue work (RabbitMQ -> worker); call only after the chapter is committed. */
-function notifyChapterPublished(sub: any, chapterId: string) {
+export function notifyChapterPublished(sub: { story_id: string; title: string; uploader_id: string | null }, chapterId: string) {
   enqueueNotificationJob({
     kind: 'chapter_published',
     storyId: sub.story_id,
@@ -406,39 +325,15 @@ export const deleteChapter = async (req: AuthenticatedRequest, res: Response) =>
       });
     }
 
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-
-      // 1. Delete chapter pages, submissions, comments
-      await client.query(`DELETE FROM chapter_pages WHERE chapter_id = $1`, [id]);
-      await client.query(`DELETE FROM chapter_submissions WHERE story_id = $1 AND chapter_number = $2`, [chapter.story_id, chapter.chapter_number]);
-      await client.query(`DELETE FROM comments WHERE target_type = 'chapter' AND target_id = $1`, [id]);
-      await client.query(`DELETE FROM reading_history WHERE chapter_id = $1`, [id]);
-      await client.query(`DELETE FROM story_views WHERE chapter_id = $1`, [id]);
-
-      // 2. Delete chapter
-      await client.query(`DELETE FROM chapters WHERE id = $1`, [id]);
-
-      // 3. Update story total_chapters count
-      await client.query(`
-        UPDATE stories SET
-          total_chapters = (SELECT count(*) FROM chapters WHERE story_id = $1 AND is_published = true),
-          updated_at = NOW()
-        WHERE id = $1;
-      `, [chapter.story_id]);
-
-      await client.query('COMMIT');
-    } catch (txErr) {
-      await client.query('ROLLBACK');
-      throw txErr;
-    } finally {
-      client.release();
-    }
+    // A deletion is a version too: readers lose the chapter, its history (and comments) stay and a story keeper
+    // can bring it back from the chapter history.
+    const r = await callWorkspace('POST', `/internal/chapters/${id}/delete`, authorOf(req));
+    if (r.status !== 200) return workspaceFailure(res, r);
+    await applyRevisionNow(r.json.data);
 
     res.json({
       success: true,
-      message: `Đã xóa Chương ${chapter.chapter_number}: "${chapter.title}" thành công!`,
+      message: `Đã xóa Chương ${chapter.chapter_number}: "${chapter.title}". Người giữ truyện có thể khôi phục trong lịch sử chương.`,
     });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -616,6 +511,10 @@ export const getChapterForEdit = async (req: AuthenticatedRequest, res: Response
     if (!(await canUserModifyChapter({ ...chapter, group_id: chapter.effective_group_id }, req.user.id))) {
       return res.status(403).json({ success: false, message: 'Bạn không có quyền sửa chương này.' });
     }
+    // The form edits the workspace's current version (the reading copy can trail it by an event after a rewind)
+    const ws = await callWorkspace('GET', `/internal/chapters/${id}`);
+    if (ws.status !== 200) return workspaceFailure(res, ws);
+    const rev: Revision = ws.json.data;
     // Manga pages live in chapter_pages (imported chapters may have no image blocks at all)
     const pagesRes = chapter.story_type === 'manga'
       ? await pool.query(`SELECT image_url FROM chapter_pages WHERE chapter_id = $1 ORDER BY page_number`, [id])
@@ -628,14 +527,15 @@ export const getChapterForEdit = async (req: AuthenticatedRequest, res: Response
         story_slug: chapter.story_slug,
         story_title: chapter.story_title,
         story_type: chapter.story_type,
-        volume_id: chapter.volume_id,
-        chapter_number: chapter.chapter_number,
-        title: chapter.title,
+        volume_id: rev.meta.volume_id,
+        chapter_number: rev.meta.chapter_number,
+        title: rev.meta.title,
         content: chapter.content,
-        content_blocks: chapter.content_blocks || [],
-        intro_note: chapter.intro_note || '',
-        outro_note: chapter.outro_note || '',
+        content_blocks: rev.blocks,
+        intro_note: rev.meta.intro_note || '',
+        outro_note: rev.meta.outro_note || '',
         pages: pagesRes.rows.map((r: any) => r.image_url),
+        ws_version: rev.version, // send back as expected_version when saving
       },
     });
   } catch (error: any) {
@@ -690,76 +590,34 @@ export const updateChapter = async (req: AuthenticatedRequest, res: Response) =>
       if (chapter.story_type === 'manga') throw new InputError('Chương truyện tranh không sửa được bằng văn bản.');
       plainText = raw_content;
     }
-    const wordCount = plainText.split(/\s+/).filter(Boolean).length;
-    const translatorNotes = blocks.filter((b: any) => b.note).map((b: any) => ({ text: b.text, note: b.note }));
-    const newSlug = `chuong-${newNumber}-${slugify(newTitle)}`;
     // messages are kept unless the request sends them ('' clears one)
     const introNote = body.intro_note === undefined ? chapter.intro_note : chapterMessage(body.intro_note, 'Lời nhắn đầu chương');
     const outroNote = body.outro_note === undefined ? chapter.outro_note : chapterMessage(body.outro_note, 'Lời nhắn cuối chương');
+    if (!blocksChanged && typeof raw_content === 'string') blocks = textToBlocks(plainText);
 
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-
-      if (volume_id) {
-        const volRes = await client.query(`SELECT 1 FROM volumes WHERE id = $1 AND story_id = $2`, [volume_id, chapter.story_id]);
-        if (volRes.rows.length === 0) {
-          await client.query('ROLLBACK');
-          return res.status(400).json({ success: false, message: 'Tập không thuộc bộ truyện này.' });
-        }
-      }
-      if (newNumber !== Number(chapter.chapter_number)) {
-        const dup = await client.query(
-          `SELECT 1 FROM chapters WHERE story_id = $1 AND chapter_number = $2 AND id <> $3`,
-          [chapter.story_id, newNumber, id]
-        );
-        if (dup.rows.length > 0) {
-          await client.query('ROLLBACK');
-          return res.status(409).json({ success: false, message: `Chương ${newNumber} đã tồn tại trong bộ truyện này.` });
-        }
-      }
-
-      const newVolumeId = volume_id === undefined ? chapter.volume_id : (volume_id || null);
-      const updRes = await client.query(`
-        UPDATE chapters SET
-          title = $1, chapter_number = $2, slug = $3, volume_id = $4,
-          content = $5, content_blocks = $6::jsonb, word_count = $7, translator_notes = $8::jsonb,
-          intro_note = $10, outro_note = $11, updated_at = NOW()
-        WHERE id = $9
-        RETURNING id, title, chapter_number, slug, volume_id, word_count, updated_at;
-      `, [newTitle, newNumber, newSlug, newVolumeId, plainText, JSON.stringify(blocks), wordCount, JSON.stringify(translatorNotes), id, introNote, outroNote]);
-
-      // Rebuild inline-image pages, only when the content itself changed (a title edit keeps the pages as they are)
-      if (blocksChanged) {
-        await client.query(`DELETE FROM chapter_pages WHERE chapter_id = $1`, [id]);
-        const inlineImages = blocks.filter((b: any) => b.image_url);
-        for (let i = 0; i < inlineImages.length; i++) {
-          await client.query(
-            `INSERT INTO chapter_pages (chapter_id, page_number, image_url, width, height) VALUES ($1, $2, $3, $4, $5)`,
-            [id, i + 1, inlineImages[i].image_url, inlineImages[i].width || null, inlineImages[i].height || null]
-          );
-        }
-      }
-
-      // Keep the active submission row in sync so a later re-approve does not resurrect old text
-      await client.query(`
-        UPDATE chapter_submissions SET
-          title = $1, chapter_number = $2, slug = $3, volume_id = $4,
-          content_blocks = $5::jsonb, raw_content = $6, word_count = $7,
-          intro_note = $10, outro_note = $11, updated_at = NOW()
-        WHERE story_id = $8 AND chapter_number = $9 AND is_active = true;
-      `, [newTitle, newNumber, newSlug, newVolumeId, JSON.stringify(blocks), plainText, wordCount, chapter.story_id, chapter.chapter_number, introNote, outroNote]);
-
-      await client.query(`UPDATE stories SET updated_at = NOW() WHERE id = $1`, [chapter.story_id]);
-
-      await client.query('COMMIT');
-      res.json({ success: true, message: 'Đã cập nhật chương.', data: { ...updRes.rows[0], story_slug: chapter.story_slug } });
-    } catch (txErr) {
-      await client.query('ROLLBACK');
-      throw txErr;
-    } finally {
-      client.release();
+    if (volume_id) {
+      const volRes = await pool.query(`SELECT 1 FROM volumes WHERE id = $1 AND story_id = $2`, [volume_id, chapter.story_id]);
+      if (volRes.rows.length === 0) return res.status(400).json({ success: false, message: 'Tập không thuộc bộ truyện này.' });
     }
+    const newVolumeId = volume_id === undefined ? chapter.volume_id : (volume_id || null);
+
+    // Every save is a new version in the workspace; expected_version (from the edit form) stops two editors
+    // from silently overwriting each other. The workspace refuses a number another live chapter has.
+    const expected = Number.isInteger(body.expected_version) ? body.expected_version : 0;
+    const r = await callWorkspace('POST', `/internal/chapters/${id}/revisions`, {
+      meta: { title: newTitle, chapter_number: newNumber, volume_id: newVolumeId, intro_note: introNote || null, outro_note: outroNote || null },
+      blocks,
+      expected_version: expected,
+      ...authorOf(req),
+    });
+    if (r.status !== 200) return workspaceFailure(res, r);
+    const rev: Revision = r.json.data;
+    await applyRevisionNow(rev);
+    res.json({
+      success: true,
+      message: `Đã cập nhật chương (phiên bản ${rev.version}).`,
+      data: { id, title: newTitle, chapter_number: newNumber, slug: `chuong-${newNumber}-${slugify(newTitle)}`.slice(0, 500), volume_id: newVolumeId, version: rev.version, story_slug: chapter.story_slug },
+    });
   } catch (error: any) {
     if (sendClientError(res, error)) return;
     res.status(500).json({ success: false, message: error.message });

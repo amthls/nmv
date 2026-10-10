@@ -87,6 +87,36 @@ jobs:
           IDENTITY_TEST_REDIS_URL: redis://127.0.0.1:6379/0
         run: go test -count=1 ./...
 
+  workspace:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: workspace_test
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U postgres" --health-interval 5s --health-retries 10
+      redis:
+        image: redis:7.4-alpine
+        ports: ["6379:6379"]
+    defaults:
+      run:
+        working-directory: services/workspace
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: services/workspace/go.mod
+          cache-dependency-path: services/workspace/go.sum
+      - name: gofmt
+        run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+      - run: go vet ./...
+      - name: Tests
+        env:
+          WORKSPACE_TEST_DATABASE_URL: postgres://postgres:test@127.0.0.1:5432/workspace_test
+        run: go test -count=1 ./...
+
   smoke:
     needs: typecheck
     runs-on: ubuntu-latest
@@ -106,6 +136,7 @@ jobs:
             echo "IDENTITY_DB_PASSWORD=$(openssl rand -hex 32)"
             echo "IDENTITY_JWT_SECRET=$(openssl rand -hex 32)"
             echo "AUTH_HEADER_KEY=$(openssl rand -hex 32)"
+            echo "WORKSPACE_DB_PASSWORD=$(openssl rand -hex 32)"
           } > .env
 
       - name: Build images
@@ -125,6 +156,15 @@ jobs:
         with:
           scan-type: image
           image-ref: local/nmv-identity:latest
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          trivyignores: .trivyignore
+      - name: Scan workspace image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: local/nmv-workspace:latest
           severity: CRITICAL
           ignore-unfixed: true
           exit-code: '1'

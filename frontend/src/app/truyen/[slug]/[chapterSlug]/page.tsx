@@ -19,6 +19,7 @@ import {
   Clock,
   Trash2,
   Pencil,
+  History,
   CheckCircle2,
   Download,
 } from 'lucide-react';
@@ -328,7 +329,7 @@ export default function ChapterReaderPage() {
 
   const handleDeleteCurrentChapter = async () => {
     if (!chapterData) return;
-    if (!confirm(`Bạn có chắc chắn muốn xóa chương "${chapterData.title}"? Thao tác này không thể hoàn tác.`)) return;
+    if (!confirm(`Xóa chương "${chapterData.title}"? Độc giả sẽ không thấy chương này nữa; người giữ truyện khôi phục được trong lịch sử chương.`)) return;
 
     try {
       const res = await authFetch(`${API_BASE_URL}/chapters/${chapterData.id}`, {
@@ -336,8 +337,8 @@ export default function ChapterReaderPage() {
       });
       const json = await res.json();
       if (res.ok && json.success) {
-        alert('Đã xóa chương thành công.');
-        router.push(`/truyen/${storySlug}`);
+        // The history page of a deleted chapter is where it can be brought back
+        router.push(`/truyen/${storySlug}/lich-su/${chapterData.id}?deleted=1`);
       } else {
         alert(json.message || 'Xóa chương thất bại.');
       }
@@ -537,6 +538,15 @@ export default function ChapterReaderPage() {
                 title="Sửa chương này"
               >
                 <Pencil className="w-4 h-4" />
+              </Link>
+            )}
+            {canManage && (
+              <Link
+                href={`/truyen/${storySlug}/lich-su/${chapterData.id}`}
+                className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300 border border-white/10 transition ml-1"
+                title="Lịch sử phiên bản"
+              >
+                <History className="w-4 h-4" />
               </Link>
             )}
             {canManage && (
