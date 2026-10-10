@@ -60,7 +60,8 @@ func newHarness(t *testing.T) *harness {
 	}))
 	t.Cleanup(backend.Close)
 	s := &server{db: db, now: time.Now, cfg: config{
-		JWTSecret: []byte(strings.Repeat("j", 32)), HeaderKey: []byte(strings.Repeat("k", 32)),
+		JWTSecret: []byte(strings.Repeat("j", 32)), SigKeyBackend: []byte(strings.Repeat("k", 32)),
+		SigKeyWorkspace: []byte(strings.Repeat("w", 32)), InternalKey: []byte(strings.Repeat("i", 32)),
 		SiteURL: "http://site", BackendURL: backend.URL,
 	}}
 	if rURL := os.Getenv("IDENTITY_TEST_REDIS_URL"); rURL != "" {
@@ -236,7 +237,9 @@ func TestVerifyEndpoint(t *testing.T) {
 	}
 	st, hd := get("GET", false)
 	if st != 200 || hd.Get("X-User-Id") != h.userID("kai") || hd.Get("X-User-Roles") != "reader" ||
-		!verifyUserHeaders(h.s.cfg.HeaderKey, hd.Get("X-User-Id"), hd.Get("X-User-Roles"), hd.Get("X-User-Exp"), hd.Get("X-User-Sig"), time.Now()) {
+		!verifyUserHeaders(h.s.cfg.SigKeyBackend, hd.Get("X-User-Id"), hd.Get("X-User-Roles"), hd.Get("X-User-Exp"), hd.Get("X-User-Sig"), time.Now()) ||
+		!verifyUserHeaders(h.s.cfg.SigKeyWorkspace, hd.Get("X-User-Id"), hd.Get("X-User-Roles"), hd.Get("X-User-Exp"), hd.Get("X-User-Sig-Ws"), time.Now()) ||
+		verifyUserHeaders(h.s.cfg.SigKeyWorkspace, hd.Get("X-User-Id"), hd.Get("X-User-Roles"), hd.Get("X-User-Exp"), hd.Get("X-User-Sig"), time.Now()) {
 		t.Fatalf("signed-in GET: %d %v", st, hd)
 	}
 	if st, _ := get("POST", false); st != 403 {

@@ -7,7 +7,7 @@ import { readThroughUser } from '../services/identitySync';
 /**
  * Who is calling. Sign-in lives in the identity service; the gateway asks it about every request
  * (nginx auth_request) and forwards X-User-Id / X-User-Roles / X-User-Exp plus X-User-Sig, an HMAC over
- * them with AUTH_HEADER_KEY. They are believed only with a valid, unexpired signature, so a request that
+ * them with USER_SIG_KEY_BACKEND (the workspace gets its own signature with its own key). They are believed only with a valid, unexpired signature, so a request that
  * reaches the backend any other way (or a client sending these headers itself) is just a guest.
  * Roles come from the headers (fresh from identity); the profile (name, avatar) from the local users copy.
  */
@@ -24,7 +24,13 @@ export interface AuthenticatedRequest extends Request {
   user?: AuthenticatedUser;
 }
 
-const HEADER_KEY = process.env.AUTH_HEADER_KEY || '';
+const HEADER_KEY = process.env.USER_SIG_KEY_BACKEND || '';
+// One key per RECEIVING service: holding another service's key only lets you call that service's internal API
+const INTERNAL_KEYS = {
+  backend: process.env.INTERNAL_KEY_BACKEND || '',
+  identity: process.env.INTERNAL_KEY_IDENTITY || '',
+  workspace: process.env.INTERNAL_KEY_WORKSPACE || '',
+};
 
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) || '';
 
@@ -108,15 +114,17 @@ export const requireRole = (...roles: string[]) => {
   };
 };
 
-/** Service-to-service calls (identity → backend) carry X-Internal-Auth: "<exp>.<hmac('internal|'+exp)>". */
+/** Service-to-service calls carry X-Internal-Auth: "<exp>.<hmac(receiver's INTERNAL_KEY_*, 'internal|'+exp)>". */
 export function internalAuthOK(value: string | undefined, now = Date.now()): boolean {
   const [exp, sig] = String(value || '').split('.');
-  if (!HEADER_KEY || !/^\d+$/.test(exp || '') || Number(exp) * 1000 < now || !/^[0-9a-f]{64}$/.test(sig || '')) return false;
-  const want = crypto.createHmac('sha256', HEADER_KEY).update(`internal|${exp}`).digest();
+  const key = INTERNAL_KEYS.backend;
+  if (!key || !/^\d+$/.test(exp || '') || Number(exp) * 1000 < now || !/^[0-9a-f]{64}$/.test(sig || '')) return false;
+  const want = crypto.createHmac('sha256', key).update(`internal|${exp}`).digest();
   return crypto.timingSafeEqual(want, Buffer.from(sig, 'hex'));
 }
 
-export function internalAuthHeader(now = Date.now()): string {
+/** X-Internal-Auth for a call to another service's internal API. */
+export function internalAuthHeader(to: 'identity' | 'workspace', now = Date.now()): string {
   const exp = String(Math.floor(now / 1000) + 120);
-  return `${exp}.${crypto.createHmac('sha256', HEADER_KEY).update(`internal|${exp}`).digest('hex')}`;
+  return `${exp}.${crypto.createHmac('sha256', INTERNAL_KEYS[to]).update(`internal|${exp}`).digest('hex')}`;
 }

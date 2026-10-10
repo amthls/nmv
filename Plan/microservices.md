@@ -489,7 +489,9 @@ Bẫy (giai đoạn A):
       trang truyện 9 ms (p95 10); đọc chương API 7 ms; trang chương 9 ms (p95 12)
 - [x] Bảo mật nền (phần làm được ngay): gateway xóa `X-User-*` client gửi, chặn `/internal`, CSP/HSTS (đã có); mật khẩu Elasticsearch;
       cổng gateway mặc định `127.0.0.1` (`GATEWAY_BIND`); sửa lỗi nginx: `location /` và `/socket.io/` mất `X-Forwarded-For`/`Host`
-- [ ] Khóa ký nội bộ riêng từng service (cùng service đầu tiên); luật Cloudflare (đăng nhập, bot, chống cào: cần tài khoản Cloudflare của chủ dự án)
+- [x] Khóa riêng từng service (2026-10-10, `security/service-keys`): `USER_SIG_KEY_<svc>` (identity ký `X-User-*` riêng cho từng service nhận),
+      `INTERNAL_KEY_<svc>` (lời gọi nội bộ tới service đó). HMAC, không cần khóa bất đối xứng: identity là bên duy nhất giữ mọi khóa ký người dùng
+- [ ] Luật Cloudflare (đăng nhập, bot, chống cào): **cần tài khoản Cloudflare của chủ dự án**
 - [x] Thời gian chờ cho mọi lời gọi nội bộ (đã có: 3–10 giây ở backend, identity, workspace). ~~Ngắt mạch, giới hạn đồng thời~~: chưa cần
       ở tải hiện tại (timeout đã chặn treo); làm khi đo tải thấy cần
 

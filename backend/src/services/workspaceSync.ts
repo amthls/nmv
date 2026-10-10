@@ -33,7 +33,7 @@ export async function callWorkspace(method: string, path: string, body?: unknown
     method,
     headers: {
       'Content-Type': 'application/json',
-      'X-Internal-Auth': internalAuthHeader(),
+      'X-Internal-Auth': internalAuthHeader('workspace'),
       ...(currentRequestId() ? { 'X-Request-Id': currentRequestId()! } : {}),
     },
     body: body === undefined ? undefined : JSON.stringify(body),

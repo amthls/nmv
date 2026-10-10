@@ -84,7 +84,7 @@ export async function applyUserSnapshot(client: any, u: UserSnapshot, deleted = 
 export async function readThroughUser(id: string): Promise<void> {
   try {
     const res = await fetch(`${IDENTITY_URL}/internal/users/${encodeURIComponent(id)}`, {
-      headers: { 'X-Internal-Auth': internalAuthHeader() },
+      headers: { 'X-Internal-Auth': internalAuthHeader('identity') },
       signal: AbortSignal.timeout(3000),
     });
     if (!res.ok) return;

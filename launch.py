@@ -113,7 +113,8 @@ def ensure_env():
             info("Added a random REDIS_PASSWORD to .env")
             env = read_env(ENV_FILE)
         # identity service secrets: added to older .env files instead of refusing to start
-        added = {k: secrets.token_hex(32) for k in ("IDENTITY_DB_PASSWORD", "IDENTITY_JWT_SECRET", "AUTH_HEADER_KEY", "WORKSPACE_DB_PASSWORD")
+        added = {k: secrets.token_hex(32) for k in ("IDENTITY_DB_PASSWORD", "IDENTITY_JWT_SECRET", "WORKSPACE_DB_PASSWORD",
+                                                         "USER_SIG_KEY_BACKEND", "USER_SIG_KEY_WORKSPACE", "INTERNAL_KEY_BACKEND", "INTERNAL_KEY_IDENTITY", "INTERNAL_KEY_WORKSPACE")
                  if not env.get(k) or env[k] == "change-me"}
         if added:
             set_env_values(added)
@@ -155,7 +156,11 @@ def ensure_env():
         "ELASTIC_PASSWORD": secrets.token_hex(24),
         "IDENTITY_DB_PASSWORD": secrets.token_hex(32),
         "IDENTITY_JWT_SECRET": secrets.token_hex(32),
-        "AUTH_HEADER_KEY": secrets.token_hex(32),
+        "USER_SIG_KEY_BACKEND": secrets.token_hex(32),
+        "USER_SIG_KEY_WORKSPACE": secrets.token_hex(32),
+        "INTERNAL_KEY_BACKEND": secrets.token_hex(32),
+        "INTERNAL_KEY_IDENTITY": secrets.token_hex(32),
+        "INTERNAL_KEY_WORKSPACE": secrets.token_hex(32),
         "WORKSPACE_DB_PASSWORD": secrets.token_hex(32),
         "POSTGRES_PASSWORD": pg_pw,
         "DATABASE_URL": f"postgresql://postgres:{pg_pw}@localhost:5432/novel_platform?schema=public",

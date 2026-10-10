@@ -62,7 +62,7 @@ type Queryable = { query: (text: string, params?: any[]) => Promise<any> };
 export async function grantPublisherRole(_db: Queryable, userId: string, groupId: string | null) {
   fetch(`${IDENTITY_URL}/internal/users/${userId}/roles`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Internal-Auth': internalAuthHeader() },
+    headers: { 'Content-Type': 'application/json', 'X-Internal-Auth': internalAuthHeader('identity') },
     body: JSON.stringify({ role: groupId ? 'translator' : 'author' }),
     signal: AbortSignal.timeout(3000),
   })
