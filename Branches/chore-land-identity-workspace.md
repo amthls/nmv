@@ -3,7 +3,7 @@
 - **Mục tiêu:** Đưa phần còn lại của chuỗi PR #52–#55 (request-id + log, service identity, chuyển đăng nhập, workspace lịch sử chương) vào `main`
 - **Tạo từ:** `origin/main` @ 9775eba, ngày 2026-10-10
 - **Trạng thái:** mở PR
-- **PR:** (chưa mở)
+- **PR:** https://github.com/amthls/nmv/pull/56
 - **Plan:** `Plan/identity.md`, `Plan/chapter-workspace.md`, `Plan/microservices.md`
 
 ## Vì sao có nhánh này
