@@ -9,7 +9,7 @@ Nền tảng đọc **Light Novel (truyện chữ)** và **Manga (truyện tranh
 2. [Cấu trúc thư mục](#-cấu-trúc-thư-mục)
 3. [Khởi chạy](#-khởi-chạy)
 4. [Biến môi trường](#-biến-môi-trường)
-5. [Chống lạm dụng & DDoS](#-chống-lạm-dụng--ddos) · [Hiệu năng & mở rộng](#-hiệu-năng--mở-rộng-redis-realtime-pgbouncer) · [CI/CD & migration](#-cicd--migration) · [Service identity](#-service-identity) · [Service workspace](#-service-workspace-lịch-sử-chương) · [Sự kiện giữa các service](#-sự-kiện-giữa-các-service) · [Sao lưu & khôi phục](#-sao-lưu--khôi-phục) · [Lộ trình bảo mật](#-lộ-trình-bảo-mật)
+5. [Chống lạm dụng & DDoS](#-chống-lạm-dụng--ddos) · [Hiệu năng & mở rộng](#-hiệu-năng--mở-rộng-redis-realtime-pgbouncer) · [CI/CD & migration](#-cicd--migration) · [Service identity](#-service-identity) · [Service workspace](#-service-workspace-lịch-sử-chương) · [Sự kiện giữa các service](#-sự-kiện-giữa-các-service) · [Service media](#-service-media-ảnh-epubpdf) · [Sao lưu & khôi phục](#-sao-lưu--khôi-phục) · [Lộ trình bảo mật](#-lộ-trình-bảo-mật)
 6. [Hàng đợi thông báo (RabbitMQ)](#-hàng-đợi-thông-báo-rabbitmq)
 7. [Tìm kiếm với Elasticsearch](#-tìm-kiếm-với-elasticsearch)
 8. [Trình soạn thảo rich text](#️-trình-soạn-thảo-rich-text-ckeditor-5) · [Độ phân giải ảnh](#-độ-phân-giải-ảnh-cho-người-đọc) · [Hiệu ứng tải trang](#-hiệu-ứng-tải-trang)
@@ -27,7 +27,7 @@ Nền tảng đọc **Light Novel (truyện chữ)** và **Manga (truyện tranh
 | Tầng | Công nghệ |
 |:---|:---|
 | Frontend | Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS, Lucide Icons, CKEditor 5 (trình soạn thảo rich text) |
-| Backend | Node.js 22, Express, TypeScript, header danh tính ký HMAC từ gateway (đăng nhập ở service identity, Go), multer (upload ảnh), sharp (đổi kích thước ảnh), sanitize-html |
+| Backend | Node.js 22, Express, TypeScript, header danh tính ký HMAC từ gateway (đăng nhập ở service identity, Go), sanitize-html; ảnh và EPUB/PDF ở service media (multer, sharp, pdfkit) |
 | Database | PostgreSQL 16 (khóa chính UUID), truy vấn bằng `pg` (raw SQL); Prisma chỉ dùng cho `db pull/generate/studio` |
 | Tìm kiếm | Elasticsearch 9.5 (1 node, đã tối ưu RAM; tùy chọn, có fallback về SQL `ILIKE`) |
 | Hàng đợi | RabbitMQ 3.13 + worker (gửi thông báo), có dự phòng chạy trực tiếp khi broker chết |
@@ -44,10 +44,10 @@ Trình duyệt ──> nginx gateway ──┬── /api/v1, /uploads, /socket.
                                 └── còn lại ──> Next.js                 └─ publish ─> RabbitMQ ──> worker ──> PostgreSQL
                                                                                     worker ──> Redis (gộp lượt xem, đẩy realtime)
 mạng "edge": gateway, frontend, backend
-mạng "data": backend, postgres, pgbouncer, redis, rabbitmq, search, worker, export-worker
+mạng "data": backend, postgres, pgbouncer, redis, rabbitmq, search, worker, media, identity, workspace
 ```
 
-**10 container** (`docker compose ps`): `gateway`, `frontend`, `backend`, `worker`, `export-worker`, `postgres`, `pgbouncer`, `redis`, `search`, `rabbitmq`, cộng `pgadmin` khi bật profile `tools` và `cloudflared` (HTTPS qua Cloudflare Tunnel) khi bật profile `tunnel`. Chỉ `gateway` (cổng 3000) mở ra mạng; backend, Postgres, Redis, Elasticsearch và giao diện quản trị RabbitMQ chỉ nghe trên `127.0.0.1`, còn frontend, pgbouncer và các worker không mở cổng nào. Gateway và frontend **không** nằm trong mạng `data`, nên không chạm được tới Postgres/Redis/RabbitMQ.
+**10 container** (`docker compose ps`): `gateway`, `frontend`, `backend`, `worker`, `media`, `postgres`, `pgbouncer`, `redis`, `search`, `rabbitmq`, cộng `pgadmin` khi bật profile `tools` và `cloudflared` (HTTPS qua Cloudflare Tunnel) khi bật profile `tunnel`. Chỉ `gateway` (cổng 3000) mở ra mạng; backend, Postgres, Redis, Elasticsearch và giao diện quản trị RabbitMQ chỉ nghe trên `127.0.0.1`, còn frontend, pgbouncer và các worker không mở cổng nào. Gateway và frontend **không** nằm trong mạng `data`, nên không chạm được tới Postgres/Redis/RabbitMQ.
 
 Trình duyệt gọi `/api/v1/...` và `/uploads/...` cùng origin; qua gateway các đường dẫn này đi thẳng tới backend. Khi chạy frontend riêng (không có gateway), `frontend/next.config.mjs` vẫn chuyển tiếp sang `http://backend:5000` (địa chỉ **viết cứng**, biến `API_URL` không được dùng).
 
@@ -61,7 +61,6 @@ Trình duyệt gọi `/api/v1/...` và `/uploads/...` cùng origin; qua gateway 
 │   │   │                             # notification, tag, upload, user
 │   │   ├── middlewares/              # auth (requireAuth/optionalAuth/requireRole), upload
 │   │   ├── services/search.service.ts# tích hợp Elasticsearch
-│   │   ├── services/image.service.ts # đổi độ phân giải ảnh theo ?w= (cache trên đĩa)
 │   │   ├── utils/richText.ts         # lọc HTML từ trình soạn thảo (sanitize-html)
 │   │   ├── routes/api.routes.ts      # toàn bộ route /api/v1
 │   │   └── server.ts
@@ -134,7 +133,7 @@ Chạy không qua Docker (cần Postgres sẵn): `yarn dev:local` (backend + fro
 | `WORKSPACE_DB_PASSWORD` | *(không có)* | **Bắt buộc**, mật khẩu role `workspace` (database `workspace_db`). `launch.py` tự sinh |
 | `ELASTIC_PASSWORD` | *(không có)* | **Bắt buộc**, mật khẩu user `elastic` của Elasticsearch (compose truyền cho backend thành `SEARCH_PASSWORD`). `launch.py` tự sinh. Cố định khi volume `es_data` lần đầu chạy có bảo mật: đổi sau đó phải đổi trong ES hoặc xóa volume (index dựng lại được) |
 | `GATEWAY_BIND` / `GATEWAY_PORT` | `127.0.0.1` / `3000` | Địa chỉ/cổng gateway trên máy host. Mặc định chỉ máy này vào được (đường công khai là Cloudflare tunnel); `GATEWAY_BIND=0.0.0.0` để máy khác trong LAN vào |
-| `SERVICE_NAME` | `backend` | Trường `service` trong log JSON (compose đặt `worker`, `export-worker`) |
+| `SERVICE_NAME` | `backend` | Trường `service` trong log JSON (compose đặt `worker`; media mặc định `media`) |
 | `REDIS_PASSWORD` / `REDIS_PORT` | *(không có)* / `6380` | **Bắt buộc** `REDIS_PASSWORD`. Compose tự ghép `REDIS_URL` cho backend và worker |
 | `RESTIC_PASSWORD` | *(không có)* | **Bắt buộc**, khóa mã hóa kho sao lưu `backups/repo`. `launch.py` tự sinh nếu thiếu và **không bao giờ đổi** (mật khẩu mới không mở được bản cũ). Mất nó là mất mọi bản sao lưu: chép ra nơi khác |
 | `REDIS_URL` | compose tự ghép | Để trống (chạy ngoài Docker) thì app vẫn chạy: không cache, rate limit trong RAM, ghi lượt xem thẳng DB, không đẩy realtime (trang tự hỏi lại định kỳ) |
@@ -160,7 +159,8 @@ Chống DDoS băng thông lớn phải làm ở rìa mạng (Cloudflare, tườn
 | `/api/identity/register` | 6 lần/phút, burst 3 |
 | `/api/identity/forgot-password`, `reset-password`, `verify-email`, `resend-verification`, `change-password` | 10 lần/phút, burst 5 |
 | `/api/identity/*` còn lại | 20 yêu cầu/giây, burst 40 |
-| `/api/v1/upload/*` | 30 lần/phút, burst 10, thân tối đa 26MB |
+| `/api/media/upload/*` | 30 lần/phút, burst 10, thân tối đa 26MB |
+| `/api/media/*` còn lại | 20 yêu cầu/giây, burst 40 (tải EPUB/PDF chạy thẳng, không đệm) |
 | `/api/v1/*` | 20 yêu cầu/giây, burst 80 |
 | `/uploads/*` (ảnh) | 20/giây, burst 200, **cache ở gateway** (ảnh thu nhỏ `?w=` chỉ tính một lần) |
 | Trang web | 30/giây, burst 120 |
@@ -237,6 +237,23 @@ Service thứ hai tách khỏi backend (`Plan/chapter-workspace.md`, giai đoạ
 - **Đổi schema** (`events/<tên>.v1.json`): chỉ được **thêm trường** (bên nhận bỏ qua trường lạ). Đổi nghĩa, đổi kiểu hay bỏ trường là phá vỡ → sự kiện mới `….v2.json` với tên mới, phát song song bản cũ cho tới khi mọi bên nhận đã chuyển. Test của mỗi service kiểm mọi sự kiện nó ghi ra khớp schema (CI).
 - **Phát lại (dựng lại bản sao):** `docker compose run --rm identity republish [user-id]`, `docker compose run --rm workspace republish [chapter-id]` gửi lại ảnh chụp hiện tại (không tăng version): bản sao thiếu hoặc cũ thì nhận, bản đã đúng bỏ qua. Bản sao bị sửa tay mà cùng version thì phải đặt `users.identity_version = 0` / xóa dòng `ws_chapter_versions` trước khi phát lại.
 - **Đối soát** (worker backend, 5 phút sau khi khởi động rồi 6 giờ/lần, `backend/src/services/reconcile.ts`): so `GET /internal/stats` của identity, workspace (số dòng + tổng version) với bản sao (`users` có `identity_version > 0`, `ws_chapter_versions`); outbox chưa gửi quá 10 phút; hàng `.dlq` có tin. Có vấn đề → **thông báo cho Admin** (mỗi loại một lần/ngày) kèm lệnh sửa.
+
+## 🖼 Service media (ảnh, EPUB/PDF)
+
+Tách khỏi backend ở giai đoạn D (`Plan/media.md`), TypeScript (`services/media`), database riêng `media_db`, tệp ở `./uploads` và `./exports`.
+- **Ảnh:** gateway chuyển `/uploads/*` (công khai, có cache ở gateway) và `/api/media/*` (bỏ tiền tố) tới media. Tải lên: `POST /api/media/upload/image`,
+  `POST /api/media/upload/images` (tối đa 10 ảnh), `POST /api/media/upload/manga-pages` (`story_id` + tối đa 20 trang; chỉ chủ truyện, thành viên nhóm,
+  cộng tác viên: media hỏi backend `GET /internal/permissions`). Ảnh được kiểm tra là ảnh thật (sharp), trang manga xoay theo EXIF, thu về rộng ≤ 1600px, dải dài cắt thành nhiều phần.
+- **EPUB/PDF:** `POST /api/media/stories/:slug/exports {format, mode, chapter_ids?}`, `GET /api/media/exports/:id` (tiến độ), `GET /api/media/exports/:id/download`.
+  Truyện và chương vẫn ở backend: media hỏi `POST /internal/exports/source` (truyện được tải? chương nào, dấu vân tay) và lấy nội dung đã chuẩn hóa từ
+  `POST /internal/exports/book`. Mỗi tệp lưu theo khóa nội dung (`story_exports.cache_key`), chọn lại đúng các chương đó thì dùng lại tệp. Tệp được dựng
+  **ngay trong container media** (vòng lặp lấy hàng `queued`, `EXPORT_CONCURRENCY` tệp cùng lúc, mặc định 1); không còn hàng RabbitMQ `novel.exports`
+  và container `export-worker`. Tệp không ai tải sau `EXPORT_KEEP_DAYS` ngày (mặc định 7) bị xóa mỗi giờ.
+- Khóa: `USER_SIG_KEY_MEDIA` (identity ký `X-User-Sig-Media`, gateway chuyển thành `X-User-Sig` tới media), gọi backend bằng `INTERNAL_KEY_BACKEND`.
+  Biến mới: `MEDIA_DB_PASSWORD`, `USER_SIG_KEY_MEDIA` (launch.py tự sinh), `MEDIA_MEMORY` (giới hạn RAM, mặc định 1g).
+- Giới hạn tần suất (trong media, bộ đếm trong bộ nhớ): tải ảnh 30/10 phút, trang manga 120/10 phút, ảnh `?w=` 300/phút, yêu cầu xuất 30/10 phút.
+- Crawler (`scripts/crawler.py`) nén ảnh bằng sharp trong container `media`.
+- Test: `cd services/media && yarn test` (chữ ký header).
 
 ## 💾 Sao lưu & khôi phục
 
@@ -318,7 +335,7 @@ Dùng `ckeditor5` 48 + `@ckeditor/ckeditor5-react` 11, giao diện tiếng Việ
 - **Dữ liệu cũ:** nội dung không có thẻ HTML vẫn hiển thị như văn bản thường (giữ xuống dòng).
 - **Xem trước/tìm kiếm:** thẻ trong thẻ truyện, trang chủ, danh sách bài viết và danh sách nhóm được bỏ đi (`stripHtml`); Elasticsearch chỉ index phần chữ của tóm tắt.
 - **Giấy phép:** CKEditor 5 phát hành kép, GPL v2+ hoặc giấy phép thương mại của CKSource. Code đang dùng `licenseKey: 'GPL'`. Nếu dự án này không phát hành theo GPL-tương-thích thì cần mua giấy phép thương mại.
-- **Chèn ảnh:** nút chèn ảnh, kéo thả hoặc dán ảnh đều tải lên `POST /upload/image` (tối đa 25MB) rồi chèn đường dẫn `/uploads/posts/...`. Có chú thích ảnh, chữ thay thế (alt) và đổi cỡ 25/50/75%/gốc. Bộ lọc backend chỉ nhận ảnh nằm trong `/uploads/` của site (ảnh gắn từ trang khác, đường dẫn có `..` hoặc `javascript:` đều bị bỏ), nên bài viết chỉ có ảnh ngoài sẽ bị coi là rỗng.
+- **Chèn ảnh:** nút chèn ảnh, kéo thả hoặc dán ảnh đều tải lên `POST /api/media/upload/image` (tối đa 25MB) rồi chèn đường dẫn `/uploads/posts/...`. Có chú thích ảnh, chữ thay thế (alt) và đổi cỡ 25/50/75%/gốc. Bộ lọc backend chỉ nhận ảnh nằm trong `/uploads/` của site (ảnh gắn từ trang khác, đường dẫn có `..` hoặc `javascript:` đều bị bỏ), nên bài viết chỉ có ảnh ngoài sẽ bị coi là rỗng.
 
 ## 🖼 Độ phân giải ảnh cho người đọc
 
@@ -328,10 +345,10 @@ Mọi ảnh đã tải lên đều lấy được bản thu nhỏ qua tham số 
 GET /uploads/posts/anh.png?w=800   ->  WebP rộng tối đa 800px
 ```
 
-- Chỉ nhận `w` = **480, 800, 1280, 1920** (giá trị khác trả 400). Ảnh gốc không bị sửa; ảnh vốn nhỏ hơn `w`, ảnh GIF và ảnh không tồn tại được trả nguyên bản. Bản đã tạo được lưu ở `/app/.cache/images` (volume `image_cache`, xóa được bất cứ lúc nào) với `Cache-Control: immutable`.
+- Chỉ nhận `w` = **480, 800, 1280, 1920** (giá trị khác trả 400). Ảnh gốc không bị sửa; ảnh vốn nhỏ hơn `w`, ảnh GIF và ảnh không tồn tại được trả nguyên bản. Service media tạo bản thu nhỏ, lưu ở `/app/.cache/images` (volume `image_cache`, xóa được bất cứ lúc nào) với `Cache-Control: immutable`.
 - Người đọc chọn ở **Cài đặt đọc truyện → Độ phân giải ảnh**: Tiết kiệm (480), Cân bằng (800), **Cao (1280, mặc định)**, Gốc. Lựa chọn lưu trong trình duyệt (`localStorage`), áp dụng cho ảnh manga, ảnh minh họa trong chương và ảnh trong bài viết/tóm tắt.
 - Chỉ ảnh trong `/uploads/` được đổi; ảnh ngoài (Unsplash, avatar mẫu...) giữ nguyên. Nếu bản thu nhỏ lỗi, trình duyệt tự dùng ảnh gốc.
-- `POST /upload/image` trả thêm `width` và `height` của ảnh.
+- `POST /api/media/upload/image` trả thêm `width` và `height` của ảnh.
 - Không cần sửa CSDL.
 
 ## ⏳ Hiệu ứng tải trang
@@ -493,7 +510,7 @@ Ghi chú thực tế: bảng `users` **không có** cột `role`, `coins`, `exp_
 - `GET /codes/:code`: tra mã thông minh → `{ type, path }` (không phân biệt hoa thường, chỉ dựa vào số). Nội dung ẩn trả 404 như mã sai: bài nháp hoặc bị gỡ (trừ tác giả/staff), album riêng tư (trừ chủ), người bị khóa/xóa và báo cáo (trừ Admin/Mod)
 - `GET /users/:username`: hồ sơ công khai (trang `/nguoi-dung/:username`), chỉ gồm tên, ảnh, giới thiệu, vai trò công khai, thống kê, nhóm dịch và truyện đã đăng; không có email/cài đặt/lịch sử. Admin/Mod nhận thêm khối `moderation` (email, trạng thái khóa, các thao tác được phép)
 - Quản trị tài khoản (khóa/mở khóa, xóa, phân quyền, tra email): ở identity, phải **nhập lại mật khẩu**. Quy tắc giữ nguyên: không ai tác động lên chính mình hoặc Admin; Mod chỉ tác động lên người dùng thường; Admin và Mod đều cấp được quyền Mod cho người dùng thường, chỉ Admin thu hồi quyền Mod. Backend làm phần của mình khi nhận `identity.user.deleted` (ẩn danh hồ sơ, rời nhóm, bỏ theo dõi, `purge_content` ẩn bài viết/bình luận) và trả lời `GET /internal/users/:id/delete-check` (không xóa Trưởng nhóm duy nhất).
-- `POST /upload/image`, `POST /upload/images` (tối đa 10 ảnh)
+- Tải ảnh, EPUB/PDF: service media `/api/media/*` (xem [Service media](#-service-media-ảnh-epubpdf)).
 
 ## 👥 Tài khoản mẫu
 

@@ -9,8 +9,8 @@ import { ExportBook, ExportChapter, fetchImage, prepareImage } from './content';
  *   manga -> fixed-layout book, one page per image (webtoon strips cut into pages)
  */
 
-export const FONT_DIR = [path.resolve(__dirname, '../../../assets/fonts'), path.resolve(process.cwd(), 'assets/fonts')]
-  .find((d) => fs.existsSync(d)) || path.resolve(__dirname, '../../../assets/fonts');
+export const FONT_DIR = [path.resolve(__dirname, '../../assets/fonts'), path.resolve(process.cwd(), 'assets/fonts')]
+  .find((d) => fs.existsSync(d)) || path.resolve(__dirname, '../../assets/fonts');
 
 export const FONT_FILES = {
   regular: 'Literata-Regular.ttf',

@@ -5,7 +5,7 @@ import { UploadCloud, Image as ImageIcon, X, Loader2, AlertCircle, Check } from 
 import SmartImage from './SmartImage';
 import { apiFetch } from '@/lib/session';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+const MEDIA_URL = '/api/media'; // uploads and EPUB/PDF downloads: the media service
 
 interface ImageUploadDropzoneProps {
   images: string[];
@@ -47,7 +47,7 @@ export default function ImageUploadDropzone({
         formData.append('images', file);
       });
 
-      const res = await apiFetch(`${API_BASE_URL}/upload/images`, {
+      const res = await apiFetch(`${MEDIA_URL}/upload/images`, {
         method: 'POST',
         body: formData,
       });

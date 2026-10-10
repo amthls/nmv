@@ -1,17 +1,15 @@
 ﻿import express from 'express';
 import cors from 'cors';
 import './config/env'; // loads .env and validates required secrets first
-import path from 'path';
 import apiRoutes from './routes/api.routes';
-import { applySecurity, globalApiLimiter, writeLimiter, imageResizeLimiter } from './middlewares/security';
+import { applySecurity, globalApiLimiter, writeLimiter } from './middlewares/security';
 import { connectQueue } from './services/queue.service';
 import { startSearchSync } from './services/search.service';
-import { resizeUploadedImage } from './services/image.service';
 import { visitorCookie } from './services/recommender/events';
 import { attachRealtime } from './services/realtime';
 import { requestContext } from './utils/logger';
 import { identityFromHeaders, internalAuthOK } from './middlewares/auth.middleware';
-import { permissions, exportChapters } from './controllers/internal.controller';
+import { permissions, exportChapters, exportSource, exportBook } from './controllers/internal.controller';
 import { deleteCheck } from './controllers/user.controller';
 
 // Without the keys that verify the gateway's identity headers and internal calls nobody is ever signed in: refuse to start
@@ -61,16 +59,9 @@ app.use((req, _res, next) => {
 // Anonymous visitor id for guest recommendations (API only, not static files)
 app.use('/api/v1', visitorCookie);
 
-// Uploads go through multer (multipart) with their own limits; JSON bodies never need to be big
+// JSON bodies never need to be big (uploads go to the media service)
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
-
-// Static Uploads Folder (Serve stored image assets); ?w=<width> serves a resized copy
-// Only resized variants cost CPU, so only they are rate limited
-app.use('/uploads', (req, res, next) => (req.query.w !== undefined ? imageResizeLimiter(req, res, next) : next()), resizeUploadedImage);
-app.use('/uploads', express.static(path.resolve(__dirname, '../../uploads'), { maxAge: '5m' }));
-app.use('/uploads', express.static(path.resolve(__dirname, '../uploads'), { maxAge: '5m' }));
-app.use('/uploads', express.static(path.resolve(__dirname, './uploads'), { maxAge: '5m' }));
 
 // RESTful API V1
 app.use('/api/v1', globalApiLimiter, writeLimiter, apiRoutes);
@@ -88,6 +79,9 @@ const internal = (fn: (req: express.Request, res: express.Response) => Promise<u
 };
 app.get('/internal/permissions', internal(permissions));
 app.get('/internal/chapters/export', internal(exportChapters));
+// Media -> backend: what an EPUB/PDF may contain, and the content itself
+app.post('/internal/exports/source', internal(exportSource));
+app.post('/internal/exports/book', internal(exportBook));
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -108,18 +102,7 @@ app.use((req, res) => {
 });
 
 // Global Error Handler Middleware
-const UPLOAD_ERRORS: Record<string, string> = {
-  LIMIT_FILE_SIZE: 'Có ảnh nặng quá 25 MB. Hãy giảm dung lượng ảnh rồi tải lại.',
-  LIMIT_FILE_COUNT: 'Gửi quá nhiều ảnh trong một lần.',
-  LIMIT_UNEXPECTED_FILE: 'Trường tải lên không hợp lệ.',
-  LIMIT_PART_COUNT: 'Yêu cầu tải lên có quá nhiều phần.',
-};
-
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  // Upload problems are the client's to fix: answer 400 with a message they can act on
-  if (err?.name === 'MulterError' || /^Chỉ chấp nhận/.test(err?.message || '')) {
-    return res.status(400).json({ success: false, message: UPLOAD_ERRORS[err.code] || err.message });
-  }
   console.error('[Express Global Error]', err);
   res.status(err.status || 500).json({
     success: false,
@@ -129,7 +112,6 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 
 const server = app.listen(PORT, () => {
   console.log(`NovelHub API Server is running on http://localhost:${PORT}`);
-  console.log(`Uploads served on http://localhost:${PORT}/uploads`);
   console.log(`Healthcheck: http://localhost:${PORT}/api/v1/health`);
   startSearchSync();
   connectQueue();

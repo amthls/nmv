@@ -67,8 +67,6 @@ import { getComments, createComment, likeComment, updateComment, deleteComment }
 import { createReport, getReports, resolveReport } from '../controllers/report.controller';
 import { getRemovedContent } from '../controllers/moderation.controller';
 import { resolveCode } from '../controllers/code.controller';
-import { uploadMultipleImages, uploadSingleImage, uploadMangaPages } from '../controllers/upload.controller';
-import { uploadImages, uploadMangaPageFiles } from '../middlewares/upload.middleware';
 import { 
   createStory, 
   createVolume, 
@@ -127,7 +125,6 @@ import {
   getRecStatus
 } from '../controllers/recommendation.controller';
 import { getBackupStatus } from '../controllers/backup.controller';
-import { createExport, getExport, downloadExport } from '../controllers/export.controller';
 import {
   getConversations, getThread, sendDirectMessage,
   getLabels, createLabel, updateLabel, deleteLabel, setConversationLabels,
@@ -135,7 +132,7 @@ import {
 } from '../controllers/message.controller';
 import { queueStatus } from '../services/queue.service';
 import { cacheJson } from '../middlewares/cache';
-import { uploadLimiter, mangaUploadLimiter, searchLimiter, perUserLimiter, exportLimiter } from '../middlewares/security';
+import { searchLimiter, perUserLimiter } from '../middlewares/security';
 
 const router = Router();
 
@@ -165,9 +162,6 @@ router.get('/auth/me', requireAuth, getMe);
 router.get('/auth/accounts', getDemoAccounts);
 
 // File & Image Uploads (Multipart/Form-Data)
-router.post('/upload/images', requireAuth, uploadLimiter, uploadImages.array('images', 10) as any, uploadMultipleImages);
-router.post('/upload/image', requireAuth, uploadLimiter, uploadImages.single('image') as any, uploadSingleImage);
-router.post('/upload/manga-pages', requireAuth, mangaUploadLimiter, uploadMangaPageFiles.array('pages', 20) as any, uploadMangaPages as any);
 
 // Tags & Categories
 router.get('/tags', cacheJson(600), getTags);
@@ -193,10 +187,6 @@ router.delete('/stories/:id/collaborators/:userId', requireAuth, removeStoryColl
 router.post('/stories/:storyId/volumes', requireAuth, createVolume);
 router.put('/stories/:storyId/volumes/reorder', requireAuth, reorderVolumes);
 router.put('/volumes/:id', requireAuth, updateVolume);
-// EPUB/PDF downloads (only for stories whose team turned allow_download on)
-router.post('/stories/:slug/exports', optionalAuth, exportLimiter, createExport);
-router.get('/exports/:id', getExport);
-router.get('/exports/:id/download', downloadExport);
 router.delete('/volumes/:id', requireAuth, deleteVolume);
 
 // Chapters (published straight away, no review)

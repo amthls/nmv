@@ -42,6 +42,7 @@ jobs:
           cache-dependency-path: |
             backend/yarn.lock
             frontend/yarn.lock
+            services/media/yarn.lock
       - name: Backend
         working-directory: backend
         run: |
@@ -54,6 +55,12 @@ jobs:
         run: |
           yarn install --frozen-lockfile
           npx tsc --noEmit -p .
+      - name: Media
+        working-directory: services/media
+        run: |
+          yarn install --frozen-lockfile
+          npx tsc --noEmit -p .
+          yarn test
 
   # Go services: vet + tests (integration tests run against a throwaway Postgres and Redis)
   identity:
@@ -137,10 +144,12 @@ jobs:
             echo "IDENTITY_JWT_SECRET=$(openssl rand -hex 32)"
             echo "USER_SIG_KEY_BACKEND=$(openssl rand -hex 32)"
             echo "USER_SIG_KEY_WORKSPACE=$(openssl rand -hex 32)"
+            echo "USER_SIG_KEY_MEDIA=$(openssl rand -hex 32)"
             echo "INTERNAL_KEY_BACKEND=$(openssl rand -hex 32)"
             echo "INTERNAL_KEY_IDENTITY=$(openssl rand -hex 32)"
             echo "INTERNAL_KEY_WORKSPACE=$(openssl rand -hex 32)"
             echo "WORKSPACE_DB_PASSWORD=$(openssl rand -hex 32)"
+            echo "MEDIA_DB_PASSWORD=$(openssl rand -hex 32)"
           } > .env
 
       - name: Build images
@@ -169,6 +178,15 @@ jobs:
         with:
           scan-type: image
           image-ref: local/nmv-workspace:latest
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          trivyignores: .trivyignore
+      - name: Scan media image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: local/nmv-media:latest
           severity: CRITICAL
           ignore-unfixed: true
           exit-code: '1'

@@ -209,9 +209,6 @@ services:
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       TURNSTILE_SECRET: ${TURNSTILE_SECRET:-} # optional bot check on sign-up / forgot password (with NEXT_PUBLIC_TURNSTILE_SITE_KEY)
     volumes:
-      - ./uploads:/app/uploads
-      - ./exports:/app/exports # built EPUB/PDF files (served only by the download endpoint)
-      - image_cache:/app/.cache # resized copies of uploaded images (safe to delete)
       - ./backups/status:/app/backup-status:ro # status.json written by the backup container
     depends_on:
       pgbouncer:
@@ -266,36 +263,35 @@ services:
       - data
 
   # ============================================================================
-  # 2c. Export worker: builds EPUB/PDF downloads (queue novel.exports). Separate from the
-  #     notification worker so a big manga export never delays notifications.
+  # 2c. media (TS): image uploads, resized images (/uploads ?w=), EPUB/PDF downloads (built in the same process,
+  #     EXPORT_CONCURRENCY at a time). Own database media_db; files in ./uploads and ./exports. See Plan/media.md.
   # ============================================================================
-  export-worker:
-    image: ${IMAGE_REGISTRY:-local}/nmv-backend:${IMAGE_TAG:-latest}
+  media:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: novel_export_worker
-    command: ["node", "dist/exportWorker.js"]
+      context: ./services/media
+    image: ${IMAGE_REGISTRY:-local}/nmv-media:${IMAGE_TAG:-latest}
+    container_name: novel_media
     restart: unless-stopped
     environment:
       NODE_ENV: production
-      SERVICE_NAME: export-worker
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (openssl rand -hex 24)}@postgres:5432/${POSTGRES_DB:-novel_platform}?schema=public
-      RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672
+      MEDIA_DATABASE_URL: postgres://media:${MEDIA_DB_PASSWORD:?Set MEDIA_DB_PASSWORD in .env}@postgres:5432/media_db
+      BACKEND_INTERNAL_URL: http://backend:5000
+      USER_SIG_KEY_MEDIA: ${USER_SIG_KEY_MEDIA:?Set USER_SIG_KEY_MEDIA in .env (openssl rand -hex 32)}
+      INTERNAL_KEY_BACKEND: ${INTERNAL_KEY_BACKEND:?Set INTERNAL_KEY_BACKEND in .env (openssl rand -hex 32)}
       EXPORT_CONCURRENCY: ${EXPORT_CONCURRENCY:-1}
       EXPORT_KEEP_DAYS: ${EXPORT_KEEP_DAYS:-7}
     volumes:
-      - ./uploads:/app/uploads:ro
-      - ./exports:/app/exports
-    mem_limit: ${EXPORT_WORKER_MEMORY:-1g}
+      - ./uploads:/app/uploads
+      - ./exports:/app/exports # built EPUB/PDF files (served only by the download endpoint)
+      - image_cache:/app/.cache # resized copies of uploaded images (safe to delete)
+    mem_limit: ${MEDIA_MEMORY:-1g} # EPUB/PDF of a big manga
     depends_on:
-      postgres:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
     security_opt:
       - no-new-privileges:true
     networks:
+      - edge
       - data
 
   # ============================================================================
@@ -311,9 +307,10 @@ services:
       PGUSER: ${POSTGRES_USER:-postgres}
       PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (openssl rand -hex 24)}
       POSTGRES_DB: ${POSTGRES_DB:-novel_platform}
-      SERVICE_DBS: identity workspace
+      SERVICE_DBS: identity workspace media
       IDENTITY_DB_PASSWORD: ${IDENTITY_DB_PASSWORD:?Set IDENTITY_DB_PASSWORD in .env}
       WORKSPACE_DB_PASSWORD: ${WORKSPACE_DB_PASSWORD:?Set WORKSPACE_DB_PASSWORD in .env}
+      MEDIA_DB_PASSWORD: ${MEDIA_DB_PASSWORD:?Set MEDIA_DB_PASSWORD in .env}
     volumes:
       - ./postgres/provision.sh:/provision.sh:ro
     depends_on:
@@ -339,6 +336,7 @@ services:
       IDENTITY_JWT_SECRET: ${IDENTITY_JWT_SECRET:?Set IDENTITY_JWT_SECRET in .env (openssl rand -hex 32)}
       USER_SIG_KEY_BACKEND: ${USER_SIG_KEY_BACKEND:?Set USER_SIG_KEY_BACKEND in .env (openssl rand -hex 32)}
       USER_SIG_KEY_WORKSPACE: ${USER_SIG_KEY_WORKSPACE:?Set USER_SIG_KEY_WORKSPACE in .env (openssl rand -hex 32)}
+      USER_SIG_KEY_MEDIA: ${USER_SIG_KEY_MEDIA:?Set USER_SIG_KEY_MEDIA in .env (openssl rand -hex 32)}
       INTERNAL_KEY_IDENTITY: ${INTERNAL_KEY_IDENTITY:?Set INTERNAL_KEY_IDENTITY in .env (openssl rand -hex 32)}
       SMTP_URL: ${SMTP_URL:-}
       MAIL_FROM: ${MAIL_FROM:-NovelHub <no-reply@novelhub.local>}

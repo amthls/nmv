@@ -18,6 +18,7 @@ import {
 } from '@/lib/mangaUpload';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+const MEDIA_URL = '/api/media'; // uploads and EPUB/PDF downloads: the media service
 const BATCH_SIZE = 5; // pages per request: small enough for a smooth progress bar
 const SMALL_WIDTH = 700; // narrower pages look blurry on most screens
 const SERVER_MAX_WIDTH = 1600; // the server scales wider pages down to this
@@ -335,7 +336,7 @@ function MangaUploadContent() {
       let failure = '';
       for (let attempt = 1; attempt <= 4 && !results; attempt++) {
         try {
-          results = await uploadPageBatch(API_BASE_URL, story.id, batch.map((p) => p.file), (f) =>
+          results = await uploadPageBatch(MEDIA_URL, story.id, batch.map((p) => p.file), (f) =>
             patchChapter(key, (c) => ({ pages: c.pages.map((p) => (keys.has(p.key) ? { ...p, progress: f } : p)) })),
           );
         } catch (err: any) {

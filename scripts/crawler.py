@@ -632,7 +632,7 @@ SOURCES = {cls.name: cls for cls in (MangaDex, TopTruyen, NetTruyen, Valvrare, T
 
 # ----------------------------------------------------------------------------- image re-encoding
 
-# Runs inside the backend container (which has sharp): every image under the folder becomes a WebP
+# Runs inside the media container (which has sharp): every image under the folder becomes a WebP
 # no wider than 1200px (very tall strips stay JPEG); prints one JSON line per file.
 COMPRESS_JS = r"""
 const fs = require('fs'), path = require('path'), sharp = require('sharp');
@@ -662,9 +662,9 @@ const root = process.argv[1];
 
 
 def compress_folder(slug):
-    """Re-encode a story's images in the backend container; returns {old relative path: info}."""
+    """Re-encode a story's images in the media container; returns {old relative path: info}."""
     res = subprocess.run(
-        ["docker", "compose", "exec", "-T", "backend", "node", "-e", COMPRESS_JS, f"/app/uploads/manga/{slug}"],
+        ["docker", "compose", "exec", "-T", "media", "node", "-e", COMPRESS_JS, f"/app/uploads/manga/{slug}"],
         cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
     )
     out = {}

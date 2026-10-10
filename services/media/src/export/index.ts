@@ -1,9 +1,9 @@
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import { pool } from '../../config/db';
-import { publishExportJob } from '../queue.service';
-import { ExportBook, listExportableChapters, loadBook, MAX_EXPORT_CHAPTERS, MAX_EXPORT_PAGES, storyFingerprint } from './content';
+import { EXPORT_DIR, pool } from '../config';
+import { callBackend } from '../auth';
+import { ExportBook } from './content';
 import { writeEpub } from './epub';
 import { writePdf } from './pdf';
 import { ZipWriter } from './zip';
@@ -11,14 +11,39 @@ import { ZipWriter } from './zip';
 /**
  * EPUB / PDF export jobs.
  *
- *   API  requestExport()  -> story_exports row (cache_key = what the file contains)
- *        already built?   -> answer at once
- *        otherwise        -> RabbitMQ `novel.exports` -> export-worker -> processExport()
- *                            (broker down: run in the API process, one at a time)
+ *   API   requestExport()  -> story_exports row (cache_key = what the file contains)
+ *         already built?   -> answer at once, otherwise the row waits as `queued`
+ *   loop  exportLoop()     -> oldest queued row -> processExport() (its UPDATE ... WHERE status = 'queued' is the claim)
  *
- * Files live in EXPORT_DIR/<export id>/ (NOT under /uploads, which is public): they are only
- * handed out by the download endpoint, after checking the story still allows downloads.
+ * The story and its chapters live in the backend: it says what may be exported (/internal/exports/source) and
+ * sends the content (/internal/exports/book). Files live in EXPORT_DIR/<export id>/ (NOT under /uploads, which is
+ * public): only the download endpoint hands them out, after checking the story still allows downloads.
  */
+
+export const MAX_EXPORT_CHAPTERS = 1000;
+export const MAX_EXPORT_PAGES = 4000; // manga pages in one request
+
+export interface ExportSource {
+  story_id: string;
+  approved: boolean;
+  allow_download: boolean;
+  fingerprint: string;
+  chapters: { id: string; chapter_number: string; fingerprint: string; page_count: number }[];
+}
+
+/** The backend's answer about a story (by slug or id); null when it does not exist. */
+export async function exportSource(story: { slug?: string; story_id?: string }, chapterIds: string[] | null): Promise<ExportSource | null> {
+  const { status, json } = await callBackend('POST', '/internal/exports/source', { ...story, chapter_ids: chapterIds });
+  if (status === 404) return null;
+  if (status !== 200) throw new Error(`backend /internal/exports/source: HTTP ${status}`);
+  return json.data;
+}
+
+async function loadBook(storyId: string, chapterIds: string[]): Promise<ExportBook> {
+  const { status, json } = await callBackend('POST', '/internal/exports/book', { story_id: storyId, chapter_ids: chapterIds }, 120_000);
+  if (status !== 200) throw new Error(`backend /internal/exports/book: HTTP ${status}`);
+  return json.data;
+}
 
 export type ExportFormat = 'epub' | 'pdf';
 export type ExportMode = 'merged' | 'single';
@@ -26,7 +51,6 @@ export type ExportMode = 'merged' | 'single';
 // Bump when the writers change, so files built by older code are rebuilt
 const EXPORT_VERSION = 2;
 
-export const EXPORT_DIR = process.env.EXPORT_DIR || path.resolve(__dirname, '../../../exports');
 const KEEP_DAYS = Number(process.env.EXPORT_KEEP_DAYS || 7);
 
 export class ExportRequestError extends Error {
@@ -61,13 +85,13 @@ const fmtNum = (n: number) => (Number.isInteger(n) ? String(n) : String(n).repla
 // ---------------------------------------------------------------------------- request (API side)
 
 export async function requestExport(params: {
-  storyId: string;
+  source: ExportSource; // from exportSource(): the chapters asked for (all published ones when none were picked)
   format: ExportFormat;
   mode: ExportMode;
-  chapterIds: string[] | null; // null = every published chapter
   userId: string | null;
 }) {
-  const rows = await listExportableChapters(params.storyId, params.chapterIds);
+  const rows = params.source.chapters;
+  const storyId = params.source.story_id;
   if (rows.length === 0) throw new ExportRequestError('Không có chương nào hợp lệ để tải.');
   if (rows.length > MAX_EXPORT_CHAPTERS) {
     throw new ExportRequestError(`Mỗi lần tải tối đa ${MAX_EXPORT_CHAPTERS} chương. Hãy chọn ít chương hơn.`);
@@ -81,8 +105,8 @@ export async function requestExport(params: {
     .createHash('sha256')
     .update(JSON.stringify({
       v: EXPORT_VERSION,
-      story: params.storyId,
-      storyContent: await storyFingerprint(params.storyId),
+      story: storyId,
+      storyContent: params.source.fingerprint,
       format: params.format,
       // one chapter is one file either way
       mode: rows.length === 1 ? 'merged' : params.mode,
@@ -95,15 +119,13 @@ export async function requestExport(params: {
      VALUES ($1, $2, $3, $4::uuid[], $5, $6)
      ON CONFLICT (cache_key) DO UPDATE SET last_used_at = NOW()
      RETURNING *, (xmax = 0) AS inserted`,
-    [params.storyId, params.format, rows.length === 1 ? 'merged' : params.mode, rows.map((r) => r.id), cacheKey, params.userId]
+    [storyId, params.format, rows.length === 1 ? 'merged' : params.mode, rows.map((r) => r.id), cacheKey, params.userId]
   );
   let row = ins.rows[0];
 
   const ageMs = Date.now() - new Date(row.updated_at).getTime();
   const fileMissing = row.status === 'ready' && !(row.file_path && fs.existsSync(path.join(EXPORT_DIR, row.file_path)));
-  const stale =
-    (row.status === 'queued' && ageMs > 2 * 60_000) || // the job message was lost
-    (row.status === 'processing' && ageMs > 15 * 60_000); // the worker died mid-way
+  const stale = row.status === 'processing' && ageMs > 15 * 60_000; // the builder died mid-way
   if (!row.inserted && (row.status === 'failed' || fileMissing || stale)) {
     const reset = await pool.query(
       `UPDATE story_exports SET status = 'queued', progress = 0, error = NULL, file_path = NULL, file_name = NULL, file_size = NULL, updated_at = NOW()
@@ -112,19 +134,39 @@ export async function requestExport(params: {
     );
     row = { ...reset.rows[0], inserted: true };
   }
-  if (row.inserted) await enqueueExport(row.id);
+  if (row.inserted) wakeExportLoop();
   return row;
 }
 
-// ---------------------------------------------------------------------------- queue hand-off
+// ---------------------------------------------------------------------------- build loop
 
-let inlineChain: Promise<void> = Promise.resolve();
+const CONCURRENCY = Math.max(1, Number(process.env.EXPORT_CONCURRENCY || 1));
+let active = 0;
+let wake: (() => void) | null = null;
+export const wakeExportLoop = () => wake?.();
 
-export async function enqueueExport(id: string) {
-  if (await publishExportJob(id)) return;
-  // No broker: build it here, strictly one at a time so the API stays responsive
-  inlineChain = inlineChain.then(() => processExport(id).catch(() => {}));
+/** Builds queued exports, CONCURRENCY at a time, until `stopped()`; checks every 5 s or when a request arrives. */
+export async function exportLoop(stopped: () => boolean) {
+  while (!stopped()) {
+    if (active < CONCURRENCY) {
+      const next = await pool.query(
+        `SELECT id FROM story_exports WHERE status = 'queued' ORDER BY updated_at LIMIT 1`
+      ).catch(() => ({ rows: [] as any[] }));
+      if (next.rows[0]) {
+        active++;
+        processExport(next.rows[0].id).finally(() => { active--; wakeExportLoop(); });
+        continue;
+      }
+    }
+    await new Promise<void>((resolve) => {
+      const t = setTimeout(resolve, 5000);
+      wake = () => { clearTimeout(t); resolve(); };
+    });
+  }
+  while (active > 0) await new Promise((r) => setTimeout(r, 200));
 }
+
+export const exportsActive = () => active;
 
 // ---------------------------------------------------------------------------- build (worker side)
 
@@ -218,19 +260,16 @@ export async function processExport(id: string): Promise<void> {
 }
 
 /**
- * Called when the export worker starts. A build that was running when the previous worker died may
- * be what killed it (e.g. out of memory), so it is marked failed instead of retried forever; the
- * reader can retry it by hand. Jobs still waiting in `queued` are handed back to the queue.
+ * Called when the service starts. A build that was running when the previous process died may be what killed it
+ * (e.g. out of memory), so it is marked failed instead of retried forever; the reader can retry it by hand.
+ * Rows still `queued` are simply picked up by the loop.
+ * shortcut: assumes one media container; with several, only fail rows whose builder is gone (e.g. owner + heartbeat).
  */
-export async function recoverExports(): Promise<string[]> {
+export async function recoverExports() {
   await pool.query(
     `UPDATE story_exports SET status = 'failed', error = 'Quá trình tạo tệp bị gián đoạn. Hãy bấm thử lại.', updated_at = NOW()
       WHERE status = 'processing'`
   );
-  const res = await pool.query(
-    `UPDATE story_exports SET updated_at = NOW() WHERE status = 'queued' AND updated_at < NOW() - INTERVAL '1 minute' RETURNING id`
-  );
-  return res.rows.map((r: any) => r.id);
 }
 
 /** Delete files nobody downloaded for KEEP_DAYS, failed jobs, and folders without a row. */

@@ -29,7 +29,7 @@ import viTranslations from 'ckeditor5/translations/vi.js';
 import 'ckeditor5/ckeditor5.css';
 import { useAuth } from '@/context/AuthContext';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+const MEDIA_URL = '/api/media'; // uploads and EPUB/PDF downloads: the media service
 const MAX_IMAGE_BYTES = 25 * 1024 * 1024; // same limit as the API
 
 // The server only keeps: p, br, strong/b, em/i, u, s, h2-h4, ul/ol/li, blockquote, a, hr,
@@ -59,7 +59,7 @@ export default function RichTextEditorImpl({ value, onChange, placeholder, minHe
           if (file.size > MAX_IMAGE_BYTES) throw new Error('Ảnh vượt quá 25MB.');
           const body = new FormData();
           body.append('image', file);
-          const res = await authFetchRef.current(`${API_BASE_URL}/upload/image`, { method: 'POST', body });
+          const res = await authFetchRef.current(`${MEDIA_URL}/upload/image`, { method: 'POST', body });
           const json = await res.json().catch(() => ({}));
           if (!res.ok || !json.success) throw new Error(json.message || 'Tải ảnh lên thất bại.');
           return { default: json.data.url };
