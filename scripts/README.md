@@ -82,7 +82,6 @@ When the database has no stories yet (or with `--seed`), the script runs these s
 
 | Seeder | Result |
 |:---|:---|
-| `seed-passwords.js` | Sets the password of **every user** to `password123` |
 | `seed-stories.ts` | Adds 8 sample stories (Light Novel and Manga) with volumes and chapters |
 | `seed-fandom.ts` | Deletes and recreates the sample fandom posts |
 

@@ -705,7 +705,7 @@ export default function GroupDetailPage() {
               <form onSubmit={handleAddMember} className="flex flex-col sm:flex-row items-center gap-2">
                 <input
                   type="text"
-                  placeholder="Nhập Username hoặc Email của thành viên..."
+                  placeholder="Nhập tên đăng nhập của thành viên..."
                   value={newMemberInput}
                   onChange={(e) => setNewMemberInput(e.target.value)}
                   className="flex-1 h-10 px-4 rounded-xl bg-white/5 border border-white/10 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-500 transition w-full"

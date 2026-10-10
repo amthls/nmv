@@ -414,7 +414,7 @@ export const updateUserProfile = async (req: AuthenticatedRequest, res: Response
     const result = await pool.query(`
       UPDATE users SET ${sets.join(', ')}
       WHERE id = $${params.length}::uuid
-      RETURNING id, username, email, display_name, avatar_url, banner_url, bio, updated_at;
+      RETURNING id, username, display_name, avatar_url, banner_url, bio, updated_at;
     `, params);
 
     res.json({

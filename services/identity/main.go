@@ -1,7 +1,7 @@
 // identity: accounts, passwords, sessions, site roles and account mail for NovelHub. See Plan/identity.md.
 //
 //	identity                 serve HTTP on :PORT (default 8080)
-//	identity import-legacy   copy accounts from the old backend database (once, at cut-over)
+//	identity seed-demo       add the sample accounts (password123), only into an empty identity_db
 //	identity healthcheck     exit 0 when the local server answers /health (Docker healthcheck)
 package main
 
@@ -49,9 +49,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	if cmd == "import-legacy" {
-		if err := importLegacy(ctx, db, cfg.LegacyURL); err != nil {
-			logError(ctx, "import-legacy: "+err.Error())
+	if cmd == "seed-demo" {
+		if err := seedDemo(ctx, db); err != nil {
+			logError(ctx, "seed-demo: "+err.Error())
 			os.Exit(1)
 		}
 		return

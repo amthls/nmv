@@ -1,6 +1,5 @@
 import '../config/env';
 import crypto from 'crypto';
-import bcrypt from 'bcryptjs';
 import { pool } from '../config/db';
 import { rng } from '../services/recommender/algorithms';
 
@@ -86,7 +85,6 @@ async function simulate(nUsers: number, nGuests: number) {
   if (stories.length < 5) throw new Error('Cần ít nhất 5 truyện đã duyệt có chương để mô phỏng.');
   const rand = rng(20261008);
   const now = Date.now();
-  const passwordHash = await bcrypt.hash(crypto.randomBytes(24).toString('hex'), 8);
 
   const hist: [string, string, string, Date, number][] = []; // user, story, chapter, read_at, seconds
   const favs: [string, string, Date][] = [];
@@ -137,9 +135,9 @@ async function simulate(nUsers: number, nGuests: number) {
   for (let i = 1; i <= nUsers; i++) {
     const name = `${USER_PREFIX}${String(i).padStart(3, '0')}`;
     const ins = await pool.query(
-      `INSERT INTO users (username, email, password_hash, display_name, bio, created_at)
-       VALUES ($1, $2, $3, $4, $5, NOW() - INTERVAL '120 days') RETURNING id`,
-      [name, `${name}@sim.novelhub.local`, passwordHash, `Độc giả mô phỏng ${String(i).padStart(3, '0')}`,
+      `INSERT INTO users (username, display_name, bio, created_at)
+       VALUES ($1, $2, $3, NOW() - INTERVAL '120 days') RETURNING id`,
+      [name, `Độc giả mô phỏng ${String(i).padStart(3, '0')}`,
         'Tài khoản mô phỏng, dùng để huấn luyện hệ thống gợi ý truyện.'],
     );
     userIds.push(ins.rows[0].id);
