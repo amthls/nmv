@@ -190,11 +190,29 @@ chương đã có head; chạy trong `migrate.sh`/`launch.py` như identity. Nh�
 - [x] Build, smoke (`scripts/workspace-smoke.py` 38/38, thêm ca nháp/pull), thử trình duyệt, README, Branches
 - [x] Chủ dự án duyệt giao diện (`/ws`, `/ws/truyen/[slug]`, trình soạn thảo trên nháp, hộp cập nhật; 2026-10-10) → commit, push, PR vào `main`
 
-## Giai đoạn 3: đề xuất, duyệt, gộp
-- [ ] Gửi đề xuất (chụp `draft_rounds`), trả lại kèm góp ý theo đoạn, gửi lại ("thay đổi từ lần trước"), gộp, đóng
-- [ ] Gộp khi bản chính đã đổi: buộc pull/giải xung đột trước
-- [ ] Sửa thẳng của người giữ truyện = nháp gộp ngay
-- [ ] Thông báo qua hàng đợi
+## Giai đoạn 3: đề xuất, duyệt, gộp (nhánh `feat/ws-proposals`)
+
+**Thiết kế giai đoạn 3 (2026-10-10, chủ dự án giao tự làm hết plan):**
+- Chỉ **người giữ truyện** (chủ truyện, Trưởng nhóm/Mod nhóm) đưa vào bản chính: "Đăng" nháp của chính họ = gộp ngay (sửa thẳng).
+  **Người đóng góp** khác (thành viên nhóm, cộng tác viên, kể cả người đã đăng chương đó) bấm **Gửi đề xuất**.
+- Gửi đề xuất: nháp khóa (`status = submitted`), chụp một vòng `draft_rounds` (meta, mảng hash, `base_version`, lời nhắn). Chủ nháp **rút lại** được
+  (vòng `withdrawn`, nháp mở lại). Người giữ truyện: **Gộp** (vòng `merged`) hoặc **Trả lại** kèm lời nhắn (vòng `returned`, nháp mở lại cho chủ sửa).
+  Gửi lại = vòng mới; trang duyệt có tab "Thay đổi từ lần gửi trước" (so mảng hash vòng trước với vòng này).
+- Góp ý theo đoạn `draft_comments (draft, vòng, hash đoạn | NULL = chung, nội dung chữ thường ≤ 2000)`: chủ nháp và người giữ truyện viết/đọc.
+- Gộp khi bản chính đã đổi: người giữ truyện gộp được nếu diff3 **không xung đột** (tự gộp); có xung đột → 409, trả lại để chủ nháp cập nhật.
+  Chủ nháp tự đăng vẫn phải pull trước (như giai đoạn 2).
+- Đường đi: gửi / rút / trả lại / gộp qua **backend** (`/api/v1/drafts/:id/submit|withdraw|return|publish`): backend biết ai là người giữ truyện,
+  kiểm nội dung (không rỗng, tập còn), áp revision ngay và **gửi thông báo qua hàng đợi** (`enqueueNotificationJob`, `reference_type = 'draft'`
+  → bấm mở `/ws/de-xuat/:id`): gửi → người giữ truyện (trừ người gửi), trả lại/gộp → chủ nháp. Góp ý và xem đề xuất gọi thẳng `/api/ws`.
+- Trang `/ws/de-xuat/[id]` (duyệt): thay đổi so với bản chính lúc gửi (theo đoạn + từng chữ), thay đổi từ lần gửi trước, góp ý theo đoạn,
+  nút Gộp / Trả lại (người giữ) hoặc Rút lại / Mở nháp (chủ). `/ws/truyen/[slug]`: mục "Đề xuất chờ gộp". `/ws`: nháp đã gửi hiện "Chờ duyệt".
+
+- [x] Workspace: migration `003_proposals.sql`; API nội bộ submit/withdraw/return + publish nhận đề xuất (tự gộp khi không xung đột); công khai
+      `GET /proposals?story_id=`, `GET /drafts/:id/review`, `POST /drafts/:id/comments`, `can_merge` trong `GET /drafts/:id`; test
+- [x] Backend: quyền người giữ truyện dùng chung (`storyRole`); `publish` chỉ người giữ; `submit|withdraw|return`; thông báo `draft`
+- [x] Frontend: trình soạn thảo (Gửi đề xuất / Đăng theo quyền, trạng thái đã gửi/bị trả lại + góp ý), component diff dùng chung,
+      trang `/ws/de-xuat/[id]`, mục đề xuất ở `/ws/truyen/[slug]` và `/ws`, thông báo bấm mở trang duyệt
+- [x] Smoke (ca đề xuất), README, Branches; PR vào `main`, tự merge
 
 ## Giai đoạn 4: cộng tác
 - [ ] Chia sẻ nháp → bản sao của người giúp → gửi lại cho chủ nháp → nhận cả bản / từng đoạn

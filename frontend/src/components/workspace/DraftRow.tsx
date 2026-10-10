@@ -28,7 +28,9 @@ export function DraftRow({ d, storyTitle }: { d: any; storyTitle?: string }) {
           <span>· lưu {new Date(d.updated_at).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}</span>
         </div>
       </div>
-      {d.chapter_deleted ? (
+      {d.status === 'submitted' ? (
+        <span className="shrink-0 text-[10px] font-bold text-sky-300 bg-sky-500/10 border border-sky-500/30 rounded-full px-2 py-0.5">Chờ duyệt</span>
+      ) : d.chapter_deleted ? (
         <span className="shrink-0 text-[10px] font-bold text-rose-300 bg-rose-500/10 border border-rose-500/30 rounded-full px-2 py-0.5">Chương đã xóa</span>
       ) : behind ? (
         <span className="shrink-0 text-[10px] font-bold text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-full px-2 py-0.5 flex items-center gap-1">

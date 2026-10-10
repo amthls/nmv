@@ -79,6 +79,19 @@ func merge3(base, ours, theirs []string) []mergeChunk {
 			emit(y)
 		case slices.Equal(y, o), slices.Equal(x, y): // only ours, or both the same way
 			emit(x)
+		case len(x) == len(o) && len(y) == len(o):
+			// only replacements: neighbouring paragraphs edited by different sides merge one by one
+			for k := range o {
+				switch {
+				case x[k] == o[k]:
+					emit(y[k : k+1])
+				case y[k] == o[k], x[k] == y[k]:
+					emit(x[k : k+1])
+				default:
+					out = append(out, mergeChunk{Conflict: &blockConflict{ID: fmt.Sprintf("b%d", conflicts), Base: o[k : k+1], Ours: x[k : k+1], Theirs: y[k : k+1]}})
+					conflicts++
+				}
+			}
 		default:
 			out = append(out, mergeChunk{Conflict: &blockConflict{ID: fmt.Sprintf("b%d", conflicts), Base: o, Ours: x, Theirs: y}})
 			conflicts++

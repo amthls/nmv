@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -16,10 +17,12 @@ import (
 const maxOpenDrafts = 50
 
 var (
-	errDraftClosed = errors.New("draft closed")
-	errNotOwner    = errors.New("not the owner")
-	errBehind      = errors.New("official line moved")
-	errTooMany     = errors.New("too many drafts")
+	errDraftClosed   = errors.New("draft closed")
+	errNotOwner      = errors.New("not the owner")
+	errBehind        = errors.New("official line moved")
+	errTooMany       = errors.New("too many drafts")
+	errNotSubmitted  = errors.New("not submitted")
+	errMergeConflict = errors.New("proposal conflicts with the official line")
 )
 
 type draft struct {
@@ -34,6 +37,8 @@ type draft struct {
 	Status           string      `json:"status"`
 	Version          int         `json:"version"`
 	PublishedVersion *int        `json:"published_version"`
+	LastRound        int         `json:"last_round"`          // proposals sent so far (stage 3)
+	CanMerge         *bool       `json:"can_merge,omitempty"` // GET /drafts/{id}: the caller keeps the story (publishes directly)
 	CreatedAt        time.Time   `json:"created_at"`
 	UpdatedAt        time.Time   `json:"updated_at"`
 	// the official line now: a draft opened from an older version shows "the official version changed"
@@ -42,14 +47,14 @@ type draft struct {
 }
 
 const draftColumns = `d.id::text, d.owner_id::text, d.owner_name, d.story_id::text, d.chapter_id::text, d.base_version, d.meta, d.blocks,
-	d.status, d.version, d.published_version, d.created_at, d.updated_at, h.current_version, COALESCE(h.deleted, FALSE)`
+	d.status, d.version, d.published_version, d.created_at, d.updated_at, h.current_version, COALESCE(h.deleted, FALSE), d.last_round`
 
 func scanDraft(row pgx.Row) (*draft, []string, error) {
 	d := &draft{}
 	var meta []byte
 	var hashes []string
 	err := row.Scan(&d.ID, &d.OwnerID, &d.OwnerName, &d.StoryID, &d.ChapterID, &d.BaseVersion, &meta, &hashes,
-		&d.Status, &d.Version, &d.PublishedVersion, &d.CreatedAt, &d.UpdatedAt, &d.CurrentVersion, &d.ChapterDeleted)
+		&d.Status, &d.Version, &d.PublishedVersion, &d.CreatedAt, &d.UpdatedAt, &d.CurrentVersion, &d.ChapterDeleted, &d.LastRound)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil, errNotFound
 	}
@@ -90,7 +95,11 @@ func (s *server) draftError(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.Is(err, errNotOwner):
 		fail(w, 403, "Đây không phải bản nháp của bạn.")
 	case errors.Is(err, errDraftClosed):
-		fail(w, 409, "Bản nháp này đã đăng hoặc đã bỏ, không sửa được nữa.")
+		fail(w, 409, "Bản nháp này đã gửi đề xuất, đã đăng hoặc đã bỏ nên không sửa được. Đã gửi thì rút lại để sửa tiếp.")
+	case errors.Is(err, errNotSubmitted):
+		fail(w, 409, "Bản nháp này không ở trạng thái chờ duyệt.")
+	case errors.Is(err, errMergeConflict):
+		fail(w, 409, "Đề xuất sửa trùng chỗ với bản chính thức đã thay đổi. Hãy trả lại để người viết cập nhật theo bản chính.")
 	case errors.Is(err, errConflict):
 		fail(w, 409, "Bản nháp vừa được lưu ở nơi khác (tab hoặc máy khác). Hãy tải lại để xem bản mới nhất.")
 	case errors.Is(err, errBehind):
@@ -130,14 +139,14 @@ func (s *server) handleDraftCreate(w http.ResponseWriter, r *http.Request) {
 	status := 201
 	err := pgx.BeginFunc(ctx, s.db, func(tx pgx.Tx) error {
 		var open int
-		if err := tx.QueryRow(ctx, `SELECT count(*) FROM chapter_drafts WHERE owner_id = $1 AND status = 'open'`, b.OwnerID).Scan(&open); err != nil {
+		if err := tx.QueryRow(ctx, `SELECT count(*) FROM chapter_drafts WHERE owner_id = $1 AND status IN ('open', 'submitted')`, b.OwnerID).Scan(&open); err != nil {
 			return err
 		}
 		var meta chapterMeta
 		var hashes []string
 		var base *int
 		if b.ChapterID != nil {
-			err := tx.QueryRow(ctx, `SELECT id::text FROM chapter_drafts WHERE owner_id = $1 AND chapter_id = $2 AND status = 'open'`, b.OwnerID, *b.ChapterID).Scan(&id)
+			err := tx.QueryRow(ctx, `SELECT id::text FROM chapter_drafts WHERE owner_id = $1 AND chapter_id = $2 AND status IN ('open', 'submitted')`, b.OwnerID, *b.ChapterID).Scan(&id)
 			if err == nil {
 				status = 200
 				return nil
@@ -258,12 +267,13 @@ func (s *server) handleDraftInternal(w http.ResponseWriter, r *http.Request) {
 	s.writeDraft(w, r, id, 200)
 }
 
-// POST /internal/drafts/{id}/publish: the draft becomes the next official version (or v1 of a new chapter).
-// Only on top of the version it was based on: otherwise the owner pulls first.
+// POST /internal/drafts/{id}/publish {owner_id = the caller}: the caller's own open draft, or a submitted proposal
+// (the backend has checked the caller is a story keeper), becomes the next official version (or v1 of a new chapter).
+// An own draft must be based on the current version (pull first); a proposal behind it is merged when diff3 is clean.
 func (s *server) handleDraftPublish(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	var b draftBody
-	if !isUUID(id) || readJSON(w, r, &b) != nil {
+	if !isUUID(id) || readJSON(w, r, &b) != nil || !isUUID(b.OwnerID) {
 		fail(w, 400, "invalid body")
 		return
 	}
@@ -271,25 +281,23 @@ func (s *server) handleDraftPublish(w http.ResponseWriter, r *http.Request) {
 	var rev *revision
 	var number float64
 	err := pgx.BeginFunc(ctx, s.db, func(tx pgx.Tx) error {
-		d, hashes, err := openOwnDraft(ctx, tx, id, b.OwnerID)
+		d, hashes, err := loadDraft(ctx, tx, id, true)
 		if err != nil {
 			return err
+		}
+		switch {
+		case d.Status == "submitted":
+		case d.Status != "open":
+			return errDraftClosed
+		case d.OwnerID != b.OwnerID:
+			return errNotOwner
 		}
 		number = d.Meta.ChapterNumber
-		if d.Meta.Title == "" {
+		meta := d.Meta
+		if meta.Title == "" {
 			return errEmptyTitle
 		}
-		blocks, err := loadBlocks(ctx, tx, hashes)
-		if err != nil {
-			return err
-		}
-		rev = &revision{StoryID: d.StoryID, Meta: d.Meta, Blocks: blocks, AuthorID: &b.OwnerID, AuthorName: b.OwnerName}
-		if d.ChapterID == nil {
-			rev.Source = "create"
-			if err := createChapter(ctx, tx, rev); err != nil {
-				return err
-			}
-		} else {
+		if d.ChapterID != nil {
 			h, err := lockHead(ctx, tx, *d.ChapterID)
 			if err != nil {
 				return err
@@ -298,11 +306,44 @@ func (s *server) handleDraftPublish(w http.ResponseWriter, r *http.Request) {
 				return errDeleted
 			}
 			if d.BaseVersion == nil || *d.BaseVersion != h.Version {
-				return errBehind
+				if d.Status != "submitted" || d.BaseVersion == nil {
+					return errBehind
+				}
+				d.CurrentVersion = &h.Version
+				p, err := planPull(ctx, tx, d, hashes)
+				if err != nil {
+					return err
+				}
+				if len(p.MetaConflicts) > 0 || slices.ContainsFunc(p.Chunks, func(c mergeChunk) bool { return c.Conflict != nil }) {
+					return errMergeConflict
+				}
+				if hashes, meta, err = resolve(p.Chunks, p.Meta, nil, p.theirs, nil); err != nil {
+					return err
+				}
 			}
 			based := h.Version
-			rev.ChapterID, rev.Version, rev.Source, rev.BasedOn = *d.ChapterID, h.Version+1, "edit", &based
+			blocks, err := loadBlocks(ctx, tx, hashes)
+			if err != nil {
+				return err
+			}
+			rev = &revision{ChapterID: *d.ChapterID, StoryID: d.StoryID, Version: h.Version + 1, Source: "edit", BasedOn: &based,
+				Meta: meta, Blocks: blocks, AuthorID: &d.OwnerID, AuthorName: d.OwnerName}
 			if err := appendRevision(ctx, tx, rev, hashes); err != nil {
+				return err
+			}
+		} else {
+			blocks, err := loadBlocks(ctx, tx, hashes)
+			if err != nil {
+				return err
+			}
+			rev = &revision{StoryID: d.StoryID, Source: "create", Meta: meta, Blocks: blocks, AuthorID: &d.OwnerID, AuthorName: d.OwnerName}
+			if err := createChapter(ctx, tx, rev); err != nil {
+				return err
+			}
+		}
+		if d.Status == "submitted" {
+			if _, err := tx.Exec(ctx, `UPDATE draft_rounds SET decision = 'merged', decided_by = $3, decided_name = $4, decided_at = NOW(), merged_version = $5
+				WHERE draft_id = $1 AND round = $2`, id, d.LastRound, b.OwnerID, b.OwnerName, rev.Version); err != nil {
 				return err
 			}
 		}
@@ -338,7 +379,7 @@ func (s *server) handleDraftList(w http.ResponseWriter, r *http.Request) {
 		story = ""
 	}
 	rows, err := s.db.Query(r.Context(), `SELECT `+draftColumns+` FROM chapter_drafts d LEFT JOIN chapter_heads h ON h.chapter_id = d.chapter_id
-		WHERE d.owner_id = $1 AND d.status = 'open' AND ($2 = '' OR d.story_id::text = $2) ORDER BY d.updated_at DESC LIMIT 100`, user, story)
+		WHERE d.owner_id = $1 AND d.status IN ('open', 'submitted') AND ($2 = '' OR d.story_id::text = $2) ORDER BY d.updated_at DESC LIMIT 100`, user, story)
 	if err != nil {
 		internalError(w, r, err)
 		return
@@ -389,9 +430,31 @@ func (s *server) draftOwner(w http.ResponseWriter, r *http.Request) (string, str
 }
 
 func (s *server) handleDraftGet(w http.ResponseWriter, r *http.Request) {
-	if id, _, allowed := s.draftOwner(w, r); allowed {
-		s.writeDraft(w, r, id, 200)
+	id, user, allowed := s.draftOwner(w, r)
+	if !allowed {
+		return
 	}
+	var d *draft
+	err := pgx.BeginFunc(r.Context(), s.db, func(tx pgx.Tx) error {
+		var hashes []string
+		var err error
+		if d, hashes, err = loadDraft(r.Context(), tx, id, false); err != nil {
+			return err
+		}
+		d.Blocks, err = loadBlocks(r.Context(), tx, hashes)
+		return err
+	})
+	if err != nil {
+		s.draftError(w, r, err)
+		return
+	}
+	p, err := s.permission(r.Context(), user, d.StoryID)
+	if err != nil {
+		internalError(w, r, err)
+		return
+	}
+	d.CanMerge = &p.Keeper
+	ok(w, d)
 }
 
 // DELETE /drafts/{id}: discard (kept in the database, no longer listed or editable).

@@ -11,6 +11,8 @@ import { insertWithUniqueSlug } from '../utils/ids';
 import { indexStory } from '../services/search.service';
 import { sanitizeRichText, sanitizeChapterHtml, richTextToPlain } from '../utils/richText';
 import { callWorkspace, applyRevisionNow, Revision } from '../services/workspaceSync';
+import { storyRole } from './internal.controller';
+import { draftNotifications } from '../services/notification.service';
 
 export function slugify(text: string) {
   return text
@@ -183,6 +185,10 @@ export const submitChapter = async (req: AuthenticatedRequest, res: Response) =>
       return res.status(404).json({ success: false, message: 'Bộ truyện không tồn tại' });
     }
     const story = storyRes.rows[0];
+    // Text chapters reach the official line through drafts: contributors propose, keepers publish (stage 3)
+    if (!isDraft && story.story_type !== 'manga' && !(await storyRole(uploaderId, story_id)).keeper) {
+      return res.status(403).json({ success: false, message: 'Chỉ người giữ truyện đăng thẳng chương mới. Hãy viết nháp ở /dang-chuong và gửi đề xuất.' });
+    }
     checkBlocksMatchStoryType(story.story_type, blocks, isDraft, typeof raw_content === 'string' ? raw_content : '');
 
     if (volume_id) {
@@ -567,6 +573,10 @@ export const updateChapter = async (req: AuthenticatedRequest, res: Response) =>
     if (!(await canUserModifyChapter({ ...chapter, group_id: chapter.effective_group_id }, req.user.id))) {
       return res.status(403).json({ success: false, message: 'Bạn không có quyền sửa chương này.' });
     }
+    // Text chapters are edited through drafts: only keepers write the official line directly (stage 3)
+    if (chapter.story_type !== 'manga' && !(await storyRole(req.user.id, chapter.story_id)).keeper) {
+      return res.status(403).json({ success: false, message: 'Hãy sửa chương trên bản nháp và gửi đề xuất cho người giữ truyện.' });
+    }
 
     const newTitle = (title ?? chapter.title).toString().trim();
     if (!newTitle) {
@@ -721,33 +731,59 @@ export const saveDraft = async (req: AuthenticatedRequest, res: Response) => {
   }
 };
 
+/** Load draft {id} from the workspace; null when the reply was sent (missing, error). */
+async function workspaceDraft(res: Response, id: string): Promise<any | null> {
+  if (!isUuid(id)) {
+    res.status(404).json({ success: false, message: 'Bản nháp không tồn tại.' });
+    return null;
+  }
+  const current = await callWorkspace('GET', `/internal/drafts/${id}`);
+  if (current.status !== 200) {
+    relayWorkspace(res, current);
+    return null;
+  }
+  return current.json.data;
+}
+
+const draftLabel = (d: any) => (d.chapter_id ? `sửa Chương ${Number(d.meta.chapter_number)}` : `Chương ${Number(d.meta.chapter_number)} (mới)`);
+
+/** Notify about a proposal through the queue (never fails the request). */
+async function notifyDraft(event: 'submitted' | 'returned' | 'merged', d: any, recipients: string[], req: AuthenticatedRequest, note?: string | null) {
+  try {
+    const story = await pool.query(`SELECT title FROM stories WHERE id = $1`, [d.story_id]);
+    const items = draftNotifications({
+      event, draftId: d.id, round: d.last_round, recipientIds: recipients, actorId: req.user!.id,
+      actorName: req.user!.display_name || req.user!.username, chapterLabel: draftLabel(d), storyTitle: story.rows[0]?.title || '', note,
+    });
+    if (items.length > 0) await enqueueNotificationJob({ kind: 'notify', items });
+  } catch (err: any) {
+    console.error('[Drafts] notification failed:', err.message);
+  }
+}
+
 /**
- * POST /drafts/:id/publish: the owner's draft becomes the official version. Same rights as before drafts
- * (stage 3 turns this into proposals merged by the story keepers): a new chapter needs a contributor,
- * an edit needs someone allowed to edit that chapter.
+ * POST /drafts/:id/publish: into the official line. Story keepers only (owner, group leader/mod): their own draft
+ * (a direct edit), or a proposal sent by a contributor (merged by diff3 when the official version moved meanwhile).
  */
 export const publishDraft = async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const { id } = req.params;
-    if (!isUuid(id)) return res.status(404).json({ success: false, message: 'Bản nháp không tồn tại.' });
-    const current = await callWorkspace('GET', `/internal/drafts/${id}`);
-    if (current.status !== 200) return relayWorkspace(res, current);
-    const d = current.json.data;
-    if (d.owner_id !== req.user!.id) return res.status(403).json({ success: false, message: 'Đây không phải bản nháp của bạn.' });
+    const d = await workspaceDraft(res, req.params.id);
+    if (!d) return;
+    const own = d.owner_id === req.user!.id;
+    if (!own && d.status !== 'submitted') return res.status(403).json({ success: false, message: 'Đây không phải bản nháp của bạn.' });
 
     const story = await novelStory(d.story_id);
     if (story.approval_status === 'rejected') {
       return res.status(409).json({ success: false, message: 'Truyện đang bị gỡ: chưa đăng được chương cho tới khi được khôi phục.' });
     }
-    let allowed: boolean;
-    if (d.chapter_id) {
-      const ch = await pool.query(CHAPTER_WITH_OWNERS_SQL, [d.chapter_id]);
-      allowed = ch.rows.length > 0 && (await canUserModifyChapter({ ...ch.rows[0], group_id: ch.rows[0].effective_group_id }, req.user!.id));
-    } else {
-      allowed = await canUserManageStory(req.user!.id, d.story_id);
-    }
-    if (!allowed) {
-      return res.status(403).json({ success: false, message: 'Bạn không có quyền đăng bản này (chỉ người đăng chương, chủ truyện hoặc Trưởng nhóm/Mod của nhóm sửa được chương đã đăng).' });
+    const role = await storyRole(req.user!.id, d.story_id);
+    if (!role.keeper) {
+      return res.status(403).json({
+        success: false,
+        message: own
+          ? 'Chỉ người giữ truyện (chủ truyện, Trưởng nhóm/Mod nhóm) đưa thẳng vào bản chính. Hãy bấm "Gửi đề xuất" để họ duyệt.'
+          : 'Chỉ người giữ truyện (chủ truyện, Trưởng nhóm/Mod nhóm) gộp được đề xuất.',
+      });
     }
     checkBlocksMatchStoryType('novel', d.blocks || [], false);
     // the volume may have been deleted since the draft picked it
@@ -756,18 +792,71 @@ export const publishDraft = async (req: AuthenticatedRequest, res: Response) => 
       if (vol.rows.length === 0) throw new InputError('Tập đã chọn không còn: hãy chọn lại tập rồi đăng.');
     }
 
-    const r = await callWorkspace('POST', `/internal/drafts/${id}/publish`, ownerOf(req));
+    const r = await callWorkspace('POST', `/internal/drafts/${d.id}/publish`, ownerOf(req));
     if (r.status !== 200) return relayWorkspace(res, r);
     const rev: Revision = r.json.data;
     await applyRevisionNow(rev);
+    if (!own) notifyDraft('merged', d, [d.owner_id], req);
     const slugRes = await pool.query(`SELECT c.slug, s.slug AS story_slug FROM chapters c JOIN stories s ON s.id = c.story_id WHERE c.id = $1`, [rev.chapter_id]);
     res.json({
       success: true,
-      message: rev.version === 1 ? 'Đăng chương thành công và đã xuất bản cho độc giả' : `Đã cập nhật chương (phiên bản ${rev.version}).`,
+      message: !own ? `Đã gộp đề xuất (phiên bản ${rev.version}).`
+        : rev.version === 1 ? 'Đăng chương thành công và đã xuất bản cho độc giả' : `Đã cập nhật chương (phiên bản ${rev.version}).`,
       data: { chapter_id: rev.chapter_id, version: rev.version, slug: slugRes.rows[0]?.slug, story_slug: slugRes.rows[0]?.story_slug },
     });
   } catch (error: any) {
     if (sendClientError(res, error)) return;
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/** POST /drafts/:id/submit {note?}: the owner (a contributor of the story) proposes the draft to the keepers. */
+export const submitDraft = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const d = await workspaceDraft(res, req.params.id);
+    if (!d) return;
+    if (d.owner_id !== req.user!.id) return res.status(403).json({ success: false, message: 'Đây không phải bản nháp của bạn.' });
+    const role = await storyRole(req.user!.id, d.story_id);
+    if (!role.contributor) return res.status(403).json({ success: false, message: 'Bạn không còn tham gia truyện này nên không gửi đề xuất được.' });
+    checkBlocksMatchStoryType('novel', d.blocks || [], false);
+    const note = typeof req.body?.note === 'string' ? req.body.note : '';
+    const r = await callWorkspace('POST', `/internal/drafts/${d.id}/submit`, { ...ownerOf(req), note });
+    if (r.status !== 200) return relayWorkspace(res, r);
+    notifyDraft('submitted', r.json.data, role.keeperIds, req, note);
+    res.json({ success: true, message: 'Đã gửi đề xuất cho người giữ truyện.', data: r.json.data });
+  } catch (error: any) {
+    if (sendClientError(res, error)) return;
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/** POST /drafts/:id/withdraw: the owner takes a proposal back to keep editing. */
+export const withdrawDraft = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const d = await workspaceDraft(res, req.params.id);
+    if (!d) return;
+    if (d.owner_id !== req.user!.id) return res.status(403).json({ success: false, message: 'Đây không phải bản nháp của bạn.' });
+    const r = await callWorkspace('POST', `/internal/drafts/${d.id}/withdraw`, ownerOf(req));
+    if (r.status !== 200) return relayWorkspace(res, r);
+    res.json({ success: true, message: 'Đã rút đề xuất, bạn có thể sửa tiếp.', data: r.json.data });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/** POST /drafts/:id/return {note?}: a keeper sends a proposal back to its author (see the paragraph comments). */
+export const returnDraft = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const d = await workspaceDraft(res, req.params.id);
+    if (!d) return;
+    const role = await storyRole(req.user!.id, d.story_id);
+    if (!role.keeper) return res.status(403).json({ success: false, message: 'Chỉ người giữ truyện trả lại được đề xuất.' });
+    const note = typeof req.body?.note === 'string' ? req.body.note : '';
+    const r = await callWorkspace('POST', `/internal/drafts/${d.id}/return`, { ...ownerOf(req), note });
+    if (r.status !== 200) return relayWorkspace(res, r);
+    notifyDraft('returned', d, [d.owner_id], req, note);
+    res.json({ success: true, message: 'Đã trả lại đề xuất cho người viết.', data: r.json.data });
+  } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
 };

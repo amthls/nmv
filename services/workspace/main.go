@@ -99,6 +99,9 @@ func (s *server) routes() http.Handler {
 	m.HandleFunc("DELETE /drafts/{id}", s.handleDraftDiscard)
 	m.HandleFunc("GET /drafts/{id}/pull", s.handlePullPreview)
 	m.HandleFunc("POST /drafts/{id}/pull", s.handlePullApply)
+	m.HandleFunc("GET /proposals", s.handleProposals)
+	m.HandleFunc("GET /drafts/{id}/review", s.handleReview)
+	m.HandleFunc("POST /drafts/{id}/comments", s.handleComment)
 
 	m.HandleFunc("POST /internal/chapters", s.internal(s.handleCreate))
 	m.HandleFunc("GET /internal/chapters/{id}", s.internal(s.handleCurrent))
@@ -108,5 +111,8 @@ func (s *server) routes() http.Handler {
 	m.HandleFunc("GET /internal/drafts/{id}", s.internal(s.handleDraftInternal))
 	m.HandleFunc("PUT /internal/drafts/{id}", s.internal(s.handleDraftSave))
 	m.HandleFunc("POST /internal/drafts/{id}/publish", s.internal(s.handleDraftPublish))
+	m.HandleFunc("POST /internal/drafts/{id}/submit", s.internal(s.handleSubmit))
+	m.HandleFunc("POST /internal/drafts/{id}/withdraw", s.internal(s.handleWithdraw))
+	m.HandleFunc("POST /internal/drafts/{id}/return", s.internal(s.handleReturn))
 	return m
 }

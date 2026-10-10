@@ -148,7 +148,9 @@ export default function Navbar() {
       } catch (e) {}
     }
     setIsNotificationOpen(false);
-    if (notif.story_slug && notif.chapter_slug) {
+    if (notif.reference_type === 'draft' && notif.reference_id) {
+      router.push(`/ws/de-xuat/${notif.reference_id}`); // a workspace proposal
+    } else if (notif.story_slug && notif.chapter_slug) {
       router.push(`/truyen/${notif.story_slug}/${notif.chapter_slug}`);
     } else if (notif.story_slug) {
       router.push(`/truyen/${notif.story_slug}`);
