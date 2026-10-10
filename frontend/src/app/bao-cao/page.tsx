@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Flag, Check, X, Lock, ExternalLink } from 'lucide-react';
+import { Flag, Check, X, Lock, ExternalLink, Search } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import PageLoader from '@/components/common/PageLoader';
 import CodeBadge from '@/components/common/CodeBadge';
@@ -23,6 +23,13 @@ const TARGET_LABELS: Record<string, string> = {
   comment: 'Bình luận',
   post: 'Bài viết',
 };
+const TYPE_TABS: { value: string; label: string }[] = [
+  { value: '', label: 'Mọi loại' },
+  { value: 'story', label: 'Truyện' },
+  { value: 'chapter', label: 'Chương' },
+  { value: 'post', label: 'Bài viết' },
+  { value: 'comment', label: 'Bình luận' },
+];
 const STATUS_TABS: { value: string; label: string }[] = [
   { value: 'pending', label: 'Chờ xử lý' },
   { value: 'resolved', label: 'Đã xử lý' },
@@ -41,6 +48,9 @@ function targetHref(r: any): string | null {
 export default function ReportsPage() {
   const { isAuthenticated, isLoading: isAuthLoading, hasRole, authFetch, openAuthModal } = useAuth();
   const [status, setStatus] = useState('pending');
+  const [type, setType] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [query, setQuery] = useState('');
   const [reports, setReports] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -53,7 +63,10 @@ export default function ReportsPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await authFetch(`${API_BASE_URL}/reports?status=${status}&limit=100`);
+      const params = new URLSearchParams({ status, limit: '100' });
+      if (type) params.set('type', type);
+      if (query) params.set('q', query);
+      const res = await authFetch(`${API_BASE_URL}/reports?${params}`);
       const json = await res.json();
       if (res.ok && json.success) {
         setReports(json.data || []);
@@ -66,7 +79,7 @@ export default function ReportsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [status, authFetch]);
+  }, [status, type, query, authFetch]);
 
   useEffect(() => {
     if (isAuthenticated && isModerator) load();
@@ -129,6 +142,37 @@ export default function ReportsPage() {
         </div>
       </div>
 
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex flex-wrap gap-2">
+          {TYPE_TABS.map((t) => (
+            <button
+              key={t.value || 'all'}
+              onClick={() => setType(t.value)}
+              className={`px-3.5 h-8 rounded-lg text-xs font-bold border transition ${
+                type === t.value
+                  ? 'bg-indigo-600 border-indigo-500 text-snow'
+                  : 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <form
+          onSubmit={(e) => { e.preventDefault(); setQuery(searchInput.trim()); }}
+          className="relative w-full sm:w-72 sm:ml-auto"
+        >
+          <input
+            type="text"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Mã báo cáo, mã/tên nội dung, mô tả..."
+            className="w-full h-9 pl-9 pr-3 rounded-xl bg-white/5 border border-white/10 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-500 transition"
+          />
+          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+        </form>
+      </div>
+
       <div className="flex flex-wrap gap-2">
         {STATUS_TABS.map((t) => (
           <button
@@ -152,7 +196,9 @@ export default function ReportsPage() {
           {[1, 2, 3].map((i) => <div key={i} className="h-24 rounded-2xl bg-white/5" />)}
         </div>
       ) : reports.length === 0 ? (
-        <div className="p-10 text-center glass-panel rounded-2xl text-xs text-gray-400">Không có báo cáo nào.</div>
+        <div className="p-10 text-center glass-panel rounded-2xl text-xs text-gray-400">
+          {query ? 'Không có báo cáo nào khớp tìm kiếm.' : 'Không có báo cáo nào.'}
+        </div>
       ) : (
         <div className="space-y-3">
           {reports.map((r) => {
@@ -168,6 +214,16 @@ export default function ReportsPage() {
                   <span className="px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/30 font-semibold">
                     {REASON_LABELS[r.reason] || r.reason}
                   </span>
+                  {r.target_pending_count > 1 && (
+                    <span className="px-2 py-0.5 rounded-md bg-rose-500/15 text-rose-300 border border-rose-500/30 font-semibold">
+                      {r.target_pending_count} báo cáo đang chờ cho nội dung này
+                    </span>
+                  )}
+                  {r.target_removed && (
+                    <span className="px-2 py-0.5 rounded-md bg-gray-500/15 text-gray-300 border border-gray-500/30 font-semibold">
+                      Nội dung đã gỡ/xóa
+                    </span>
+                  )}
                   {!pending && (
                     <span className={`px-2 py-0.5 rounded-md border font-semibold ${r.status === 'resolved' ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' : 'bg-gray-500/15 text-gray-300 border-gray-500/30'}`}>
                       {r.status === 'resolved' ? 'Đã xử lý' : 'Đã bỏ qua'}
@@ -178,7 +234,8 @@ export default function ReportsPage() {
                   </span>
                 </div>
 
-                <div className="text-sm text-white font-semibold break-words">
+                <div className="text-sm text-white font-semibold break-words flex flex-wrap items-center gap-2">
+                  {r.target_code && <CodeBadge code={r.target_code} />}
                   {r.target_preview ? (
                     href ? (
                       <Link href={href} className="hover:text-brand-400 inline-flex items-center gap-1.5">

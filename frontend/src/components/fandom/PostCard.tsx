@@ -11,11 +11,7 @@ import {
   MoreHorizontal,
   Edit3,
   Trash2,
-  CheckCircle2,
-  XCircle,
   ChevronRight,
-  ShieldAlert,
-  Check,
   Pin,
   Eye,
   FileText,
@@ -50,7 +46,7 @@ export interface PostItem {
   author_avatar?: string;
   author_roles?: string[];
   is_draft?: boolean;
-  approval_status?: 'pending' | 'approved' | 'rejected' | 'draft';
+  approval_status?: 'approved' | 'rejected' | 'draft';
   rejection_reason?: string | null;
   reaction_count: number;
   reaction_summary?: { [key: string]: number };
@@ -69,10 +65,6 @@ interface PostCardProps {
   onRefresh?: () => void;
   onEdit?: (post: PostItem) => void;
   onToast?: (message: string) => void;
-  isAdminView?: boolean;
-  isSelectable?: boolean;
-  isSelected?: boolean;
-  onSelectToggle?: (postId: string) => void;
 }
 
 const PREVIEW_CHARS = 320;
@@ -82,10 +74,6 @@ export default function PostCard({
   onRefresh,
   onEdit,
   onToast,
-  isAdminView = false,
-  isSelectable = false,
-  isSelected = false,
-  onSelectToggle,
 }: PostCardProps) {
   const { user, isAuthenticated, hasRole, authFetch } = useAuth();
   const [reactions, setReactions] = useState<Record<string, number>>(post.reaction_summary || {});
@@ -96,6 +84,7 @@ export default function PostCard({
   const menuRef = useRef<HTMLDivElement>(null);
 
   const isAuthor = isAuthenticated && !!user && user.id === post.user_id;
+  // Admin/Mod don't edit or delete other people's posts: they only take them down (undoable)
   const isStaff = hasRole('admin', 'mod');
   const canModify = isAuthor || isStaff;
   const toast = (m: string) => (onToast ? onToast(m) : console.info(m));
@@ -125,7 +114,7 @@ export default function PostCard({
     if (confirm(`Xóa bài viết "${post.title}"?`)) call('', { method: 'DELETE' });
   };
   const handleReject = () => {
-    const reason = prompt('Lý do ẩn bài viết (người đăng sẽ thấy, có thể để trống):');
+    const reason = prompt('Lý do gỡ bài viết (người đăng sẽ thấy, có thể để trống):');
     if (reason === null) return;
     call('/reject', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason }) });
   };
@@ -150,29 +139,13 @@ export default function PostCard({
 
   return (
     <article className={`rounded-2xl glass-panel border transition p-4 sm:p-5 space-y-3.5 relative ${
-      isSelected ? 'border-brand-500 ring-2 ring-brand-500/40' : post.is_pinned ? 'border-amber-500/30' : 'border-white/10 hover:border-white/20'
+      post.is_pinned ? 'border-amber-500/30' : 'border-white/10 hover:border-white/20'
     }`}>
       {/* Status banners (only the author / staff ever see non-public posts) */}
-      {status === 'pending' && (
-        <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-300 text-xs font-semibold">
-          <span className="flex items-center gap-1.5"><ShieldAlert className="w-4 h-4" /> Đã sửa sau khi bị ẩn, chờ Ban quản trị xem lại</span>
-          {isAdminView && isStaff && (
-            <div className="flex items-center gap-1.5">
-              <button onClick={() => call('/approve')} disabled={isProcessing} className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-snow text-[11px] font-bold flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Hiện lại
-              </button>
-              <button onClick={handleReject} disabled={isProcessing} className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-snow text-[11px] font-bold flex items-center gap-1">
-                <XCircle className="w-3.5 h-3.5" /> Giữ ẩn
-              </button>
-            </div>
-          )}
-        </div>
-      )}
       {status === 'rejected' && (
         <div className="px-3 py-2 rounded-xl bg-rose-500/10 border border-rose-500/25 text-rose-300 text-xs space-y-0.5">
-          <div className="font-semibold flex items-center gap-1.5"><EyeOff className="w-4 h-4" /> Bài viết đã bị Ban quản trị ẩn</div>
+          <div className="font-semibold flex items-center gap-1.5"><EyeOff className="w-4 h-4" /> Bài viết đã bị Ban quản trị gỡ</div>
           {post.rejection_reason && <div className="text-rose-200/80">Lý do: {post.rejection_reason}</div>}
-          {isAuthor && <div className="text-gray-400">Sửa lại nội dung để Ban quản trị xem xét hiện lại.</div>}
         </div>
       )}
       {status === 'draft' && (
@@ -184,18 +157,6 @@ export default function PostCard({
       {/* Author row */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          {isSelectable && isStaff && (
-            <button
-              type="button"
-              onClick={() => onSelectToggle?.(post.id)}
-              aria-label="Chọn bài viết"
-              className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition ${
-                isSelected ? 'bg-brand-600 border-brand-500 text-snow' : 'border-white/30 text-transparent hover:border-white/60'
-              }`}
-            >
-              <Check className="w-3.5 h-3.5" />
-            </button>
-          )}
           <Link href={`/nguoi-dung/${post.author_username}`} className="w-10 h-10 rounded-full overflow-hidden bg-brand-600/30 shrink-0 flex items-center justify-center">
             {post.author_avatar
               ? <SmartImage src={post.author_avatar} alt={post.author_name} className="w-full h-full object-cover" />
@@ -229,7 +190,7 @@ export default function PostCard({
             </button>
             {isMenuOpen && (
               <div className="absolute right-0 top-8 z-30 w-48 bg-surface-3 border border-white/15 rounded-xl shadow-2xl p-1 text-xs font-semibold">
-                {onEdit && (
+                {onEdit && isAuthor && (
                   <button onClick={() => { setIsMenuOpen(false); onEdit(post); }} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-gray-200 hover:bg-white/10">
                     <Edit3 className="w-3.5 h-3.5 text-brand-400" /> Sửa bài viết
                   </button>
@@ -241,12 +202,14 @@ export default function PostCard({
                 )}
                 {isStaff && !isAuthor && post.approval_status === 'approved' && !post.is_draft && (
                   <button onClick={handleReject} disabled={isProcessing} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-amber-300 hover:bg-amber-500/10">
-                    <EyeOff className="w-3.5 h-3.5" /> Ẩn bài vi phạm
+                    <EyeOff className="w-3.5 h-3.5" /> Gỡ bài vi phạm
                   </button>
                 )}
-                <button onClick={handleDelete} disabled={isProcessing} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-rose-400 hover:bg-rose-500/10">
-                  <Trash2 className="w-3.5 h-3.5" /> Xóa bài viết
-                </button>
+                {isAuthor && (
+                  <button onClick={handleDelete} disabled={isProcessing} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-rose-400 hover:bg-rose-500/10">
+                    <Trash2 className="w-3.5 h-3.5" /> Xóa bài viết
+                  </button>
+                )}
               </div>
             )}
           </div>

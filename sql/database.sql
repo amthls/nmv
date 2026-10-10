@@ -1382,6 +1382,53 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_posts_code_no   ON posts(code_no);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_albums_code_no  ON albums(code_no);
 CREATE UNIQUE INDEX IF NOT EXISTS uq_reports_code_no ON reports(code_no);
 
+-- ============================================================================
+-- BỎ KHÂU DUYỆT (migration 019_no_approval.sql)
+-- ============================================================================
+-- No more review (owner's decision 2026-10-09): stories, chapters, Fandom posts and groups go live at once.
+-- Publish what was still waiting. Pending chapter translations become drafts (kept, not published),
+-- since publishing them needs the app (pages, counters, notifications).
+-- trg_auto_grant_role gives the uploaders their author/translator title.
+
+UPDATE stories SET approval_status = 'approved', approved_at = NOW(), rejection_reason = NULL
+WHERE approval_status IN ('pending', 'rejected');
+
+UPDATE translation_groups SET approval_status = 'approved', approved_at = NOW()
+WHERE approval_status = 'pending';
+
+UPDATE posts SET approval_status = 'approved', approved_at = NOW(), is_published = true,
+                 published_at = COALESCE(published_at, NOW())
+WHERE approval_status = 'pending' AND is_deleted = false;
+
+UPDATE chapter_submissions SET approval_status = 'draft'
+WHERE approval_status IN ('pending', 'rejected');
+
+-- ============================================================================
+-- GỠ NỘI DUNG (migration 020_soft_remove.sql)
+-- ============================================================================
+-- Admin/Mod only take content down (soft): who and when, for the "Đã gỡ" page (owner's decision 2026-10-09).
+-- A removed story has approval_status = 'rejected', a removed post approval_status = 'rejected'; the reason is in rejection_reason.
+ALTER TABLE stories ADD COLUMN IF NOT EXISTS removed_by UUID REFERENCES users(id) ON DELETE SET NULL,
+                    ADD COLUMN IF NOT EXISTS removed_at TIMESTAMPTZ;
+ALTER TABLE posts   ADD COLUMN IF NOT EXISTS removed_by UUID REFERENCES users(id) ON DELETE SET NULL,
+                    ADD COLUMN IF NOT EXISTS removed_at TIMESTAMPTZ;
+CREATE INDEX IF NOT EXISTS idx_stories_removed ON stories(removed_at DESC) WHERE approval_status = 'rejected';
+CREATE INDEX IF NOT EXISTS idx_posts_removed   ON posts(removed_at DESC)   WHERE approval_status = 'rejected';
+
+-- ============================================================================
+-- CHỐNG SPAM BÁO CÁO (migration 021_report_spam.sql)
+-- ============================================================================
+-- Report spam guard (2026-10-09): one pending report per person per item, enforced by the database
+-- (two quick clicks used to pass the app's check). Older duplicates are closed, not deleted.
+UPDATE reports a SET status = 'dismissed', resolved_at = NOW(), resolution_note = 'Báo cáo trùng (tự động đóng)'
+FROM reports b
+WHERE a.status = 'pending' AND b.status = 'pending' AND a.id <> b.id
+  AND a.reporter_id = b.reporter_id AND a.target_type = b.target_type AND a.target_id = b.target_id
+  AND (a.created_at, a.id) > (b.created_at, b.id);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_reports_pending ON reports(reporter_id, target_type, target_id) WHERE status = 'pending';
+CREATE INDEX IF NOT EXISTS idx_reports_target ON reports(target_type, target_id);
+CREATE INDEX IF NOT EXISTS idx_reports_reporter_time ON reports(reporter_id, created_at DESC);
+
 -- 022: accounts move to the identity service (Plan/identity.md). users / user_roles become a copy kept in step
 -- by identity.user.* events. 019-021 are taken by the no-approval branch.
 -- The credential columns are NOT dropped yet: nothing reads or writes them any more, and they stay as a way back

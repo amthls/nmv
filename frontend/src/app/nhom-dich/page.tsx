@@ -8,13 +8,9 @@ import {
   Search, 
   Plus, 
   BookOpen, 
-  ShieldCheck, 
-  CheckCircle2, 
-  XCircle, 
   Globe, 
   MessageSquare,
-  ChevronRight,
-  ShieldAlert
+  ChevronRight
 } from 'lucide-react';
 import SmartImage from '@/components/common/SmartImage';
 import CreateGroupModal from '@/components/groups/CreateGroupModal';
@@ -24,11 +20,10 @@ import { useAuth } from '@/context/AuthContext';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
 export default function GroupsPage() {
-  const { isAuthenticated, hasRole, authFetch, openAuthModal } = useAuth();
-  const isStaff = hasRole('admin', 'mod'); // may see and approve pending groups
+  const { isAuthenticated, authFetch, openAuthModal } = useAuth();
   const [groups, setGroups] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [filterTab, setFilterTab] = useState<'all' | 'my_groups' | 'pending'>('all');
+  const [filterTab, setFilterTab] = useState<'all' | 'my_groups'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
@@ -37,10 +32,9 @@ export default function GroupsPage() {
     try {
       let url = `${API_BASE_URL}/groups?`;
       if (filterTab === 'my_groups') url += `filter_status=my_groups&`;
-      if (filterTab === 'pending') url += `filter_status=pending&`;
       if (searchQuery.trim()) url += `q=${encodeURIComponent(searchQuery.trim())}&`;
 
-      // authFetch: "my groups" and the admin queue depend on who is signed in
+      // authFetch: "my groups" depends on who is signed in
       const res = await authFetch(url);
       const json = await res.json().catch(() => null);
       setGroups(res.ok && json?.success ? json.data || [] : []);
@@ -55,42 +49,16 @@ export default function GroupsPage() {
     fetchGroups();
   }, [filterTab, isAuthenticated]);
 
-  // Tabs that need a signed-in user / staff fall back to "all" when that no longer holds (e.g. logout)
+  // "My groups" falls back to "all" when nobody is signed in any more (e.g. logout)
   useEffect(() => {
-    if ((filterTab === 'my_groups' && !isAuthenticated) || (filterTab === 'pending' && !isStaff)) setFilterTab('all');
-  }, [isAuthenticated, isStaff]);
+    if (filterTab === 'my_groups' && !isAuthenticated) setFilterTab('all');
+  }, [isAuthenticated]);
 
   const requireLogin = (action: () => void) => () => (isAuthenticated ? action() : openAuthModal('login'));
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     fetchGroups();
-  };
-
-  const handleApproveGroup = async (groupId: string) => {
-    try {
-      const res = await authFetch(`${API_BASE_URL}/groups/${groupId}/approve`, {
-        method: 'POST',
-      });
-      const json = await res.json().catch(() => null);
-      if (!res.ok) alert(json?.message || 'Không thể duyệt nhóm dịch.');
-      fetchGroups();
-    } catch (e) {}
-  };
-
-  const handleRejectGroup = async (group: any) => {
-    const reason = prompt(`Lý do từ chối nhóm "${group.name}" (gửi cho người tạo, không bắt buộc):`);
-    if (reason === null) return;
-    try {
-      const res = await authFetch(`${API_BASE_URL}/groups/${group.id}/reject`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: reason.trim() }),
-      });
-      const json = await res.json().catch(() => null);
-      if (!res.ok) alert(json?.message || 'Không thể từ chối nhóm dịch.');
-      fetchGroups();
-    } catch (e) {}
   };
 
   return (
@@ -148,19 +116,6 @@ export default function GroupsPage() {
             👥 Nhóm Của Tôi
           </button>
 
-          {isStaff && (
-          <button
-            onClick={() => setFilterTab('pending')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition shrink-0 flex items-center gap-1.5 ${
-              filterTab === 'pending'
-                ? 'bg-rose-600 text-snow shadow-md shadow-rose-500/20'
-                : 'text-gray-400 hover:text-white'
-            }`}
-          >
-            <ShieldAlert className="w-3.5 h-3.5" />
-            <span>Hàng Chờ Duyệt (Admin)</span>
-          </button>
-          )}
         </div>
 
         {/* Search */}
@@ -215,11 +170,6 @@ export default function GroupsPage() {
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-indigo-600/30 to-brand-600/20" />
                   )}
-                  {group.approval_status === 'pending' && (
-                    <span className="absolute top-3 right-3 px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-500 text-ink shadow-md">
-                      Chờ Admin duyệt
-                    </span>
-                  )}
                 </div>
 
                 {/* Avatar & Info */}
@@ -264,30 +214,13 @@ export default function GroupsPage() {
                   Trưởng nhóm: <strong className="text-gray-300">{group.leader?.display_name || group.leader?.username || group.creator_name || group.creator_username}</strong>
                 </div>
 
-                {group.approval_status === 'pending' && isStaff ? (
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      onClick={() => handleRejectGroup(group)}
-                      className="px-3 py-1 rounded-xl bg-white/5 hover:bg-rose-500/20 border border-white/10 hover:border-rose-500/40 text-gray-300 hover:text-rose-300 text-xs font-bold transition flex items-center gap-1"
-                    >
-                      <XCircle className="w-3.5 h-3.5" /> Từ Chối
-                    </button>
-                    <button
-                      onClick={() => handleApproveGroup(group.id)}
-                      className="px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-snow text-xs font-bold transition flex items-center gap-1"
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5" /> Duyệt Nhóm
-                    </button>
-                  </div>
-                ) : (
-                  <Link
-                    href={`/nhom-dich/${group.slug}`}
-                    className="px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-semibold flex items-center gap-1 transition group/btn"
-                  >
-                    <span>Vào Nhóm</span>
-                    <ChevronRight className="w-3.5 h-3.5 text-brand-400 group-hover/btn:translate-x-1 transition-transform" />
-                  </Link>
-                )}
+                <Link
+                  href={`/nhom-dich/${group.slug}`}
+                  className="px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-white text-xs font-semibold flex items-center gap-1 transition group/btn"
+                >
+                  <span>Vào Nhóm</span>
+                  <ChevronRight className="w-3.5 h-3.5 text-brand-400 group-hover/btn:translate-x-1 transition-transform" />
+                </Link>
               </div>
             </div>
           ))}
