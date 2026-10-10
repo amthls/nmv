@@ -28,6 +28,7 @@ backend/scripts/seed-passwords.js resets EVERY user's password to "password123".
 Only the Python standard library is used.
 """
 import argparse
+import base64
 import hashlib
 import json
 import os
@@ -103,8 +104,6 @@ def ensure_env():
     if os.path.exists(ENV_FILE):
         env = read_env(ENV_FILE)
         problems = []
-        if len(env.get("JWT_SECRET", "")) < 32 or env.get("JWT_SECRET", "").startswith("change-me"):
-            problems.append("JWT_SECRET (needs >= 32 random chars)")
         if not env.get("RABBITMQ_PASSWORD") or env["RABBITMQ_PASSWORD"] == "change-me":
             problems.append("RABBITMQ_PASSWORD")
         if not env.get("REDIS_PASSWORD") or env["REDIS_PASSWORD"] == "change-me":
@@ -112,6 +111,17 @@ def ensure_env():
             with open(ENV_FILE, "a", encoding="utf-8") as f:
                 f.write(f"\n# Redis (cache, view counters, shared rate limits, realtime)\nREDIS_PASSWORD={secrets.token_hex(24)}\n")
             info("Added a random REDIS_PASSWORD to .env")
+            env = read_env(ENV_FILE)
+        # identity service secrets: added to older .env files instead of refusing to start
+        added = {k: secrets.token_hex(32) for k in ("IDENTITY_DB_PASSWORD", "IDENTITY_JWT_SECRET", "AUTH_HEADER_KEY", "WORKSPACE_DB_PASSWORD")
+                 if not env.get(k) or env[k] == "change-me"}
+        if added:
+            set_env_values(added)
+            info(f"Added random {', '.join(added)} to .env")
+            env = read_env(ENV_FILE)
+        if not env.get("ELASTIC_PASSWORD") or env["ELASTIC_PASSWORD"] == "change-me":
+            set_env_values({"ELASTIC_PASSWORD": secrets.token_hex(24)})
+            info("Added a random ELASTIC_PASSWORD to .env")
             env = read_env(ENV_FILE)
         if not env.get("RESTIC_PASSWORD") or env["RESTIC_PASSWORD"] == "change-me":
             # Only ever added, never replaced: a new password can't open the existing backups
@@ -138,11 +148,15 @@ def ensure_env():
     rabbit_pw = secrets.token_hex(24)
     pg_pw = secrets.token_hex(24)
     overrides = {
-        "JWT_SECRET": secrets.token_hex(32),
         "RABBITMQ_PASSWORD": rabbit_pw,
         "RABBITMQ_URL": f"amqp://novel:{rabbit_pw}@localhost:5672",
         "REDIS_PASSWORD": secrets.token_hex(24),
         "RESTIC_PASSWORD": secrets.token_hex(24),
+        "ELASTIC_PASSWORD": secrets.token_hex(24),
+        "IDENTITY_DB_PASSWORD": secrets.token_hex(32),
+        "IDENTITY_JWT_SECRET": secrets.token_hex(32),
+        "AUTH_HEADER_KEY": secrets.token_hex(32),
+        "WORKSPACE_DB_PASSWORD": secrets.token_hex(32),
         "POSTGRES_PASSWORD": pg_pw,
         "DATABASE_URL": f"postgresql://postgres:{pg_pw}@localhost:5432/novel_platform?schema=public",
         "PGADMIN_DEFAULT_PASSWORD": secrets.token_hex(16),
@@ -153,7 +167,7 @@ def ensure_env():
         for line in f:
             key = line.split("=", 1)[0].strip() if "=" in line and not line.lstrip().startswith("#") else None
             if key in overrides:
-                if key in seen:  # .env.example defines JWT_SECRET twice; keep one
+                if key in seen:  # keep the first definition of a key
                     continue
                 seen.add(key)
                 out.append(f"{key}={overrides[key]}\n")
@@ -162,7 +176,7 @@ def ensure_env():
     with open(ENV_FILE, "w", encoding="utf-8") as f:
         f.writelines(out)
     os.chmod(ENV_FILE, 0o600)
-    info("Created .env with random JWT_SECRET and Postgres/RabbitMQ/Redis/pgAdmin passwords")
+    info("Created .env with random identity keys and Postgres/RabbitMQ/Redis/pgAdmin passwords")
     return read_env(ENV_FILE)
 
 
@@ -385,6 +399,18 @@ def apply_migrations(env):
     return all_ok
 
 
+def import_accounts(env):
+    """Accounts live in identity: copy those the backend database has and identity lacks (sample users, first move).
+    Only adds, never overwrites; run after migrations and seeders."""
+    url = (f"postgres://{env.get('POSTGRES_USER', 'postgres')}:{env['POSTGRES_PASSWORD']}@postgres:5432/"
+           f"{env.get('POSTGRES_DB', 'novel_platform')}")
+    res = subprocess.run(["docker", "compose", "run", "--rm", "--no-deps", "-e", f"LEGACY_DATABASE_URL={url}", "identity", "import-legacy"],
+                         cwd=ROOT, capture_output=True)
+    out = (res.stdout + res.stderr).decode(errors="replace")
+    summary = next((l for l in out.splitlines() if "import-legacy" in l), out.strip()[-300:])
+    return res.returncode == 0, summary
+
+
 # Sample-data seeders from backend/scripts, run in order inside a one-off backend container.
 SEEDERS = [
     ("demo passwords (password123)", ["node", "scripts/seed-passwords.js"]),
@@ -426,9 +452,9 @@ def run_seeders():
 
 # ------------------------------------------------------------------------- http
 
-def http(method, url, body=None, timeout=10):
+def http(method, url, body=None, timeout=10, headers=None):
     data = json.dumps(body).encode() if body is not None else None
-    req = urllib.request.Request(url, data=data, method=method)
+    req = urllib.request.Request(url, data=data, method=method, headers=headers or {})
     if data is not None:
         req.add_header("Content-Type", "application/json")
     try:
@@ -457,7 +483,8 @@ def wait_until(desc, fn, timeout):
 # ----------------------------------------------------------------------- checks
 
 def run_checks(env, timeout, seed=None):
-    gw = f"http://localhost:{env.get('GATEWAY_PORT', 3000)}"
+    # 127.0.0.1, not localhost: the gateway listens on IPv4 loopback only, and Python tries ::1 first (seconds lost per call)
+    gw = f"http://127.0.0.1:{env.get('GATEWAY_PORT', 3000)}"
     be = f"http://127.0.0.1:{env.get('PORT', 5000)}"
     search = f"http://127.0.0.1:{env.get('SEARCH_PORT', 9201)}"
     results = []
@@ -517,8 +544,17 @@ def run_checks(env, timeout, seed=None):
         elif seed is None:
             info(f"Database already has {count} stories, skipping seeders (use --seed to force)")
 
+        passed, detail = import_accounts(env)
+        record("accounts in identity (import-legacy)", passed, detail)
+
+        res = subprocess.run(["docker", "compose", "run", "--rm", "workspace", "import"], cwd=ROOT, capture_output=True)
+        out = (res.stdout + res.stderr).decode(errors="replace")
+        record("chapters in workspace (import)", res.returncode == 0,
+               next((l for l in out.splitlines() if "import:" in l), out.strip()[-300:]))
+
     # Search service
-    code, body = http("GET", f"{search}/_cluster/health")
+    es_auth = base64.b64encode(f"elastic:{env.get('ELASTIC_PASSWORD', '')}".encode()).decode()
+    code, body = http("GET", f"{search}/_cluster/health", headers={"Authorization": f"Basic {es_auth}"})
     status = ""
     try:
         status = json.loads(body).get("status", "")

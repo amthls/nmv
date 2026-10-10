@@ -17,7 +17,7 @@ function VerifyEmail() {
   useEffect(() => {
     if (!token || sent.current) return;
     sent.current = true;
-    postAuth('/auth/verify-email', { token }).then((r) => {
+    postAuth('/verify-email', { token }).then((r) => {
       setResult(r);
       if (r.ok) refreshProfile?.();
     });

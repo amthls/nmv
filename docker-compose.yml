@@ -26,8 +26,9 @@ services:
 
   # ============================================================================
   # 1b. Search Service: Elasticsearch (story search, optional).
-  #     Single node, security off: it is reachable only on the Docker network and
-  #     127.0.0.1, like Postgres. Tuned for a small index on a small box:
+  #     Single node, password required (user `elastic`, ELASTIC_PASSWORD; plain HTTP is fine
+  #     inside the Docker network), reachable only on the Docker network and 127.0.0.1.
+  #     The password is fixed when the volume first starts with security on, like Postgres. Tuned for a small index on a small box:
   #     256 MB heap, ML/geoip/disk-watermark/log-indexing off, hard container cap.
   #     If it is down, the backend falls back to SQL ILIKE.
   # ============================================================================
@@ -37,7 +38,10 @@ services:
     restart: unless-stopped
     environment:
       discovery.type: single-node
-      xpack.security.enabled: "false"
+      xpack.security.enabled: "true"
+      xpack.security.http.ssl.enabled: "false"
+      xpack.security.transport.ssl.enabled: "false" # single node: no transport traffic
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:?Set ELASTIC_PASSWORD in .env}
       xpack.ml.enabled: "false"
       ingest.geoip.downloader.enabled: "false"
       cluster.routing.allocation.disk.threshold_enabled: "false"
@@ -54,7 +58,7 @@ services:
     volumes:
       - es_data:/usr/share/elasticsearch/data
     healthcheck:
-      test: ["CMD-SHELL", "curl -fs 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=2s' >/dev/null"]
+      test: ["CMD-SHELL", "curl -fs -u \"elastic:$$ELASTIC_PASSWORD\" 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=2s' >/dev/null"]
       interval: 10s
       timeout: 5s
       retries: 18
@@ -70,13 +74,16 @@ services:
     container_name: novel_gateway
     restart: unless-stopped
     ports:
-      - "${GATEWAY_PORT:-3000}:8080"
+      # Loopback only by default: the public way in is the Cloudflare tunnel. GATEWAY_BIND=0.0.0.0 opens it to the LAN.
+      - "${GATEWAY_BIND:-127.0.0.1}:${GATEWAY_PORT:-3000}:8080"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - gateway_cache:/var/cache/nginx
     depends_on:
       - frontend
       - backend
+      - identity # auth_request target for every API call
+      - workspace
     security_opt:
       - no-new-privileges:true
     networks:
@@ -182,11 +189,13 @@ services:
       PORT: 5000
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (openssl rand -hex 24)}@pgbouncer:5432/${POSTGRES_DB:-novel_platform}?schema=public
       CORS_ORIGIN: http://localhost:3000
-      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (openssl rand -hex 32)}
+      AUTH_HEADER_KEY: ${AUTH_HEADER_KEY:?Set AUTH_HEADER_KEY in .env (openssl rand -hex 32)} # verifies the gateway's X-User-* headers
+      IDENTITY_INTERNAL_URL: http://identity:8080
+      WORKSPACE_INTERNAL_URL: http://workspace:8080
       ENABLE_DEMO_ACCOUNTS: ${ENABLE_DEMO_ACCOUNTS:-false}
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672
-      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       SEARCH_URL: http://search:9200
+      SEARCH_PASSWORD: ${ELASTIC_PASSWORD:?Set ELASTIC_PASSWORD in .env} # user elastic
       SEARCH_INDEX: ${SEARCH_INDEX:-novel_stories}
       REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}@redis:6379
       # Password reset / email verification mails. Empty SMTP_URL: the link is written to the backend log
@@ -208,6 +217,8 @@ services:
         condition: service_started # search falls back to SQL ILIKE if this isn't ready yet
       redis:
         condition: service_started # cache/counters/realtime degrade gracefully without it
+      identity:
+        condition: service_started # read-through of accounts whose event is late
     security_opt:
       - no-new-privileges:true
     networks:
@@ -229,8 +240,10 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
+      SERVICE_NAME: worker # "service" field of its log lines
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (openssl rand -hex 24)}@postgres:5432/${POSTGRES_DB:-novel_platform}?schema=public
-      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (openssl rand -hex 32)}
+      AUTH_HEADER_KEY: ${AUTH_HEADER_KEY:?Set AUTH_HEADER_KEY in .env (openssl rand -hex 32)}
+      IDENTITY_INTERNAL_URL: http://identity:8080
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672
       REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}@redis:6379
     depends_on:
@@ -257,8 +270,8 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
+      SERVICE_NAME: export-worker
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (openssl rand -hex 24)}@postgres:5432/${POSTGRES_DB:-novel_platform}?schema=public
-      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (openssl rand -hex 32)}
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672
       EXPORT_CONCURRENCY: ${EXPORT_CONCURRENCY:-1}
       EXPORT_KEEP_DAYS: ${EXPORT_KEEP_DAYS:-7}
@@ -274,6 +287,92 @@ services:
     security_opt:
       - no-new-privileges:true
     networks:
+      - data
+
+  # ============================================================================
+  # 2e. db-init (one-shot): each service gets its own database + login role (postgres/provision.sh).
+  #     Runs on every `up`; services with a database start after it has finished.
+  # ============================================================================
+  db-init:
+    image: postgres:16-alpine
+    container_name: novel_db_init
+    restart: "no"
+    entrypoint: ["sh", "/provision.sh"]
+    environment:
+      PGUSER: ${POSTGRES_USER:-postgres}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (openssl rand -hex 24)}
+      POSTGRES_DB: ${POSTGRES_DB:-novel_platform}
+      SERVICE_DBS: identity workspace
+      IDENTITY_DB_PASSWORD: ${IDENTITY_DB_PASSWORD:?Set IDENTITY_DB_PASSWORD in .env}
+      WORKSPACE_DB_PASSWORD: ${WORKSPACE_DB_PASSWORD:?Set WORKSPACE_DB_PASSWORD in .env}
+    volumes:
+      - ./postgres/provision.sh:/provision.sh:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - data
+
+  # ============================================================================
+  # 2f. identity (Go): accounts, passwords, sessions, site roles, account mail. Own database identity_db
+  #     (role identity, straight to Postgres: no PgBouncer pool per database yet). See Plan/identity.md.
+  # ============================================================================
+  identity:
+    build:
+      context: ./services/identity
+    image: ${IMAGE_REGISTRY:-local}/nmv-identity:${IMAGE_TAG:-latest}
+    container_name: novel_identity
+    restart: unless-stopped
+    environment:
+      IDENTITY_DATABASE_URL: postgres://identity:${IDENTITY_DB_PASSWORD:?Set IDENTITY_DB_PASSWORD in .env}@postgres:5432/identity_db
+      REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}@redis:6379/0
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672
+      IDENTITY_JWT_SECRET: ${IDENTITY_JWT_SECRET:?Set IDENTITY_JWT_SECRET in .env (openssl rand -hex 32)}
+      AUTH_HEADER_KEY: ${AUTH_HEADER_KEY:?Set AUTH_HEADER_KEY in .env (openssl rand -hex 32)}
+      SMTP_URL: ${SMTP_URL:-}
+      MAIL_FROM: ${MAIL_FROM:-NovelHub <no-reply@novelhub.local>}
+      SITE_URL: ${SITE_URL:-http://localhost:3000}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+    mem_limit: 128m
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started # cache only; revocation falls back to the database
+      rabbitmq:
+        condition: service_started # events wait in the outbox until the broker is back
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - edge
+      - data
+
+  # ============================================================================
+  # 2g. workspace (Go): chapter versions (later drafts, proposals, tasks). Own database workspace_db.
+  #     Chapter content always comes through the backend (it sanitizes HTML) on /internal; history, compare
+  #     and rewind are public on /api/ws/*. See Plan/chapter-workspace.md.
+  # ============================================================================
+  workspace:
+    build:
+      context: ./services/workspace
+    image: ${IMAGE_REGISTRY:-local}/nmv-workspace:${IMAGE_TAG:-latest}
+    container_name: novel_workspace
+    restart: unless-stopped
+    environment:
+      WORKSPACE_DATABASE_URL: postgres://workspace:${WORKSPACE_DB_PASSWORD:?Set WORKSPACE_DB_PASSWORD in .env}@postgres:5432/workspace_db
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672
+      AUTH_HEADER_KEY: ${AUTH_HEADER_KEY:?Set AUTH_HEADER_KEY in .env (openssl rand -hex 32)}
+      BACKEND_INTERNAL_URL: http://backend:5000
+    mem_limit: 128m
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_started # events wait in the outbox until the broker is back
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - edge
       - data
 
   # ============================================================================

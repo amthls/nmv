@@ -9,7 +9,7 @@ Nền tảng đọc **Light Novel (truyện chữ)** và **Manga (truyện tranh
 2. [Cấu trúc thư mục](#-cấu-trúc-thư-mục)
 3. [Khởi chạy](#-khởi-chạy)
 4. [Biến môi trường](#-biến-môi-trường)
-5. [Chống lạm dụng & DDoS](#-chống-lạm-dụng--ddos) · [Hiệu năng & mở rộng](#-hiệu-năng--mở-rộng-redis-realtime-pgbouncer) · [CI/CD & migration](#-cicd--migration) · [Sao lưu & khôi phục](#-sao-lưu--khôi-phục) · [Lộ trình bảo mật](#-lộ-trình-bảo-mật)
+5. [Chống lạm dụng & DDoS](#-chống-lạm-dụng--ddos) · [Hiệu năng & mở rộng](#-hiệu-năng--mở-rộng-redis-realtime-pgbouncer) · [CI/CD & migration](#-cicd--migration) · [Service identity](#-service-identity) · [Service workspace](#-service-workspace-lịch-sử-chương) · [Sao lưu & khôi phục](#-sao-lưu--khôi-phục) · [Lộ trình bảo mật](#-lộ-trình-bảo-mật)
 6. [Hàng đợi thông báo (RabbitMQ)](#-hàng-đợi-thông-báo-rabbitmq)
 7. [Tìm kiếm với Elasticsearch](#-tìm-kiếm-với-elasticsearch)
 8. [Trình soạn thảo rich text](#️-trình-soạn-thảo-rich-text-ckeditor-5) · [Độ phân giải ảnh](#-độ-phân-giải-ảnh-cho-người-đọc) · [Hiệu ứng tải trang](#-hiệu-ứng-tải-trang)
@@ -27,7 +27,7 @@ Nền tảng đọc **Light Novel (truyện chữ)** và **Manga (truyện tranh
 | Tầng | Công nghệ |
 |:---|:---|
 | Frontend | Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS, Lucide Icons, CKEditor 5 (trình soạn thảo rich text) |
-| Backend | Node.js 22, Express, TypeScript, JWT (cookie + header), bcryptjs, multer (upload ảnh), sharp (đổi kích thước ảnh), sanitize-html |
+| Backend | Node.js 22, Express, TypeScript, header danh tính ký HMAC từ gateway (đăng nhập ở service identity, Go), multer (upload ảnh), sharp (đổi kích thước ảnh), sanitize-html |
 | Database | PostgreSQL 16 (khóa chính UUID), truy vấn bằng `pg` (raw SQL); Prisma chỉ dùng cho `db pull/generate/studio` |
 | Tìm kiếm | Elasticsearch 9.5 (1 node, đã tối ưu RAM; tùy chọn, có fallback về SQL `ILIKE`) |
 | Hàng đợi | RabbitMQ 3.13 + worker (gửi thông báo), có dự phòng chạy trực tiếp khi broker chết |
@@ -77,6 +77,10 @@ Trình duyệt gọi `/api/v1/...` và `/uploads/...` cùng origin; qua gateway 
 │   └── store.go                      # snapshot ra đĩa để sống sót qua restart container
 ├── sql/database.sql                  # schema + dữ liệu mẫu, tự nạp khi tạo volume Postgres mới
 ├── uploads/                          # ảnh người dùng tải lên (mount vào backend và frontend)
+├── services/identity/                # service Go: tài khoản, mật khẩu, phiên, vai trò (xem mục Service identity)
+├── services/workspace/               # service Go: nội dung chương + mọi phiên bản (xem mục Service workspace)
+├── events/                           # JSON Schema của mọi sự kiện trên exchange novelhub.events
+├── postgres/provision.sh             # container db-init: mỗi service một database + role riêng
 ├── backup/                           # container sao lưu: Dockerfile + backup.sh (xem Sao lưu & khôi phục)
 ├── backups/                          # kho restic + status.json (không commit)
 ├── docker-compose.yml
@@ -86,7 +90,7 @@ Trình duyệt gọi `/api/v1/...` và `/uploads/...` cùng origin; qua gateway 
 ## 🚀 Khởi chạy
 
 ```bash
-cp .env.example .env         # BẮT BUỘC đặt JWT_SECRET, POSTGRES_PASSWORD, RABBITMQ_PASSWORD, REDIS_PASSWORD, PGADMIN_DEFAULT_PASSWORD (openssl rand -hex 24); compose không chạy nếu thiếu
+cp .env.example .env         # BẮT BUỘC đặt POSTGRES_PASSWORD, IDENTITY_DB_PASSWORD, IDENTITY_JWT_SECRET, AUTH_HEADER_KEY, ELASTIC_PASSWORD, RESTIC_PASSWORD, RABBITMQ_PASSWORD, REDIS_PASSWORD, PGADMIN_DEFAULT_PASSWORD (openssl rand -hex 24); compose không chạy nếu thiếu
 docker compose up -d --build # toàn bộ 10 container
 sh scripts/migrate.sh        # chạy các migration mới (xem mục CI/CD & migration)
 ```
@@ -112,8 +116,6 @@ Chạy không qua Docker (cần Postgres sẵn): `yarn dev:local` (backend + fro
 |:---|:---|:---|
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` / `POSTGRES_PORT` | `postgres` / *(không có)* / `novel_platform` / `5432` | **Bắt buộc** `POSTGRES_PASSWORD` (hex ngẫu nhiên). Volume giữ mật khẩu lúc tạo: đổi trong `.env` thì phải `ALTER USER` (launch.py tự làm) |
 | `PORT` | `5000` | Cổng backend |
-| `JWT_SECRET` | *(không có)* | **Bắt buộc**, tối thiểu 32 ký tự. Ở production backend từ chối khởi động nếu thiếu hoặc còn là giá trị mặc định cũ |
-| `JWT_EXPIRES_IN` | `7d` | Có trong compose, nhưng code hiện ký token 30 ngày cố định |
 | `CORS_ORIGIN` | `http://localhost:3000` | Đổi thành domain thật khi đưa lên tunnel/domain |
 | `RABBITMQ_URL` / `RABBITMQ_USER` / `RABBITMQ_PASSWORD` | compose tự ghép URL từ hai biến sau | **Bắt buộc** `RABBITMQ_PASSWORD`. Để trống `RABBITMQ_URL` (chạy ngoài Docker) thì thông báo được xử lý trực tiếp, không qua hàng đợi |
 | `ENABLE_DEMO_ACCOUNTS` | `false` | `true` mới hiện danh sách tài khoản demo và gợi ý mật khẩu trên form đăng nhập |
@@ -126,6 +128,11 @@ Chạy không qua Docker (cần Postgres sẵn): `yarn dev:local` (backend + fro
 | `SEARCH_URL` | `http://search:9200` (trong compose) | **Để trống để tắt Elasticsearch** và dùng SQL `ILIKE` |
 | `SEARCH_INDEX` | `novel_stories` | Tên index |
 | `SEARCH_PORT` | `9201` | Cổng publish trên máy host (localhost) |
+| `IDENTITY_DB_PASSWORD` / `IDENTITY_JWT_SECRET` / `AUTH_HEADER_KEY` | *(không có)* | **Bắt buộc**, service identity: mật khẩu role `identity`, khóa ký cookie `nh_access`, khóa ký header `X-User-*` (dùng chung identity + backend). `launch.py` tự sinh |
+| `WORKSPACE_DB_PASSWORD` | *(không có)* | **Bắt buộc**, mật khẩu role `workspace` (database `workspace_db`). `launch.py` tự sinh |
+| `ELASTIC_PASSWORD` | *(không có)* | **Bắt buộc**, mật khẩu user `elastic` của Elasticsearch (compose truyền cho backend thành `SEARCH_PASSWORD`). `launch.py` tự sinh. Cố định khi volume `es_data` lần đầu chạy có bảo mật: đổi sau đó phải đổi trong ES hoặc xóa volume (index dựng lại được) |
+| `GATEWAY_BIND` / `GATEWAY_PORT` | `127.0.0.1` / `3000` | Địa chỉ/cổng gateway trên máy host. Mặc định chỉ máy này vào được (đường công khai là Cloudflare tunnel); `GATEWAY_BIND=0.0.0.0` để máy khác trong LAN vào |
+| `SERVICE_NAME` | `backend` | Trường `service` trong log JSON (compose đặt `worker`, `export-worker`) |
 | `REDIS_PASSWORD` / `REDIS_PORT` | *(không có)* / `6380` | **Bắt buộc** `REDIS_PASSWORD`. Compose tự ghép `REDIS_URL` cho backend và worker |
 | `RESTIC_PASSWORD` | *(không có)* | **Bắt buộc**, khóa mã hóa kho sao lưu `backups/repo`. `launch.py` tự sinh nếu thiếu và **không bao giờ đổi** (mật khẩu mới không mở được bản cũ). Mất nó là mất mọi bản sao lưu: chép ra nơi khác |
 | `REDIS_URL` | compose tự ghép | Để trống (chạy ngoài Docker) thì app vẫn chạy: không cache, rate limit trong RAM, ghi lượt xem thẳng DB, không đẩy realtime (trang tự hỏi lại định kỳ) |
@@ -141,12 +148,16 @@ Chống DDoS băng thông lớn phải làm ở rìa mạng (Cloudflare, tườn
 
 **1. Không lộ ra ngoài.** Chỉ `gateway` mở cổng. Backend/Postgres/Elasticsearch/RabbitMQ chỉ nghe `127.0.0.1`, nên không ai trong LAN hay Internet gọi thẳng API hoặc chọc vào DB được. Danh sách tài khoản demo (`/auth/accounts`) và dòng gợi ý "mật khẩu mặc định" tắt mặc định. Lỗi 5xx ở production chỉ trả "Lỗi hệ thống (mã xxxx)", chi tiết SQL/đường dẫn nằm trong log. `helmet`, `X-Powered-By` ẩn, header `nosniff`/`X-Frame-Options`/`Referrer-Policy` ở cả gateway và API.
 
+**Mã yêu cầu & log.** Gateway gán mỗi yêu cầu một `X-Request-Id` (ghi đè giá trị client gửi), chuyển cho backend và trả lại trình duyệt. Lỗi 5xx hiện cho người dùng "Lỗi hệ thống… (mã <request_id>)": tìm mã đó trong log ra cả chuỗi (`docker compose logs gateway backend | grep <mã>`). Gateway, backend, worker đều ghi **log JSON một dòng** (`time, level, service, request_id, msg, …`); gateway không ghi query string và IP, backend chỉ ghi đường dẫn (không query) và `backend/src/utils/logger.ts` tự che JWT, `Bearer …`, mật khẩu trong URL, `password=`/`token=`…, email ở mọi dòng log (kể cả `console.*` cũ). Gateway trả `404` cho mọi `/internal` và `/api/*/internal` (API nội bộ giữa các service sau này), và xóa header `X-User-Id`/`X-User-Roles` client tự gửi (sau này chỉ gateway được gắn).
+
 **2. nginx gateway (`nginx/nginx.conf`)** chặn trước khi yêu cầu tới Node:
 
 | Đường dẫn | Giới hạn theo IP |
 |:---|:---|
-| `/api/v1/auth/login` | 30 lần/phút, burst 8 |
-| `/api/v1/auth/register` | 6 lần/phút, burst 3 |
+| `/api/identity/login` | 30 lần/phút, burst 8 |
+| `/api/identity/register` | 6 lần/phút, burst 3 |
+| `/api/identity/forgot-password`, `reset-password`, `verify-email`, `resend-verification`, `change-password` | 10 lần/phút, burst 5 |
+| `/api/identity/*` còn lại | 20 yêu cầu/giây, burst 40 |
 | `/api/v1/upload/*` | 30 lần/phút, burst 10, thân tối đa 26MB |
 | `/api/v1/*` | 20 yêu cầu/giây, burst 80 |
 | `/uploads/*` (ảnh) | 20/giây, burst 200, **cache ở gateway** (ảnh thu nhỏ `?w=` chỉ tính một lần) |
@@ -167,16 +178,47 @@ Mục tiêu: chịu được vài nghìn đến vài chục nghìn người onli
 | Trình duyệt hỏi server liên tục (thông báo 25s, chat 4s) | Socket.IO đẩy tín hiệu `notification`, `dm`, `group_message` vào phòng `user:<id>`; trang nhận được thì tải lại qua REST. Hỏi định kỳ chỉ còn là dự phòng (120s / 30–60s) | `services/realtime.ts`, `frontend/src/lib/realtime.ts` |
 | Nhiều bản backend × pool 50 làm hết kết nối Postgres | API đi qua PgBouncer (transaction pooling). Worker nối thẳng Postgres | `docker-compose.yml` |
 
-- **Realtime:** chỉ dùng transport WebSocket (không long-polling) nên chạy nhiều bản backend không cần sticky session; xác thực bằng JWT (cookie hoặc `auth.token`) với cùng điều kiện như API (tài khoản tồn tại, không bị khóa/xóa). Worker phát sự kiện qua `@socket.io/redis-emitter`. `next dev` chạy riêng (không qua gateway) thì không có socket, trang vẫn chạy nhờ hỏi định kỳ.
+- **Realtime:** chỉ dùng transport WebSocket (không long-polling) nên chạy nhiều bản backend không cần sticky session; lúc bắt tay, gateway hỏi identity như mọi request API (cookie `nh_access`) và gắn header danh tính ký; backend kiểm chữ ký + tài khoản không bị khóa/xóa. Cookie hết hạn thì client gọi `/api/identity/refresh` rồi kết nối lại. Worker phát sự kiện qua `@socket.io/redis-emitter`. `next dev` chạy riêng (không qua gateway) thì không có socket, trang vẫn chạy nhờ hỏi định kỳ.
 - **PgBouncer chế độ transaction** không giữ trạng thái theo phiên: không dùng advisory lock theo phiên, `SET` không `LOCAL`, `LISTEN`, prepared statement có tên, hay nhiều lệnh SQL có tham số trong một `query`. Train gợi ý dùng `pg_try_advisory_xact_lock` vì lý do này.
 - **Thêm bản backend:** bỏ `container_name` của `backend`, rồi `docker compose up -d --scale backend=3` (nginx tự phân giải tên `backend` qua DNS của Docker).
 
 ## 🔁 CI/CD & migration
 
 - **Migration:** `sh scripts/migrate.sh` chạy các file mới trong `sql/migrations/` theo thứ tự tên, mỗi file một transaction, ghi vào bảng `schema_migrations`; file lỗi được rollback và script dừng với mã lỗi. Lần chạy đầu (chưa có bảng) chỉ **ghi nhận** các file hiện có là đã chạy (vì `sql/database.sql` và các DB cũ đã có chúng). Thêm migration mới: tạo file số tiếp theo, đồng thời thêm nội dung tương ứng vào `sql/database.sql` cho cài đặt mới.
+- **Đo độ trễ** (mốc so sánh khi tách service): `node scripts/bench.mjs [http://localhost:3000] [100]`: p50/p95/max của trang truyện, đọc chương và API chính, chạy ~15 yêu cầu/giây (dưới giới hạn theo IP). Mốc 2026-10-10 (máy dev, có cache): API 3–7 ms, trang truyện/chương 9 ms p50, ≤ 15 ms p95.
 - **CI** (`.github/workflows/ci.yml`, mọi push/PR): typecheck backend + frontend, test backend (`yarn test`: `tsx --test src/**/*.test.ts`) → `docker compose build` → quét image bằng Trivy (lỗi **CRITICAL đã có bản vá** thì fail; ngoại lệ có lý do và hạn dùng ở `.trivyignore`) → khởi động cả stack → `migrate.sh` → kiểm tra `/api/v1/health`, trang chủ, `/stories/trending`.
 - **CD** (`.github/workflows/deploy.yml`, push lên `main`): build và đẩy `ghcr.io/<owner>/nmv-backend` và `nmv-frontend` (tag = commit SHA và `latest`). Bước deploy qua SSH **chỉ chạy khi** biến repo `DEPLOY_ENABLED=true` và có secrets `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_PATH`: `git pull` → `docker compose pull` → `migrate.sh` → `up -d` → kiểm tra health. Server cần `IMAGE_REGISTRY=ghcr.io/<owner>` trong `.env` và đã `docker login ghcr.io`.
 - **Dependabot** (`.github/dependabot.yml`): mỗi tuần mở PR cập nhật npm, Docker và GitHub Actions; CI chạy trên từng PR.
+
+## 🔑 Service identity
+
+Service đầu tiên tách khỏi backend (`Plan/microservices.md`, chi tiết `Plan/identity.md`). Mọi đăng ký, đăng nhập, phiên, mật khẩu, email, vai trò site và khóa/xóa tài khoản đi qua đây; gateway hỏi identity cho **mọi** request `/api/v1/*` và `/socket.io/` (`auth_request` → `/internal/verify`) rồi gắn header `X-User-Id/Roles/Exp/Sig` (HMAC bằng `AUTH_HEADER_KEY`); backend **chỉ tin header có chữ ký đúng** (`middlewares/auth.middleware.ts`), vai trò lấy từ header, hồ sơ từ bảng `users` (bản sao, cập nhật bởi worker từ sự kiện, hoặc đọc xuyên `GET /internal/users/:id` khi sự kiện chưa tới). Thiếu CSRF khi ghi → gateway trả 403 JSON; identity không trả lời → 503 JSON. Frontend: `src/lib/session.ts` (cookie, header `X-CSRF-Token`, gặp 401 thì `POST /api/identity/refresh` một lần rồi thử lại).
+
+- `services/identity/` (Go, ~25 MB RAM, image `scratch`, chạy bằng user nobody). Database riêng `identity_db`, role Postgres riêng `identity` (không kết nối được `novel_platform`); bảng tạo bằng migration nhúng trong service (`services/identity/migrations/`), chạy lúc khởi động trong một transaction có khóa.
+- Container một-lần **`db-init`** (`postgres/provision.sh`) tạo role + database cho mọi service trong `SERVICE_DBS` mỗi lần `docker compose up` (đổi mật khẩu trong `.env` là tự áp dụng), và bỏ quyền `CONNECT` mặc định trên `novel_platform`. Backup đã dump mọi database.
+- Giữ: tài khoản, email, mật khẩu (**argon2id**; băm bcrypt cũ vẫn đăng nhập được và tự đổi sang argon2id), xác thực email, vai trò site, khóa/xóa tài khoản, phiên đăng nhập (mỗi thiết bị một dòng), token đặt lại mật khẩu/xác thực email, nhật ký bảo mật 90 ngày, mail tài khoản.
+- Phiên: cookie `nh_access` (JWT 15 phút, chỉ mã người dùng + mã phiên), `nh_refresh` (30 ngày, chỉ gửi tới `/api/identity`, **xoay vòng** mỗi lần dùng; dùng lại token cũ sau 30 giây = bị lộ → thu hồi cả phiên), `nh_csrf` (gửi lại qua header `X-CSRF-Token` cho request ghi). Thu hồi có hiệu lực ngay (Redis `identity:revoked:`, không có Redis thì đọc Postgres).
+- Mật khẩu mới: 8–128 ký tự, không nằm trong ~2.100 mật khẩu phổ biến, không chứa tên đăng nhập/phần đầu email. Sai 5 lần trong 15 phút → khóa tạm 15 phút. Đổi vai trò, khóa/mở khóa, xóa tài khoản, thu hồi mọi phiên toàn hệ thống: **nhập lại mật khẩu**.
+- API `/api/identity/*` (gateway bỏ tiền tố): `POST /register|login|logout|refresh|forgot-password|reset-password|verify-email`, `GET /me`, `GET /sessions`, `DELETE /sessions/:id`, `POST /logout-all|change-password|resend-verification`, quản trị `POST /users/:id/roles|ban|unban`, `DELETE /users/:id`, `GET /users/:id/private`, `GET /admin/users?q=` (tìm theo email, Admin/Mod), `POST /admin/revoke-all-sessions`. Nội bộ: `GET /internal/verify` (cho `auth_request` của gateway: trả `X-User-Id/Roles/Exp/Sig` ký HMAC bằng `AUTH_HEADER_KEY`), `GET /internal/users/:id`. `/health`, `/ready`.
+- **Sự kiện** qua outbox (ghi cùng transaction) → exchange topic `novelhub.events` (có xác nhận của RabbitMQ): `identity.user.created|updated|deleted` (ảnh chụp công khai, **không email**), `identity.alert`. Schema ở `events/`; test hợp đồng kiểm mọi sự kiện identity ghi ra.
+- **Mail** nằm trong `mail_outbox` (ghi cùng transaction với token), gửi lại chờ tăng dần ~1 giờ, hỏng hẳn → `identity.alert`. Không có `SMTP_URL` thì không gửi; đọc link bằng: `docker compose exec postgres psql -U identity -d identity_db -c "SELECT to_addr, body_text FROM mail_outbox ORDER BY id DESC LIMIT 1"` (link không bao giờ ghi vào log).
+- Chuyển dữ liệu: `identity import-legacy` chép users/user_roles/token chưa dùng từ `novel_platform`, giữ UUID, chỉ thêm phần thiếu (chạy lại an toàn). `scripts/migrate.sh` và `launch.py` chạy nó mỗi lần (nhờ vậy tài khoản mẫu của bản cài mới cũng có trong identity). Lần chuyển đầu: mọi người **đăng nhập lại một lần** (token JWT cũ không còn dùng).
+- Test: `cd services/identity && go test ./...` (test đơn vị); thêm `IDENTITY_TEST_DATABASE_URL=postgres://…/identity_test` (+ `IDENTITY_TEST_REDIS_URL`) để chạy test tích hợp (**xóa sạch database đó**). CI chạy cả hai với Postgres/Redis riêng.
+- Biến môi trường mới (launch.py tự sinh): `IDENTITY_DB_PASSWORD`, `IDENTITY_JWT_SECRET`, `AUTH_HEADER_KEY`.
+
+## 📝 Service workspace (lịch sử chương)
+
+Service thứ hai tách khỏi backend (`Plan/chapter-workspace.md`, giai đoạn 1). Workspace là **nơi duy nhất giữ nội dung chương** và mọi phiên bản của nó; bảng `chapters` ở backend chỉ là **bản đọc** (độc giả vẫn đọc từ đó, có cache, không chậm đi).
+
+- `services/workspace/` (Go, image `scratch`, `mem_limit: 128m`). Database riêng `workspace_db`, role riêng `workspace` (`db-init` tạo); migration nhúng (`services/workspace/migrations/`).
+- **Lưu theo đoạn, khóa là hash:** `content_blocks(hash, data)` (sha256 của JSON chuẩn hóa của đoạn), mỗi phiên bản chỉ là mảng hash (`chapter_revisions`), `chapter_heads` giữ phiên bản hiện tại. Bản chính thức **không bao giờ bị ghi đè**: tạo, sửa, khôi phục bản cũ (rewind), xóa, khôi phục chương xóa đều là **phiên bản mới** (`source` = `import|create|edit|rewind|delete|restore`). Giữ lịch sử mãi.
+- **Đường ghi:** nội dung luôn đi qua backend (lọc HTML bằng bộ lọc sẵn có) → API nội bộ của workspace (`X-Internal-Auth` ký HMAC bằng `AUTH_HEADER_KEY`, hạn 2 phút): `POST /internal/chapters` (đăng = v1), `POST /internal/chapters/:id/revisions` (sửa, kèm `expected_version`: hai người sửa cùng lúc thì người sau nhận 409 thay vì đè), `POST /internal/chapters/:id/delete`, `GET /internal/chapters/:id`. Backend áp phiên bản trả về vào `chapters` **ngay** (người sửa được chuyển tới chương mới không phải chờ), rồi lần nữa qua sự kiện (lúc đó bỏ qua vì đã có).
+- **Sự kiện** `workspace.revision.merged` (outbox → `novelhub.events`, schema ở `events/`) mang cả phiên bản (meta + mọi đoạn). Worker backend (hàng đợi `backend.workspace`) áp dụng khi `version` mới hơn số đã ghi ở `ws_chapter_versions` (nhớ cả chương đã xóa, nên sự kiện trễ không làm sống lại chương). Xóa chương: xóa dòng đọc nhưng **giữ bình luận** (khôi phục cùng UUID thì bình luận gắn lại). Chỉ chương mới (`create`) mới báo người theo dõi.
+- **API công khai** `/api/ws/*` (gateway bỏ tiền tố, vẫn qua `auth_request` nên có header danh tính ký): `GET /chapters/:id/revisions` (danh sách phiên bản), `GET /chapters/:id/revisions/:v`, `GET /chapters/:id/compare?from=&to=` (so theo đoạn bằng hash, LCS; so từng chữ làm ở trình duyệt), `POST /chapters/:id/rewind {to_version}`.
+- **Quyền** hỏi backend `GET /internal/permissions?user=&story=` (cache 30 giây trong workspace): *người đóng góp* (chủ truyện, thành viên nhóm, cộng tác viên) xem lịch sử và so sánh; *người giữ truyện* (chủ truyện, Trưởng nhóm/Mod nhóm) khôi phục bản cũ. Truyện đang bị gỡ thì không khôi phục được (409).
+- **Chuyển dữ liệu:** `workspace import` đọc `GET backend /internal/chapters/export` (phân trang), mỗi chương chưa có thành v1 (`source=import`); `scripts/migrate.sh` và `launch.py` chạy mỗi lần (an toàn khi chạy lại, cần backend đang chạy).
+- Giao diện: trang `/truyen/[slug]/lich-su/[chapterId]` (nút **Lịch sử** ở trang đọc cho người đóng góp). Thử nhanh: `python scripts/workspace-smoke.py`.
+- Test: `cd services/workspace && go test ./...`; thêm `WORKSPACE_TEST_DATABASE_URL=postgres://…/workspace_test` để chạy test tích hợp (**xóa sạch database đó**). CI chạy cả hai và quét image bằng Trivy.
 
 ## 💾 Sao lưu & khôi phục
 
@@ -203,7 +245,7 @@ Sau `--replace`: chỉ mục tìm kiếm Elasticsearch có thể lệch tới kh
 
 ## 🔐 Lộ trình bảo mật
 
-Đã có: một cổng vào duy nhất, 2 mạng Docker tách tầng, `no-new-privileges`, **container app chạy bằng user `node`** (backend khởi động bằng root chỉ để sửa quyền thư mục `uploads`/`exports`/`.cache` khi cần rồi hạ quyền, xem `backend/docker-entrypoint.sh`), mật khẩu ngẫu nhiên bắt buộc cho Postgres/RabbitMQ/Redis/pgAdmin, rate limit dùng chung, lỗi 5xx bị che ở production (`maskServerErrors`: chỉ trả câu chung kèm mã tra log), **thu hồi token** (đổi/đặt lại mật khẩu, "đăng xuất mọi thiết bị": cột `users.tokens_valid_after`, áp cho cả API và socket), **Content-Security-Policy** (`frontend/next.config.mjs`), cookie tự `Secure` + HSTS khi truy cập qua HTTPS, quét lỗ hổng image trong CI, Dependabot.
+Đã có: một cổng vào duy nhất, 2 mạng Docker tách tầng, `no-new-privileges`, **container app chạy bằng user `node`** (backend khởi động bằng root chỉ để sửa quyền thư mục `uploads`/`exports`/`.cache` khi cần rồi hạ quyền, xem `backend/docker-entrypoint.sh`), mật khẩu ngẫu nhiên bắt buộc cho Postgres/RabbitMQ/Redis/pgAdmin, rate limit dùng chung, lỗi 5xx bị che ở production (`maskServerErrors`: chỉ trả câu chung kèm mã tra log), **phiên theo thiết bị ở service identity** (cookie `httpOnly`, token truy cập 15 phút, làm mới xoay vòng có phát hiện dùng lại, CSRF, thu hồi tức thì; không token nào trong `localStorage`), **Content-Security-Policy** (`frontend/next.config.mjs`), cookie tự `Secure` + HSTS khi truy cập qua HTTPS, quét lỗ hổng image trong CI, Dependabot.
 
 1. **Bật HTTPS khi đưa lên mạng**: tạo tunnel trong Cloudflare Zero Trust, trỏ hostname về `http://gateway:8080`, đặt `CLOUDFLARE_TUNNEL_TOKEN` và `SITE_URL=https://<tên miền>` trong `.env`, rồi `docker compose --profile tunnel up -d`. Không cần mở cổng nào trên router.
 2. Cấu hình `SMTP_URL` để mail quên mật khẩu/xác thực email gửi thật (chưa cấu hình thì link chỉ nằm trong log backend).
@@ -294,6 +336,7 @@ Các trang danh sách/chi tiết vẫn giữ khung xám nhấp nháy (skeleton) 
 | `/kham-pha` | Khám phá: tìm kiếm, lọc (loại, tình trạng, ngôn ngữ, số chương, thể loại gồm/loại trừ), sắp xếp, xem lưới/danh sách, phân trang |
 | `/truyen/[slug]` | Chi tiết truyện: danh sách tập/chương (kèm mục "Chưa phân tập"), banner (thống kê lượt xem, người theo dõi, chương; đọc tiếp/đọc từ đầu/chương mới nhất; thanh công cụ theo dõi, lưu vào album, thảo luận Fandom, tải xuống, báo cáo vi phạm), thanh Quản lý dưới banner cho nhóm truyện/Admin/Mod, tag thể loại rồi đến tóm tắt, bình luận; người quản lý được sửa/xóa chương, đổi tên/xóa/sắp xếp lại tập |
 | `/truyen/[slug]/[chapterSlug]` | Đọc truyện chữ (cỡ chữ, font, nền, giãn dòng) và manga, bookmark từng dòng, ghi chú dịch giả, bình luận theo chương, báo cáo, sửa/xóa chương |
+| `/truyen/[slug]/lich-su/[chapterId]` | Lịch sử phiên bản của chương (người đóng góp của truyện): danh sách phiên bản, so sánh hai bản (theo đoạn và từng chữ), người giữ truyện khôi phục bản cũ thành phiên bản mới |
 | `/bookmark` | Tủ truyện theo dõi và danh sách dòng đã bookmark |
 | `/lich-su` | Lịch sử đọc, "đọc tiếp", xóa từng mục hoặc toàn bộ |
 | `/dang-truyen`, `/dang-truyen/sua/[slug]` | Đăng truyện mới, sửa thông tin truyện, thể loại, cộng tác viên |
@@ -323,7 +366,7 @@ Admin/Mod cũng không có quyền gì đặc biệt trong nhóm dịch (sửa n
 - Khi chương được xuất bản, hệ thống tạo thông báo `chapter_update` cho người theo dõi truyện.
 - **Xóa truyện** (xóa hẳn): chỉ người đăng truyện. **Gỡ truyện**: Admin/Mod (`POST /stories/:id/remove`, `approval_status = rejected`, ghi `removed_by/removed_at`), mọi danh sách, tìm kiếm, gợi ý bỏ qua nó; trang truyện vẫn mở được cho nhóm đăng truyện và Admin/Mod, kèm banner. Khôi phục: `POST /stories/:id/restore`.
 - **Xóa chương**: người đăng chương, chủ truyện, leader/mod của nhóm (Admin/Mod không xóa chương, họ gỡ cả truyện).
-- **Sửa chương đã đăng** (`PUT /chapters/:id`): người đăng chương, chủ truyện, leader/mod của nhóm. Sửa trực tiếp, có hiệu lực ngay, **không** gửi lại thông báo và không đổi `last_chapter_at`. Đổi sang số chương đã tồn tại sẽ bị từ chối (409).
+- **Sửa chương đã đăng** (`PUT /chapters/:id`): người đăng chương, chủ truyện, leader/mod của nhóm. Có hiệu lực ngay, mỗi lần lưu là một **phiên bản mới** ở service workspace (bản cũ còn trong lịch sử, khôi phục được), **không** gửi lại thông báo và không đổi `last_chapter_at`. Đổi sang số chương đã tồn tại sẽ bị từ chối (409).
 - **Quản lý tập**: ai quản lý được truyện thì đổi tên, xóa, sắp xếp lại được các tập. Xóa tập **không xóa chương**: các chương chuyển sang mục "Chưa phân tập" (API trả về ở `unassigned_chapters`).
 - **Bình luận**: chỉ tác giả được sửa; tác giả hoặc Admin/Mod được xóa (xóa mềm, kéo theo các trả lời và trừ lại bộ đếm).
 - **Báo cáo vi phạm**: mọi người dùng đã đăng nhập báo cáo được truyện, chương, bình luận, bài viết (mỗi người một báo cáo đang chờ cho mỗi nội dung); chỉ Admin/Mod xem và xử lý. Chống spam: tối đa 10 báo cáo/giờ và 30 báo cáo/24 giờ mỗi người; mỗi người chỉ một báo cáo đang chờ cho mỗi nội dung (unique index `uq_reports_pending`, bấm nhiều lần cũng chỉ ghi một); báo cáo cũ vừa được xử lý thì phải chờ 24 giờ mới báo cáo lại nội dung đó.
@@ -336,13 +379,14 @@ Schema thật gồm 31 bảng và 2 view (`sql/database.sql`). Nhóm chính:
 
 | Nhóm | Bảng |
 |:---|:---|
-| Người dùng | `users`, `user_roles`, `user_settings`, `user_follows`*, `user_favorites`, `auth_tokens` (link đặt lại mật khẩu / xác thực email) |
+| Người dùng | `users`, `user_roles` (**bản sao** từ identity qua sự kiện `identity.user.*`: tên đăng nhập, vai trò, khóa/xóa; hồ sơ hiển thị vẫn do backend giữ), `user_settings`, `user_follows`*, `user_favorites`, `processed_events` (sự kiện đã áp dụng). Cột `users.email`, `password_hash`, `tokens_valid_after`, `last_login_at` và bảng `auth_tokens` **không còn dùng** (identity giữ), sẽ xóa sau khi xác nhận chuyển xong |
 | Truyện | `stories`, `volumes`, `chapters`, `chapter_pages`, `chapter_submissions`, `story_tags`, `tags`, `tag_categories`, `story_collaborators`, `story_views`, `story_views_daily` |
 | Nhóm dịch | `translation_groups`, `group_members`, `group_join_requests`, `group_messages` |
 | Tin nhắn riêng | `direct_messages` (migration `014_direct_messages.sql`; cột `pinned_at`, `pinned_by`), `dm_labels`, `dm_label_conversations`, `user_blocks` (migration `016_dm_labels_block_pin.sql`) |
 | Tương tác | `bookmarks`, `reading_history`, `comments`, `comment_likes`, `notifications`, `broadcast_notifications`* |
 | Fandom | `posts`, `post_tags`, `post_reactions` |
 | Kiểm duyệt | `reports` |
+| Workspace | `ws_chapter_versions` (migration `023_ws_chapter_versions.sql`): phiên bản workspace mới nhất đã áp vào bản đọc `chapters`, gồm cả chương đã xóa. Nội dung và lịch sử nằm ở `workspace_db` (xem [Service workspace](#-service-workspace-lịch-sử-chương)) |
 | View | `v_trending_stories`, `v_recently_updated_stories` |
 
 `*` = bảng đã có trong DB nhưng **chưa có API hay giao diện nào dùng** (xem Hạn chế).
@@ -369,12 +413,9 @@ Ghi chú thực tế: bảng `users` **không có** cột `role`, `coins`, `exp_
 
 **Hệ thống & Auth**
 - `GET /health`
-- `POST /auth/login` (body: `identifier`, `password`), `POST /auth/register` (gửi kèm mail xác thực), `POST /auth/logout`, `GET /auth/me` (có `email_verified`)
-- `GET /auth/accounts`: danh sách tài khoản demo (công khai, chỉ nên dùng khi dev)
-- `POST /auth/change-password` (Auth; `current_password`, `new_password`): đổi mật khẩu, thu hồi token ở thiết bị khác, trả token mới cho thiết bị này
-- `POST /auth/logout-all` (Auth): thu hồi mọi token, đóng socket đang mở
-- `POST /auth/forgot-password` (`email`): luôn trả cùng một câu (không lộ email nào có tài khoản), gửi link `/dat-lai-mat-khau?token=` hiệu lực 1 giờ (mỗi tài khoản tối đa 1 mail mỗi 2 phút, ngoài giới hạn theo IP); `POST /auth/reset-password` (`token`, `new_password`): token dùng một lần, thu hồi mọi phiên
-- `POST /auth/verify-email` (`token`, hiệu lực 24 giờ), `POST /auth/resend-verification` (Auth). Giới hạn: gửi mail 5 lần/giờ, thử token/mật khẩu hiện tại 20 lần/15 phút. DB chỉ lưu SHA-256 của token (bảng `auth_tokens`, migration `015_account_security.sql`)
+- Đăng ký, đăng nhập, phiên, mật khẩu, email: **service identity** `/api/identity/*` (xem mục [Service identity](#-service-identity)).
+- `GET /auth/me` (Auth): hồ sơ hiển thị + vai trò của mình (email/xác thực: `GET /api/identity/me`)
+- `GET /auth/accounts`: danh sách tài khoản demo (công khai, chỉ khi `ENABLE_DEMO_ACCOUNTS=true`)
 
 **Truyện**
 - `GET /stories`, `GET /stories/explore` (cùng một handler; hỗ trợ `q, type, status, tags, exclude_tags, language, min_chapters, sort, page, limit`; `sort` = `relevance | updated | views | favorites | newest | title_asc | title_desc`)
@@ -389,7 +430,8 @@ Ghi chú thực tế: bảng `users` **không có** cột `role`, `coins`, `exp_
 
 **Chương**
 - `POST /chapters/submissions` (Auth, đăng chương: xuất bản ngay, hoặc lưu nháp với `is_draft`)
-- `GET /chapters/:id` (Auth, dữ liệu để sửa), `PUT /chapters/:id` (Auth, sửa chương đã đăng), `DELETE /chapters/:id` (Auth)
+- `GET /chapters/:id` (Auth, dữ liệu để sửa, kèm `ws_version`), `PUT /chapters/:id` (Auth, sửa chương đã đăng; gửi lại `expected_version` = `ws_version`, đã có người sửa trước thì 409), `DELETE /chapters/:id` (Auth)
+- Lịch sử, so sánh, khôi phục bản cũ: `/api/ws/*` (xem [Service workspace](#-service-workspace-lịch-sử-chương))
 
 **Theo dõi, Bookmark, Lịch sử**
 - `GET /favorites`, `POST /favorites/toggle`, `GET /favorites/status/:storyId`
@@ -425,11 +467,11 @@ Ghi chú thực tế: bảng `users` **không có** cột `role`, `coins`, `exp_
 
 **Người dùng & Upload**
 - `GET /profile/me`, `PUT /profile/me`, `PUT /profile/me/settings`
-- `GET /users`, `GET /users/admin/all`, `POST /users/:userId/roles`
+- `GET /users`
 - `GET /admin/backup-status` (Admin): trạng thái sao lưu do container `backup` ghi (`null` nếu chưa chạy lần nào)
 - `GET /codes/:code`: tra mã thông minh → `{ type, path }` (không phân biệt hoa thường, chỉ dựa vào số). Nội dung ẩn trả 404 như mã sai: bài nháp hoặc bị gỡ (trừ tác giả/staff), album riêng tư (trừ chủ), người bị khóa/xóa và báo cáo (trừ Admin/Mod)
 - `GET /users/:username`: hồ sơ công khai (trang `/nguoi-dung/:username`), chỉ gồm tên, ảnh, giới thiệu, vai trò công khai, thống kê, nhóm dịch và truyện đã đăng; không có email/cài đặt/lịch sử. Admin/Mod nhận thêm khối `moderation` (email, trạng thái khóa, các thao tác được phép)
-- Quản trị người dùng (Admin/Mod): `POST /users/:userId/ban` (kèm `reason`), `POST /users/:userId/unban`, `DELETE /users/:userId` (xóa mềm: ẩn danh hóa và khóa tài khoản, giữ truyện; `purge_content: true` ẩn luôn bài viết và bình luận). Không ai tác động lên chính mình hoặc Admin; Mod chỉ tác động lên người dùng thường; Admin và Mod đều cấp được quyền Mod cho người dùng thường, chỉ Admin thu hồi quyền Mod (migration `sql/migrations/005_user_soft_delete.sql`)
+- Quản trị tài khoản (khóa/mở khóa, xóa, phân quyền, tra email): ở identity, phải **nhập lại mật khẩu**. Quy tắc giữ nguyên: không ai tác động lên chính mình hoặc Admin; Mod chỉ tác động lên người dùng thường; Admin và Mod đều cấp được quyền Mod cho người dùng thường, chỉ Admin thu hồi quyền Mod. Backend làm phần của mình khi nhận `identity.user.deleted` (ẩn danh hồ sơ, rời nhóm, bỏ theo dõi, `purge_content` ẩn bài viết/bình luận) và trả lời `GET /internal/users/:id/delete-check` (không xóa Trưởng nhóm duy nhất).
 - `POST /upload/image`, `POST /upload/images` (tối đa 10 ảnh)
 
 ## 👥 Tài khoản mẫu
@@ -445,13 +487,13 @@ Mật khẩu chung cho mọi tài khoản mẫu: **`password123`** (đã kiểm 
 | `reader_yuki` | reader, translator |
 | `reader_hana`, `reader_ryu`, `reader_sora` | reader |
 
-Email có dạng `<tên ngắn>@novelhub.vn` (ví dụ `admin@novelhub.vn`, `sakura@novelhub.vn`, `yuki@novelhub.vn`); đăng nhập bằng username hoặc email đều được. **Xóa tài khoản mẫu và tắt `/auth/accounts` trước khi chạy thật.**
+Email có dạng `<tên ngắn>@novelhub.vn` (ví dụ `admin@novelhub.vn`, `sakura@novelhub.vn`, `yuki@novelhub.vn`); đăng nhập bằng username hoặc email đều được. **Xóa tài khoản mẫu và tắt `/auth/accounts` trước khi chạy thật.** Đổi mật khẩu tài khoản mẫu cũng phải theo quy tắc mới (≥ 8 ký tự, không phổ biến).
 
 ## ⚠️ Hạn chế đã biết
 
 **Chưa có chức năng**
-- Sửa chương chưa có lịch sử phiên bản (sửa là ghi đè).
-- Bản nháp chương lưu trên server (`chapter_submissions` trạng thái `draft`) chưa có trang nào để xem lại; nháp trong trình duyệt (`localStorage`) thì trang đăng chương tự gợi ý khôi phục.
+- Workspace mới có lịch sử bản chính thức (giai đoạn 1): chưa có nháp riêng, đề xuất/gộp, giao việc (giai đoạn 2–4 trong `Plan/chapter-workspace.md`).
+- Bản nháp chương lưu trên server (`chapter_submissions` trạng thái `draft`, chưa chuyển sang workspace) chưa có trang nào để xem lại; nháp trong trình duyệt (`localStorage`) thì trang đăng chương tự gợi ý khôi phục.
 - Chương không gỡ riêng được: Admin/Mod chỉ gỡ cả truyện. Bài viết do tác giả tự xóa hoặc bị ẩn khi xóa tài khoản (`purge_content`) không nằm trong `/da-go`.
 - Báo cáo vi phạm chưa tự ẩn/xóa nội dung: Admin/Mod phải tự xử lý rồi đánh dấu báo cáo.
 - Các bảng `user_follows`, `broadcast_notifications` chưa được code sử dụng.
@@ -463,6 +505,6 @@ Email có dạng `<tên ngắn>@novelhub.vn` (ví dụ `admin@novelhub.vn`, `sak
 
 **Bảo mật (cần xử lý trước khi chạy thật)**
 - **Tài khoản mẫu vẫn dùng mật khẩu `password123`** (kể cả `admin`), bất kể danh sách demo đang tắt. Nếu website đang mở ra Internet (ví dụ qua tunnel), hãy đổi mật khẩu hoặc xóa các tài khoản này.
-- Đổi `JWT_SECRET` làm mọi phiên đăng nhập hiện có hết hiệu lực (người dùng phải đăng nhập lại). Token sống 30 ngày; thu hồi được qua đổi mật khẩu hoặc "Đăng xuất khỏi mọi thiết bị" (tab Bảo mật ở `/tai-khoan`). Frontend vẫn lưu một bản token trong `localStorage` (ngoài cookie `httpOnly`), nên XSS vẫn đọc được token; CSP giảm rủi ro này.
-- Elasticsearch và RabbitMQ chạy trong mạng nội bộ Docker; Elasticsearch tắt xác thực (chỉ bind `127.0.0.1`).
+- Đổi `IDENTITY_JWT_SECRET` làm mọi token truy cập mất hiệu lực (trình duyệt tự làm mới bằng `nh_refresh` nên người dùng không phải đăng nhập lại); đổi `AUTH_HEADER_KEY` phải đổi đồng thời cho identity và backend. Socket đang mở không bị đóng ngay khi người dùng tự "đăng xuất mọi thiết bị" (chỉ đóng khi bị khóa/xóa); lần kết nối lại sau đó bị từ chối.
+- Elasticsearch và RabbitMQ chạy trong mạng nội bộ Docker, có mật khẩu. Backend dùng user `elastic` (toàn quyền) cho ES: chưa tách user chỉ có quyền trên index truyện.
 - Cổng 3000 chạy HTTP thường; bật HTTPS bằng service `cloudflared` (xem [Lộ trình bảo mật](#-lộ-trình-bảo-mật)) trước khi dùng thật.

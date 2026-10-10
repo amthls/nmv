@@ -2,11 +2,9 @@ import type { Server as HttpServer } from 'http';
 import { Server } from 'socket.io';
 import { createAdapter } from '@socket.io/redis-adapter';
 import { Emitter } from '@socket.io/redis-emitter';
-import jwt from 'jsonwebtoken';
 import { pool } from '../config/db';
-import { JWT_SECRET } from '../config/env';
 import { redis, redisReady, newRedisConnection } from '../config/redis';
-import { isTokenRevoked } from '../middlewares/auth.middleware';
+import { identityFromHeaders } from '../middlewares/auth.middleware';
 
 /**
  * Realtime "something changed" pings (Socket.IO). The server only pushes; browsers then refetch
@@ -19,11 +17,6 @@ const room = (userId: string) => `user:${userId}`;
 const emitter = redis ? new Emitter(redis) : null;
 let localIo: Server | null = null; // used when there is no Redis (single process, local dev)
 
-function tokenFromCookie(header?: string): string | undefined {
-  const match = header?.match(/(?:^|;\s*)(?:token|auth_token)=([^;]+)/);
-  return match ? decodeURIComponent(match[1]) : undefined;
-}
-
 export function attachRealtime(server: HttpServer) {
   const io = new Server(server, {
     path: '/socket.io',
@@ -34,17 +27,16 @@ export function attachRealtime(server: HttpServer) {
   const subscriber = newRedisConnection('socket-sub');
   if (redis && subscriber) io.adapter(createAdapter(redis, subscriber));
 
-  // Same rules as requireAuth: valid token, account exists, not banned or deleted
+  // Same rules as requireAuth: the gateway's signed identity headers on the handshake (the browser's
+  // session cookie went through auth_request), account not banned or deleted
   io.use(async (socket, next) => {
     try {
-      const token = socket.handshake.auth?.token || tokenFromCookie(socket.handshake.headers.cookie);
-      const decoded: any = jwt.verify(String(token || ''), JWT_SECRET);
-      const userRes = await pool.query(`SELECT is_banned, deleted_at, tokens_valid_after FROM users WHERE id = $1::uuid`, [decoded?.id]);
+      const ident = identityFromHeaders(socket.handshake.headers);
+      if (!ident) return next(new Error('unauthorized'));
+      const userRes = await pool.query(`SELECT is_banned, deleted_at FROM users WHERE id = $1::uuid`, [ident.id]);
       const user = userRes.rows[0];
-      if (!user || user.is_banned || user.deleted_at || isTokenRevoked(decoded, user.tokens_valid_after)) {
-        return next(new Error('unauthorized'));
-      }
-      socket.join(room(decoded.id));
+      if (!user || user.is_banned || user.deleted_at) return next(new Error('unauthorized'));
+      socket.join(room(ident.id));
       next();
     } catch {
       next(new Error('unauthorized'));

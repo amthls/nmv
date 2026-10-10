@@ -3,7 +3,7 @@ import { UserReadingLog } from '../models/readingHistory.model';
 import { pool } from '../config/db';
 import { recordView } from '../services/viewCounter';
 import { logRecEvent, visitorIdOf } from '../services/recommender/events';
-import { AuthenticatedRequest } from '../middlewares/auth.middleware';
+import { AuthenticatedRequest, internalAuthHeader } from '../middlewares/auth.middleware';
 import { searchStoryIds, indexStory, removeStoryFromIndex } from '../services/search.service';
 import { sanitizeRichText } from '../utils/richText';
 import { InputError, isUuid, optionalEnum, optionalText, optionalUrl, requiredText } from '../utils/validation';
@@ -53,13 +53,24 @@ export async function canUserManageStory(userId: string, storyId: string): Promi
 
 type Queryable = { query: (text: string, params?: any[]) => Promise<any> };
 
-/** Someone with a published story becomes an author (own story) or a translator (group story). */
-export async function grantPublisherRole(db: Queryable, userId: string, groupId: string | null) {
-  await db.query(
-    `INSERT INTO user_roles (user_id, role, is_visible) VALUES ($1, $2::user_role, true) ON CONFLICT (user_id, role) DO NOTHING`,
-    [userId, groupId ? 'translator' : 'author']
-  );
+/**
+ * Someone with a published story becomes an author (own story) or a translator (group story). Roles are the
+ * identity service's (user_roles here is a copy): ask it, the copy follows through identity.user.updated.
+ * shortcut: fire-and-forget (a story rolled back afterwards still leaves the badge; identity down = no badge, logged);
+ * move to the outbox when stories become the catalog service.
+ */
+export async function grantPublisherRole(_db: Queryable, userId: string, groupId: string | null) {
+  fetch(`${IDENTITY_URL}/internal/users/${userId}/roles`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Internal-Auth': internalAuthHeader() },
+    body: JSON.stringify({ role: groupId ? 'translator' : 'author' }),
+    signal: AbortSignal.timeout(3000),
+  })
+    .then((r) => { if (!r.ok) console.warn(`[roles] identity refused the ${groupId ? 'translator' : 'author'} badge: ${r.status}`); })
+    .catch((err) => console.warn(`[roles] could not reach identity for a badge: ${err.message}`));
 }
+
+const IDENTITY_URL = (process.env.IDENTITY_INTERNAL_URL || 'http://identity:8080').replace(/\/+$/, '');
 
 const STORY_TYPES = ['novel', 'manga'] as const;
 const STORY_STATUSES = ['ongoing', 'completed', 'hiatus', 'dropped'] as const;

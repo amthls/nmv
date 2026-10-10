@@ -1,6 +1,5 @@
 ﻿import express from 'express';
 import cors from 'cors';
-import morgan from 'morgan';
 import './config/env'; // loads .env and validates required secrets first
 import path from 'path';
 import apiRoutes from './routes/api.routes';
@@ -10,6 +9,15 @@ import { startSearchSync } from './services/search.service';
 import { resizeUploadedImage } from './services/image.service';
 import { visitorCookie } from './services/recommender/events';
 import { attachRealtime } from './services/realtime';
+import { requestContext } from './utils/logger';
+import { identityFromHeaders, internalAuthOK } from './middlewares/auth.middleware';
+import { permissions, exportChapters } from './controllers/internal.controller';
+import { deleteCheck } from './controllers/user.controller';
+
+// Without the key that verifies the gateway's identity headers nobody is ever signed in: refuse to start
+if (process.env.NODE_ENV === 'production' && (process.env.AUTH_HEADER_KEY || '').length < 32) {
+  throw new Error('AUTH_HEADER_KEY is missing or shorter than 32 characters (launch.py generates it; same value as identity).');
+}
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -22,6 +30,7 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('[CRITICAL] Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
+app.use(requestContext); // before everything else, so every log line and error carries the request_id
 applySecurity(app);
 
 // CORS Configuration with Credentials for Persistent Cookies
@@ -53,7 +62,6 @@ app.use('/api/v1', visitorCookie);
 // Uploads go through multer (multipart) with their own limits; JSON bodies never need to be big
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
-app.use(morgan('dev'));
 
 // Static Uploads Folder (Serve stored image assets); ?w=<width> serves a resized copy
 // Only resized variants cost CPU, so only they are rate limited
@@ -64,6 +72,20 @@ app.use('/uploads', express.static(path.resolve(__dirname, './uploads'), { maxAg
 
 // RESTful API V1
 app.use('/api/v1', globalApiLimiter, writeLimiter, apiRoutes);
+
+// Service-to-service calls (identity -> backend), signed like the gateway's headers. The gateway answers 404 for
+// /internal from outside, so only containers on the Docker networks reach these.
+app.get('/internal/users/:id/delete-check', (req, res, next) => {
+  if (!identityFromHeaders(req.headers)) return res.status(401).json({ ok: false });
+  deleteCheck(req, res).catch(next);
+});
+// Workspace -> backend (X-Internal-Auth): story rights and the one-time chapter import
+const internal = (fn: (req: express.Request, res: express.Response) => Promise<unknown>): express.RequestHandler => (req, res, next) => {
+  if (!internalAuthOK(req.get('x-internal-auth'))) return res.status(401).json({ success: false });
+  fn(req, res).catch(next);
+};
+app.get('/internal/permissions', internal(permissions));
+app.get('/internal/chapters/export', internal(exportChapters));
 
 // Root endpoint
 app.get('/', (req, res) => {

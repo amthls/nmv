@@ -45,6 +45,8 @@ import AlbumCard from '@/components/album/AlbumCard';
 import RecommenderPanel from '@/components/admin/RecommenderPanel';
 import BackupPanel from '@/components/admin/BackupPanel';
 import SecurityTab from '@/components/account/SecurityTab';
+import { useConfirmPassword } from '@/components/account/ConfirmPassword';
+import { IDENTITY_URL } from '@/lib/session';
 import { useAuth } from '@/context/AuthContext';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
@@ -171,6 +173,7 @@ export default function UserProfilePage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const isAdmin = hasRole('admin');
+  const confirmPassword = useConfirmPassword();
 
   const fetchProfile = async () => {
     if (!isAuthenticated) return;
@@ -212,7 +215,8 @@ export default function UserProfilePage() {
     if (!isAdmin) return;
     setAdminLoading(true);
     try {
-      const res = await authFetch(`${API_BASE_URL}/users/admin/all?q=${encodeURIComponent(query)}`);
+      // Accounts (email, roles, status) are listed by the identity service
+      const res = await authFetch(`${IDENTITY_URL}/admin/users?q=${encodeURIComponent(query)}`);
       if (res.ok) {
         const json = await res.json();
         if (json.success) {
@@ -243,10 +247,15 @@ export default function UserProfilePage() {
   const handleRoleToggle = async (targetUserId: string, roleName: string, currentHasRole: boolean) => {
     try {
       const action = currentHasRole ? 'revoke' : 'grant';
-      const res = await authFetch(`${API_BASE_URL}/users/${targetUserId}/roles`, {
+      const target = adminUsers.find((u) => u.id === targetUserId);
+      const password = await confirmPassword.ask(
+        `${currentHasRole ? 'Thu hồi' : 'Cấp'} quyền ${roleName} ${currentHasRole ? 'của' : 'cho'} ${target?.username || 'người dùng'}`
+      );
+      if (!password) return;
+      const res = await authFetch(`${IDENTITY_URL}/users/${targetUserId}/roles`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: roleName, action }),
+        body: JSON.stringify({ role: roleName, action, password }),
       });
       const json = await res.json();
       if (res.ok && json.success) {
@@ -391,6 +400,7 @@ export default function UserProfilePage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 pb-24">
+      {confirmPassword.dialog}
       {/* 1. Profile header */}
       <div className="rounded-3xl overflow-hidden glass-panel border border-white/10 bg-glass shadow-2xl">
         <div className="h-40 sm:h-52 w-full relative bg-gradient-to-br from-brand-700/60 via-indigo-800/50 to-rose-800/40">

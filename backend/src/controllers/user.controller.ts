@@ -29,147 +29,6 @@ export const getUsers = async (req: Request, res: Response) => {
   }
 };
 
-/**
- * Admin endpoint: List all users for role management
- */
-export const getAdminUserList = async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    if (!req.user || !req.user.roles?.includes('admin')) {
-      return res.status(403).json({
-        success: false,
-        message: 'Chỉ Quản trị viên (Admin) mới có quyền truy cập danh sách này.',
-      });
-    }
-
-    const { q = '' } = req.query;
-    let queryStr = `
-      SELECT 
-        u.id, u.username, u.email, u.display_name, u.avatar_url, u.is_banned, u.deleted_at, u.created_at,
-        COALESCE(
-          json_agg(
-            json_build_object('role', ur.role, 'is_visible', ur.is_visible)
-          ) FILTER (WHERE ur.role IS NOT NULL), '[]'
-        ) as roles
-      FROM users u
-      LEFT JOIN user_roles ur ON u.id = ur.user_id
-    `;
-    const params: any[] = [];
-    if (q && typeof q === 'string' && q.trim()) {
-      params.push(`%${q.trim()}%`);
-      queryStr += ` WHERE u.username ILIKE $1 OR u.email ILIKE $1 OR u.display_name ILIKE $1`;
-    }
-    queryStr += ` GROUP BY u.id ORDER BY u.created_at ASC;`;
-
-    const result = await pool.query(queryStr, params);
-
-    res.json({
-      success: true,
-      data: result.rows,
-    });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-/**
- * Admin role management: Grant or Revoke a role (e.g. 'mod', 'translator', 'author', 'reader')
- */
-export const manageUserRole = async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const actorRoles = req.user?.roles || [];
-    const { userId } = req.params;
-    const { role, action } = req.body || {}; // action: 'grant' | 'revoke'
-    if (!isUuid(userId)) return res.status(404).json({ success: false, message: 'Người dùng không tồn tại.' });
-
-    if (!actorRoles.includes('admin')) {
-      // Mods may only make a regular user a mod (see moderationRights); all else is admin-only
-      const target = actorRoles.includes('mod') && role === 'mod' && action === 'grant'
-        ? await loadModerationTarget(userId)
-        : null;
-      if (!target || !moderationRights({ id: req.user!.id, roles: actorRoles }, target).grant_mod) {
-        return res.status(403).json({
-          success: false,
-          message: 'Chỉ Quản trị viên (Admin) mới có quyền phân quyền người dùng này.',
-        });
-      }
-    }
-
-    const validRoles = ['admin', 'mod', 'translator', 'author', 'reader'];
-    if (!validRoles.includes(role)) {
-      return res.status(400).json({
-        success: false,
-        message: `Vai trò không hợp lệ. Các vai trò hợp lệ: ${validRoles.join(', ')}`,
-      });
-    }
-
-    if (!['grant', 'revoke'].includes(action)) {
-      return res.status(400).json({
-        success: false,
-        message: "Hành động không hợp lệ. Vui lòng chọn 'grant' hoặc 'revoke'.",
-      });
-    }
-
-    // Verify target user exists
-    const userCheck = await pool.query(`SELECT id, username, is_banned, deleted_at FROM users WHERE id = $1::uuid`, [userId]);
-    if (userCheck.rows.length === 0 || userCheck.rows[0].deleted_at) {
-      return res.status(404).json({ success: false, message: 'Người dùng không tồn tại.' });
-    }
-    if (action === 'grant' && userCheck.rows[0].is_banned) {
-      return res.status(400).json({ success: false, message: 'Không thể cấp quyền cho tài khoản đang bị khóa.' });
-    }
-
-    // Safety guard: Admin cannot revoke their own admin role
-    if (userId === req.user!.id && role === 'admin' && action === 'revoke') {
-      return res.status(400).json({
-        success: false,
-        message: 'Bạn không thể tự gỡ bỏ quyền Admin của chính mình.',
-      });
-    }
-
-    if (action === 'grant') {
-      await pool.query(
-        `INSERT INTO user_roles (user_id, role, is_visible, granted_by, granted_at)
-         VALUES ($1::uuid, $2, TRUE, $3::uuid, NOW())
-         ON CONFLICT (user_id, role) DO UPDATE SET is_visible = TRUE;`,
-        [userId, role, req.user!.id]
-      );
-    } else if (action === 'revoke') {
-      await pool.query(
-        `DELETE FROM user_roles WHERE user_id = $1::uuid AND role = $2;`,
-        [userId, role]
-      );
-    }
-
-    // Fetch updated roles
-    const updatedRolesRes = await pool.query(
-      `SELECT role, is_visible FROM user_roles WHERE user_id = $1::uuid`,
-      [userId]
-    );
-
-    const roleNameVi: Record<string, string> = {
-      admin: 'Quản trị viên (Admin)',
-      mod: 'Kiểm duyệt viên (Mod)',
-      translator: 'Dịch giả',
-      author: 'Tác giả',
-      reader: 'Độc giả',
-    };
-
-    res.json({
-      success: true,
-      message: action === 'grant'
-        ? `Đã cấp quyền ${roleNameVi[role] || role} cho người dùng ${userCheck.rows[0].username} thành công!`
-        : `Đã thu hồi quyền ${roleNameVi[role] || role} của người dùng ${userCheck.rows[0].username}!`,
-      data: {
-        userId,
-        username: userCheck.rows[0].username,
-        roles: updatedRolesRes.rows,
-      },
-    });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
 export const getCurrentUserProfile = async (req: AuthenticatedRequest, res: Response) => {
   try {
     if (!req.user || !req.user.id) {
@@ -181,8 +40,8 @@ export const getCurrentUserProfile = async (req: AuthenticatedRequest, res: Resp
     // 1. User base and roles
     const userRes = await pool.query(`
       SELECT 
-        u.id, u.code, u.username, u.email, u.display_name, u.avatar_url, u.banner_url, u.bio, u.created_at,
-        u.last_login_at, u.email_verified,
+        u.id, u.code, u.username, u.display_name, u.avatar_url, u.banner_url, u.bio, u.created_at,
+        u.email_verified,
         COALESCE(
           json_agg(
             json_build_object('role', ur.role, 'is_visible', ur.is_visible)
@@ -356,7 +215,8 @@ async function loadModerationTarget(userId: string) {
 /**
  * Public profile of another user: only what is safe to show anyone (no email, settings,
  * reading history, bookmarks or favorites). Banned/deleted accounts are hidden except from
- * site staff, who also get a `moderation` block (status, email and the actions they may take).
+ * site staff, who also get a `moderation` block (status and the actions they may take; the email
+ * comes from identity: GET /api/identity/users/:id/private).
  */
 export const getUserProfile = async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -366,7 +226,7 @@ export const getUserProfile = async (req: AuthenticatedRequest, res: Response) =
 
     const result = await pool.query(`
       SELECT 
-        u.id, u.code, u.username, u.email, u.display_name, u.avatar_url, u.banner_url, u.bio, u.created_at,
+        u.id, u.code, u.username, u.display_name, u.avatar_url, u.banner_url, u.bio, u.created_at,
         u.is_banned, u.ban_reason, u.banned_at, u.deleted_at,
         COALESCE(
           json_agg(
@@ -423,7 +283,6 @@ export const getUserProfile = async (req: AuthenticatedRequest, res: Response) =
 
     if (isStaff) {
       data.moderation = {
-        email: row.email,
         roles: allRoles,
         is_banned: row.is_banned,
         ban_reason: row.ban_reason,
@@ -445,123 +304,32 @@ export const getUserProfile = async (req: AuthenticatedRequest, res: Response) =
   }
 };
 
-/** Ban (with a reason) or unban. Banned users can't log in and every signed-in request is refused. */
-export const setUserBan = (ban: boolean) => async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const { userId } = req.params;
-    if (!isUuid(userId)) return res.status(404).json({ success: false, message: 'Người dùng không tồn tại.' });
-
-    const target = await loadModerationTarget(userId);
-    if (!target) return res.status(404).json({ success: false, message: 'Người dùng không tồn tại.' });
-
-    const can = moderationRights({ id: req.user!.id, roles: req.user!.roles || [] }, target);
-    if (ban ? !can.ban : !can.unban) {
-      const already = ban ? target.is_banned : !target.is_banned;
-      return res.status(already ? 409 : 403).json({
-        success: false,
-        message: already
-          ? (ban ? 'Tài khoản này đã bị khóa.' : 'Tài khoản này không bị khóa.')
-          : 'Bạn không có quyền thực hiện thao tác này với tài khoản này.',
-      });
-    }
-
-    if (ban) {
-      const reason = optionalText(req.body?.reason, 500, 'Lý do') || 'Vi phạm điều khoản cộng đồng';
-      await pool.query(`
-        UPDATE users SET is_banned = true, ban_reason = $1, banned_at = NOW(), banned_by = $2 WHERE id = $3
-      `, [reason, req.user!.id, userId]);
-    } else {
-      await pool.query(`
-        UPDATE users SET is_banned = false, ban_reason = NULL, banned_at = NULL, banned_by = NULL WHERE id = $1
-      `, [userId]);
-    }
-
-    res.json({
-      success: true,
-      message: ban
-        ? `Đã khóa tài khoản ${target.username}.`
-        : `Đã mở khóa tài khoản ${target.username}.`,
-    });
-  } catch (error: any) {
-    if (error instanceof InputError) return res.status(error.status).json({ success: false, message: error.message });
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
 /**
- * Delete an account. Stories, chapters and groups reference their author, so the row is kept but
- * anonymized and locked: name/email/password/avatar/bio scrubbed, roles, memberships, follows and
- * settings removed. With purge_content, their posts and comments are hidden too.
+ * GET /internal/users/:id/delete-check (identity → backend, signed actor headers): may this account be deleted
+ * without leaving a translation group with no leader? Groups live here, accounts in identity.
  */
-export const deleteUser = async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const { userId } = req.params;
-    if (!isUuid(userId)) return res.status(404).json({ success: false, message: 'Người dùng không tồn tại.' });
-    const purgeContent = req.body?.purge_content === true;
-
-    const target = await loadModerationTarget(userId);
-    if (!target) return res.status(404).json({ success: false, message: 'Người dùng không tồn tại.' });
-    const can = moderationRights({ id: req.user!.id, roles: req.user!.roles || [] }, target);
-    if (!can.delete) {
-      return res.status(target.deleted_at ? 409 : 403).json({
-        success: false,
-        message: target.deleted_at ? 'Tài khoản này đã bị xóa.' : 'Bạn không có quyền xóa tài khoản này.',
-      });
-    }
-
-    // A group must never be left without a leader
-    const soleLeader = await pool.query(`
-      SELECT g.name FROM group_members gm JOIN translation_groups g ON g.id = gm.group_id
-      WHERE gm.user_id = $1 AND gm.role = 'leader'
-        AND (SELECT COUNT(*) FROM group_members x WHERE x.group_id = gm.group_id AND x.role = 'leader') = 1
-    `, [userId]);
-    if (soleLeader.rows.length > 0) {
-      return res.status(409).json({
-        success: false,
-        message: `Người dùng này là Trưởng nhóm duy nhất của: ${soleLeader.rows.map((r) => r.name).join(', ')}. Hãy chỉ định Trưởng nhóm khác trước khi xóa.`,
-      });
-    }
-
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      await client.query(`
-        UPDATE users SET
-          username = 'deleted_' || substr(replace(id::text, '-', ''), 1, 12),
-          email = 'deleted+' || id::text || '@deleted.invalid',
-          password_hash = '!',
-          display_name = 'Người dùng đã xóa',
-          avatar_url = NULL, banner_url = NULL, bio = NULL,
-          is_banned = true, ban_reason = 'Tài khoản đã bị xóa', banned_at = NOW(), banned_by = $2,
-          deleted_at = NOW(), deleted_by = $2
-        WHERE id = $1
-      `, [userId, req.user!.id]);
-      await client.query(`DELETE FROM user_roles WHERE user_id = $1`, [userId]);
-      await client.query(`DELETE FROM user_settings WHERE user_id = $1`, [userId]);
-      await client.query(`DELETE FROM group_members WHERE user_id = $1`, [userId]);
-      await client.query(`DELETE FROM group_join_requests WHERE user_id = $1 AND status = 'pending'`, [userId]);
-      await client.query(`DELETE FROM user_follows WHERE follower_id = $1 OR following_id = $1`, [userId]);
-
-      if (purgeContent) {
-        await client.query(`UPDATE posts SET is_deleted = true WHERE user_id = $1 AND is_deleted = false`, [userId]);
-        await purgeUserComments(client, userId);
-      }
-      await client.query('COMMIT');
-    } catch (err) {
-      await client.query('ROLLBACK').catch(() => {});
-      throw err;
-    } finally {
-      client.release();
-    }
-
-    res.json({
-      success: true,
-      message: `Đã xóa tài khoản ${target.username}${purgeContent ? ' cùng các bài viết và bình luận' : ''}.`,
+export const deleteCheck = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  if (!isUuid(id)) return res.json({ ok: true });
+  const soleLeader = await pool.query(`
+    SELECT g.name FROM group_members gm JOIN translation_groups g ON g.id = gm.group_id
+    WHERE gm.user_id = $1 AND gm.role = 'leader'
+      AND (SELECT COUNT(*) FROM group_members x WHERE x.group_id = gm.group_id AND x.role = 'leader') = 1
+  `, [id]);
+  if (soleLeader.rows.length > 0) {
+    return res.json({
+      ok: false,
+      message: `Người dùng này là Trưởng nhóm duy nhất của: ${soleLeader.rows.map((r) => r.name).join(', ')}. Hãy chỉ định Trưởng nhóm khác trước khi xóa.`,
     });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
   }
+  res.json({ ok: true });
 };
+
+/** Hide a deleted account's posts and comments (identity.user.deleted with purge_content). */
+export async function purgeUserContent(client: any, userId: string) {
+  await client.query(`UPDATE posts SET is_deleted = true WHERE user_id = $1 AND is_deleted = false`, [userId]);
+  await purgeUserComments(client, userId);
+}
 
 /**
  * Hide every live comment of a user (and the replies under them, like a normal comment delete),
