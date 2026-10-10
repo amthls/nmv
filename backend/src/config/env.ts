@@ -1,3 +1,4 @@
+import '../utils/logger'; // first: JSON logs + redaction for everything that follows
 import dotenv from 'dotenv';
 import path from 'path';
 

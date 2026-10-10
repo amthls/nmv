@@ -28,6 +28,7 @@ backend/scripts/seed-passwords.js resets EVERY user's password to "password123".
 Only the Python standard library is used.
 """
 import argparse
+import base64
 import hashlib
 import json
 import os
@@ -113,6 +114,10 @@ def ensure_env():
                 f.write(f"\n# Redis (cache, view counters, shared rate limits, realtime)\nREDIS_PASSWORD={secrets.token_hex(24)}\n")
             info("Added a random REDIS_PASSWORD to .env")
             env = read_env(ENV_FILE)
+        if not env.get("ELASTIC_PASSWORD") or env["ELASTIC_PASSWORD"] == "change-me":
+            set_env_values({"ELASTIC_PASSWORD": secrets.token_hex(24)})
+            info("Added a random ELASTIC_PASSWORD to .env")
+            env = read_env(ENV_FILE)
         if not env.get("RESTIC_PASSWORD") or env["RESTIC_PASSWORD"] == "change-me":
             # Only ever added, never replaced: a new password can't open the existing backups
             set_env_values({"RESTIC_PASSWORD": secrets.token_hex(24)})
@@ -143,6 +148,7 @@ def ensure_env():
         "RABBITMQ_URL": f"amqp://novel:{rabbit_pw}@localhost:5672",
         "REDIS_PASSWORD": secrets.token_hex(24),
         "RESTIC_PASSWORD": secrets.token_hex(24),
+        "ELASTIC_PASSWORD": secrets.token_hex(24),
         "POSTGRES_PASSWORD": pg_pw,
         "DATABASE_URL": f"postgresql://postgres:{pg_pw}@localhost:5432/novel_platform?schema=public",
         "PGADMIN_DEFAULT_PASSWORD": secrets.token_hex(16),
@@ -426,9 +432,9 @@ def run_seeders():
 
 # ------------------------------------------------------------------------- http
 
-def http(method, url, body=None, timeout=10):
+def http(method, url, body=None, timeout=10, headers=None):
     data = json.dumps(body).encode() if body is not None else None
-    req = urllib.request.Request(url, data=data, method=method)
+    req = urllib.request.Request(url, data=data, method=method, headers=headers or {})
     if data is not None:
         req.add_header("Content-Type", "application/json")
     try:
@@ -457,7 +463,8 @@ def wait_until(desc, fn, timeout):
 # ----------------------------------------------------------------------- checks
 
 def run_checks(env, timeout, seed=None):
-    gw = f"http://localhost:{env.get('GATEWAY_PORT', 3000)}"
+    # 127.0.0.1, not localhost: the gateway listens on IPv4 loopback only, and Python tries ::1 first (seconds lost per call)
+    gw = f"http://127.0.0.1:{env.get('GATEWAY_PORT', 3000)}"
     be = f"http://127.0.0.1:{env.get('PORT', 5000)}"
     search = f"http://127.0.0.1:{env.get('SEARCH_PORT', 9201)}"
     results = []
@@ -518,7 +525,8 @@ def run_checks(env, timeout, seed=None):
             info(f"Database already has {count} stories, skipping seeders (use --seed to force)")
 
     # Search service
-    code, body = http("GET", f"{search}/_cluster/health")
+    es_auth = base64.b64encode(f"elastic:{env.get('ELASTIC_PASSWORD', '')}".encode()).decode()
+    code, body = http("GET", f"{search}/_cluster/health", headers={"Authorization": f"Basic {es_auth}"})
     status = ""
     try:
         status = json.loads(body).get("status", "")

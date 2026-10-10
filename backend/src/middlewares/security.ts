@@ -6,6 +6,7 @@ import { RedisStore } from 'rate-limit-redis';
 import { IS_PROD } from '../config/env';
 import { redis } from '../config/redis';
 import type { AuthenticatedRequest } from './auth.middleware';
+import { currentRequestId } from '../utils/logger';
 
 /**
  * Abuse / DDoS hardening for the API.
@@ -155,8 +156,9 @@ export function maskServerErrors(req: Request, res: Response, next: NextFunction
   const original = res.json.bind(res);
   res.json = ((body: any) => {
     if (res.statusCode >= 500 && body && typeof body === 'object') {
-      const errorId = crypto.randomBytes(4).toString('hex');
-      console.error(`[Error ${errorId}] ${req.method} ${req.originalUrl} -> ${res.statusCode}: ${body.message}`);
+      // The code shown to the user is the request_id: search it in the logs to find the whole chain
+      const errorId = currentRequestId() || crypto.randomBytes(4).toString('hex');
+      console.error(`${req.method} ${req.originalUrl.split('?')[0]} -> ${res.statusCode}: ${body.message}`);
       return original({ success: false, message: `Lỗi hệ thống, vui lòng thử lại sau. (mã ${errorId})` });
     }
     return original(body);

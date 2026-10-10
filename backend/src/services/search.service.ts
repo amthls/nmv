@@ -13,13 +13,17 @@ import { richTextToPlain } from '../utils/richText';
 const ES_URL = (process.env.SEARCH_URL || '').replace(/\/+$/, '');
 const ES_INDEX = process.env.SEARCH_INDEX || 'novel_stories';
 const REQUEST_TIMEOUT_MS = 3000;
+// fetch() refuses credentials inside the URL, so the password goes in a header
+const AUTH = process.env.SEARCH_PASSWORD
+  ? { Authorization: `Basic ${Buffer.from(`${process.env.SEARCH_USER || 'elastic'}:${process.env.SEARCH_PASSWORD}`).toString('base64')}` }
+  : undefined;
 
 export const isSearchEnabled = () => ES_URL.length > 0;
 
 async function es(method: string, path: string, body?: unknown, contentType = 'application/json') {
   const res = await fetch(`${ES_URL}${path}`, {
     method,
-    headers: body === undefined ? undefined : { 'Content-Type': contentType },
+    headers: body === undefined ? AUTH : { ...AUTH, 'Content-Type': contentType },
     body: body === undefined ? undefined : typeof body === 'string' ? body : JSON.stringify(body),
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });

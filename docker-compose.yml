@@ -26,8 +26,9 @@ services:
 
   # ============================================================================
   # 1b. Search Service: Elasticsearch (story search, optional).
-  #     Single node, security off: it is reachable only on the Docker network and
-  #     127.0.0.1, like Postgres. Tuned for a small index on a small box:
+  #     Single node, password required (user `elastic`, ELASTIC_PASSWORD; plain HTTP is fine
+  #     inside the Docker network), reachable only on the Docker network and 127.0.0.1.
+  #     The password is fixed when the volume first starts with security on, like Postgres. Tuned for a small index on a small box:
   #     256 MB heap, ML/geoip/disk-watermark/log-indexing off, hard container cap.
   #     If it is down, the backend falls back to SQL ILIKE.
   # ============================================================================
@@ -37,7 +38,10 @@ services:
     restart: unless-stopped
     environment:
       discovery.type: single-node
-      xpack.security.enabled: "false"
+      xpack.security.enabled: "true"
+      xpack.security.http.ssl.enabled: "false"
+      xpack.security.transport.ssl.enabled: "false" # single node: no transport traffic
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:?Set ELASTIC_PASSWORD in .env}
       xpack.ml.enabled: "false"
       ingest.geoip.downloader.enabled: "false"
       cluster.routing.allocation.disk.threshold_enabled: "false"
@@ -54,7 +58,7 @@ services:
     volumes:
       - es_data:/usr/share/elasticsearch/data
     healthcheck:
-      test: ["CMD-SHELL", "curl -fs 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=2s' >/dev/null"]
+      test: ["CMD-SHELL", "curl -fs -u \"elastic:$$ELASTIC_PASSWORD\" 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=2s' >/dev/null"]
       interval: 10s
       timeout: 5s
       retries: 18
@@ -70,7 +74,8 @@ services:
     container_name: novel_gateway
     restart: unless-stopped
     ports:
-      - "${GATEWAY_PORT:-3000}:8080"
+      # Loopback only by default: the public way in is the Cloudflare tunnel. GATEWAY_BIND=0.0.0.0 opens it to the LAN.
+      - "${GATEWAY_BIND:-127.0.0.1}:${GATEWAY_PORT:-3000}:8080"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - gateway_cache:/var/cache/nginx
@@ -187,6 +192,7 @@ services:
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
       SEARCH_URL: http://search:9200
+      SEARCH_PASSWORD: ${ELASTIC_PASSWORD:?Set ELASTIC_PASSWORD in .env} # user elastic
       SEARCH_INDEX: ${SEARCH_INDEX:-novel_stories}
       REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}@redis:6379
       # Password reset / email verification mails. Empty SMTP_URL: the link is written to the backend log
@@ -229,6 +235,7 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
+      SERVICE_NAME: worker # "service" field of its log lines
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (openssl rand -hex 24)}@postgres:5432/${POSTGRES_DB:-novel_platform}?schema=public
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (openssl rand -hex 32)}
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672
@@ -257,6 +264,7 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
+      SERVICE_NAME: export-worker
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (openssl rand -hex 24)}@postgres:5432/${POSTGRES_DB:-novel_platform}?schema=public
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (openssl rand -hex 32)}
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672
