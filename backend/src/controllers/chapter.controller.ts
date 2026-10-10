@@ -624,6 +624,154 @@ export const updateChapter = async (req: AuthenticatedRequest, res: Response) =>
   }
 };
 
+// ---- Drafts (workspace stage 2, Plan/chapter-workspace.md) -----------------------------------------------
+// Content goes through here to be sanitized; the workspace keeps the draft and checks its owner.
+// Reading, discarding and pulling a draft carry no new content: the browser calls /api/ws directly.
+
+const ownerOf = (req: AuthenticatedRequest) => ({ owner_id: req.user!.id, owner_name: req.user!.display_name || req.user!.username });
+
+/** Pass a workspace answer on: its 4xx messages are the user's to read; anything else is ours. */
+function relayWorkspace(res: Response, r: { status: number; json: any }) {
+  if (r.status < 500) return res.status(r.status).json(r.json);
+  throw new Error(`workspace ${r.status}: ${r.json?.message || ''}`);
+}
+
+/** Chapter fields of a draft from the editor (title may still be empty: it is only required to publish). */
+async function draftMeta(body: any, storyId: string) {
+  const title = body.title === undefined || body.title === null ? '' : String(body.title).trim();
+  if (title.length > 500) throw new InputError('Tiêu đề chương tối đa 500 ký tự.');
+  const volumeId = body.volume_id || null;
+  if (volumeId) {
+    if (!isUuid(volumeId)) throw new InputError('Tập không hợp lệ.');
+    const vol = await pool.query(`SELECT 1 FROM volumes WHERE id = $1 AND story_id = $2`, [volumeId, storyId]);
+    if (vol.rows.length === 0) throw new InputError('Tập không thuộc bộ truyện này.');
+  }
+  const numberGiven = !(body.chapter_number === undefined || body.chapter_number === null || body.chapter_number === '');
+  return {
+    title,
+    chapter_number: numberGiven ? parseChapterNumber(body.chapter_number) : 0,
+    volume_id: volumeId,
+    intro_note: chapterMessage(body.intro_note, 'Lời nhắn đầu chương'),
+    outro_note: chapterMessage(body.outro_note, 'Lời nhắn cuối chương'),
+  };
+}
+
+/** Novel stories only for now: manga chapters are uploaded and edited as pages (dang-truyen-tranh). */
+async function novelStory(storyId: string) {
+  const r = await pool.query(`SELECT id, story_type, approval_status FROM stories WHERE id = $1`, [storyId]);
+  if (r.rows.length === 0) throw new InputError('Bộ truyện không tồn tại.');
+  if (r.rows[0].story_type === 'manga') throw new InputError('Truyện tranh chưa dùng bản nháp: hãy dùng trình đăng truyện tranh.');
+  return r.rows[0];
+}
+
+/**
+ * POST /drafts {story_id, chapter_id?} opens a draft of a published chapter (the caller's open one if any);
+ * without chapter_id it starts a new chapter from the editor's fields. Contributors of the story only.
+ */
+export const createDraft = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const body = req.body || {};
+    let storyId = body.story_id;
+    if (body.chapter_id !== undefined && body.chapter_id !== null) {
+      if (!isUuid(body.chapter_id)) return res.status(404).json({ success: false, message: 'Chương không tồn tại.' });
+      const ch = await pool.query(`SELECT story_id FROM chapters WHERE id = $1`, [body.chapter_id]);
+      if (ch.rows.length === 0) return res.status(404).json({ success: false, message: 'Chương không tồn tại.' });
+      storyId = ch.rows[0].story_id;
+    }
+    if (!isUuid(storyId)) return res.status(400).json({ success: false, message: 'Thiếu hoặc sai story_id.' });
+    if (!(await canUserManageStory(req.user!.id, storyId))) {
+      return res.status(403).json({ success: false, message: 'Bạn không tham gia truyện này nên không tạo được bản nháp.' });
+    }
+    await novelStory(storyId);
+    const payload: any = { ...ownerOf(req), story_id: storyId };
+    if (body.chapter_id) payload.chapter_id = body.chapter_id;
+    else {
+      payload.meta = await draftMeta(body, storyId);
+      payload.blocks = normalizeContentBlocks(body.content_blocks);
+      checkBlocksMatchStoryType('novel', payload.blocks, true);
+    }
+    relayWorkspace(res, await callWorkspace('POST', '/internal/drafts', payload));
+  } catch (error: any) {
+    if (sendClientError(res, error)) return;
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/** PUT /drafts/:id: autosave from the editor ({...fields, content_blocks, expected_version}); the owner only. */
+export const saveDraft = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!isUuid(id)) return res.status(404).json({ success: false, message: 'Bản nháp không tồn tại.' });
+    const current = await callWorkspace('GET', `/internal/drafts/${id}`);
+    if (current.status !== 200) return relayWorkspace(res, current);
+    const d = current.json.data;
+    if (d.owner_id !== req.user!.id) return res.status(403).json({ success: false, message: 'Đây không phải bản nháp của bạn.' });
+    const body = req.body || {};
+    const blocks = normalizeContentBlocks(body.content_blocks);
+    checkBlocksMatchStoryType('novel', blocks, true);
+    relayWorkspace(res, await callWorkspace('PUT', `/internal/drafts/${id}`, {
+      owner_id: req.user!.id,
+      meta: await draftMeta(body, d.story_id),
+      blocks,
+      expected_version: Number.isInteger(body.expected_version) ? body.expected_version : 0,
+    }));
+  } catch (error: any) {
+    if (sendClientError(res, error)) return;
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * POST /drafts/:id/publish: the owner's draft becomes the official version. Same rights as before drafts
+ * (stage 3 turns this into proposals merged by the story keepers): a new chapter needs a contributor,
+ * an edit needs someone allowed to edit that chapter.
+ */
+export const publishDraft = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!isUuid(id)) return res.status(404).json({ success: false, message: 'Bản nháp không tồn tại.' });
+    const current = await callWorkspace('GET', `/internal/drafts/${id}`);
+    if (current.status !== 200) return relayWorkspace(res, current);
+    const d = current.json.data;
+    if (d.owner_id !== req.user!.id) return res.status(403).json({ success: false, message: 'Đây không phải bản nháp của bạn.' });
+
+    const story = await novelStory(d.story_id);
+    if (story.approval_status === 'rejected') {
+      return res.status(409).json({ success: false, message: 'Truyện đang bị gỡ: chưa đăng được chương cho tới khi được khôi phục.' });
+    }
+    let allowed: boolean;
+    if (d.chapter_id) {
+      const ch = await pool.query(CHAPTER_WITH_OWNERS_SQL, [d.chapter_id]);
+      allowed = ch.rows.length > 0 && (await canUserModifyChapter({ ...ch.rows[0], group_id: ch.rows[0].effective_group_id }, req.user!.id));
+    } else {
+      allowed = await canUserManageStory(req.user!.id, d.story_id);
+    }
+    if (!allowed) {
+      return res.status(403).json({ success: false, message: 'Bạn không có quyền đăng bản này (chỉ người đăng chương, chủ truyện hoặc Trưởng nhóm/Mod của nhóm sửa được chương đã đăng).' });
+    }
+    checkBlocksMatchStoryType('novel', d.blocks || [], false);
+    // the volume may have been deleted since the draft picked it
+    if (d.meta.volume_id) {
+      const vol = await pool.query(`SELECT 1 FROM volumes WHERE id = $1 AND story_id = $2`, [d.meta.volume_id, d.story_id]);
+      if (vol.rows.length === 0) throw new InputError('Tập đã chọn không còn: hãy chọn lại tập rồi đăng.');
+    }
+
+    const r = await callWorkspace('POST', `/internal/drafts/${id}/publish`, ownerOf(req));
+    if (r.status !== 200) return relayWorkspace(res, r);
+    const rev: Revision = r.json.data;
+    await applyRevisionNow(rev);
+    const slugRes = await pool.query(`SELECT c.slug, s.slug AS story_slug FROM chapters c JOIN stories s ON s.id = c.story_id WHERE c.id = $1`, [rev.chapter_id]);
+    res.json({
+      success: true,
+      message: rev.version === 1 ? 'Đăng chương thành công và đã xuất bản cho độc giả' : `Đã cập nhật chương (phiên bản ${rev.version}).`,
+      data: { chapter_id: rev.chapter_id, version: rev.version, slug: slugRes.rows[0]?.slug, story_slug: slugRes.rows[0]?.story_slug },
+    });
+  } catch (error: any) {
+    if (sendClientError(res, error)) return;
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 /**
  * Edit a volume (title, description, cover).
  */

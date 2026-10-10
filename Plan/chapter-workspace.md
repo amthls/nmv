@@ -63,6 +63,8 @@
 - Nháp "đang viết" chỉ chủ + người được chia sẻ thấy; "đã gửi" thì người giữ truyện thấy.
 
 ## Bẫy đã phát hiện
+- Chương nhập cũ lưu đoạn thường là `{text}`, trình soạn thảo gửi lại `{html:"<p>…</p>", text}`: khác hash → diff3 coi cả chương là
+  xung đột. Sửa ở `canonicalBlock` (bỏ html thừa trước khi băm) + bước một-lần đổi hash đoạn cũ (`go:canonical_block_hash`).
 - Trình soạn thảo **không giữ mã đoạn**: server đặt lại `b1, b2…` theo vị trí mỗi lần lưu (`normalizeContentBlocks`,
   `dang-chuong/page.tsx` không gửi `id`). Chèn một đoạn là lệch mọi mã → **không trộn theo mã đoạn được**.
   Cách làm: so theo **nội dung** từng đoạn (hash), thuật toán **diff3** trên dãy đoạn, như git so theo dòng.
@@ -162,13 +164,31 @@ chương đã có head; chạy trong `migrate.sh`/`launch.py` như identity. Nh�
 - [x] README (mục Service workspace), Branches
 - [x] Chủ dự án duyệt giao diện trang lịch sử (2026-10-10) → commit, push, PR
 
-## Giai đoạn 2: workspace cá nhân + nháp riêng + pull
-- [ ] Vai trò người giữ truyện / người đóng góp (hàm quyền dùng chung)
-- [ ] Chuyển `chapter_submissions` → `chapter_drafts`
-- [ ] Lõi **diff3 theo đoạn** (dùng chung cho pull và gộp) + test tự động các ca: chỉ một bên sửa, cả hai sửa, chèn/xóa đoạn, xung đột
-- [ ] Nháp: tạo từ bản chính / chương mới, lưu tự động, **Cập nhật theo bản chính** (pull, chọn khi xung đột)
-- [ ] Trang `/ws` (truyện của tôi, nháp của tôi) và `/ws/truyen/:slug` (chương, lịch sử)
-- [ ] Trình soạn thảo chương làm việc trên nháp thay vì đăng thẳng
+## Giai đoạn 2: workspace cá nhân + nháp riêng + pull (nhánh `feat/ws-drafts`)
+
+**Thiết kế giai đoạn 2 (2026-10-10):**
+- Quyền giữ như hiện nay cho tới giai đoạn 3: tạo/sửa nháp = người đóng góp (`canUserManageStory`); **Đăng** nháp chương mới = người đóng góp,
+  đăng nháp sửa chương cũ = người được sửa chương hôm nay (`canUserModifyChapter`). Giai đoạn 3 mới đổi thành đề xuất → người giữ truyện gộp.
+- Nháp chỉ **chủ nháp** đọc/sửa/bỏ. Tối đa 50 nháp đang mở mỗi người. Mở "Sửa" một chương đã có nháp đang mở của mình → dùng lại nháp đó.
+- `ws_db.chapter_drafts (id, owner_id, owner_name, story_id, chapter_id NULL = chương mới, base_version, meta, blocks TEXT[], status open|published|discarded,
+  version (khóa lạc quan), published_version, created_at, updated_at)`.
+- Nội dung mới vẫn đi qua backend (lọc HTML): `POST /api/v1/drafts`, `PUT /api/v1/drafts/:id`, `POST /api/v1/drafts/:id/publish` → API nội bộ workspace.
+  Không mang nội dung mới → gọi thẳng `/api/ws`: `GET drafts` (của tôi), `GET drafts/:id`, `DELETE drafts/:id`, `GET|POST drafts/:id/pull`.
+- **Đăng** nháp sửa chương: bản chính phải còn đúng `base_version`, nếu không → 409 "cập nhật theo bản chính trước". Nháp chương mới: số chương trùng → 409.
+- **Pull** = diff3 (gốc = `base_version`, của tôi = nháp, của họ = bản chính hiện tại) trên mảng hash; meta so từng trường. Xung đột: chọn *bản của tôi* /
+  *bản chính* / *cả hai* (chỉ đoạn). Sau pull `base_version` = bản chính hiện tại.
+- Trình soạn thảo `/dang-chuong?draft=<id>`: lưu tự động lên server (3 giây sau lần gõ cuối, kèm `version`), bỏ nháp `localStorage` cũ.
+  `?edit=<chapterId>` (truyện chữ) tạo/dùng lại nháp rồi chuyển sang `?draft=`. Truyện tranh giữ đường cũ (đăng/sửa thẳng), làm sau.
+- `chapter_submissions` đang **rỗng** (0 dòng): không cần chuyển dữ liệu; chỉ ngừng ghi nháp vào đó (bảng xóa ở nhánh sau).
+
+- [x] Workspace (Go): migration `002_drafts.sql`; lõi **diff3 theo đoạn** + merge meta + test (chỉ một bên sửa, cả hai sửa giống nhau, chèn/xóa, xung đột)
+- [x] Workspace (Go): API nháp nội bộ (tạo, lưu, đăng) + công khai (danh sách, xem, bỏ, pull xem trước/áp dụng) + test tích hợp
+- [x] Backend: `POST/PUT /drafts`, `POST /drafts/:id/publish` (lọc nội dung, quyền như trên, áp revision). Trang truyện chữ thôi ghi nháp vào
+      `chapter_submissions`; trình đăng truyện tranh vẫn dùng nó cho tới khi truyện tranh chuyển sang nháp
+- [x] Frontend: trình soạn thảo trên nháp (lưu tự động, Đăng, banner "bản chính đã đổi" + hộp pull chọn xung đột)
+- [x] Frontend: trang `/ws` (truyện của tôi, nháp của tôi) và `/ws/truyen/[slug]` (chương + lịch sử + nháp của tôi trong truyện); lối vào ở Navbar
+- [x] Build, smoke (`scripts/workspace-smoke.py` 38/38, thêm ca nháp/pull), thử trình duyệt, README, Branches
+- [x] Chủ dự án duyệt giao diện (`/ws`, `/ws/truyen/[slug]`, trình soạn thảo trên nháp, hộp cập nhật; 2026-10-10) → commit, push, PR vào `main`
 
 ## Giai đoạn 3: đề xuất, duyệt, gộp
 - [ ] Gửi đề xuất (chụp `draft_rounds`), trả lại kèm góp ý theo đoạn, gửi lại ("thay đổi từ lần trước"), gộp, đóng
