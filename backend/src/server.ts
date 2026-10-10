@@ -1,6 +1,5 @@
 ﻿import express from 'express';
 import cors from 'cors';
-import morgan from 'morgan';
 import './config/env'; // loads .env and validates required secrets first
 import path from 'path';
 import apiRoutes from './routes/api.routes';
@@ -10,6 +9,7 @@ import { startSearchSync } from './services/search.service';
 import { resizeUploadedImage } from './services/image.service';
 import { visitorCookie } from './services/recommender/events';
 import { attachRealtime } from './services/realtime';
+import { requestContext } from './utils/logger';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -22,6 +22,7 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('[CRITICAL] Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
+app.use(requestContext); // before everything else, so every log line and error carries the request_id
 applySecurity(app);
 
 // CORS Configuration with Credentials for Persistent Cookies
@@ -53,7 +54,6 @@ app.use('/api/v1', visitorCookie);
 // Uploads go through multer (multipart) with their own limits; JSON bodies never need to be big
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
-app.use(morgan('dev'));
 
 // Static Uploads Folder (Serve stored image assets); ?w=<width> serves a resized copy
 // Only resized variants cost CPU, so only they are rate limited

@@ -449,6 +449,11 @@ Bẫy (backup):
 - restic gom snapshot theo **host**: hostname container đổi mỗi lần tạo lại → luôn `--host nmv`, nếu không `forget` không dọn được bản cũ.
 - `restic dump latest` với nhiều database: phải lọc `--path /<db>.dump`, chỉ `--tag db` sẽ lấy nhầm dump của DB khác.
 - busybox crond chỉ nạp lại crontab khi có `/etc/crontabs/cron.update`.
+
+Bẫy (giai đoạn A):
+- nginx: `location` nào có `proxy_set_header` riêng thì **không kế thừa** header nào của `server` → lặp lại đủ ở location đó.
+- `fetch()` của Node từ chối URL có `user:pass@` → mật khẩu ES gửi qua header `Authorization`.
+- Đo tải từ một máy: đừng lách giới hạn theo IP (giả `CF-Connecting-IP`); đo độ trễ ở tốc độ dưới giới hạn.
 - Git Bash đổi đường dẫn trong `-v host:/ctr` → `MSYS_NO_PATHCONV=1` + `pwd -W`.
 
 ### Giai đoạn A: nền móng (chưa tách service nào)
@@ -460,14 +465,18 @@ Bẫy (backup):
 - [ ] JSON Schema cho mọi sự kiện + test hợp đồng trong CI; quy tắc đổi schema (chỉ thêm trường, phá vỡ → `v2`)
 - [ ] Công cụ `republish` (phát lại sự kiện theo loại/id) và API xuất nội bộ phân trang để dựng lại bản sao
 - [ ] Job đối soát đêm + cảnh báo (outbox dồn, hàng cách ly, consumer chậm, lệch dữ liệu)
-- [ ] Log JSON thống nhất + che dữ liệu nhạy cảm (thư viện dùng chung TS/Go/Python); `request_id` qua HTTP nội bộ và metadata sự kiện
+- [x] Log JSON + che dữ liệu nhạy cảm cho backend/worker hiện có (`backend/src/utils/logger.ts`, AsyncLocalStorage giữ `request_id`) và gateway
+- [ ] Log JSON + che dữ liệu cho Go/Python (làm cùng service Go đầu tiên); `request_id` qua HTTP nội bộ và metadata sự kiện
 - [ ] VictoriaLogs + VictoriaMetrics + vmalert (giữ lỗi 30 ngày, thường 14 ngày), chỉ mở localhost/Cloudflare Access;
       `/health` + `/ready` mọi service; bản đồ phụ thuộc; cảnh báo Telegram + Discord; trang lỗi 502/503/504 riêng ở gateway
-- [ ] Gateway: `request_id`, định tuyến theo tiền tố, chuẩn bị `auth_request`
+- [x] Gateway: `request_id` (sinh mới, ghi đè giá trị client, trả về trình duyệt, là mã lỗi 5xx người dùng thấy)
+- [ ] Gateway: định tuyến theo tiền tố, `auth_request` (làm cùng identity)
 - [ ] CI build/test theo từng thư mục service; `launch.py` + `scripts/migrate.sh` chạy migration cho mọi database
-- [ ] Đo tải hiện tại (thời gian trang truyện, đọc chương, API chính) làm mốc so sánh sau mỗi giai đoạn
-- [ ] Bảo mật nền: gateway xóa header `X-User-*` từ client, chặn `/internal/*`, CSP/HSTS; khóa ký nội bộ riêng từng service;
-      bật mật khẩu cho Elasticsearch; cổng gateway chỉ nghe máy/tunnel; luật Cloudflare (đăng nhập, bot, chống cào)
+- [x] Đo tải hiện tại: `scripts/bench.mjs`. Mốc 2026-10-10 (máy dev, có cache, ~15 req/s): `/stories/trending` p50 3 ms; chi tiết truyện API 7 ms;
+      trang truyện 9 ms (p95 10); đọc chương API 7 ms; trang chương 9 ms (p95 12)
+- [x] Bảo mật nền (phần làm được ngay): gateway xóa `X-User-*` client gửi, chặn `/internal`, CSP/HSTS (đã có); mật khẩu Elasticsearch;
+      cổng gateway mặc định `127.0.0.1` (`GATEWAY_BIND`); sửa lỗi nginx: `location /` và `/socket.io/` mất `X-Forwarded-For`/`Host`
+- [ ] Khóa ký nội bộ riêng từng service (cùng service đầu tiên); luật Cloudflare (đăng nhập, bot, chống cào: cần tài khoản Cloudflare của chủ dự án)
 - [ ] Thư viện dùng chung: thời gian chờ + ngắt mạch cho lời gọi nội bộ, giới hạn request đồng thời
 
 ### Giai đoạn B: identity
