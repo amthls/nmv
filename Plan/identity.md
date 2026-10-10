@@ -97,13 +97,13 @@ tài khoản mẫu vào bản cài đang chạy thật).
 
 ## Checklist: nhánh 4 `feat/identity-mail-extras` (mục "Mail tài khoản" của `Plan/microservices.md`)
 Đã có từ trước: `mail_outbox` + vòng gửi (thử lại, cảnh báo), mail "mật khẩu vừa đổi", token mới hủy token cũ cùng loại.
-- [ ] Đổi email: `POST /change-email {new_email, password}` → link xác nhận gửi tới **email mới** (24 giờ) + báo cho email cũ;
+- [x] Đổi email: `POST /change-email {new_email, password}` → link xác nhận gửi tới **email mới** (24 giờ) + báo cho email cũ;
       `POST /confirm-email-change {token}` → đổi email, đánh dấu đã xác thực, hủy mọi token đặt lại/xác thực cũ, báo email cũ; nhật ký bảo mật.
       Migration identity `002_mail_extras.sql` (`account_tokens.purpose` thêm `change_email`, cột `new_email`, chỉ mục `mail_outbox(to_addr, created_at)`)
-- [ ] Giới hạn **10 mail/ngày mỗi địa chỉ** (trong `enqueueMail`, vượt thì bỏ qua + log cảnh báo, không lộ ra form)
-- [ ] Token không nằm lại trên URL: trang `/dat-lai-mat-khau`, `/xac-thuc-email` đọc token rồi xóa khỏi thanh địa chỉ; `Referrer-Policy: no-referrer`
+- [x] Giới hạn **10 mail/ngày mỗi địa chỉ** (trong `enqueueMail`, vượt thì bỏ qua + log cảnh báo, không lộ ra form)
+- [x] Token không nằm lại trên URL: trang `/dat-lai-mat-khau`, `/xac-thuc-email` đọc token rồi xóa khỏi thanh địa chỉ; `Referrer-Policy: no-referrer`
       cho các trang đó (gateway đã không ghi query vào log)
-- [ ] Turnstile (Cloudflare) **tùy chọn**: có `TURNSTILE_SECRET` (identity) + `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (frontend, lúc build) thì đăng ký
+- [x] Turnstile (Cloudflare) **tùy chọn**: có `TURNSTILE_SECRET` (identity) + `NEXT_PUBLIC_TURNSTILE_SITE_KEY` (frontend, lúc build) thì đăng ký
       và quên mật khẩu phải qua; không có thì tắt. CSP chỉ mở `challenges.cloudflare.com` khi bật. Thử bằng khóa thử của Cloudflare
-- [ ] Frontend: tab Bảo mật có "Đổi email"; trang xác nhận đổi email; gateway: giới hạn tần suất `account` cho 2 API mới
-- [ ] Test Go (đổi email: mật khẩu sai, trùng email, link dùng một lần, token cũ bị hủy; giới hạn/ngày; Turnstile bằng server giả), README, Branches; PR, tự merge
+- [x] Frontend: tab Bảo mật có "Đổi email"; trang xác nhận đổi email; gateway: giới hạn tần suất `account` cho 2 API mới
+- [x] Test Go (đổi email: mật khẩu sai, trùng email, link dùng một lần, token cũ bị hủy; giới hạn/ngày; Turnstile bằng server giả), README, Branches; PR, tự merge

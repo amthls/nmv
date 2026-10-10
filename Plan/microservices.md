@@ -508,7 +508,7 @@ Bẫy (giai đoạn A):
       trang "Thiết bị đang đăng nhập"; cài đặt đọc đồng bộ lên DB; gộp lịch sử khách vào tài khoản khi đăng nhập
 - [x] Test bảo mật trước khi chuyển: đăng nhập, khóa, thu hồi phiên, đặt lại mật khẩu, giả header, đổi id trên URL
 - [ ] Xóa/đổi mật khẩu tài khoản mẫu trước khi chạy thật
-- [ ] Mail tài khoản: `mail_outbox` + tiến trình `identity-mail` (thử lại, cảnh báo), mail "mật khẩu vừa đổi", luồng đổi email,
+- [x] Mail tài khoản (`Plan/identity.md` nhánh 4; Turnstile có sẵn, bật khi chủ dự án đặt khóa Cloudflare): `mail_outbox` + tiến trình `identity-mail` (thử lại, cảnh báo), mail "mật khẩu vừa đổi", luồng đổi email,
       hủy token cũ, giới hạn mail/ngày/email, Turnstile (đăng ký, quên mật khẩu), xóa token khỏi URL + `no-referrer` + không log query
 - [ ] (Khi công khai) chặn chức năng với tài khoản chưa xác thực; nhắc/dọn tài khoản không xác thực; xem lại nhà cung cấp mail
 
