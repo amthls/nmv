@@ -3,7 +3,7 @@
 - **Mục tiêu:** Xóa cột mật khẩu/email/token cũ khỏi DB backend (identity là chủ); tài khoản mẫu do identity seed-demo tạo
 - **Tạo từ:** `origin/main` @ 9ef3bdb, ngày 2026-10-10
 - **Trạng thái:** xong, chờ CI
-- **PR:** (chưa mở)
+- **PR:** https://github.com/amthls/nmv/pull/63
 - **Plan:** `Plan/identity.md` (nhánh 3)
 
 ## Thay đổi
