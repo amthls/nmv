@@ -102,6 +102,17 @@ func (s *server) routes() http.Handler {
 	m.HandleFunc("GET /proposals", s.handleProposals)
 	m.HandleFunc("GET /drafts/{id}/review", s.handleReview)
 	m.HandleFunc("POST /drafts/{id}/comments", s.handleComment)
+	m.HandleFunc("POST /drafts/{id}/lock", s.handleLock)
+	m.HandleFunc("DELETE /drafts/{id}/lock", s.handleUnlock)
+	m.HandleFunc("DELETE /drafts/{id}/shares/{user}", s.handleUnshare)
+	m.HandleFunc("POST /drafts/{id}/copy", s.handleCopy)
+	m.HandleFunc("GET /drafts/{id}/offers/{copy}", s.handleOfferPreview)
+	m.HandleFunc("POST /drafts/{id}/offers/{copy}", s.handleOfferAccept)
+	m.HandleFunc("DELETE /drafts/{id}/offers/{copy}", s.handleOfferDecline)
+	m.HandleFunc("GET /drafts/orphans", s.handleOrphans)
+	m.HandleFunc("GET /drafts/shared", s.handleSharedWithMe)
+	m.HandleFunc("POST /drafts/{id}/reclaim", s.handleReclaim)
+	m.HandleFunc("GET /drafts/{id}/card", s.handleCard)
 
 	m.HandleFunc("POST /internal/chapters", s.internal(s.handleCreate))
 	m.HandleFunc("GET /internal/chapters/{id}", s.internal(s.handleCurrent))
@@ -114,5 +125,8 @@ func (s *server) routes() http.Handler {
 	m.HandleFunc("POST /internal/drafts/{id}/submit", s.internal(s.handleSubmit))
 	m.HandleFunc("POST /internal/drafts/{id}/withdraw", s.internal(s.handleWithdraw))
 	m.HandleFunc("POST /internal/drafts/{id}/return", s.internal(s.handleReturn))
+	m.HandleFunc("POST /internal/drafts/{id}/shares", s.internal(s.handleShare))
+	m.HandleFunc("POST /internal/drafts/{id}/offer", s.internal(s.handleOffer))
+	m.HandleFunc("POST /internal/drafts/{id}/transfer", s.internal(s.handleTransfer))
 	return m
 }

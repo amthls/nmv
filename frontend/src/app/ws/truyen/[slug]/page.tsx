@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, FileText, GitMerge, History, Pencil, Plus } from 'lucide-react';
 import { draftLabel } from '@/components/workspace/DraftRow';
 import { useAuth } from '@/context/AuthContext';
@@ -20,10 +20,12 @@ const WS_URL = '/api/ws';
 
 export default function StoryWorkspacePage() {
   const slug = useParams()?.slug as string;
+  const router = useRouter();
   const { isAuthenticated, isLoading, openAuthModal, authFetch } = useAuth();
   const [story, setStory] = useState<any>(null);
   const [drafts, setDrafts] = useState<any[]>([]);
   const [proposals, setProposals] = useState<any[]>([]);
+  const [orphans, setOrphans] = useState<any[]>([]); // keepers: drafts of people who left the story
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -35,6 +37,8 @@ export default function StoryWorkspacePage() {
         if (j.data.can_manage) {
           authFetch(`${WS_URL}/proposals?story_id=${j.data.id}`).then((r) => r.json())
             .then((p) => p.success && setProposals(p.data)).catch(() => {});
+          authFetch(`${WS_URL}/drafts/orphans?story_id=${j.data.id}`).then((r) => r.json())
+            .then((o) => o.success && setOrphans(o.data)).catch(() => {}); // 403 for non-keepers: nothing to show
         }
         return authFetch(`${WS_URL}/drafts?story_id=${j.data.id}`).then((r) => r.json());
       })
@@ -100,6 +104,33 @@ export default function StoryWorkspacePage() {
                 {p.note ? ` · “${p.note.slice(0, 80)}”` : ''}
               </div>
             </Link>
+          ))}
+        </section>
+      )}
+
+      {orphans.length > 0 && (
+        <section className="p-5 rounded-3xl glass-panel border border-amber-500/20 bg-glass space-y-3">
+          <h2 className="text-xs font-bold text-amber-300 uppercase tracking-wider">Nháp của người đã rời truyện ({orphans.length})</h2>
+          <p className="text-[11px] text-gray-400">Nhận lại để công dịch không bị mất: nháp thành của bạn (đề xuất đang chờ thì được rút về).</p>
+          {orphans.map((o) => (
+            <div key={o.id} className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-white/5 border border-white/10">
+              <div className="min-w-0">
+                <div className="text-sm font-bold text-white truncate">{draftLabel(o)}</div>
+                <div className="text-[11px] text-gray-400">{o.owner_name || 'Người cũ'} · lưu {new Date(o.updated_at).toLocaleDateString('vi-VN')}</div>
+              </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  const res = await authFetch(`${WS_URL}/drafts/${o.id}/reclaim`, { method: 'POST' });
+                  const json = await res.json().catch(() => ({}));
+                  if (res.ok && json.success) router.push(`/dang-chuong?draft=${o.id}`);
+                  else setError(json.message || 'Không nhận lại được.');
+                }}
+                className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-ink text-[11px] font-bold"
+              >
+                Nhận lại
+              </button>
+            </div>
           ))}
         </section>
       )}

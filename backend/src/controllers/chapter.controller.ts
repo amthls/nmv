@@ -13,6 +13,7 @@ import { sanitizeRichText, sanitizeChapterHtml, richTextToPlain } from '../utils
 import { callWorkspace, applyRevisionNow, Revision } from '../services/workspaceSync';
 import { storyRole } from './internal.controller';
 import { draftNotifications } from '../services/notification.service';
+import { BLOCKED_MESSAGE, blockStatus, findPartner, insertDirectMessage } from './message.controller';
 
 export function slugify(text: string) {
   return text
@@ -715,7 +716,10 @@ export const saveDraft = async (req: AuthenticatedRequest, res: Response) => {
     const current = await callWorkspace('GET', `/internal/drafts/${id}`);
     if (current.status !== 200) return relayWorkspace(res, current);
     const d = current.json.data;
-    if (d.owner_id !== req.user!.id) return res.status(403).json({ success: false, message: 'Đây không phải bản nháp của bạn.' });
+    // someone the draft is shared with for editing must still take part in the story (the workspace checks the share and the lock)
+    if (d.owner_id !== req.user!.id && !(await storyRole(req.user!.id, d.story_id)).contributor) {
+      return res.status(403).json({ success: false, message: 'Bạn không có quyền sửa bản nháp này.' });
+    }
     const body = req.body || {};
     const blocks = normalizeContentBlocks(body.content_blocks);
     checkBlocksMatchStoryType('novel', blocks, true);
@@ -748,7 +752,7 @@ async function workspaceDraft(res: Response, id: string): Promise<any | null> {
 const draftLabel = (d: any) => (d.chapter_id ? `sửa Chương ${Number(d.meta.chapter_number)}` : `Chương ${Number(d.meta.chapter_number)} (mới)`);
 
 /** Notify about a proposal through the queue (never fails the request). */
-async function notifyDraft(event: 'submitted' | 'returned' | 'merged', d: any, recipients: string[], req: AuthenticatedRequest, note?: string | null) {
+async function notifyDraft(event: 'submitted' | 'returned' | 'merged' | 'offered' | 'transferred', d: any, recipients: string[], req: AuthenticatedRequest, note?: string | null) {
   try {
     const story = await pool.query(`SELECT title FROM stories WHERE id = $1`, [d.story_id]);
     const items = draftNotifications({
@@ -856,6 +860,91 @@ export const returnDraft = async (req: AuthenticatedRequest, res: Response) => {
     if (r.status !== 200) return relayWorkspace(res, r);
     notifyDraft('returned', d, [d.owner_id], req, note);
     res.json({ success: true, message: 'Đã trả lại đề xuất cho người viết.', data: r.json.data });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ---- Working together on drafts (stage 4a) ----------------------------------------------------------------
+
+/** The person named in a share / hand-over, who must take part in the draft's story. */
+async function draftRecipient(res: Response, d: any, username: unknown, me: string) {
+  const partner = await findPartner(typeof username === 'string' ? username.trim().replace(/^@/, '') : username);
+  if (!partner) {
+    res.status(404).json({ success: false, message: 'Người dùng không tồn tại.' });
+    return null;
+  }
+  if (partner.id === me) {
+    res.status(400).json({ success: false, message: 'Đây là bạn rồi.' });
+    return null;
+  }
+  if (!(await storyRole(partner.id, d.story_id)).contributor) {
+    res.status(400).json({ success: false, message: `${partner.display_name || partner.username} không tham gia truyện này (không phải thành viên nhóm hay cộng tác viên).` });
+    return null;
+  }
+  return partner;
+}
+
+/**
+ * POST /drafts/:id/share {username, can_edit, message?}: the owner shares the draft with someone in the story and
+ * sends them its card in a direct message (they can view it, make their own copy, and edit it in turn if can_edit).
+ */
+export const shareDraft = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const d = await workspaceDraft(res, req.params.id);
+    if (!d) return;
+    const me = req.user!.id;
+    if (d.owner_id !== me) return res.status(403).json({ success: false, message: 'Chỉ chủ bản nháp chia sẻ được.' });
+    const partner = await draftRecipient(res, d, req.body?.username, me);
+    if (!partner) return;
+    const block = await blockStatus(me, partner.id);
+    if (block.blocked_by_me || block.blocked_me) return res.status(403).json({ success: false, message: BLOCKED_MESSAGE });
+    const canEdit = req.body?.can_edit === true;
+    const r = await callWorkspace('POST', `/internal/drafts/${d.id}/shares`, {
+      owner_id: me, user_id: partner.id, user_name: partner.display_name || partner.username, can_edit: canEdit,
+    });
+    if (r.status !== 200) return relayWorkspace(res, r);
+    const text = typeof req.body?.message === 'string' && req.body.message.trim()
+      ? requiredText(req.body.message, 2000, 'Lời nhắn')
+      : canEdit ? 'Mình chia sẻ bản nháp này, bạn sửa giúp nhé (sửa lần lượt, mỗi lúc một người).' : 'Mình chia sẻ bản nháp này, bạn xem giúp nhé.';
+    await insertDirectMessage(me, req.user!.username, partner.id, text, d.id);
+    res.json({ success: true, message: `Đã chia sẻ với ${partner.display_name || partner.username} qua tin nhắn.`, data: r.json.data });
+  } catch (error: any) {
+    if (sendClientError(res, error)) return;
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/** POST /drafts/:id/transfer {username}: the owner hands an open draft over to someone else in the story. */
+export const transferDraft = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const d = await workspaceDraft(res, req.params.id);
+    if (!d) return;
+    const me = req.user!.id;
+    if (d.owner_id !== me) return res.status(403).json({ success: false, message: 'Chỉ chủ bản nháp giao được.' });
+    const partner = await draftRecipient(res, d, req.body?.username, me);
+    if (!partner) return;
+    const r = await callWorkspace('POST', `/internal/drafts/${d.id}/transfer`, {
+      owner_id: me, to_id: partner.id, to_name: partner.display_name || partner.username,
+    });
+    if (r.status !== 200) return relayWorkspace(res, r);
+    notifyDraft('transferred', d, [partner.id], req);
+    res.json({ success: true, message: `Đã giao bản nháp cho ${partner.display_name || partner.username}.`, data: r.json.data });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/** POST /drafts/:id/offer: a helper sends their copy back to the owner of the draft it was copied from. */
+export const offerDraft = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const d = await workspaceDraft(res, req.params.id);
+    if (!d) return;
+    if (d.owner_id !== req.user!.id) return res.status(403).json({ success: false, message: 'Đây không phải bản sao của bạn.' });
+    const r = await callWorkspace('POST', `/internal/drafts/${d.id}/offer`, ownerOf(req));
+    if (r.status !== 200) return relayWorkspace(res, r);
+    notifyDraft('offered', { ...d, id: d.copied_from }, [r.json.data.original_owner_id], req);
+    res.json({ success: true, message: 'Đã gửi bản sửa cho chủ nháp.', data: r.json.data });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

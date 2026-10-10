@@ -150,6 +150,8 @@ export default function Navbar() {
     setIsNotificationOpen(false);
     if (notif.reference_type === 'draft' && notif.reference_id) {
       router.push(`/ws/de-xuat/${notif.reference_id}`); // a workspace proposal
+    } else if (notif.reference_type === 'draft_edit' && notif.reference_id) {
+      router.push(`/dang-chuong?draft=${notif.reference_id}`);
     } else if (notif.story_slug && notif.chapter_slug) {
       router.push(`/truyen/${notif.story_slug}/${notif.chapter_slug}`);
     } else if (notif.story_slug) {

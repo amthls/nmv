@@ -215,10 +215,33 @@ chương đã có head; chạy trong `migrate.sh`/`launch.py` như identity. Nh�
 - [x] Smoke (ca đề xuất), README, Branches; PR vào `main`, tự merge
 
 ## Giai đoạn 4: cộng tác
-- [ ] Chia sẻ nháp → bản sao của người giúp → gửi lại cho chủ nháp → nhận cả bản / từng đoạn
-- [ ] Giao hẳn nháp (chuyển chủ); "nhận lại" nháp của thành viên đã rời nhóm
-- [ ] Cấp quyền sửa nháp + **khóa sửa** luân phiên (giữ trong Redis, có hạn, tự nhả), ghi tác giả mỗi lần lưu
-- [ ] Thẻ "bản nháp" trong tin nhắn (cùng messaging): API thẻ tóm tắt + kiểm tra quyền (thành viên nhóm của truyện)
+
+### 4a. Chia sẻ, bản sao, giao nháp, quyền sửa, thẻ nháp (nhánh `feat/ws-collab`)
+
+**Thiết kế (2026-10-10):**
+- **Chia sẻ** = chủ nháp gửi nháp cho một người **đang tham gia truyện** qua tin nhắn (`direct_messages.draft_id`, migration `024`), tùy chọn
+  **cho phép sửa**. Workspace lưu `draft_shares (draft, user, can_edit)`. Người được chia sẻ (và còn là người đóng góp của truyện) **xem** được;
+  người khác mở thẻ thấy "không có quyền xem".
+- **Bản sao của tôi**: người xem tạo nháp riêng `copied_from = nháp gốc`, `copy_base = mảng hash nháp gốc lúc chép`, sửa rồi **Gửi cho chủ nháp**
+  (`status = offered`). Chủ nháp mở bản gửi: diff3 (gốc = `copy_base`, của tôi = nháp hiện tại, của họ = bản sao) nhưng **mọi đoạn người giúp
+  đã đổi đều hỏi** (*nhận cả bản* = chọn hết bản của họ, hoặc chọn từng đoạn). Nhận → bản sao `accepted`; Không nhận → bản sao mở lại cho người giúp.
+- **Giao hẳn**: chủ nháp chuyển nháp (đang mở) cho một người đóng góp khác. **Nhận lại**: người giữ truyện nhận nháp đang mở của người
+  **không còn** tham gia truyện (danh sách ở trang truyện).
+- **Quyền sửa + khóa sửa**: chủ nháp và người được chia sẻ `can_edit` cùng sửa, **mỗi lúc một người**: khóa nằm ngay trên dòng nháp
+  (`lock_user`, `lock_name`, `lock_until`), giữ 2 phút từ lần lưu/nhịp giữ khóa cuối, tự hết hạn. Lệch plan cũ (Redis): khóa kiểm và gia hạn
+  trong cùng transaction lưu nháp (đã `FOR UPDATE`), không thêm Redis cho service. Mỗi lần lưu ghi `draft_edits (draft, version, ai, lúc)`.
+  Gửi đề xuất, đăng, bỏ, giao, chia sẻ: chỉ chủ nháp.
+- Lối vào: nút **Chia sẻ** ở trình soạn thảo; thẻ nháp trong `/tin-nhan` (Xem · Tạo bản sao của tôi · Sửa nếu được cấp quyền).
+
+- [x] Workspace: migration `004_collab.sql`; chia sẻ, bản sao, gửi/nhận/không nhận bản sao (diff3 hỏi mọi đoạn), giao, nhận lại, khóa sửa,
+      `draft_edits`; xem nháp cho người được chia sẻ; thẻ tóm tắt; test
+- [x] Backend: migration `024_dm_draft_card.sql`; `POST /drafts/:id/share` (kiểm người nhận tham gia truyện, gửi tin có `draft_id`),
+      `POST /drafts/:id/transfer`; lưu nháp cho người được quyền sửa; tin nhắn trả `draft_id`
+- [x] Frontend: trình soạn thảo (chế độ xem / sửa chung có khóa, Chia sẻ, Giao, Tạo bản sao, Gửi cho chủ nháp, hộp nhận bản gửi),
+      thẻ nháp trong tin nhắn, "Nháp của người đã rời" ở trang truyện
+- [x] Smoke, README, Branches; PR, tự merge
+
+### 4b, 4c
 - [ ] Giao việc / nhận chương; cảnh báo hai nháp cùng chương
 - [ ] Trang nhóm dịch: tổng hợp việc đang chờ của các truyện trong nhóm
 - [ ] Quy trình theo vai trò (RAW → DỊCH → BIÊN TẬP → HIỆU ĐÍNH → GỘP), nhóm tự chọn bước; xong bước tự mở việc bước sau

@@ -236,6 +236,7 @@ CREATE TABLE direct_messages (
     read_at      TIMESTAMPTZ,
     pinned_at    TIMESTAMPTZ,                  -- tin đã ghim (cả hai người đều thấy)
     pinned_by    UUID REFERENCES users(id) ON DELETE SET NULL,
+    draft_id     UUID,                         -- thẻ bản nháp workspace (migration 024)
     created_at   TIMESTAMPTZ DEFAULT NOW(),
     CHECK (sender_id <> recipient_id)
 );

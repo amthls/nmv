@@ -17,8 +17,11 @@ import {
   LogIn,
   GitMerge,
   Trash2,
+  Share2,
+  Copy,
 } from 'lucide-react';
 import PullDialog from '@/components/workspace/PullDialog';
+import ShareDialog from '@/components/workspace/ShareDialog';
 import SmartImage from '@/components/common/SmartImage';
 import ChapterEditor from '@/components/chapter/ChapterEditor';
 import RichTextEditor from '@/components/common/RichTextEditor';
@@ -27,6 +30,7 @@ import { enhanceChapterHtml, withFootnoteMarker } from '@/lib/chapterRender';
 import { blocksToHtml, countWords, htmlToBlocks, plainTextToHtml } from '@/lib/chapterBlocks';
 import { rewriteHtmlImages, useImageQuality } from '@/lib/imageQuality';
 import { useAuth } from '@/context/AuthContext';
+import { csrfToken } from '@/lib/session';
 import PageLoader from '@/components/common/PageLoader';
 import UploadModeSwitch from '@/components/story/UploadModeSwitch';
 import { CHOSEN_PARAM, chapterUploadHref } from '@/lib/chapterUpload';
@@ -134,6 +138,10 @@ function ChapterEditorContent() {
   // Stage 3: the latest round of my proposal (returned with a note?) and the note I send with the next one
   const [lastRound, setLastRound] = useState<any>(null);
   const [proposalNote, setProposalNote] = useState('');
+  // Stage 4a: sharing, a helper's copy being taken in, the edit lock (one editor at a time)
+  const [showShare, setShowShare] = useState(false);
+  const [offerShown, setOfferShown] = useState<{ id: string; name: string } | null>(null);
+  const [lockBlockedBy, setLockBlockedBy] = useState<string | null>(null);
   const setDraftInfo = (d: any) => { draftRef.current = d; setDraft(d); };
 
   const formattedBlocks = useMemo(() => editorBlocks.map((b, idx) => ({
@@ -159,11 +167,12 @@ function ChapterEditorContent() {
   // The editor normalises HTML it is given for a moment after loading: that is not a change to save
   const loadedAt = React.useRef(0);
   const [, rerender] = useState(0);
+  const lastTyped = React.useRef(0);
   useEffect(() => {
     if (Date.now() - loadedAt.current < 2000 && lastSaved.current !== snapshot) {
       lastSaved.current = snapshot;
       rerender((n) => n + 1); // the status line reads `dirty` from this ref
-    }
+    } else lastTyped.current = Date.now();
   }, [snapshot]);
   const dirty = snapshot !== lastSaved.current;
 
@@ -438,8 +447,8 @@ function ChapterEditorContent() {
     }
   };
   const showDraft = (d: any) => {
-    setDraftInfo({ ...d, blocks: undefined });
-    stopSaving.current = d.status !== 'open';
+    setDraftInfo({ ...d, blocks: undefined, access: d.access || draftRef.current?.access, can_merge: d.can_merge ?? draftRef.current?.can_merge });
+    stopSaving.current = d.status !== 'open' || d.access === 'viewer';
     if (d.status === 'published' || d.status === 'discarded') setErrorMsg('Bản nháp này đã đăng hoặc đã bỏ, chỉ xem được.');
     setLastRound(null);
     if (d.last_round > 0) {
@@ -451,6 +460,47 @@ function ChapterEditorContent() {
     fillForm(d.blocks || [], d.meta);
     setEditLoadState('ready');
   };
+
+  const draftId = draft?.id;
+  const canTakeLock = draft?.status === 'open' && (draft?.access === 'owner' || draft?.access === 'editor');
+  useEffect(() => {
+    if (!draftId || !canTakeLock) return;
+    let blocked = false;
+    let first = true;
+    const take = async () => {
+      // keep the lock only while typing: idle for 2 minutes and it lapses for the next editor
+      if (!first && !blocked && Date.now() - lastTyped.current > 120000) return;
+      first = false;
+      const res = await authFetch(`${WS_URL}/drafts/${draftId}/lock`, { method: 'POST' });
+      const json = await res.json().catch(() => ({}));
+      if (res.ok) {
+        if (blocked) {
+          blocked = false;
+          setLockBlockedBy(null);
+          if (snapshotRef.current !== lastSaved.current) {
+            // typed while someone else held the lock: never overwrite that silently
+            setErrorMsg('Người khác đã sửa nháp trong lúc bạn chờ. Phần bạn gõ khi đó chưa lưu: chép ra trước rồi tải lại trang để lấy bản mới.');
+            return;
+          }
+          loadDraft(draftId); // the other editor's work
+        }
+        stopSaving.current = false;
+      } else if (res.status === 409) {
+        blocked = true;
+        stopSaving.current = true;
+        setLockBlockedBy(String(json.message || '').split(' đang sửa')[0] || 'Người khác');
+      }
+    };
+    take();
+    const timer = setInterval(take, 30000);
+    const release = () => { fetch(`${WS_URL}/drafts/${draftId}/lock`, { method: 'DELETE', keepalive: true, credentials: 'include', headers: { 'X-CSRF-Token': csrfToken() } }); };
+    window.addEventListener('pagehide', release);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('pagehide', release);
+      release();
+    };
+  }, [draftId, canTakeLock]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     // our own first autosave also puts ?draft= in the address: that draft is already on screen
@@ -584,6 +634,29 @@ function ChapterEditorContent() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Someone the draft is shared with: their own copy to edit and send back
+  const makeCopy = async () => {
+    const res = await authFetch(`${WS_URL}/drafts/${draftRef.current.id}/copy`, { method: 'POST' });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || !json.success) return setErrorMsg(json.message || 'Không tạo được bản sao.');
+    router.push(`/dang-chuong?draft=${json.data.id}`);
+  };
+
+  const offerCopy = async () => {
+    if (!(await saveDraftNow()) || !draftRef.current) return;
+    const res = await authFetch(`${API_BASE_URL}/drafts/${draftRef.current.id}/offer`, { method: 'POST' });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || !json.success) return setErrorMsg(json.message || 'Không gửi được.');
+    setFeedback(json.message || 'Đã gửi cho chủ nháp.');
+    loadDraft(draftRef.current.id);
+  };
+
+  const declineOffer = async (copyId: string) => {
+    await authFetch(`${WS_URL}/drafts/${draftRef.current.id}/offers/${copyId}`, { method: 'DELETE' });
+    setOfferShown(null);
+    loadDraft(draftRef.current.id);
   };
 
   const withdrawProposal = async () => {
@@ -725,10 +798,19 @@ function ChapterEditorContent() {
               </span>
             </span>
           </div>
-          {draft && draft.status === 'open' && (
-            <button type="button" onClick={discardDraft} className="text-[11px] font-bold text-gray-400 hover:text-rose-300 flex items-center gap-1 transition">
-              <Trash2 className="w-3.5 h-3.5" /> Bỏ nháp
-            </button>
+          {draft?.access === 'owner' && (
+            <div className="flex items-center gap-3">
+              {!draft.copied_from && (draft.status === 'open' || draft.status === 'submitted') && (
+                <button type="button" onClick={() => setShowShare(true)} className="text-[11px] font-bold text-gray-400 hover:text-sky-300 flex items-center gap-1 transition">
+                  <Share2 className="w-3.5 h-3.5" /> Chia sẻ{draft.shares?.length ? ` (${draft.shares.length})` : ''}
+                </button>
+              )}
+              {draft.status === 'open' && (
+                <button type="button" onClick={discardDraft} className="text-[11px] font-bold text-gray-400 hover:text-rose-300 flex items-center gap-1 transition">
+                  <Trash2 className="w-3.5 h-3.5" /> Bỏ nháp
+                </button>
+              )}
+            </div>
           )}
         </div>
       )}
@@ -752,6 +834,69 @@ function ChapterEditorContent() {
         <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-200 text-xs font-semibold">
           Chương này đã bị xóa khỏi bản chính thức nên bản nháp không đăng được nữa. Người giữ truyện có thể khôi phục chương trong lịch sử.
         </div>
+      )}
+
+      {draft?.access === 'viewer' && (
+        <div className="p-4 rounded-2xl bg-sky-500/10 border border-sky-500/30 text-sky-100 text-xs font-semibold flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <span>Bản nháp của {draft.owner_name || 'người khác'} chia sẻ cho bạn (chỉ xem). Muốn sửa giúp: tạo bản sao của bạn, sửa rồi gửi lại cho họ.</span>
+          {draft.status === 'open' || draft.status === 'submitted' ? (
+            <button type="button" onClick={makeCopy} className="px-3 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-ink font-bold text-[11px] shrink-0 flex items-center gap-1"><Copy className="w-3.5 h-3.5" /> Tạo bản sao của tôi</button>
+          ) : null}
+        </div>
+      )}
+
+      {draft?.access === 'editor' && (
+        <div className="px-4 py-3 rounded-2xl bg-sky-500/10 border border-sky-500/30 text-sky-100 text-xs font-semibold flex flex-wrap items-center justify-between gap-2">
+          <span>Bạn đang sửa bản nháp của {draft.owner_name || 'người khác'} (được chia sẻ quyền sửa). Chỉ chủ nháp đăng, gửi đề xuất hay giao nháp.</span>
+          <button type="button" onClick={makeCopy} className="text-[11px] text-sky-200 hover:text-white underline">Hoặc tạo bản sao riêng</button>
+        </div>
+      )}
+
+      {lockBlockedBy && (
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-100 text-xs font-semibold">
+          {lockBlockedBy} đang sửa bản nháp này. Bạn đang xem; khi họ rời đi (hoặc 2 phút không gõ) trang tự lấy bản mới nhất và cho bạn sửa.
+        </div>
+      )}
+
+      {draft?.copied_from && draft.access === 'owner' && (
+        <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-gray-200 text-xs font-semibold flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <span>
+            {draft.status === 'offered'
+              ? 'Bản sao này đã gửi cho chủ nháp, đang chờ họ nhận. Họ không nhận thì bản sao mở lại cho bạn sửa.'
+              : draft.status === 'accepted' ? 'Chủ nháp đã nhận bản sửa này.' : 'Đây là bản sao của bạn từ nháp của người khác. Sửa xong thì gửi lại cho chủ nháp.'}
+          </span>
+          {draft.status === 'open' && (
+            <button type="button" onClick={offerCopy} className="px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-500 text-snow font-bold text-[11px] shrink-0">Gửi cho chủ nháp</button>
+          )}
+        </div>
+      )}
+
+      {draft?.access === 'owner' && (draft.offers || []).map((o: any) => (
+        <div key={o.id} className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-100 text-xs font-semibold flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <span>{o.owner_name || 'Một người'} gửi lại bản sửa giúp cho nháp này.</span>
+          <button type="button" onClick={async () => { if (await saveDraftNow()) setOfferShown({ id: o.id, name: o.owner_name || 'người giúp' }); }} className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-ink font-bold text-[11px] shrink-0">Xem & nhận</button>
+        </div>
+      ))}
+
+      {offerShown && draft && (
+        <PullDialog
+          draftId={draft.id}
+          draftVersion={draft.version}
+          authFetch={authFetch}
+          offer={{ ...offerShown, onDecline: () => declineOffer(offerShown.id) }}
+          onClose={() => setOfferShown(null)}
+          onDone={(d) => { setOfferShown(null); setFeedback(`Đã nhận bản sửa của ${offerShown.name} vào nháp.`); showDraft({ ...d, access: 'owner' }); loadDraft(d.id); }}
+        />
+      )}
+
+      {showShare && draft && (
+        <ShareDialog
+          draft={draft}
+          authFetch={authFetch}
+          onChanged={() => loadDraft(draft.id)}
+          onTransferred={() => { stopSaving.current = true; router.push('/ws'); }}
+          onClose={() => setShowShare(false)}
+        />
       )}
 
       {draft?.status === 'submitted' && (
@@ -1154,11 +1299,11 @@ function ChapterEditorContent() {
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-            {!isMangaEdit && (
+            {!isMangaEdit && draft?.access !== 'viewer' && (
             <button
               type="button"
               onClick={() => saveDraftNow()}
-              disabled={!selectedStoryId || isSubmitting || saveState === 'saving' || (draft && draft.status !== 'open') || (!draft && !chapterTitle.trim() && !hasText)}
+              disabled={!selectedStoryId || isSubmitting || saveState === 'saving' || Boolean(lockBlockedBy) || (draft && draft.status !== 'open') || (!draft && !chapterTitle.trim() && !hasText)}
               className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 disabled:opacity-40 text-white font-bold text-xs border border-white/15 flex items-center gap-1.5 transition"
               title="Bản nháp tự lưu sau vài giây; bấm để lưu ngay. Độc giả chưa thấy."
             >
@@ -1167,7 +1312,7 @@ function ChapterEditorContent() {
             </button>
             )}
 
-            {!isMangaEdit && draft?.can_merge === false ? (
+            {draft && (draft.access !== 'owner' || draft.copied_from) ? null : !isMangaEdit && draft?.can_merge === false ? (
               <>
                 <input
                   value={proposalNote}

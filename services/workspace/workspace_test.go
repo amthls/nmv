@@ -157,6 +157,8 @@ type wsHarness struct {
 	story   string
 	keeper  string
 	member  string
+	helper  string          // another contributor
+	gone    map[string]bool // contributors who left the story
 	removed bool
 }
 
@@ -177,7 +179,7 @@ func newWS(t *testing.T) *wsHarness {
 	if err := migrate(ctx, db); err != nil {
 		t.Fatal(err)
 	}
-	h := &wsHarness{t: t, story: newUUID(), keeper: newUUID(), member: newUUID()}
+	h := &wsHarness{t: t, story: newUUID(), keeper: newUUID(), member: newUUID(), helper: newUUID(), gone: map[string]bool{}}
 	// The backend's /internal/permissions: keeper owns the story, member only contributes
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if !internalAuthOK([]byte(testKey), r.Header.Get("X-Internal-Auth"), time.Now()) {
@@ -185,7 +187,7 @@ func newWS(t *testing.T) *wsHarness {
 			return
 		}
 		u := r.URL.Query().Get("user")
-		p := perm{Keeper: u == h.keeper, Contributor: u == h.keeper || u == h.member, Removed: h.removed, Name: "Người " + u[:4]}
+		p := perm{Keeper: u == h.keeper, Contributor: (u == h.keeper || u == h.member || u == h.helper) && !h.gone[u], Removed: h.removed, Name: "Người " + u[:4]}
 		json.NewEncoder(w).Encode(map[string]any{"data": p})
 	}))
 	t.Cleanup(backend.Close)
@@ -484,4 +486,100 @@ func TestProposals(t *testing.T) {
 	h.want(409, "POST", "/internal/drafts/"+d2+"/return", "", true, map[string]any{"owner_id": h.keeper})
 	// An open draft is published by its owner only
 	h.want(403, "POST", "/internal/drafts/"+d2+"/publish", "", true, map[string]any{"owner_id": h.keeper})
+}
+
+func texts(d map[string]any) string {
+	out := []string{}
+	for _, b := range d["blocks"].([]any) {
+		out = append(out, b.(map[string]any)["text"].(string))
+	}
+	return strings.Join(out, "|")
+}
+
+func TestCollaboration(t *testing.T) {
+	h := newWS(t)
+	meta := map[string]any{"title": "Mở đầu", "chapter_number": 1}
+	id := h.want(201, "POST", "/internal/chapters", "", true, map[string]any{"story_id": h.story, "meta": meta, "blocks": para("A", "B", "C")})["chapter_id"].(string)
+	did := h.want(201, "POST", "/internal/drafts", "", true, map[string]any{"owner_id": h.member, "story_id": h.story, "chapter_id": id})["id"].(string)
+	save := func(user string, version int, blocks ...string) (int, map[string]any) {
+		return h.call("PUT", "/internal/drafts/"+did, "", true, map[string]any{"owner_id": user, "meta": meta, "blocks": para(blocks...), "expected_version": version})
+	}
+
+	// Shared to look at: the helper sees it, a stranger and the card for a stranger do not
+	h.want(200, "POST", "/internal/drafts/"+did+"/shares", "", true, map[string]any{"owner_id": h.member, "user_id": h.helper, "can_edit": false})
+	h.want(403, "POST", "/internal/drafts/"+did+"/shares", "", true, map[string]any{"owner_id": h.keeper, "user_id": h.helper})
+	if d := h.want(200, "GET", "/drafts/"+did, h.helper, false, nil); d["access"] != "viewer" || d["shares"] != nil {
+		t.Fatalf("viewer: %v", d)
+	}
+	h.want(403, "GET", "/drafts/"+did, newUUID(), false, nil)
+	if c := h.want(200, "GET", "/drafts/"+did+"/card", newUUID(), false, nil); c["access"] != "none" || c["meta"] != nil {
+		t.Fatalf("card for a stranger: %v", c)
+	}
+	if shared := h.want(200, "GET", "/drafts/shared", h.helper, false, nil)["data"].([]any); len(shared) != 1 || shared[0].(map[string]any)["can_edit"] != false {
+		t.Fatalf("shared with me: %v", shared)
+	}
+	if st, _ := save(h.helper, 1, "x"); st != 403 {
+		t.Fatalf("a viewer saved: %d", st)
+	}
+
+	// The helper's own copy, edited and sent back; meanwhile the owner changed another paragraph
+	cp := h.want(201, "POST", "/drafts/"+did+"/copy", h.helper, false, nil)
+	cid := cp["id"].(string)
+	h.want(200, "PUT", "/internal/drafts/"+cid, "", true, map[string]any{"owner_id": h.helper, "meta": meta, "blocks": para("A", "B (giúp)", "C"), "expected_version": 1})
+	if st, _ := save(h.member, 1, "A", "B", "C (chủ)"); st != 200 {
+		t.Fatal("owner save")
+	}
+	offer := h.want(200, "POST", "/internal/drafts/"+cid+"/offer", "", true, map[string]any{"owner_id": h.helper})
+	if offer["original_owner_id"] != h.member {
+		t.Fatalf("offer: %v", offer)
+	}
+	owner := h.want(200, "GET", "/drafts/"+did, h.member, false, nil)
+	if len(owner["offers"].([]any)) != 1 || len(owner["shares"].([]any)) != 1 {
+		t.Fatalf("owner view: %v %v", owner["offers"], owner["shares"])
+	}
+	plan := h.want(200, "GET", "/drafts/"+did+"/offers/"+cid, h.member, false, nil)["plan"].(map[string]any)
+	if len(plan["chunks"].([]any)) != 3 { // A, <B|B|B (giúp)>, C (chủ): the owner's own edit is kept, the helper's is asked
+		t.Fatalf("offer plan: %v", plan["chunks"])
+	}
+	h.want(400, "POST", "/drafts/"+did+"/offers/"+cid, h.member, false, map[string]any{"expected_version": 2})
+	taken := h.want(200, "POST", "/drafts/"+did+"/offers/"+cid, h.member, false, map[string]any{"expected_version": 2, "choices": map[string]string{"b0": "theirs"}})
+	if texts(taken) != "A|B (giúp)|C (chủ)" {
+		t.Fatalf("taken in: %s", texts(taken))
+	}
+	h.want(404, "GET", "/drafts/"+did+"/offers/"+cid, h.member, false, nil) // accepted: no longer waiting
+
+	// Edit rights: one editor at a time
+	h.want(200, "POST", "/internal/drafts/"+did+"/shares", "", true, map[string]any{"owner_id": h.member, "user_id": h.helper, "can_edit": true})
+	h.want(200, "DELETE", "/drafts/"+did+"/lock", h.member, false, nil)
+	if st, out := save(h.helper, 3, "A", "B (giúp)", "C (chủ)", "D (giúp)"); st != 200 {
+		t.Fatalf("editor save: %d %v", st, out)
+	}
+	if st, out := save(h.member, 4, "A"); st != 409 || !strings.Contains(out["message"].(string), "đang sửa") {
+		t.Fatalf("owner while the helper holds the lock: %d %v", st, out)
+	}
+	h.want(409, "POST", "/drafts/"+did+"/lock", h.member, false, nil)
+	h.want(200, "DELETE", "/drafts/"+did+"/lock", h.helper, false, nil)
+	h.want(200, "POST", "/drafts/"+did+"/lock", h.member, false, nil)
+	var who string
+	h.s.db.QueryRow(context.Background(), `SELECT user_id::text FROM draft_edits WHERE draft_id = $1 AND version = 4`, did).Scan(&who)
+	if who != h.helper {
+		t.Fatalf("version 4 saved by %q", who)
+	}
+
+	// Handing over, and keepers reclaiming the draft of someone who left
+	h.want(403, "POST", "/internal/drafts/"+did+"/transfer", "", true, map[string]any{"owner_id": h.helper, "to_id": h.keeper})
+	if d := h.want(200, "POST", "/internal/drafts/"+did+"/transfer", "", true, map[string]any{"owner_id": h.member, "to_id": h.helper}); d["owner_id"] != h.helper {
+		t.Fatalf("transfer: %v", d)
+	}
+	h.gone[h.helper] = true
+	h.s.perms = &permCache{m: map[string]permEntry{}}
+	h.want(403, "GET", "/drafts/orphans?story_id="+h.story, h.member, false, nil)
+	orphans := h.want(200, "GET", "/drafts/orphans?story_id="+h.story, h.keeper, false, nil)["data"].([]any)
+	if len(orphans) != 1 || orphans[0].(map[string]any)["id"] != did {
+		t.Fatalf("orphans: %v", orphans)
+	}
+	h.want(403, "POST", "/drafts/"+did+"/reclaim", h.member, false, nil)
+	if d := h.want(200, "POST", "/drafts/"+did+"/reclaim", h.keeper, false, nil); d["owner_id"] != h.keeper || texts(d) != "A|B (giúp)|C (chủ)|D (giúp)" {
+		t.Fatalf("reclaim: %v", d)
+	}
 }

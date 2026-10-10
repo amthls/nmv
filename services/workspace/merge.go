@@ -44,7 +44,13 @@ func matchIndex(a, b []string) []int {
 
 // merge3 splits the result into stable runs (all three agree) and changed runs; a changed run takes the side
 // that changed it, or becomes a conflict when both sides changed it differently.
-func merge3(base, ours, theirs []string) []mergeChunk {
+func merge3(base, ours, theirs []string) []mergeChunk { return merge3x(base, ours, theirs, false) }
+
+// mergeOffer: like merge3, but every change the other side (a helper's copy) made is a choice for the owner,
+// even where the owner did not touch it ("take it all" = choose theirs everywhere).
+func mergeOffer(base, ours, theirs []string) []mergeChunk { return merge3x(base, ours, theirs, true) }
+
+func merge3x(base, ours, theirs []string, askTheirs bool) []mergeChunk {
 	mo, mt := matchIndex(base, ours), matchIndex(base, theirs)
 	var out []mergeChunk
 	emit := func(blocks []string) {
@@ -58,6 +64,10 @@ func merge3(base, ours, theirs []string) []mergeChunk {
 		out = append(out, mergeChunk{Ok: append([]string{}, blocks...)})
 	}
 	conflicts := 0
+	ask := func(o, x, y []string) {
+		out = append(out, mergeChunk{Conflict: &blockConflict{ID: fmt.Sprintf("b%d", conflicts), Base: o, Ours: x, Theirs: y}})
+		conflicts++
+	}
 	i, a, b := 0, 0, 0
 	for i < len(base) || a < len(ours) || b < len(theirs) {
 		if i < len(base) && mo[i] == a && mt[i] == b {
@@ -75,26 +85,24 @@ func merge3(base, ours, theirs []string) []mergeChunk {
 		}
 		o, x, y := base[i:end], ours[a:ea], theirs[b:eb]
 		switch {
-		case slices.Equal(x, o): // only theirs changed it
-			emit(y)
-		case slices.Equal(y, o), slices.Equal(x, y): // only ours, or both the same way
+		case slices.Equal(y, o), slices.Equal(x, y): // only ours changed it, or both the same way
 			emit(x)
+		case slices.Equal(x, o) && !askTheirs: // only theirs changed it
+			emit(y)
 		case len(x) == len(o) && len(y) == len(o):
 			// only replacements: neighbouring paragraphs edited by different sides merge one by one
 			for k := range o {
 				switch {
-				case x[k] == o[k]:
-					emit(y[k : k+1])
 				case y[k] == o[k], x[k] == y[k]:
 					emit(x[k : k+1])
+				case x[k] == o[k] && !askTheirs:
+					emit(y[k : k+1])
 				default:
-					out = append(out, mergeChunk{Conflict: &blockConflict{ID: fmt.Sprintf("b%d", conflicts), Base: o[k : k+1], Ours: x[k : k+1], Theirs: y[k : k+1]}})
-					conflicts++
+					ask(o[k:k+1], x[k:k+1], y[k:k+1])
 				}
 			}
 		default:
-			out = append(out, mergeChunk{Conflict: &blockConflict{ID: fmt.Sprintf("b%d", conflicts), Base: o, Ours: x, Theirs: y}})
-			conflicts++
+			ask(o, x, y)
 		}
 		i, a, b = end, ea, eb
 	}
@@ -118,16 +126,20 @@ func metaFields(m chapterMeta) map[string]any {
 
 // mergeMeta merges field by field; a conflicting field keeps ours until the user chooses.
 func mergeMeta(base, ours, theirs chapterMeta) (chapterMeta, []metaConflict) {
+	return mergeMetaX(base, ours, theirs, false)
+}
+
+func mergeMetaX(base, ours, theirs chapterMeta, askTheirs bool) (chapterMeta, []metaConflict) {
 	bf, of, tf := metaFields(base), metaFields(ours), metaFields(theirs)
 	same := func(x, y any) bool { a, _ := json.Marshal(x); b, _ := json.Marshal(y); return string(a) == string(b) }
 	result := map[string]any{}
 	var conflicts []metaConflict
 	for _, k := range []string{"title", "chapter_number", "volume_id", "intro_note", "outro_note"} {
 		switch {
-		case same(of[k], bf[k]):
-			result[k] = tf[k]
 		case same(tf[k], bf[k]), same(of[k], tf[k]):
 			result[k] = of[k]
+		case same(of[k], bf[k]) && !askTheirs:
+			result[k] = tf[k]
 		default:
 			result[k] = of[k]
 			conflicts = append(conflicts, metaConflict{ID: k, Base: bf[k], Ours: of[k], Theirs: tf[k]})

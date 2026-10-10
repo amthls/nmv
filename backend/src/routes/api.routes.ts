@@ -84,6 +84,9 @@ import {
   submitDraft,
   withdrawDraft,
   returnDraft,
+  shareDraft,
+  transferDraft,
+  offerDraft,
 } from '../controllers/chapter.controller';
 import { 
   getReadingHistory, 
@@ -207,6 +210,9 @@ router.post('/drafts/:id/publish', requireAuth, publishDraft);
 router.post('/drafts/:id/submit', requireAuth, submitDraft);
 router.post('/drafts/:id/withdraw', requireAuth, withdrawDraft);
 router.post('/drafts/:id/return', requireAuth, returnDraft);
+router.post('/drafts/:id/share', requireAuth, shareDraft);
+router.post('/drafts/:id/transfer', requireAuth, transferDraft);
+router.post('/drafts/:id/offer', requireAuth, offerDraft);
 
 
 // Notifications

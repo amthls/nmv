@@ -11,7 +11,7 @@ const MAX_PINS = 10;
 // Label colors the UI knows how to draw (no indigo/purple/violet: the theme maps those to the brand blue).
 // Must match LABEL_STYLES in frontend/src/components/messages/labels.ts
 export const LABEL_COLORS = ['sky', 'emerald', 'amber', 'rose', 'fuchsia', 'teal', 'orange', 'lime'];
-const BLOCKED_MESSAGE = 'Không thể gửi tin nhắn cho người này.';
+export const BLOCKED_MESSAGE = 'Không thể gửi tin nhắn cho người này.';
 
 function sendError(res: Response, error: any) {
   if (error instanceof InputError) return res.status(error.status).json({ success: false, message: error.message });
@@ -19,7 +19,7 @@ function sendError(res: Response, error: any) {
 }
 
 /** The other person in a conversation, by username. Deleted accounts can't be messaged. */
-async function findPartner(username: unknown) {
+export async function findPartner(username: unknown) {
   if (typeof username !== 'string' || !username) return null;
   const result = await pool.query(
     `SELECT id, username, display_name, avatar_url FROM users WHERE username = $1 AND deleted_at IS NULL`,
@@ -29,7 +29,7 @@ async function findPartner(username: unknown) {
 }
 
 /** Whether I blocked them and whether they blocked me. */
-async function blockStatus(me: string, partnerId: string) {
+export async function blockStatus(me: string, partnerId: string) {
   const r = await pool.query(
     `SELECT
        EXISTS (SELECT 1 FROM user_blocks WHERE blocker_id = $1 AND blocked_id = $2) AS blocked_by_me,
@@ -122,7 +122,7 @@ export const getThread = async (req: AuthenticatedRequest, res: Response) => {
     const [result, pinnedRes, labelRes, block] = await Promise.all([
       pool.query(`
         SELECT * FROM (
-          SELECT id, sender_id, recipient_id, message, read_at, created_at, pinned_at
+          SELECT id, sender_id, recipient_id, message, read_at, created_at, pinned_at, draft_id
           FROM direct_messages
           WHERE ${between}
           ORDER BY created_at DESC
@@ -131,7 +131,7 @@ export const getThread = async (req: AuthenticatedRequest, res: Response) => {
         ORDER BY created_at ASC;
       `, [me, partner.id]),
       pool.query(
-        `SELECT id, sender_id, message, created_at, pinned_at, pinned_by
+        `SELECT id, sender_id, message, created_at, pinned_at, pinned_by, draft_id
          FROM direct_messages WHERE ${between} AND pinned_at IS NOT NULL
          ORDER BY pinned_at DESC`,
         [me, partner.id]
@@ -160,6 +160,17 @@ export const getThread = async (req: AuthenticatedRequest, res: Response) => {
   }
 };
 
+/** Store a message (optionally carrying a workspace draft card) and ping both people. Blocks are the caller's to check. */
+export async function insertDirectMessage(me: string, myUsername: string, partnerId: string, message: string, draftId: string | null) {
+  const insertRes = await pool.query(`
+    INSERT INTO direct_messages (sender_id, recipient_id, message, draft_id)
+    VALUES ($1, $2, $3, $4)
+    RETURNING id, sender_id, recipient_id, message, read_at, created_at, pinned_at, draft_id;
+  `, [me, partnerId, message, draftId]);
+  emitToUsers([me, partnerId], 'dm', { from: myUsername });
+  return insertRes.rows[0];
+}
+
 export const sendDirectMessage = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const me = req.user!.id;
@@ -174,14 +185,7 @@ export const sendDirectMessage = async (req: AuthenticatedRequest, res: Response
       return res.status(403).json({ success: false, message: BLOCKED_MESSAGE });
     }
 
-    const insertRes = await pool.query(`
-      INSERT INTO direct_messages (sender_id, recipient_id, message)
-      VALUES ($1, $2, $3)
-      RETURNING id, sender_id, recipient_id, message, read_at, created_at, pinned_at;
-    `, [me, partner.id, message]);
-
-    emitToUsers([me, partner.id], 'dm', { from: req.user!.username });
-    res.status(201).json({ success: true, data: insertRes.rows[0] });
+    res.status(201).json({ success: true, data: await insertDirectMessage(me, req.user!.username, partner.id, message, null) });
   } catch (error: any) {
     sendError(res, error);
   }

@@ -132,6 +132,11 @@ check("its comments came back with it", st == 200 and "bình luận thử" in js
 k.req("DELETE", f"/api/v1/chapters/{nid}")  # leave no test chapter behind (history keeps it)
 
 # Drafts (stage 2): edit on a private draft, the official line moves meanwhile, pull, publish
+for d in k.req("GET", "/api/ws/drafts")[1].get("data", []):  # left over by an interrupted earlier run
+    if d.get("chapter_id") == cid:
+        if d["status"] == "submitted":
+            k.req("POST", f"/api/v1/drafts/{d['id']}/withdraw")
+        k.req("DELETE", f"/api/ws/drafts/{d['id']}")
 st, ed = k.req("GET", f"/api/v1/chapters/{cid}")
 vstart = ed["data"]["ws_version"]
 st, js = k.req("POST", "/api/v1/drafts", {"chapter_id": cid})
@@ -231,6 +236,51 @@ check("keeper merges -> new official version", st == 200 and js["data"]["version
 st, rd = reader()
 check("readers see the merged proposal", prop + "." in json.dumps(rd, ensure_ascii=False))
 k.req("POST", f"/api/ws/chapters/{cid}/rewind", {"to_version": vbase})
+
+# Working together (stage 4a): share through a direct message, helper's copy taken in, shared editing with a lock, hand-over
+st, js = k.req("POST", "/api/v1/drafts", {"chapter_id": cid})
+kd = js["data"]["id"]
+st, js = k.req("POST", f"/api/v1/drafts/{kd}/share", {"username": name, "can_edit": False})
+check("share a draft (sent as a message card)", st == 200, f"{st} {js.get('message')}")
+st, js = k.req("POST", f"/api/v1/drafts/{kd}/share", {"username": "admin"})
+check("cannot share with yourself", st == 400, str(st))
+st, conv = outsider.req("GET", f"/api/v1/messages/{args.user}")
+check("the helper's conversation carries the draft card", st == 200 and any(m.get("draft_id") == kd for m in conv["data"]["messages"]), str(st))
+st, js = outsider.req("GET", f"/api/ws/drafts/{kd}/card")
+check("card: the helper may view", st == 200 and js["data"]["access"] == "viewer", str(js.get("data")))
+stranger = Client()
+sname = "ws_" + secrets.token_hex(3)
+stranger.req("POST", "/api/identity/register", {"username": sname, "email": f"{sname}@example.invalid", "password": "Kiem-Tra-" + secrets.token_hex(4)})
+st, js = stranger.req("GET", f"/api/ws/drafts/{kd}/card")
+check("card: someone else may not", st == 200 and js["data"]["access"] == "none" and "meta" not in js["data"], str(js.get("data")))
+st, js = outsider.req("PUT", f"/api/v1/drafts/{kd}", {**base, "content_blocks": blocks, "expected_version": 1})
+check("a viewer cannot save the draft", st == 403, str(st))
+st, js = outsider.req("POST", f"/api/ws/drafts/{kd}/copy")
+hc = js.get("data", {}).get("id")
+check("the helper makes their own copy", st == 201 and js["data"]["copied_from"] == kd, f"{st} {js.get('message')}")
+helped = "Đoạn sửa giúp " + secrets.token_hex(3)
+outsider.req("PUT", f"/api/v1/drafts/{hc}", {**base, "content_blocks": blocks + [{"type": "paragraph", "text": helped}], "expected_version": 1})
+st, js = outsider.req("POST", f"/api/v1/drafts/{hc}/offer")
+check("...and sends it back", st == 200 and js["data"]["status"] == "offered", f"{st} {js.get('message')}")
+st, js = k.req("GET", f"/api/ws/drafts/{kd}")
+check("the owner sees the offer", st == 200 and any(o["id"] == hc for o in js["data"].get("offers") or []), str(st))
+st, js = k.req("GET", f"/api/ws/drafts/{kd}/offers/{hc}")
+choices = {c["conflict"]["id"]: "theirs" for c in js["data"]["plan"]["chunks"] if c.get("conflict")}
+st, js = k.req("POST", f"/api/ws/drafts/{kd}/offers/{hc}", {"expected_version": js["data"]["draft_version"], "choices": choices})
+check("take the helper's changes in", st == 200 and helped in json.dumps(js.get("data", {}), ensure_ascii=False), f"{st} {js.get('message')}")
+k.req("POST", f"/api/v1/drafts/{kd}/share", {"username": name, "can_edit": True})
+k.req("DELETE", f"/api/ws/drafts/{kd}/lock")
+st, js = outsider.req("GET", f"/api/ws/drafts/{kd}")
+v = js["data"]["version"]
+st, js = outsider.req("PUT", f"/api/v1/drafts/{kd}", {**base, "content_blocks": blocks + [{"type": "paragraph", "text": helped + "!"}], "expected_version": v})
+check("with edit rights the helper saves the shared draft", st == 200, f"{st} {js.get('message')}")
+st, js = k.req("PUT", f"/api/v1/drafts/{kd}", {**base, "content_blocks": blocks, "expected_version": v + 1})
+check("the owner waits while the helper holds the edit lock", st == 409 and "đang sửa" in js.get("message", ""), f"{st} {js.get('message')}")
+outsider.req("DELETE", f"/api/ws/drafts/{kd}/lock")
+st, js = k.req("POST", f"/api/v1/drafts/{kd}/transfer", {"username": name})
+check("hand the draft over", st == 200 and js["data"]["owner_id"] == helper_id, f"{st} {js.get('message')}")
+st, js = outsider.req("DELETE", f"/api/ws/drafts/{kd}")
+check("the new owner can discard it", st == 200, str(st))
 k.req("DELETE", f"/api/v1/stories/{sid}/collaborators/{helper_id}")
 
 print("FAILED: %d check(s)" % failures if failures else "All checks passed")
