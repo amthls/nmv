@@ -48,6 +48,10 @@ type draft struct {
 	Offers           any         `json:"offers,omitempty"` // owner only: helpers' copies sent back
 	Others           any         `json:"others,omitempty"` // GET /drafts/{id}: other open drafts of the same chapter
 	Claims           any         `json:"claims,omitempty"` // GET /drafts/{id}: tasks on the same chapter (not this draft's)
+	PublishAt        *time.Time  `json:"publish_at"`       // stage 4c: scheduled to go official then
+	ScheduledName    *string     `json:"scheduled_name"`
+	SchedulePrev     *string     `json:"schedule_prev"` // the state it returns to if the schedule is cancelled or fails
+	ScheduleError    *string     `json:"schedule_error"`
 	CreatedAt        time.Time   `json:"created_at"`
 	UpdatedAt        time.Time   `json:"updated_at"`
 	// the official line now: a draft opened from an older version shows "the official version changed"
@@ -57,7 +61,7 @@ type draft struct {
 
 const draftColumns = `d.id::text, d.owner_id::text, d.owner_name, d.story_id::text, d.chapter_id::text, d.base_version, d.meta, d.blocks,
 	d.status, d.version, d.published_version, d.created_at, d.updated_at, h.current_version, COALESCE(h.deleted, FALSE), d.last_round,
-	d.copied_from::text, d.lock_user::text, d.lock_name, d.lock_until`
+	d.copied_from::text, d.lock_user::text, d.lock_name, d.lock_until, d.publish_at, d.scheduled_name, d.schedule_prev, d.schedule_error`
 
 // scanDraft reads draftColumns, then `extra` columns a query adds after them.
 func scanDraft(row pgx.Row, extra ...any) (*draft, []string, error) {
@@ -66,7 +70,7 @@ func scanDraft(row pgx.Row, extra ...any) (*draft, []string, error) {
 	var hashes []string
 	err := row.Scan(append([]any{&d.ID, &d.OwnerID, &d.OwnerName, &d.StoryID, &d.ChapterID, &d.BaseVersion, &meta, &hashes,
 		&d.Status, &d.Version, &d.PublishedVersion, &d.CreatedAt, &d.UpdatedAt, &d.CurrentVersion, &d.ChapterDeleted, &d.LastRound,
-		&d.CopiedFrom, &d.LockUser, &d.LockName, &d.LockUntil}, extra...)...)
+		&d.CopiedFrom, &d.LockUser, &d.LockName, &d.LockUntil, &d.PublishAt, &d.ScheduledName, &d.SchedulePrev, &d.ScheduleError}, extra...)...)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil, errNotFound
 	}
@@ -109,6 +113,8 @@ func (s *server) draftError(w http.ResponseWriter, r *http.Request, err error) {
 		fail(w, 403, "Đây không phải bản nháp của bạn.")
 	case errors.Is(err, errDraftClosed):
 		fail(w, 409, "Bản nháp này đã gửi đề xuất, đã đăng hoặc đã bỏ nên không sửa được. Đã gửi thì rút lại để sửa tiếp.")
+	case errors.Is(err, errScheduled):
+		fail(w, 409, "Bản nháp đang hẹn giờ đăng: hủy hẹn trước nếu muốn sửa hay đăng ngay.")
 	case errors.Is(err, errNotSubmitted):
 		fail(w, 409, "Bản nháp này không ở trạng thái chờ duyệt.")
 	case errors.Is(err, errMergeConflict):
@@ -177,7 +183,7 @@ func (s *server) handleDraftCreate(w http.ResponseWriter, r *http.Request) {
 // is returned instead, reused = true), or a new chapter from meta + blocks.
 func insertDraft(ctx context.Context, tx pgx.Tx, ownerID string, ownerName *string, storyID string, chapterID *string, newMeta *chapterMeta, newBlocks []block) (string, bool, error) {
 	var open int
-	if err := tx.QueryRow(ctx, `SELECT count(*) FROM chapter_drafts WHERE owner_id = $1 AND status IN ('open', 'submitted', 'offered')`, ownerID).Scan(&open); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT count(*) FROM chapter_drafts WHERE owner_id = $1 AND status IN ('open', 'submitted', 'offered', 'scheduled')`, ownerID).Scan(&open); err != nil {
 		return "", false, err
 	}
 	var meta chapterMeta
@@ -308,86 +314,10 @@ func (s *server) handleDraftPublish(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, "invalid body")
 		return
 	}
-	ctx := r.Context()
 	var rev *revision
 	var number float64
-	err := pgx.BeginFunc(ctx, s.db, func(tx pgx.Tx) error {
-		d, hashes, err := loadDraft(ctx, tx, id, true)
-		if err != nil {
-			return err
-		}
-		switch {
-		case d.Status == "submitted":
-		case d.Status != "open":
-			return errDraftClosed
-		case d.OwnerID != b.OwnerID:
-			return errNotOwner
-		}
-		number = d.Meta.ChapterNumber
-		meta := d.Meta
-		if meta.Title == "" {
-			return errEmptyTitle
-		}
-		if d.ChapterID != nil {
-			h, err := lockHead(ctx, tx, *d.ChapterID)
-			if err != nil {
-				return err
-			}
-			if h.Deleted {
-				return errDeleted
-			}
-			if d.BaseVersion == nil || *d.BaseVersion != h.Version {
-				if d.Status != "submitted" || d.BaseVersion == nil {
-					return errBehind
-				}
-				d.CurrentVersion = &h.Version
-				p, err := planPull(ctx, tx, d, hashes)
-				if err != nil {
-					return err
-				}
-				if len(p.MetaConflicts) > 0 || slices.ContainsFunc(p.Chunks, func(c mergeChunk) bool { return c.Conflict != nil }) {
-					return errMergeConflict
-				}
-				if hashes, meta, err = resolve(p.Chunks, p.Meta, nil, p.theirs, nil); err != nil {
-					return err
-				}
-			}
-			based := h.Version
-			blocks, err := loadBlocks(ctx, tx, hashes)
-			if err != nil {
-				return err
-			}
-			rev = &revision{ChapterID: *d.ChapterID, StoryID: d.StoryID, Version: h.Version + 1, Source: "edit", BasedOn: &based,
-				Meta: meta, Blocks: blocks, AuthorID: &d.OwnerID, AuthorName: d.OwnerName}
-			if err := appendRevision(ctx, tx, rev, hashes); err != nil {
-				return err
-			}
-		} else {
-			blocks, err := loadBlocks(ctx, tx, hashes)
-			if err != nil {
-				return err
-			}
-			rev = &revision{StoryID: d.StoryID, Source: "create", Meta: meta, Blocks: blocks, AuthorID: &d.OwnerID, AuthorName: d.OwnerName}
-			if err := createChapter(ctx, tx, rev); err != nil {
-				return err
-			}
-		}
-		action := "published"
-		if d.Status == "submitted" {
-			action = "proposal_merged"
-			if _, err := tx.Exec(ctx, `UPDATE draft_rounds SET decision = 'merged', decided_by = $3, decided_name = $4, decided_at = NOW(), merged_version = $5
-				WHERE draft_id = $1 AND round = $2`, id, d.LastRound, b.OwnerID, b.OwnerName, rev.Version); err != nil {
-				return err
-			}
-			if err := afterDecision(ctx, tx, id, "merged", b.OwnerID, b.OwnerName); err != nil {
-				return err
-			}
-		}
-		if err := logActivity(ctx, tx, d.StoryID, b.OwnerID, b.OwnerName, action, d, nil); err != nil {
-			return err
-		}
-		_, err = tx.Exec(ctx, `UPDATE chapter_drafts SET status = 'published', chapter_id = $2, published_version = $3, updated_at = NOW() WHERE id = $1`,
-			id, rev.ChapterID, rev.Version)
+	err := pgx.BeginFunc(r.Context(), s.db, func(tx pgx.Tx) (err error) {
+		rev, number, err = publishTx(r.Context(), tx, id, b.OwnerID, b.OwnerName, false)
 		return err
 	})
 	switch {
@@ -400,6 +330,96 @@ func (s *server) handleDraftPublish(w http.ResponseWriter, r *http.Request) {
 	default:
 		ok(w, rev)
 	}
+}
+
+// publishTx puts draft {id} into the official line in tx. scheduled: the scheduler publishing a draft whose time has
+// come (rights were checked when it was scheduled; it publishes as the state it was scheduled from).
+func publishTx(ctx context.Context, tx pgx.Tx, id, actorID string, actorName *string, scheduled bool) (*revision, float64, error) {
+	d, hashes, err := loadDraft(ctx, tx, id, true)
+	if err != nil {
+		return nil, 0, err
+	}
+	state := d.Status
+	if state == "scheduled" {
+		if !scheduled || d.SchedulePrev == nil {
+			return nil, 0, errScheduled
+		}
+		state = *d.SchedulePrev
+	}
+	switch {
+	case state == "submitted":
+	case state != "open":
+		return nil, 0, errDraftClosed
+	case d.OwnerID != actorID && !scheduled:
+		return nil, 0, errNotOwner
+	}
+	number := d.Meta.ChapterNumber
+	meta := d.Meta
+	if meta.Title == "" {
+		return nil, number, errEmptyTitle
+	}
+	var rev *revision
+	if d.ChapterID != nil {
+		h, err := lockHead(ctx, tx, *d.ChapterID)
+		if err != nil {
+			return nil, number, err
+		}
+		if h.Deleted {
+			return nil, number, errDeleted
+		}
+		if d.BaseVersion == nil || *d.BaseVersion != h.Version {
+			if state != "submitted" || d.BaseVersion == nil {
+				return nil, number, errBehind
+			}
+			d.CurrentVersion = &h.Version
+			p, err := planPull(ctx, tx, d, hashes)
+			if err != nil {
+				return nil, number, err
+			}
+			if len(p.MetaConflicts) > 0 || slices.ContainsFunc(p.Chunks, func(c mergeChunk) bool { return c.Conflict != nil }) {
+				return nil, number, errMergeConflict
+			}
+			if hashes, meta, err = resolve(p.Chunks, p.Meta, nil, p.theirs, nil); err != nil {
+				return nil, number, err
+			}
+		}
+		based := h.Version
+		blocks, err := loadBlocks(ctx, tx, hashes)
+		if err != nil {
+			return nil, number, err
+		}
+		rev = &revision{ChapterID: *d.ChapterID, StoryID: d.StoryID, Version: h.Version + 1, Source: "edit", BasedOn: &based,
+			Meta: meta, Blocks: blocks, AuthorID: &d.OwnerID, AuthorName: d.OwnerName}
+		if err := appendRevision(ctx, tx, rev, hashes); err != nil {
+			return nil, number, err
+		}
+	} else {
+		blocks, err := loadBlocks(ctx, tx, hashes)
+		if err != nil {
+			return nil, number, err
+		}
+		rev = &revision{StoryID: d.StoryID, Source: "create", Meta: meta, Blocks: blocks, AuthorID: &d.OwnerID, AuthorName: d.OwnerName}
+		if err := createChapter(ctx, tx, rev); err != nil {
+			return nil, number, err
+		}
+	}
+	action := "published"
+	if state == "submitted" {
+		action = "proposal_merged"
+		if _, err := tx.Exec(ctx, `UPDATE draft_rounds SET decision = 'merged', decided_by = $3, decided_name = $4, decided_at = NOW(), merged_version = $5
+			WHERE draft_id = $1 AND round = $2`, id, d.LastRound, actorID, actorName, rev.Version); err != nil {
+			return nil, number, err
+		}
+		if err := afterDecision(ctx, tx, id, "merged", actorID, actorName); err != nil {
+			return nil, number, err
+		}
+	}
+	if err := logActivity(ctx, tx, d.StoryID, actorID, actorName, action, d, nil); err != nil {
+		return nil, number, err
+	}
+	_, err = tx.Exec(ctx, `UPDATE chapter_drafts SET status = 'published', chapter_id = $2, published_version = $3, schedule_error = NULL, updated_at = NOW() WHERE id = $1`,
+		id, rev.ChapterID, rev.Version)
+	return rev, number, err
 }
 
 var errEmptyTitle = errors.New("empty title")
@@ -418,7 +438,7 @@ func (s *server) handleDraftList(w http.ResponseWriter, r *http.Request) {
 		story = ""
 	}
 	rows, err := s.db.Query(r.Context(), `SELECT `+draftColumns+` FROM chapter_drafts d LEFT JOIN chapter_heads h ON h.chapter_id = d.chapter_id
-		WHERE d.owner_id = $1 AND d.status IN ('open', 'submitted', 'offered') AND ($2 = '' OR d.story_id::text = $2) ORDER BY d.updated_at DESC LIMIT 100`, user, story)
+		WHERE d.owner_id = $1 AND d.status IN ('open', 'submitted', 'offered', 'scheduled') AND ($2 = '' OR d.story_id::text = $2) ORDER BY d.updated_at DESC LIMIT 100`, user, story)
 	if err != nil {
 		internalError(w, r, err)
 		return

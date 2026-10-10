@@ -774,7 +774,7 @@ export const publishDraft = async (req: AuthenticatedRequest, res: Response) => 
     const d = await workspaceDraft(res, req.params.id);
     if (!d) return;
     const own = d.owner_id === req.user!.id;
-    if (!own && d.status !== 'submitted') return res.status(403).json({ success: false, message: 'Đây không phải bản nháp của bạn.' });
+    if (!own && d.status !== 'submitted' && d.status !== 'scheduled') return res.status(403).json({ success: false, message: 'Đây không phải bản nháp của bạn.' });
 
     const story = await novelStory(d.story_id);
     if (story.approval_status === 'rejected') {
@@ -794,6 +794,19 @@ export const publishDraft = async (req: AuthenticatedRequest, res: Response) => 
     if (d.meta.volume_id) {
       const vol = await pool.query(`SELECT 1 FROM volumes WHERE id = $1 AND story_id = $2`, [d.meta.volume_id, d.story_id]);
       if (vol.rows.length === 0) throw new InputError('Tập đã chọn không còn: hãy chọn lại tập rồi đăng.');
+    }
+
+    // {publish_at}: publish at that time instead (stage 4c); the workspace holds the draft and publishes it then
+    if (req.body?.publish_at) {
+      const at = new Date(req.body.publish_at);
+      if (Number.isNaN(at.getTime())) throw new InputError('Giờ đăng không hợp lệ.');
+      const sr = await callWorkspace('POST', `/internal/drafts/${d.id}/schedule`, { ...ownerOf(req), publish_at: at.toISOString() });
+      if (sr.status !== 200) return relayWorkspace(res, sr);
+      return res.json({
+        success: true,
+        message: `Đã hẹn đăng lúc ${at.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}. Trước giờ đó vẫn đổi giờ hoặc hủy hẹn được.`,
+        data: sr.json.data,
+      });
     }
 
     const r = await callWorkspace('POST', `/internal/drafts/${d.id}/publish`, ownerOf(req));

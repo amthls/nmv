@@ -57,6 +57,7 @@ func main() {
 	}
 
 	go s.publishLoop(ctx)
+	go s.scheduleLoop(ctx)
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
 		Handler:           withRequestLog(s.routes()),
@@ -122,6 +123,7 @@ func (s *server) routes() http.Handler {
 	m.HandleFunc("POST /tasks/{id}/done", s.handleTaskDone)
 	m.HandleFunc("POST /tasks/{id}/cancel", s.handleTaskCancel)
 	m.HandleFunc("GET /board", s.handleBoard)
+	m.HandleFunc("DELETE /drafts/{id}/schedule", s.handleUnschedule)
 
 	m.HandleFunc("POST /internal/chapters", s.internal(s.handleCreate))
 	m.HandleFunc("GET /internal/chapters/{id}", s.internal(s.handleCurrent))
@@ -137,5 +139,6 @@ func (s *server) routes() http.Handler {
 	m.HandleFunc("POST /internal/drafts/{id}/shares", s.internal(s.handleShare))
 	m.HandleFunc("POST /internal/drafts/{id}/offer", s.internal(s.handleOffer))
 	m.HandleFunc("POST /internal/drafts/{id}/transfer", s.internal(s.handleTransfer))
+	m.HandleFunc("POST /internal/drafts/{id}/schedule", s.internal(s.handleSchedule))
 	return m
 }

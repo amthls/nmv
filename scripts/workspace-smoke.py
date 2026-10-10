@@ -319,6 +319,22 @@ glist = groups.get("data", {}).get("groups", groups.get("data")) if isinstance(g
 if glist:
     st, js = outsider.req("PUT", f"/api/v1/groups/{glist[0]['id']}/workflow", {"steps": ["translate", "edit"]})
     check("only a group's leader/mod changes its workflow", st == 403, str(st))
+# Scheduled publishing (stage 4c): schedule, refuse a time in the past, cancel (publishing at the time is in the Go tests)
+from datetime import datetime, timedelta, timezone
+st, js = k.req("POST", "/api/v1/drafts", {"chapter_id": cid})
+sd = js["data"]["id"]
+when = lambda minutes: (datetime.now(timezone.utc) + timedelta(minutes=minutes)).isoformat()
+st, js = k.req("POST", f"/api/v1/drafts/{sd}/publish", {"publish_at": when(-5)})
+check("a publish time in the past is refused", st == 400, f"{st} {js.get('message')}")
+st, js = k.req("POST", f"/api/v1/drafts/{sd}/publish", {"publish_at": when(30)})
+check("schedule a publish", st == 200 and js["data"]["status"] == "scheduled", f"{st} {js.get('message')}")
+st, js = k.req("PUT", f"/api/v1/drafts/{sd}", {**base, "content_blocks": blocks, "expected_version": js.get("data", {}).get("version", 1)})
+check("a scheduled draft is locked", st == 409, str(st))
+st, js = outsider.req("DELETE", f"/api/ws/drafts/{sd}/schedule")
+check("only keepers cancel a schedule", st == 403, str(st))
+st, js = k.req("DELETE", f"/api/ws/drafts/{sd}/schedule")
+check("cancel the schedule", st == 200 and js["data"]["status"] == "open", f"{st} {js.get('message')}")
+k.req("DELETE", f"/api/ws/drafts/{sd}")
 k.req("DELETE", f"/api/v1/stories/{sid}/collaborators/{helper_id}")
 
 print("FAILED: %d check(s)" % failures if failures else "All checks passed")

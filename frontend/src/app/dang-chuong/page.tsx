@@ -142,6 +142,8 @@ function ChapterEditorContent() {
   const [showShare, setShowShare] = useState(false);
   const [offerShown, setOfferShown] = useState<{ id: string; name: string } | null>(null);
   const [lockBlockedBy, setLockBlockedBy] = useState<string | null>(null);
+  // Stage 4c: publish at a chosen time instead of now (keepers)
+  const [publishAt, setPublishAt] = useState('');
   const setDraftInfo = (d: any) => { draftRef.current = d; setDraft(d); };
 
   const formattedBlocks = useMemo(() => editorBlocks.map((b, idx) => ({
@@ -583,9 +585,16 @@ function ChapterEditorContent() {
       }
 
       if (!(await saveDraftNow()) || !draftRef.current) return;
-      const res = await authFetch(`${API_BASE_URL}/drafts/${draftRef.current.id}/publish`, { method: 'POST' });
+      const res = await authFetch(`${API_BASE_URL}/drafts/${draftRef.current.id}/publish`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(publishAt ? { publish_at: new Date(publishAt).toISOString() } : {}),
+      });
       const json = await res.json().catch(() => ({}));
-      if (res.ok && json.success) {
+      if (res.ok && json.success && json.data?.status === 'scheduled') {
+        setPublishAt('');
+        setFeedback(json.message || 'Đã hẹn giờ đăng.');
+        showDraft(json.data);
+      } else if (res.ok && json.success) {
         stopSaving.current = true; // the draft is closed now
         setFeedback(json.message || 'Đăng chương thành công');
         setTimeout(() => {
@@ -657,6 +666,15 @@ function ChapterEditorContent() {
     await authFetch(`${WS_URL}/drafts/${draftRef.current.id}/offers/${copyId}`, { method: 'DELETE' });
     setOfferShown(null);
     loadDraft(draftRef.current.id);
+  };
+
+  const unschedule = async () => {
+    const d = draftRef.current;
+    const res = await authFetch(`${WS_URL}/drafts/${d.id}/schedule`, { method: 'DELETE' });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || !json.success) return setErrorMsg(json.message || 'Không hủy được hẹn đăng.');
+    setFeedback('Đã hủy hẹn đăng.');
+    showDraft(json.data);
   };
 
   const withdrawProposal = async () => {
@@ -908,6 +926,24 @@ function ChapterEditorContent() {
           onTransferred={() => { stopSaving.current = true; router.push('/ws'); }}
           onClose={() => setShowShare(false)}
         />
+      )}
+
+      {draft?.status === 'scheduled' && (
+        <div className="p-4 rounded-2xl bg-violet-500/10 border border-violet-500/30 text-violet-100 text-xs font-semibold flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <span>
+            Sẽ đăng lúc {new Date(draft.publish_at).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}
+            {draft.scheduled_name ? ` (hẹn bởi ${draft.scheduled_name})` : ''}. Bản nháp bị khóa tới khi đăng.
+          </span>
+          {draft.can_merge && (
+            <button type="button" onClick={unschedule} className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white font-bold text-[11px] shrink-0">Hủy hẹn</button>
+          )}
+        </div>
+      )}
+
+      {draft?.schedule_error && (draft.status === 'open' || draft.status === 'submitted') && (
+        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-100 text-xs font-semibold">
+          Lần hẹn đăng trước không thực hiện được: {draft.schedule_error}
+        </div>
       )}
 
       {draft?.status === 'submitted' && (
@@ -1344,6 +1380,17 @@ function ChapterEditorContent() {
                 </button>
               </>
             ) : (
+            <>
+              {!isMangaEdit && draft?.can_merge && (
+                <input
+                  type="datetime-local"
+                  value={publishAt}
+                  onChange={(e) => setPublishAt(e.target.value)}
+                  title="Hẹn giờ đăng (để trống = đăng ngay)"
+                  aria-label="Hẹn giờ đăng"
+                  className="h-10 px-3 rounded-xl bg-white/5 border border-white/10 text-xs text-white focus:outline-none focus:border-brand-500"
+                />
+              )}
             <button
                 type="button"
                 onClick={handlePublish}
@@ -1352,8 +1399,9 @@ function ChapterEditorContent() {
                 className="px-8 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 disabled:opacity-40 text-snow font-bold text-xs shadow-xl shadow-brand-500/25 flex items-center gap-2 transition hover:scale-105"
               >
                 <Send className="w-4 h-4" />
-                <span>{isSubmitting ? 'Đang gửi...' : isMangaEdit ? 'Lưu Thay Đổi' : draft?.chapter_id ? 'Đăng bản sửa' : 'Đăng Chương'}</span>
+                <span>{isSubmitting ? 'Đang gửi...' : isMangaEdit ? 'Lưu Thay Đổi' : publishAt ? 'Hẹn đăng' : draft?.chapter_id ? 'Đăng bản sửa' : 'Đăng Chương'}</span>
               </button>
+            </>
             )}
           </div>
         </div>

@@ -707,3 +707,60 @@ func TestTasks(t *testing.T) {
 		t.Fatalf("task events: %d", n)
 	}
 }
+
+func TestSchedule(t *testing.T) {
+	h := newWS(t)
+	meta := map[string]any{"title": "Mở đầu", "chapter_number": 1}
+	id := h.want(201, "POST", "/internal/chapters", "", true, map[string]any{"story_id": h.story, "meta": meta, "blocks": para("A", "B")})["chapter_id"].(string)
+	at := func(d time.Duration) string { return time.Now().Add(d).UTC().Format(time.RFC3339) }
+
+	// The keeper schedules their edit; it waits locked, nothing official changes yet
+	kd := h.want(201, "POST", "/internal/drafts", "", true, map[string]any{"owner_id": h.keeper, "story_id": h.story, "chapter_id": id})["id"].(string)
+	h.want(200, "PUT", "/internal/drafts/"+kd, "", true, map[string]any{"owner_id": h.keeper, "meta": meta, "blocks": para("A", "B hẹn giờ"), "expected_version": 1})
+	h.want(400, "POST", "/internal/drafts/"+kd+"/schedule", "", true, map[string]any{"owner_id": h.keeper, "publish_at": at(10 * time.Second)})
+	sch := h.want(200, "POST", "/internal/drafts/"+kd+"/schedule", "", true, map[string]any{"owner_id": h.keeper, "publish_at": at(5 * time.Minute)})
+	if sch["status"] != "scheduled" || sch["schedule_prev"] != "open" {
+		t.Fatalf("scheduled: %v", sch)
+	}
+	h.want(409, "PUT", "/internal/drafts/"+kd, "", true, map[string]any{"owner_id": h.keeper, "meta": meta, "blocks": para("x"), "expected_version": 2})
+	h.want(409, "POST", "/internal/drafts/"+kd+"/publish", "", true, map[string]any{"owner_id": h.keeper})
+	if n, err := h.s.publishDue(context.Background()); err != nil || n != 0 {
+		t.Fatalf("not due yet: %d %v", n, err)
+	}
+
+	// Its time comes: published like a manual publish
+	h.s.now = func() time.Time { return time.Now().Add(6 * time.Minute) }
+	if n, err := h.s.publishDue(context.Background()); err != nil || n != 1 {
+		t.Fatalf("due: %d %v", n, err)
+	}
+	var version int
+	h.s.db.QueryRow(context.Background(), `SELECT current_version FROM chapter_heads WHERE chapter_id = $1`, id).Scan(&version)
+	if version != 2 {
+		t.Fatalf("official version %d, want 2", version)
+	}
+	h.s.now = time.Now
+
+	// A scheduled proposal that clashes with the official line by then goes back to waiting, with the reason
+	md := h.want(201, "POST", "/internal/drafts", "", true, map[string]any{"owner_id": h.member, "story_id": h.story, "chapter_id": id})["id"].(string)
+	h.want(200, "PUT", "/internal/drafts/"+md, "", true, map[string]any{"owner_id": h.member, "meta": meta, "blocks": para("A", "B của thành viên"), "expected_version": 1})
+	h.want(200, "POST", "/internal/drafts/"+md+"/submit", "", true, map[string]any{"owner_id": h.member})
+	h.want(200, "POST", "/internal/drafts/"+md+"/schedule", "", true, map[string]any{"owner_id": h.keeper, "publish_at": at(2 * time.Minute)})
+	h.want(200, "POST", "/internal/chapters/"+id+"/revisions", "", true, map[string]any{"meta": meta, "blocks": para("A", "B khác"), "expected_version": 2})
+	h.s.now = func() time.Time { return time.Now().Add(3 * time.Minute) }
+	if n, err := h.s.publishDue(context.Background()); err != nil || n != 0 {
+		t.Fatalf("clashing: %d %v", n, err)
+	}
+	h.s.now = time.Now
+	back := h.want(200, "GET", "/drafts/"+md, h.member, false, nil)
+	if back["status"] != "submitted" || back["schedule_error"] == nil {
+		t.Fatalf("back to waiting: %v %v", back["status"], back["schedule_error"])
+	}
+
+	// Cancelling: keepers only; the draft returns to what it was
+	h.want(200, "POST", "/internal/drafts/"+md+"/schedule", "", true, map[string]any{"owner_id": h.keeper, "publish_at": at(time.Hour)})
+	h.want(403, "DELETE", "/drafts/"+md+"/schedule", h.member, false, nil)
+	if d := h.want(200, "DELETE", "/drafts/"+md+"/schedule", h.keeper, false, nil); d["status"] != "submitted" || d["publish_at"] != nil {
+		t.Fatalf("unscheduled: %v", d)
+	}
+	h.want(409, "DELETE", "/drafts/"+md+"/schedule", h.keeper, false, nil)
+}

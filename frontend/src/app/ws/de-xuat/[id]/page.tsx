@@ -33,6 +33,7 @@ export default function ProposalPage() {
   const [comment, setComment] = useState('');
   const [decisionNote, setDecisionNote] = useState('');
   const [busy, setBusy] = useState(false);
+  const [publishAt, setPublishAt] = useState(''); // stage 4c: merge at a chosen time
 
   const load = useCallback(async () => {
     const res = await authFetch(`${WS_URL}/drafts/${id}/review`);
@@ -161,6 +162,28 @@ export default function ProposalPage() {
           </p>
         )}
         {notice && <p className="text-xs text-gray-200 px-3 py-2 rounded-xl bg-white/5 border border-white/10">{notice}</p>}
+        {d.status === 'scheduled' && (
+          <div className="text-xs text-violet-100 px-3 py-2 rounded-xl bg-violet-500/10 border border-violet-500/30 flex flex-wrap items-center justify-between gap-2">
+            <span>Sẽ gộp vào bản chính lúc {new Date(d.publish_at).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}{d.scheduled_name ? ` (hẹn bởi ${d.scheduled_name})` : ''}.</span>
+            {data.can_merge && (
+              <button
+                disabled={busy}
+                onClick={async () => {
+                  const res = await authFetch(`${WS_URL}/drafts/${id}/schedule`, { method: 'DELETE' });
+                  const json = await res.json().catch(() => ({}));
+                  setNotice(res.ok ? 'Đã hủy hẹn giờ.' : json.message || 'Không hủy được.');
+                  load();
+                }}
+                className="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/15 font-bold"
+              >
+                Hủy hẹn
+              </button>
+            )}
+          </div>
+        )}
+        {d.schedule_error && d.status === 'submitted' && (
+          <p className="text-xs text-rose-200 px-3 py-2 rounded-xl bg-rose-500/10 border border-rose-500/30">Lần hẹn gộp trước không thực hiện được: {d.schedule_error}</p>
+        )}
         {data.story_removed && <p className="text-xs text-rose-300">Truyện đang bị gỡ: chưa gộp được cho tới khi được khôi phục.</p>}
         {pending && data.merge_conflicts > 0 && (
           <p className="text-xs text-rose-200 px-3 py-2 rounded-xl bg-rose-500/10 border border-rose-500/30">
@@ -182,12 +205,20 @@ export default function ProposalPage() {
                 <button disabled={busy} onClick={() => act('return', { note: decisionNote }, 'Đã trả lại.')} className="h-9 px-4 rounded-xl bg-white/10 hover:bg-white/15 disabled:opacity-40 text-white text-xs font-bold flex items-center gap-1.5">
                   <Undo2 className="w-3.5 h-3.5" /> Trả lại
                 </button>
+                <input
+                  type="datetime-local"
+                  value={publishAt}
+                  onChange={(e) => setPublishAt(e.target.value)}
+                  title="Hẹn giờ đăng (để trống = gộp ngay)"
+                  aria-label="Hẹn giờ đăng"
+                  className="h-9 px-3 rounded-xl bg-black/30 border border-white/10 text-xs text-white"
+                />
                 <button
                   disabled={busy || data.merge_conflicts > 0 || data.story_removed}
-                  onClick={() => act('publish', {}, 'Đã gộp.')}
+                  onClick={() => act('publish', publishAt ? { publish_at: new Date(publishAt).toISOString() } : {}, 'Đã gộp.').then((done) => done && setPublishAt(''))}
                   className="h-9 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-snow text-xs font-bold flex items-center gap-1.5"
                 >
-                  <Check className="w-4 h-4" /> Gộp vào bản chính
+                  <Check className="w-4 h-4" /> {publishAt ? 'Hẹn giờ gộp' : 'Gộp vào bản chính'}
                 </button>
               </>
             )}
