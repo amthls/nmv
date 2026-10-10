@@ -76,13 +76,13 @@ Mục tiêu chủ dự án: **không để service ngốn RAM mà không giải 
 **Worker cũ tan vào service mới:** `worker` → thông báo sang messaging, gộp lượt xem sang catalog (tiến trình nền); `export-worker` → media. Hai container cũ bị xóa.
 
 **Số container:** hạ tầng 6 + gateway + frontend + 8 service (identity, catalog, workspace, library, community, media, search,
-recommender-api) + messaging + backup = **18 chạy thường trực**, cộng **bộ giám sát** (victorialogs, victoriametrics, vmalert,
-bộ gom log từ Docker; ~100–200 MB) → **~21–22**; `recommender-train` là job chạy theo lịch rồi thoát; `pgadmin` khi cần.
+recommender-api) + messaging + backup = **18 chạy thường trực**, ~~cộng **bộ giám sát** (victorialogs, victoriametrics, vmalert,
+bộ gom log từ Docker; ~100–200 MB) → **~21–22**~~ (**bỏ bộ giám sát**, chủ dự án 2026-10-10); `recommender-train` là job chạy theo lịch rồi thoát; `pgadmin` khi cần.
 - **messaging mặc định là 1 container** (một file chạy Go, bật cả 3 vai trò api/realtime/worker); chỉ tách 3 container khi cần mở rộng riêng
   (cờ khởi động chọn vai trò, không phải sửa code). Tương tự media chạy xử lý xuất file trong cùng container.
 - Máy phát triển: profile compose để chỉ bật service đang làm + hạ tầng (ví dụ làm workspace không cần recommender, search).
 
-**Ước tính RAM lúc rảnh:** hiện tại ~1,3 GB (đo 2026-10-09) → sau khi chuyển ~1,9–2,2 GB kể cả bộ giám sát (ES ~670 MB vẫn là lớn nhất; 6 service Go
+**Ước tính RAM lúc rảnh:** hiện tại ~1,3 GB (đo 2026-10-09) → sau khi chuyển ~1,9–2,2 GB (không còn bộ giám sát; ES ~670 MB vẫn là lớn nhất; 6 service Go
 ~15–25 MB mỗi cái; 3 service TS ~70–100 MB; recommender-api ~70 MB). Máy hiện có ~7,6 GB. Mọi container đặt `mem_limit`.
 - [ ] Đo lại RAM thực tế sau mỗi giai đoạn tách, ghi vào đây.
 
@@ -211,7 +211,7 @@ chạy nhiều bản), `messaging-worker` (nhận sự kiện, phân phát, gộ
     được chia sẻ nháp/cấp quyền sửa/nhận chuyển giao · chương hẹn giờ đã đăng.
   - *Kiểm duyệt:* nội dung của bạn bị gỡ/khôi phục (kèm lý do) · kết quả khiếu nại · báo cáo/khiếu nại mới (Admin/Mod, gộp).
   - *Hệ thống:* thông báo toàn site của Admin (1 dòng) · đăng nhập thiết bị lạ, mật khẩu vừa đổi (kèm mail).
-  - Cảnh báo kỹ thuật **không** vào chuông: vmalert → Telegram/Discord.
+  - Cảnh báo kỹ thuật (không có bộ giám sát): thông báo hệ thống cho Admin như backup, kèm mã để tìm trong `docker compose logs`.
 - **Không tắt được:** thay đổi vai trò/thành viên nhóm của chính mình, đề xuất được gộp/trả lại, nội dung bị gỡ/khôi phục,
   kết quả khiếu nại, thông báo toàn site, cảnh báo bảo mật tài khoản.
 - **Giao diện:** chuông có số **chưa xem** (mở chuông → về 0, từng mục vẫn "chưa đọc" tới khi bấm), tab Tất cả / Chưa đọc /
@@ -304,7 +304,7 @@ hoạt động của người đó. Sau này: nút "Tải dữ liệu của tôi
 
 **Thay đổi:**
 - **identity tự gửi mail tài khoản** (không qua messaging, để messaging sập vẫn đặt lại được mật khẩu): tạo token + ghi `mail_outbox`
-  **cùng transaction** → tiến trình nền `identity-mail` gửi, thử lại chờ tăng dần (~1 giờ), thất bại hẳn → đánh dấu + cảnh báo Telegram/Discord.
+  **cùng transaction** → tiến trình nền `identity-mail` gửi, thử lại chờ tăng dần (~1 giờ), thất bại hẳn → đánh dấu + thông báo cho Admin.
 - Tạo token mới thì hủy token cũ cùng mục đích. Xác thực email 24 giờ.
 - **Mail mới:** "Mật khẩu vừa được đổi" (kèm link "Không phải bạn? Khóa tài khoản ngay"); **đổi email** = xác thực email mới trước, báo email cũ.
 - Giới hạn số mail/ngày/email (vd 5). **Cloudflare Turnstile** ở form đăng ký + quên mật khẩu (dùng khóa thử của Cloudflare khi chạy local).
@@ -317,6 +317,9 @@ hoạt động của người đó. Sau này: nút "Tải dữ liệu của tôi
   không bao giờ xác thực.
 
 ## Log lỗi, giám sát, cảnh báo (chốt 2026-10-10)
+> **Đổi 2026-10-10 (chủ dự án): bỏ container gom log/giám sát** (VictoriaLogs, VictoriaMetrics, vmalert, Alertmanager, Vector).
+> Giữ: `request_id`, log JSON che dữ liệu (đọc bằng `docker compose logs … | grep <mã>`), `/health` + `/ready`, che lỗi;
+> cảnh báo việc nặng (backup, mail, hàng cách ly) bằng thông báo hệ thống cho Admin. Phần **Công cụ** dưới đây không làm.
 **Mã theo dõi xuyên suốt:** gateway sinh `request_id` → header `X-Request-Id` qua mọi lời gọi nội bộ → metadata sự kiện
 `{request_id, event_id, causation_id}` → consumer ghi log cùng mã. Dán mã người dùng báo ("lỗi mã r-7f3a") vào ô tìm log → thấy cả chuỗi;
 dòng lỗi đầu tiên = service gây lỗi; `causation_id` lần ngược cả lỗi xảy ra sau khi request đã trả lời (worker, consumer).
@@ -467,8 +470,8 @@ Bẫy (giai đoạn A):
 - [ ] Job đối soát đêm + cảnh báo (outbox dồn, hàng cách ly, consumer chậm, lệch dữ liệu)
 - [x] Log JSON + che dữ liệu nhạy cảm cho backend/worker hiện có (`backend/src/utils/logger.ts`, AsyncLocalStorage giữ `request_id`) và gateway
 - [ ] Log JSON + che dữ liệu cho Go/Python (làm cùng service Go đầu tiên); `request_id` qua HTTP nội bộ và metadata sự kiện
-- [ ] VictoriaLogs + VictoriaMetrics + vmalert (giữ lỗi 30 ngày, thường 14 ngày), chỉ mở localhost/Cloudflare Access;
-      `/health` + `/ready` mọi service; bản đồ phụ thuộc; cảnh báo Telegram + Discord; trang lỗi 502/503/504 riêng ở gateway
+- [x] ~~VictoriaLogs + VictoriaMetrics + vmalert, cảnh báo Telegram + Discord, bản đồ phụ thuộc~~: **bỏ** (chủ dự án, 2026-10-10)
+- [ ] `/health` + `/ready` mọi service (làm cùng từng service); trang lỗi 502/503/504 riêng ở gateway
 - [x] Gateway: `request_id` (sinh mới, ghi đè giá trị client, trả về trình duyệt, là mã lỗi 5xx người dùng thấy)
 - [ ] Gateway: định tuyến theo tiền tố, `auth_request` (làm cùng identity)
 - [ ] CI build/test theo từng thư mục service; `launch.py` + `scripts/migrate.sh` chạy migration cho mọi database
