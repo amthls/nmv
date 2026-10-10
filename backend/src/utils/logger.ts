@@ -25,8 +25,8 @@ export function redact(text: string): string {
 
 const original = { log: console.log, error: console.error };
 
-export function log(level: 'debug' | 'info' | 'warn' | 'error', msg: string, fields: Record<string, unknown> = {}) {
-  const line = JSON.stringify({ time: new Date().toISOString(), level, service: SERVICE, request_id: ctx.getStore(), msg: redact(msg), ...fields });
+export function log(level: 'debug' | 'info' | 'warn' | 'error', msg: string, fields: Record<string, unknown> = {}, unredacted = false) {
+  const line = JSON.stringify({ time: new Date().toISOString(), level, service: SERVICE, request_id: ctx.getStore(), msg: unredacted ? msg : redact(msg), ...fields });
   (level === 'error' || level === 'warn' ? original.error : original.log)(line);
 }
 
