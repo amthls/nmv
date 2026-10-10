@@ -3,7 +3,7 @@
 - **Mục tiêu:** Workspace giai đoạn 4a: chia sẻ nháp, bản sao + nhận từng đoạn, giao nháp, nhận lại, quyền sửa + khóa, thẻ nháp trong tin nhắn
 - **Tạo từ:** `origin/main` @ 52d5b04 (#59), ngày 2026-10-10
 - **Trạng thái:** xong, đã thử local; tự merge
-- **PR:** (điền khi mở)
+- **PR:** https://github.com/amthls/nmv/pull/60
 - **Plan:** `Plan/chapter-workspace.md` (Giai đoạn 4a)
 
 ## Thay đổi
