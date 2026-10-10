@@ -69,7 +69,7 @@ interface StoryFormProps {
 
 export default function StoryForm({ mode, initialValues, preselectedGroupId }: StoryFormProps) {
   const router = useRouter();
-  const { authFetch, user, hasRole, refreshProfile } = useAuth();
+  const { authFetch, user, refreshProfile } = useAuth();
   const iv = initialValues || {};
 
   const [title, setTitle] = useState(iv.title || '');
@@ -121,23 +121,14 @@ export default function StoryForm({ mode, initialValues, preselectedGroupId }: S
     fetchData();
   }, []);
 
-  // Only groups the user belongs to (the server enforces the same rule); admin/mod may pick any.
+  // Only groups the user belongs to (the server enforces the same rule).
   // The story's current group stays selectable when editing.
   const selectableGroups = useMemo(() => {
-    if (hasRole('mod')) return groups;
     return groups.filter((g: any) =>
       g.id === iv.group_id ||
       (Array.isArray(g.members) && g.members.some((m: any) => m.user_id === user?.id))
     );
   }, [groups, user?.id, iv.group_id]);
-
-  // Group stories need the group's leader/vice leader ("mod") unless the poster is one (or site staff)
-  const needsGroupReview = useMemo(() => {
-    if (!selectedGroupId || hasRole('admin', 'mod')) return false;
-    const g = groups.find((x: any) => x.id === selectedGroupId);
-    const me = Array.isArray(g?.members) ? g.members.find((m: any) => m.user_id === user?.id) : null;
-    return !['leader', 'mod'].includes(me?.role);
-  }, [groups, selectedGroupId, user?.id]);
 
   const allTags = useMemo(() => {
     const list: TagItem[] = [];
@@ -229,12 +220,6 @@ export default function StoryForm({ mode, initialValues, preselectedGroupId }: S
           setTimeout(() => {
             router.push(`/truyen/${json.data.slug}`);
           }, 1200);
-        } else if (json.data.approval_status === 'pending') {
-          // Group story: goes live once the group's leader/vice leader approves it
-          setFeedback(json.message || 'Truyện đang chờ Trưởng nhóm hoặc Phó nhóm duyệt.');
-          setTimeout(() => {
-            router.push(`/truyen/${json.data.slug}`);
-          }, 2500);
         } else {
           refreshProfile().catch(() => {}); // the account just became an author/translator
           setFeedback('Đăng bộ truyện thành công! Đang chuyển hướng sang trang đăng chương...');
@@ -377,11 +362,7 @@ export default function StoryForm({ mode, initialValues, preselectedGroupId }: S
               ))}
             </select>
             <p className="text-[11px] text-gray-400">
-              {selectedGroupId
-                ? needsGroupReview
-                  ? 'Truyện sẽ hiển thị sau khi Trưởng nhóm hoặc Phó nhóm duyệt.'
-                  : 'Bạn là Trưởng/Phó nhóm nên truyện được đăng ngay.'
-                : 'Đăng độc lập: truyện hiển thị ngay, không cần duyệt.'}
+              Truyện hiển thị ngay sau khi đăng, không cần duyệt.
             </p>
           </div>
         </div>

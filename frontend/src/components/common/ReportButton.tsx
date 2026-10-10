@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Flag, X, Check } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
@@ -83,7 +84,8 @@ export default function ReportButton({ targetType, targetId, variant = 'button',
         <span>Báo cáo</span>
       </button>
 
-      {open && (
+      {/* Portal: the button often sits in a backdrop-blurred toolbar, which would trap a `fixed` overlay inside it */}
+      {open && createPortal(
         <div
           className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
           onClick={close}
@@ -161,7 +163,8 @@ export default function ReportButton({ targetType, targetId, variant = 'button',
               </>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

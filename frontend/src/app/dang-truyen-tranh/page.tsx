@@ -39,7 +39,7 @@ interface PageItem {
   /** set when the browser itself cannot decode the file: it is not a usable image */
   invalid?: string;
 }
-type ChapterStatus = 'editing' | 'uploading' | 'published' | 'draft' | 'pending' | 'error';
+type ChapterStatus = 'editing' | 'uploading' | 'published' | 'draft' | 'error';
 interface ChapterDraft {
   key: string;
   number: string;
@@ -141,7 +141,7 @@ function MangaUploadContent() {
   useEffect(() => () => chaptersRef.current.forEach((c) => c.pages.forEach((p) => URL.revokeObjectURL(p.preview))), []);
 
   // Warn before leaving with unpublished pages
-  const unsaved = chapters.some((c) => c.pages.length > 0 && !['published', 'draft', 'pending'].includes(c.status));
+  const unsaved = chapters.some((c) => c.pages.length > 0 && !['published', 'draft'].includes(c.status));
   useEffect(() => {
     if (!unsaved) return;
     const onBeforeUnload = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
@@ -398,7 +398,7 @@ function MangaUploadContent() {
       });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.message || 'Không đăng được chương');
-      const status: ChapterStatus = asDraft ? 'draft' : json.data?.approval_status === 'approved' ? 'published' : 'pending';
+      const status: ChapterStatus = asDraft ? 'draft' : 'published';
       patchChapter(key, {
         status,
         message: json.message,
@@ -452,7 +452,7 @@ function MangaUploadContent() {
   const dupNames = pages.length - new Set(pages.map((p) => `${p.file.name}|${p.file.size}`)).size;
   const editable = active && !['uploading', 'published'].includes(active.status) && !busy;
   const uploadedCount = pages.filter((p) => p.status === 'done').length;
-  const readyKeys = chapters.filter((c) => c.pages.length > 0 && !['published', 'pending', 'draft'].includes(c.status)).map((c) => c.key);
+  const readyKeys = chapters.filter((c) => c.pages.length > 0 && !['published', 'draft'].includes(c.status)).map((c) => c.key);
 
   return (
     <div
@@ -611,7 +611,6 @@ function MangaUploadContent() {
                   <div className="mt-1 text-[11px]">
                     {c.status === 'uploading' && <span className="text-brand-500 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Đang tải {done}/{c.pages.length}</span>}
                     {c.status === 'published' && <span className="text-emerald-500">Đã đăng</span>}
-                    {c.status === 'pending' && <span className="text-amber-500">Chờ duyệt</span>}
                     {c.status === 'draft' && <span className="text-gray-400">Đã lưu nháp</span>}
                     {c.status === 'error' && <span className="text-rose-500">Có lỗi</span>}
                     {c.status === 'editing' && <span className="text-gray-500">{c.title || 'Chưa đăng'}</span>}

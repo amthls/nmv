@@ -14,7 +14,7 @@ Nền tảng đọc **Light Novel (truyện chữ)** và **Manga (truyện tranh
 7. [Tìm kiếm với Elasticsearch](#-tìm-kiếm-với-elasticsearch)
 8. [Trình soạn thảo rich text](#️-trình-soạn-thảo-rich-text-ckeditor-5) · [Độ phân giải ảnh](#-độ-phân-giải-ảnh-cho-người-đọc) · [Hiệu ứng tải trang](#-hiệu-ứng-tải-trang)
 9. [Chức năng & Trang giao diện](#-chức-năng--trang-giao-diện)
-10. [Phân quyền & quy trình duyệt](#-phân-quyền--quy-trình-duyệt)
+10. [Phân quyền](#-phân-quyền)
 11. [Cơ sở dữ liệu](#-cơ-sở-dữ-liệu)
 12. [API Endpoints](#-api-endpoints-apiv1)
 13. [Tài khoản mẫu](#-tài-khoản-mẫu)
@@ -220,7 +220,7 @@ Gửi thông báo cho hàng nghìn người theo dõi không còn chạy trong y
 | Bình luận bài viết | Tác giả bài viết | `post_comment` |
 | Trả lời bình luận | Tác giả bình luận gốc | `comment_reply` |
 | Thả/đổi cảm xúc bài viết | Tác giả bài viết (mỗi người một thông báo mỗi bài) | `post_reaction` |
-| Duyệt / từ chối bài viết (kể cả hàng loạt) | Tác giả bài viết | `system` |
+| Admin/Mod gỡ / khôi phục bài viết hoặc truyện | Tác giả bài viết / người đăng truyện | `system` |
 
 - **Chống quá tải:** chương gửi theo từng khối 1000 người (phân trang theo khóa, nghỉ 25ms giữa các khối), tối đa 2 chương chạy cùng lúc; các thông báo lẻ (bình luận, cảm xúc...) được gộp lại, mỗi 200ms hoặc 100 tin thành **một** câu `INSERT`. Đo trên máy này: chương có 20.000 người theo dõi, API trả lời sau 55ms và đủ 20.000 thông báo sau 2,8 giây; 5 chương đăng cùng lúc (100.000 thông báo) xử lý xong không lỗi.
 - **Không mất, không trùng:** tin nhắn được lưu bền (`persistent`) và chỉ được xác nhận sau khi ghi DB; mỗi thông báo có `dedupe_key` duy nhất (bảng `notifications`, migration `sql/migrations/002_notification_queue.sql`), nên worker sập giữa chừng hoặc tin bị giao lại sẽ không tạo bản trùng (theo thiết kế; kịch bản giết worker giữa chừng chưa được thử thực tế).
@@ -298,28 +298,37 @@ Các trang danh sách/chi tiết vẫn giữ khung xám nhấp nháy (skeleton) 
 | `/lich-su` | Lịch sử đọc, "đọc tiếp", xóa từng mục hoặc toàn bộ |
 | `/dang-truyen`, `/dang-truyen/sua/[slug]` | Đăng truyện mới, sửa thông tin truyện, thể loại, cộng tác viên |
 | `/dang-chuong` | Soạn và nộp chương (văn bản hoặc ảnh), lưu nháp. Thêm `?edit=<chapterId>` để **sửa chương đã đăng** (tiêu đề, số chương, tập, nội dung) |
-| `/nhom-dich`, `/nhom-dich/[slug]` | Danh sách nhóm dịch, tạo nhóm, thành viên và vai trò, kênh chat nhóm, duyệt chương nộp |
-| `/fandom`, `/fandom/[slug]` | Diễn đàn: đăng/sửa/xóa bài, phản ứng cảm xúc, bình luận, kiểm duyệt bài (đơn lẻ và hàng loạt) |
+| `/nhom-dich`, `/nhom-dich/[slug]` | Danh sách nhóm dịch, tạo nhóm, thành viên và vai trò, kênh chat nhóm, duyệt người xin gia nhập |
+| `/fandom`, `/fandom/[slug]` | Diễn đàn: đăng/sửa/xóa bài, phản ứng cảm xúc, bình luận; Admin/Mod gỡ hoặc khôi phục bài vi phạm |
 | `/tin-nhan` | Tin nhắn riêng giữa hai người (kiểu Reddit chat): hộp thư bên trái, cuộc trò chuyện bên phải (`?u=<username>`), tin mới được đẩy ngay qua Socket.IO, đánh dấu "Đã xem". **Nhãn** riêng của mỗi người để phân loại cuộc trò chuyện (lọc bằng hàng chip, quản lý ở nút "Nhãn"), ô **tìm kiếm** theo tên và nội dung tin trong phạm vi nhãn đang chọn, **ghim** tin (cả hai người cùng thấy, thanh "Đã ghim" ở đầu khung chat), **chặn** người dùng. Mở từ nút **Nhắn tin** ở trang cá nhân hoặc biểu tượng cạnh tên tác giả bài Fandom |
 | `/ma/:code` | Mở trang của một mã (truyện, chương, người dùng, nhóm, bài viết, album, báo cáo); mã hiện thành huy hiệu trên các trang đó (bấm để chép, rê chuột để xem giải nghĩa): mã người dùng ai cũng thấy trên trang hồ sơ, các mã khác chỉ Admin/Mod thấy |
 | `/quen-mat-khau`, `/dat-lai-mat-khau`, `/xac-thuc-email` | Quên mật khẩu (link "Quên mật khẩu?" trong form đăng nhập), đặt mật khẩu mới từ link trong email, xác thực email |
-| `/bao-cao` | Danh sách báo cáo vi phạm cho Admin/Mod: lọc theo trạng thái, mở nội dung bị báo cáo, đánh dấu "đã xử lý" hoặc "bỏ qua" |
+| `/bao-cao` | Danh sách báo cáo vi phạm cho Admin/Mod: lọc theo loại nội dung (truyện, chương, bài viết, bình luận) và trạng thái, tìm theo mã báo cáo, mã/tên nội dung, mô tả; mỗi báo cáo hiện mã báo cáo, lý do, mô tả, người báo cáo, mã + link nội dung, số báo cáo đang chờ cho cùng nội dung, nội dung đã gỡ chưa; đánh dấu "đã xử lý" hoặc "bỏ qua" |
+| `/da-go` | Nội dung đã gỡ (chỉ Admin/Mod): truyện và bài viết bị gỡ, lọc theo loại, tìm theo mã, tên, nội dung hoặc người đăng, xem và khôi phục |
 | `/tai-khoan` | Hồ sơ, avatar, cài đặt đọc truyện, thông báo; tab quản lý vai trò (admin) |
-| Navbar | Tìm nhanh, biểu tượng tin nhắn kèm số tin chưa đọc, chuông thông báo (đánh dấu đã đọc, xóa), đăng nhập/đăng ký, tài khoản demo, lối vào `/bao-cao` cho Admin/Mod |
+| Navbar | Tìm nhanh, biểu tượng tin nhắn kèm số tin chưa đọc, chuông thông báo (đánh dấu đã đọc, xóa), đăng nhập/đăng ký, tài khoản demo, lối vào `/bao-cao` và `/da-go` cho Admin/Mod |
 
-## 🔐 Phân quyền & quy trình duyệt
+## 🔐 Phân quyền
+
+**Không có khâu duyệt nội dung** (từ migration `019_no_approval.sql`): truyện, chương, bài Fandom và nhóm dịch đăng là hiện ngay.
+Admin/Mod **không sửa, không xóa hẳn** nội dung của người khác: họ chỉ **gỡ** (xóa mềm, kèm lý do) truyện và bài viết vi phạm.
+Mọi thứ bị gỡ nằm ở trang `/da-go` (chỉ Admin/Mod), tìm được theo mã, tên, nội dung, người đăng và khôi phục được.
+Admin/Mod cũng không có quyền gì đặc biệt trong nhóm dịch (sửa nhóm, quản lý thành viên, chat, duyệt người xin vào): chỉ Trưởng nhóm/Mod nhóm.
 
 - Vai trò người dùng nằm ở bảng `user_roles` (một người có nhiều vai trò): `admin`, `mod`, `translator`, `author`, `reader`. Đăng ký mới mặc định là `reader`.
 - Vai trò trong nhóm dịch (`group_members.role`): `leader`, `mod`, `member`, `translator`, `editor`, `raw_provider`, `proofreader`.
-- **Được quản lý một truyện:** admin, mod, người đăng truyện, thành viên nhóm dịch được gán, hoặc cộng tác viên của truyện.
-- **Nộp chương** (`POST /chapters/submissions`): nếu người nộp là admin/mod, chủ truyện hoặc leader/mod của nhóm thì chương được duyệt ngay và xuất bản; ngược lại chương ở trạng thái `pending` chờ duyệt. Có thể lưu `draft`.
-- **Duyệt/từ chối** (`.../approve-active`, `.../reject`): admin, mod hoặc leader/mod của nhóm.
+- **Đăng truyện**: ai cũng đăng được truyện độc lập; đăng dưới tên nhóm thì phải là thành viên nhóm (kể cả Admin/Mod). Truyện hiện ngay; người đăng nhận danh hiệu `author` (truyện độc lập) hoặc `translator` (truyện của nhóm).
+- **Được quản lý một truyện** (sửa thông tin, đăng chương, quản lý tập, cộng tác viên): người đăng truyện, thành viên nhóm dịch được gán, hoặc cộng tác viên của truyện.
+- **Đăng chương** (`POST /chapters/submissions`): ai quản lý được truyện thì đăng, chương xuất bản ngay. Có thể lưu `draft`. Số chương đã có thì bị từ chối (409): sửa chương đó thay vì đăng đè.
 - Khi chương được xuất bản, hệ thống tạo thông báo `chapter_update` cho người theo dõi truyện.
-- **Sửa chương đã đăng** (`PUT /chapters/:id`): Admin/Mod, người đăng chương, chủ truyện, leader/mod của nhóm. Sửa trực tiếp, có hiệu lực ngay, **không** gửi lại thông báo và không đổi `last_chapter_at`. Đổi sang số chương đã tồn tại sẽ bị từ chối (409).
+- **Xóa truyện** (xóa hẳn): chỉ người đăng truyện. **Gỡ truyện**: Admin/Mod (`POST /stories/:id/remove`, `approval_status = rejected`, ghi `removed_by/removed_at`), mọi danh sách, tìm kiếm, gợi ý bỏ qua nó; trang truyện vẫn mở được cho nhóm đăng truyện và Admin/Mod, kèm banner. Khôi phục: `POST /stories/:id/restore`.
+- **Xóa chương**: người đăng chương, chủ truyện, leader/mod của nhóm (Admin/Mod không xóa chương, họ gỡ cả truyện).
+- **Sửa chương đã đăng** (`PUT /chapters/:id`): người đăng chương, chủ truyện, leader/mod của nhóm. Sửa trực tiếp, có hiệu lực ngay, **không** gửi lại thông báo và không đổi `last_chapter_at`. Đổi sang số chương đã tồn tại sẽ bị từ chối (409).
 - **Quản lý tập**: ai quản lý được truyện thì đổi tên, xóa, sắp xếp lại được các tập. Xóa tập **không xóa chương**: các chương chuyển sang mục "Chưa phân tập" (API trả về ở `unassigned_chapters`).
 - **Bình luận**: chỉ tác giả được sửa; tác giả hoặc Admin/Mod được xóa (xóa mềm, kéo theo các trả lời và trừ lại bộ đếm).
-- **Báo cáo vi phạm**: mọi người dùng đã đăng nhập báo cáo được truyện, chương, bình luận, bài viết (mỗi người một báo cáo đang chờ cho mỗi nội dung); chỉ Admin/Mod xem và xử lý.
-- Bài Fandom và nhóm dịch mới đều có trạng thái `pending/approved/rejected` để admin/mod duyệt.
+- **Báo cáo vi phạm**: mọi người dùng đã đăng nhập báo cáo được truyện, chương, bình luận, bài viết (mỗi người một báo cáo đang chờ cho mỗi nội dung); chỉ Admin/Mod xem và xử lý. Chống spam: tối đa 10 báo cáo/giờ và 30 báo cáo/24 giờ mỗi người; mỗi người chỉ một báo cáo đang chờ cho mỗi nội dung (unique index `uq_reports_pending`, bấm nhiều lần cũng chỉ ghi một); báo cáo cũ vừa được xử lý thì phải chờ 24 giờ mới báo cáo lại nội dung đó.
+- **Bài Fandom**: chỉ tác giả sửa và xóa. Admin/Mod gỡ bài vi phạm (`POST /posts/:id/reject`, trạng thái `rejected`, tác giả sửa bài vẫn không hiện lại) và khôi phục (`POST /posts/:id/approve`).
+- **Nhóm dịch**: tạo là có ngay, người tạo là Trưởng nhóm. Người xin gia nhập vẫn do Trưởng nhóm/Mod nhóm duyệt.
 
 ## 🗄 Cơ sở dữ liệu
 
@@ -371,15 +380,15 @@ Ghi chú thực tế: bảng `users` **không có** cột `role`, `coins`, `exp_
 - `GET /stories`, `GET /stories/explore` (cùng một handler; hỗ trợ `q, type, status, tags, exclude_tags, language, min_chapters, sort, page, limit`; `sort` = `relevance | updated | views | favorites | newest | title_asc | title_desc`)
 - `GET /stories/trending`, `/stories/recently-updated`, `/stories/illustrations`, `/stories/manageable` (Auth)
 - `GET /stories/:slug` (opt), `GET /stories/:slug/chapters/:chapterSlug` (opt)
-- `POST /stories` (Auth), `PUT /stories/:id` (Auth), `DELETE /stories/:id` (Auth)
+- `POST /stories` (Auth), `PUT /stories/:id` (Auth), `DELETE /stories/:id` (Auth, chỉ người đăng)
+- `POST /stories/:id/remove` (Admin/Mod gỡ truyện, `reason` tùy chọn), `POST /stories/:id/restore` (Admin/Mod khôi phục)
 - `GET|POST /stories/:id/collaborators`, `DELETE /stories/:id/collaborators/:userId`
 - `POST /stories/:storyId/volumes` (Auth), `PUT /stories/:storyId/volumes/reorder` (Auth, body `{ order: [volumeId, ...] }`)
 - `PUT /volumes/:id` (Auth, đổi tên/mô tả/bìa), `DELETE /volumes/:id` (Auth, giữ lại các chương)
 - `GET /tags`
 
 **Chương**
-- `POST /chapters/submissions` (Auth), `GET /chapters/submissions` (opt)
-- `POST /chapters/submissions/:id/approve-active` (Auth), `POST /chapters/submissions/:id/reject` (Auth)
+- `POST /chapters/submissions` (Auth, đăng chương: xuất bản ngay, hoặc lưu nháp với `is_draft`)
 - `GET /chapters/:id` (Auth, dữ liệu để sửa), `PUT /chapters/:id` (Auth, sửa chương đã đăng), `DELETE /chapters/:id` (Auth)
 
 **Theo dõi, Bookmark, Lịch sử**
@@ -393,17 +402,18 @@ Ghi chú thực tế: bảng `users` **không có** cột `role`, `coins`, `exp_
 **Bình luận & Fandom**
 - `GET /comments?target_type=&target_id=`, `POST /comments`, `POST /comments/:id/like`, `PUT /comments/:id` (sửa của mình), `DELETE /comments/:id` (tác giả hoặc Admin/Mod)
 - `GET /posts` (opt), `GET /posts/:slug` (opt), `POST /posts`, `PUT /posts/:id`, `DELETE /posts/:id`
-- `POST /posts/:id/approve|reject|react`, `POST /posts/bulk-approve|bulk-reject`
+- `DELETE /posts/:id` chỉ tác giả. `POST /posts/:id/react`, `POST /posts/:id/reject` (Admin/Mod gỡ bài, `reason` tùy chọn), `POST /posts/:id/approve` (Admin/Mod khôi phục bài đã gỡ)
 
 **Báo cáo vi phạm**
 - `POST /reports` (Auth; body `target_type` = `story|chapter|comment|post`, `target_id`, `reason` = `spam|inappropriate|copyright|wrong_info|harassment|other`, `description`)
-- `GET /reports?status=pending|resolved|dismissed|all` (Admin/Mod), `PUT /reports/:id/resolve` (Admin/Mod, body `status` = `resolved|dismissed`, `resolution_note`)
+- `GET /reports?status=pending|resolved|dismissed|all&type=story|chapter|post|comment&q=` (Admin/Mod; mỗi dòng có `target_code`, `target_preview`, `target_path`, `target_removed`, `target_pending_count`), `PUT /reports/:id/resolve` (Admin/Mod, body `status` = `resolved|dismissed`, `resolution_note`)
+- `GET /moderation/removed?type=all|story|post&q=&page=` (Admin/Mod): truyện và bài viết đã bị gỡ, mới nhất trước, 30 mục/trang; `q` khớp mã, tên, tóm tắt/nội dung bài, username người đăng
 
 **Nhóm dịch**
-- `GET /groups`, `GET /groups/:slug`, `POST /groups`, `PUT /groups/:id`, `POST /groups/:id/approve`, `POST /groups/:id/reject` (Admin/Mod; xóa nhóm đang chờ duyệt để giải phóng tên, gửi `reason` cho người tạo)
-- `POST /groups/:id/members`, `PUT|DELETE /groups/:id/members/:memberUserId` (thành viên tự `DELETE` chính mình để rời nhóm; Mod nhóm chỉ quản lý được thành viên thường, chỉ Trưởng nhóm/Admin mới bổ nhiệm Trưởng nhóm/Mod; các Trưởng nhóm không hạ cấp hay xóa được nhau, chỉ Admin hoặc chính người đó; ai cũng tự thôi chức được miễn nhóm còn ít nhất một Trưởng nhóm)
-- Xin gia nhập nhóm (trưởng nhóm/mod hoặc admin duyệt): `POST /groups/:id/join-requests` (người dùng gửi, kèm lời nhắn tùy chọn; bị từ chối thì chờ 24 giờ mới gửi lại), `DELETE /groups/:id/join-requests/me` (hủy), `GET /groups/:id/join-requests` (danh sách chờ duyệt), `POST /groups/:id/join-requests/:requestId/approve|reject`
-- `GET|POST /groups/:id/messages`, `DELETE /groups/:id/messages/:messageId` (chỉ thành viên nhóm và Admin)
+- `GET /groups`, `GET /groups/:slug`, `POST /groups`, `PUT /groups/:id`
+- `POST /groups/:id/members`, `PUT|DELETE /groups/:id/members/:memberUserId` (thành viên tự `DELETE` chính mình để rời nhóm; Mod nhóm chỉ quản lý được thành viên thường, chỉ Trưởng nhóm mới bổ nhiệm Trưởng nhóm/Mod; các Trưởng nhóm không hạ cấp hay xóa được nhau, chỉ chính người đó; ai cũng tự thôi chức được miễn nhóm còn ít nhất một Trưởng nhóm)
+- Xin gia nhập nhóm (trưởng nhóm/mod nhóm duyệt): `POST /groups/:id/join-requests` (người dùng gửi, kèm lời nhắn tùy chọn; bị từ chối thì chờ 24 giờ mới gửi lại), `DELETE /groups/:id/join-requests/me` (hủy), `GET /groups/:id/join-requests` (danh sách chờ duyệt), `POST /groups/:id/join-requests/:requestId/approve|reject`
+- `GET|POST /groups/:id/messages`, `DELETE /groups/:id/messages/:messageId` (chỉ thành viên nhóm)
 
 **Tin nhắn riêng** (Auth)
 - `GET /messages?label=&q=`: hộp thư (mỗi người một dòng, tin mới nhất, số chưa đọc, `label_ids`, `blocked`) và `unread_count` (luôn là tổng, bất kể bộ lọc). `label` lọc theo nhãn của mình; `q` tìm theo tên người và nội dung tin (trả `match_message` là tin khớp mới nhất)
@@ -417,7 +427,7 @@ Ghi chú thực tế: bảng `users` **không có** cột `role`, `coins`, `exp_
 - `GET /profile/me`, `PUT /profile/me`, `PUT /profile/me/settings`
 - `GET /users`, `GET /users/admin/all`, `POST /users/:userId/roles`
 - `GET /admin/backup-status` (Admin): trạng thái sao lưu do container `backup` ghi (`null` nếu chưa chạy lần nào)
-- `GET /codes/:code`: tra mã thông minh → `{ type, path }` (không phân biệt hoa thường, chỉ dựa vào số). Nội dung ẩn trả 404 như mã sai: truyện chưa duyệt, bài chưa duyệt (trừ tác giả/staff), album riêng tư (trừ chủ), người bị khóa/xóa và báo cáo (trừ Admin/Mod)
+- `GET /codes/:code`: tra mã thông minh → `{ type, path }` (không phân biệt hoa thường, chỉ dựa vào số). Nội dung ẩn trả 404 như mã sai: bài nháp hoặc bị gỡ (trừ tác giả/staff), album riêng tư (trừ chủ), người bị khóa/xóa và báo cáo (trừ Admin/Mod)
 - `GET /users/:username`: hồ sơ công khai (trang `/nguoi-dung/:username`), chỉ gồm tên, ảnh, giới thiệu, vai trò công khai, thống kê, nhóm dịch và truyện đã đăng; không có email/cài đặt/lịch sử. Admin/Mod nhận thêm khối `moderation` (email, trạng thái khóa, các thao tác được phép)
 - Quản trị người dùng (Admin/Mod): `POST /users/:userId/ban` (kèm `reason`), `POST /users/:userId/unban`, `DELETE /users/:userId` (xóa mềm: ẩn danh hóa và khóa tài khoản, giữ truyện; `purge_content: true` ẩn luôn bài viết và bình luận). Không ai tác động lên chính mình hoặc Admin; Mod chỉ tác động lên người dùng thường; Admin và Mod đều cấp được quyền Mod cho người dùng thường, chỉ Admin thu hồi quyền Mod (migration `sql/migrations/005_user_soft_delete.sql`)
 - `POST /upload/image`, `POST /upload/images` (tối đa 10 ảnh)
@@ -441,6 +451,8 @@ Email có dạng `<tên ngắn>@novelhub.vn` (ví dụ `admin@novelhub.vn`, `sak
 
 **Chưa có chức năng**
 - Sửa chương chưa có lịch sử phiên bản (sửa là ghi đè).
+- Bản nháp chương lưu trên server (`chapter_submissions` trạng thái `draft`) chưa có trang nào để xem lại; nháp trong trình duyệt (`localStorage`) thì trang đăng chương tự gợi ý khôi phục.
+- Chương không gỡ riêng được: Admin/Mod chỉ gỡ cả truyện. Bài viết do tác giả tự xóa hoặc bị ẩn khi xóa tài khoản (`purge_content`) không nằm trong `/da-go`.
 - Báo cáo vi phạm chưa tự ẩn/xóa nội dung: Admin/Mod phải tự xử lý rồi đánh dấu báo cáo.
 - Các bảng `user_follows`, `broadcast_notifications` chưa được code sử dụng.
 - Tin nhắn riêng chưa có xóa/sửa tin, gửi ảnh hay báo cáo tin nhắn; chặn chỉ áp dụng cho tin nhắn (người bị chặn vẫn thấy bài viết, bình luận của bạn).
