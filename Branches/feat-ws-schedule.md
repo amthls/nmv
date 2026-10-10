@@ -3,7 +3,7 @@
 - **Mục tiêu:** Workspace giai đoạn 4c: hẹn giờ đăng chương
 - **Tạo từ:** `origin/main` sau #61, ngày 2026-10-10
 - **Trạng thái:** xong, đã thử local; tự merge
-- **PR:** (điền khi mở)
+- **PR:** https://github.com/amthls/nmv/pull/62
 - **Plan:** `Plan/chapter-workspace.md` (4c) — plan workspace xong hết
 
 ## Thay đổi
