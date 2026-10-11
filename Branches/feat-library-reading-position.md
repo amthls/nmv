@@ -3,7 +3,7 @@
 - **Mục tiêu:** Giai đoạn G2: vị trí đọc + Đọc tiếp đúng chỗ, gom ghi lịch sử, giới hạn 1.000 truyện, gộp lịch sử khách
 - **Tạo từ:** `origin/main` @ 140590f, ngày 2026-10-11
 - **Trạng thái:** xong, chờ merge
-- **PR:** (chưa mở)
+- **PR:** https://github.com/amthls/nmv/pull/76
 - **Plan:** Plan/library.md (G2)
 
 ## Thay đổi
