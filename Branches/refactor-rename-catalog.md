@@ -3,7 +3,7 @@
 - **Mục tiêu:** Giai đoạn I2: đổi tên service backend thành catalog
 - **Tạo từ:** `origin/main` @ 26a7e58, ngày 2026-10-11
 - **Trạng thái:** xong
-- **PR:** (chưa mở)
+- **PR:** https://github.com/amthls/nmv/pull/79
 - **Plan:** `Plan/catalog.md` (I2)
 
 ## Thay đổi
