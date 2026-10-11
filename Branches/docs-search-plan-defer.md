@@ -3,7 +3,7 @@
 - **Mục tiêu:** Plan: tạm hoãn service search, giữ backend dùng thẳng Elasticsearch
 - **Tạo từ:** `origin/main` @ 4635746, ngày 2026-10-11
 - **Trạng thái:** xong
-- **PR:** (chưa mở)
+- **PR:** https://github.com/amthls/nmv/pull/74
 - **Plan:** `Plan/microservices.md` (giai đoạn F2)
 
 ## Thay đổi
