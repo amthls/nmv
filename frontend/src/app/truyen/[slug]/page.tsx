@@ -838,7 +838,7 @@ export default function StoryDetailPage() {
           key={story.id}
           title="Truyện liên quan"
           subtitle="Người đọc truyện này cũng hay đọc, sắp theo gu của bạn"
-          endpoint={`/recommendations/related/${story.id}`}
+          endpoint={`/related/${story.id}`}
           source="related"
         />
 

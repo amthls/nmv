@@ -557,9 +557,9 @@ Bẫy (giai đoạn A):
 - [x] Vị trí đọc (% cuộn) + "Đọc tiếp" đúng đoạn; `ext_stories` cho `/lich-su`; giới hạn ~1.000 truyện/người; gộp lịch sử khách
 
 ### Giai đoạn H: recommender (Python)
-- [ ] Viết lại bằng Python: nhận sự kiện thay vì đọc DB chung (thư viện nhận sự kiện bản Python + JSON Schema)
-- [ ] Huấn luyện là job theo lịch (chạy xong thoát); so chất lượng gợi ý với thuật toán TS hiện tại trước khi thay
-- [ ] API gợi ý (FastAPI) đọc kết quả tính sẵn: trang chủ, truyện liên quan
+- [x] Viết lại bằng Python (`Plan/recommender.md`): nhận sự kiện thay vì đọc DB chung (thư viện nhận sự kiện bản Python + JSON Schema)
+- [x] Huấn luyện là job theo lịch (chạy xong thoát); so chất lượng gợi ý với thuật toán TS hiện tại trước khi thay
+- [x] API gợi ý (FastAPI) đọc kết quả tính sẵn: trang chủ, truyện liên quan
 
 ### Giai đoạn I: catalog (phần còn lại của backend cũ)
 - [ ] Đổi tên backend còn lại thành `catalog`, xóa code đã chuyển đi, dọn bảng thừa trong `catalog_db`

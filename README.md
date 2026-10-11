@@ -9,7 +9,7 @@ Nền tảng đọc **Light Novel (truyện chữ)** và **Manga (truyện tranh
 2. [Cấu trúc thư mục](#-cấu-trúc-thư-mục)
 3. [Khởi chạy](#-khởi-chạy)
 4. [Biến môi trường](#-biến-môi-trường)
-5. [Chống lạm dụng & DDoS](#-chống-lạm-dụng--ddos) · [Hiệu năng & mở rộng](#-hiệu-năng--mở-rộng-redis-realtime-pgbouncer) · [CI/CD & migration](#-cicd--migration) · [Service identity](#-service-identity) · [Service workspace](#-service-workspace-lịch-sử-chương) · [Sự kiện giữa các service](#-sự-kiện-giữa-các-service) · [Service media](#-service-media-ảnh-epubpdf) · [Service community](#-service-community-fandom-bình-luận-báo-cáo) · [Service library](#-service-library-theo-dõi-bookmark-lịch-sử-đọc-album) · [Sao lưu & khôi phục](#-sao-lưu--khôi-phục) · [Lộ trình bảo mật](#-lộ-trình-bảo-mật)
+5. [Chống lạm dụng & DDoS](#-chống-lạm-dụng--ddos) · [Hiệu năng & mở rộng](#-hiệu-năng--mở-rộng-redis-realtime-pgbouncer) · [CI/CD & migration](#-cicd--migration) · [Service identity](#-service-identity) · [Service workspace](#-service-workspace-lịch-sử-chương) · [Sự kiện giữa các service](#-sự-kiện-giữa-các-service) · [Service media](#-service-media-ảnh-epubpdf) · [Service community](#-service-community-fandom-bình-luận-báo-cáo) · [Service library](#-service-library-theo-dõi-bookmark-lịch-sử-đọc-album) · [Service recommender](#-service-recommender-gợi-ý-truyện) · [Sao lưu & khôi phục](#-sao-lưu--khôi-phục) · [Lộ trình bảo mật](#-lộ-trình-bảo-mật)
 6. [Hàng đợi thông báo (RabbitMQ)](#-hàng-đợi-thông-báo-rabbitmq)
 7. [Tìm kiếm với Elasticsearch](#-tìm-kiếm-với-elasticsearch)
 8. [Trình soạn thảo rich text](#️-trình-soạn-thảo-rich-text-ckeditor-5) · [Độ phân giải ảnh](#-độ-phân-giải-ảnh-cho-người-đọc) · [Hiệu ứng tải trang](#-hiệu-ứng-tải-trang)
@@ -181,7 +181,7 @@ Mục tiêu: chịu được vài nghìn đến vài chục nghìn người onli
 
 - **Realtime (service messaging, Go, `Plan/messaging.md`):** trình duyệt mở **WebSocket thường** `/api/msg/ws?tab=<id>` (chỉ người đã đăng nhập; gateway hỏi identity như mọi request, messaging kiểm chữ ký `USER_SIG_KEY_MESSAGING`). Backend API và worker `PUBLISH` `{users, type, data}` lên kênh Redis `rt:events`; mọi bản messaging nhận và đẩy cho các tab của những người đó (chạy nhiều bản được, không cần sticky session). `type: _disconnect` đóng mọi kết nối của một người (bị khóa/xóa). Server ping tầng giao thức mỗi 30 giây, không pong sau 45 giây thì cắt; mỗi tab một kết nối (kết nối lại thay kết nối cũ), tối đa 10 kết nối/tài khoản; tab ẩn quá 5 phút thì đóng. Client tự nối lại chờ ngẫu nhiên tăng dần (1–30 giây), bị từ chối thì làm mới phiên một lần; **không phát lại sự kiện bị lỡ**: nối lại xong mọi trang tải lại (DB là sự thật). Gateway: `worker_connections 16384`, `nofile 65536`, kết nối WebSocket mới tối đa 1/giây/IP (burst 10). Thử tải: `docker compose run --rm --no-deps messaging loadtest <N> ws://messaging:8080/ws <giây> [tiền tố]` (đo 2026-10-11: 10k và 30k kết nối giữ qua 3 lượt ping không rớt cái nào, ~40–44 KB RAM/kết nối, phát tới cả 30k p95 < 230 ms; `MESSAGING_MEMORY` mặc định 768m ≈ 15k kết nối, 30k cần 1.5g; chi tiết `Plan/messaging.md` E4). `next dev` chạy riêng (không qua gateway) thì không có socket, trang vẫn chạy nhờ hỏi định kỳ.
 - **Tin nhắn riêng + chat nhóm (service messaging, `messaging_db`):** `/api/msg/messages/*`, `/api/msg/groups/:id/messages*` (JSON như trước). Mỗi cặp người một `conversation` (dm), mỗi nhóm một conversation (group); đã đọc = `last_read_seq` của từng người (`read_at` của tin suy ra từ đó). Tên/ảnh người dùng và thành viên nhóm hỏi backend (`POST /internal/users/profiles`, `GET /internal/groups/:id/members`, nhớ 60 s / 30 s; người vừa vào nhóm được hỏi lại ngay). Backend gửi thẻ nháp qua `POST /internal/dm` (kiểm chặn bằng `GET /internal/blocked`). Chuyển dữ liệu: `messaging import-legacy` (`scripts/migrate.sh`, `launch.py` gọi mỗi lần; mỗi phần, tin nhắn rồi thông báo + cài đặt, chỉ chuyển **một lần**, ghi ở `legacy_imports`, nên thứ đã xóa bên messaging không bị chép lại). Giới hạn gửi 30 tin/phút/người.
-- **PgBouncer chế độ transaction** không giữ trạng thái theo phiên: không dùng advisory lock theo phiên, `SET` không `LOCAL`, `LISTEN`, prepared statement có tên, hay nhiều lệnh SQL có tham số trong một `query`. Train gợi ý dùng `pg_try_advisory_xact_lock` vì lý do này.
+- **PgBouncer chế độ transaction** không giữ trạng thái theo phiên: không dùng advisory lock theo phiên, `SET` không `LOCAL`, `LISTEN`, prepared statement có tên, hay nhiều lệnh SQL có tham số trong một `query`. Service recommender nối thẳng Postgres (không qua PgBouncer) nên khóa huấn luyện là advisory lock theo phiên.
 - **Thêm bản backend:** bỏ `container_name` của `backend`, rồi `docker compose up -d --scale backend=3` (nginx tự phân giải tên `backend` qua DNS của Docker).
 
 ## 🔁 CI/CD & migration
@@ -233,6 +233,7 @@ Service thứ hai tách khỏi backend (`Plan/chapter-workspace.md`, giai đoạ
 ## 🔄 Sự kiện giữa các service
 
 - **Đường đi:** service ghi thay đổi + dòng `outbox` trong **cùng một transaction** → tiến trình đẩy gửi lên exchange topic `novelhub.events` (có xác nhận của RabbitMQ) rồi mới đánh dấu đã gửi. Giao **ít nhất một lần**, có thể đảo thứ tự: bên nhận bỏ trùng theo `event_id` (`processed_events`) và chỉ áp dụng `version` mới hơn bản đang có. Mỗi bên nhận một hàng riêng (`backend.identity`, `backend.workspace`), lỗi thì thử lại 10 giây/lần, 5 lần vẫn lỗi → hàng cách ly `<hàng>.dlq`.
+- **Sự kiện hành vi không qua outbox:** backend gửi thẳng `catalog.story.viewed`, `catalog.chapter.read` (mọi lần mở trang truyện/chương, cả khách theo cookie `nh_vid`) lên exchange; RabbitMQ hỏng thì mất, chấp nhận được vì chỉ là số liệu cho gợi ý.
 - **Tên sự kiện:** `<service>.<thực thể>.<việc>` (`identity.user.updated`, `workspace.revision.merged`). Vỏ chung `{event_id, type, version, occurred_at, request_id, data}` (`events/envelope.v1.json`).
 - **Đổi schema** (`events/<tên>.v1.json`): chỉ được **thêm trường** (bên nhận bỏ qua trường lạ). Đổi nghĩa, đổi kiểu hay bỏ trường là phá vỡ → sự kiện mới `….v2.json` với tên mới, phát song song bản cũ cho tới khi mọi bên nhận đã chuyển. Test của mỗi service kiểm mọi sự kiện nó ghi ra khớp schema (CI).
 - **Phát lại (dựng lại bản sao):** `docker compose run --rm identity republish [user-id]`, `docker compose run --rm workspace republish [chapter-id]` gửi lại ảnh chụp hiện tại (không tăng version): bản sao thiếu hoặc cũ thì nhận, bản đã đúng bỏ qua. Bản sao bị sửa tay mà cùng version thì phải đặt `users.identity_version = 0` / xóa dòng `ws_chapter_versions` trước khi phát lại.
@@ -287,10 +288,13 @@ Tách khỏi backend ở giai đoạn G (`Plan/library.md`), Go (`services/libra
 - Tên, ảnh, số mã chủ album hỏi backend (`POST /internal/users/profiles`, nhớ 60 giây). Số người theo dõi `stories.total_favorites` vẫn ở backend:
   library đếm lại và gửi `POST /internal/favorite-counts` sau mỗi lần theo dõi/bỏ.
 - Backend hỏi library (`INTERNAL_KEY_LIBRARY`): đọc chương → ghi lịch sử (`/internal/history`), trang truyện (`/internal/favorites/:user/:story`),
-  hồ sơ (`/internal/users/:id/overview`), mã `AL-` (`/internal/codes/album/:số`), gợi ý truyện (`/internal/reco/export`, `/internal/reco/user/:id`,
-  cả trong `worker`). Messaging hỏi `/internal/stories/:id/followers` để báo chương mới. Xóa tài khoản: library nghe `identity.user.deleted`.
+  hồ sơ (`/internal/users/:id/overview`), mã `AL-` (`/internal/codes/album/:số`), recommender hỏi lịch sử của người xem
+  (`/internal/reco/user/:id`) và chuyển dữ liệu một lần (`/internal/reco/export`). Messaging hỏi `/internal/stories/:id/followers` để báo chương mới. Xóa tài khoản: library nghe `identity.user.deleted`.
 - Chuyển dữ liệu: `docker compose run --rm library import-legacy` (`scripts/migrate.sh`, `launch.py` gọi; chỉ một lần, cần backend đang chạy).
-  Bảng cũ ở `novel_platform` **không còn dùng**, xóa ở nhánh sau. `backend/src/scripts/simulateReaders.ts` vẫn ghi bảng cũ (xem Hạn chế).
+  Bảng cũ ở `novel_platform` **không còn dùng**, xóa ở nhánh sau.
+- Phát sự kiện cho recommender: trigger trong `library_db` ghi outbox (`migrations/002_outbox.sql`) khi theo dõi/bỏ, thêm/bỏ truyện
+  trong album (xóa album = bỏ từng truyện), tạo/xóa bookmark → `library.story.followed|unfollowed`, `library.album.story_added|removed`,
+  `library.bookmark.created|deleted`.
 - Biến mới: `LIBRARY_DB_PASSWORD`, `USER_SIG_KEY_LIBRARY`, `INTERNAL_KEY_LIBRARY` (launch.py tự sinh), `LIBRARY_MEMORY` (mặc định 128m).
 - **Vị trí đọc:** trang đọc gửi `POST /history {chapter_id, scroll_position}` (% cuộn) mỗi 15 giây nếu đổi và khi ẩn tab/rời chương;
   library giữ trong bộ nhớ, ghi xuống DB mỗi 60 giây, khi tắt và ngay trước khi đọc/xóa lịch sử của chính người đó (mất tối đa 1 phút vị trí
@@ -299,6 +303,28 @@ Tách khỏi backend ở giai đoạn G (`Plan/library.md`), Go (`services/libra
   (≤ 200 mục, chỉ ghi đè khi mới hơn) rồi xóa khỏi trình duyệt.
 - Thử: `cd services/library && go test ./...` (thêm `LIBRARY_TEST_DATABASE_URL=postgres://…/library_test` cho test tích hợp, xóa sạch DB đó);
   trọn luồng qua gateway: `python scripts/library-smoke.py --keeper admin --reader reader_yuki --password … --story berserker-of-gluttony`.
+
+## 🧠 Service recommender (gợi ý truyện)
+
+Tách khỏi backend ở giai đoạn H (`Plan/recommender.md`), Python 3.12 (`services/recommender`: FastAPI, numpy, psycopg, pika), database riêng
+`recommender_db`. Thuật toán giữ như bản TS cũ (ALS, lọc cộng tác theo truyện, "đọc tiếp theo" co-visitation, TF-IDF nội dung, dò trọng số theo
+NDCG@10 giấu-truyện-cuối); trên cùng dữ liệu cho điểm ngang bản TS (trang chủ NDCG@10 0,321 so với 0,322; liên quan 0,193 so với 0,192).
+- Gateway `/api/rec/*` (bỏ tiền tố, `USER_SIG_KEY_RECOMMENDER`, identity ký `X-User-Sig-Rec`): `GET /home?limit=`, `GET /related/:storyId?limit=`,
+  `POST /events {kind: impression|click, source: home_rec|related, story_ids[]}` (120/phút), Admin `POST /train`, `GET /status`.
+  JSON như `/api/v1/recommendations/*` trước đây. Khách nhận diện bằng cookie `nh_vid` (backend đặt).
+- **Tín hiệu chỉ qua sự kiện** (hàng `recommender.events`, lỗi thử lại 10 giây, 5 lần → `.dlq`): `catalog.story.viewed`, `catalog.chapter.read`
+  (bảng `events`, ≤ 1 lần đọc/chương/ngày/người), `library.*` (bảng `favorites`, `album_stories`, `bookmarks`: giữ trạng thái mới nhất theo thời
+  điểm, sự kiện đến sai thứ tự không làm sai), `identity.user.deleted` (xóa dữ liệu của người đó).
+- **Bản sao truyện** `ext_stories` (thẻ truyện + mô hình nội dung): hỏi backend `GET /internal/library/stories` mỗi 30 giây, đối soát mỗi ngày.
+  Lịch sử của người xem (đọc tiếp, đã đọc) hỏi library lúc phục vụ.
+- **Huấn luyện** là tiến trình riêng `python -m rec train` (chạy xong thoát, nhả RAM): container tự gọi mỗi `REC_TRAIN_INTERVAL_MIN` phút
+  (mặc định 30; `REC_TRAINING=off` để tắt) và khi Admin bấm "Huấn luyện lại ngay". Kết quả: `rec_item_similar`, `rec_user_scores`,
+  `rec_user_factors`, `rec_item_factors`, `rec_model_runs`.
+- Chuyển dữ liệu: `docker compose run --rm recommender import-legacy` (`scripts/migrate.sh`, `launch.py` gọi; một lần): `rec_events` của backend
+  + `GET /internal/reco/export` của library. Bảng `rec_*` cũ ở `novel_platform` **không còn dùng**, xóa ở nhánh sau.
+- Biến mới: `RECOMMENDER_DB_PASSWORD`, `USER_SIG_KEY_RECOMMENDER` (launch.py tự sinh), `RECOMMENDER_MEMORY` (mặc định 512m).
+- Thử: `cd services/recommender && pip install -r requirements-dev.txt && REC_TEST_DATABASE_URL=postgres://…/rec_test python -m pytest tests`
+  (xóa sạch DB đó); trọn luồng qua gateway: `python scripts/recommender-smoke.py --admin admin --reader reader_yuki --password … --story berserker-of-gluttony`.
 
 ## 💾 Sao lưu & khôi phục
 
@@ -592,7 +618,8 @@ Email có dạng `<tên ngắn>@novelhub.vn` (ví dụ `admin@novelhub.vn`, `sak
 - Chương không gỡ riêng được: Admin/Mod chỉ gỡ cả truyện. Bài viết do tác giả tự xóa hoặc bị ẩn khi xóa tài khoản (`purge_content`) không nằm trong `/da-go`.
 - Báo cáo vi phạm chưa tự ẩn/xóa nội dung: Admin/Mod phải tự xử lý rồi đánh dấu báo cáo.
 - Bảng `broadcast_notifications` chưa được code sử dụng; `user_follows` (ở library) chỉ dùng để đếm.
-- `backend/src/scripts/simulateReaders.ts` (người đọc giả cho gợi ý) vẫn ghi bảng cũ `reading_history`/`user_favorites` mà library không đọc nữa.
+- Gợi ý không còn dùng số giây đọc (library không phát): mức thích một truyện tính theo số chương đã mở, theo dõi, album, bookmark, lượt xem.
+  Script tạo người đọc giả `simulateReaders.ts` đã bỏ (từ G1 nó không còn tới được recommender).
 - Tin nhắn riêng chưa có xóa/sửa tin, gửi ảnh hay báo cáo tin nhắn; chặn chỉ áp dụng cho tin nhắn (người bị chặn vẫn thấy bài viết, bình luận của bạn).
 - Test tự động mới chỉ có `isTokenRevoked` (`backend/src/middlewares/auth.middleware.test.ts`) và `parseCode` (`backend/src/controllers/code.controller.test.ts`).
 - Web miễn phí nên **không làm** hệ thống xu, nạp tiền, mua chương hay cấp độ.

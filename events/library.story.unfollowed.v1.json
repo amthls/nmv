@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "library.story.unfollowed.v1.json",
+  "title": "library.story.unfollowed",
+  "description": "Someone stopped following a story. Published by library (outbox written by triggers). Consumers keep the newest state per row by `at`, so out-of-order delivery cannot undo a later change.",
+  "allOf": [
+    {
+      "$ref": "envelope.v1.json"
+    }
+  ],
+  "properties": {
+    "type": {
+      "const": "library.story.unfollowed"
+    },
+    "data": {
+      "type": "object",
+      "required": [
+        "user_id",
+        "story_id",
+        "at"
+      ],
+      "properties": {
+        "user_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "story_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  }
+}

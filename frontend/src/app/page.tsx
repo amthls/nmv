@@ -63,7 +63,7 @@ export default function HomePage() {
         <RecommendationRail
           title="Đề xuất cho bạn"
           subtitle="Truyện bạn đang đọc dở và truyện bạn có khả năng thích cao nhất"
-          endpoint="/recommendations/home"
+          endpoint="/home"
           source="home_rec"
         />
 

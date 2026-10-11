@@ -5,12 +5,12 @@ import StoryRail from '@/components/home/StoryRail';
 import { Story } from '@/components/explore/StoryCardGrid';
 import { useAuth } from '@/context/AuthContext';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+import { REC_URL } from '@/lib/apiJson';
 
 type Source = 'home_rec' | 'related';
 
 /**
- * A row filled by the recommender (/recommendations/*). Reports what was shown and what was
+ * A row filled by the recommender (/api/rec/*). Reports what was shown and what was
  * clicked, so the click-through rate of each row can be measured after model changes.
  */
 export default function RecommendationRail({ title, subtitle, endpoint, source }: {
@@ -26,7 +26,7 @@ export default function RecommendationRail({ title, subtitle, endpoint, source }
     const body = JSON.stringify({ kind, source, story_ids: ids });
     // keepalive survives the navigation a click starts (sendBeacon can't send the CSRF header signed-in writes need)
     const fetcher = isAuthenticated ? authFetch : fetch;
-    fetcher(`${API_BASE_URL}/recommendations/events`, {
+    fetcher(`${REC_URL}/events`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body, credentials: 'include', keepalive: true,
     }).catch(() => {});
   };
@@ -35,7 +35,7 @@ export default function RecommendationRail({ title, subtitle, endpoint, source }
     if (authLoading) return;
     let cancelled = false;
     const fetcher = isAuthenticated ? authFetch : fetch;
-    fetcher(`${API_BASE_URL}${endpoint}`, { credentials: 'include' })
+    fetcher(`${REC_URL}${endpoint}`, { credentials: 'include' })
       .then((r) => r.json())
       .then((json) => {
         if (cancelled) return;

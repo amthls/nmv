@@ -5,7 +5,7 @@ import apiRoutes from './routes/api.routes';
 import { applySecurity, globalApiLimiter, writeLimiter } from './middlewares/security';
 import { connectQueue } from './services/queue.service';
 import { startSearchSync } from './services/search.service';
-import { visitorCookie } from './services/recommender/events';
+import { visitorCookie } from './services/behaviorEvents';
 import { requestContext } from './utils/logger';
 import { identityFromHeaders, internalAuthOK } from './middlewares/auth.middleware';
 import {

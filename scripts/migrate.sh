@@ -57,6 +57,11 @@ fi
 if docker compose config --services 2>/dev/null | grep -qx library; then
   docker compose run --rm --no-deps -e LEGACY_DATABASE_URL="postgres://$pg_user:$pg_pw@postgres:5432/$pg_db" library import-legacy
 fi
+# Recommendation signals live in the recommender service: the same one-time copy (the backend's rec_events, the
+# library's history; needs backend and library running)
+if docker compose config --services 2>/dev/null | grep -qx recommender; then
+  docker compose run --rm --no-deps -e LEGACY_DATABASE_URL="postgres://$pg_user:$pg_pw@postgres:5432/$pg_db" recommender import-legacy
+fi
 
 # Chapter content lives in the workspace service: every chapter it does not know yet becomes version 1 there
 # (all of them the first time; on a fresh install the sample chapters). Needs the backend running.

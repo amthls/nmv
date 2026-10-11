@@ -18,6 +18,7 @@ type config struct {
 	SigKeyMsg       []byte // and for messaging (USER_SIG_KEY_MESSAGING)
 	SigKeyCommunity []byte // and for community (USER_SIG_KEY_COMMUNITY)
 	SigKeyLibrary   []byte // and for library (USER_SIG_KEY_LIBRARY)
+	SigKeyRec       []byte // and for the recommender (USER_SIG_KEY_RECOMMENDER)
 	InternalKey     []byte // verifies X-Internal-Auth of calls to identity (INTERNAL_KEY_IDENTITY)
 	BackendURL      string // internal calls (account delete pre-check)
 	SMTPURL         string
@@ -41,6 +42,7 @@ func loadConfig() (config, error) {
 		SigKeyMsg:       []byte(os.Getenv("USER_SIG_KEY_MESSAGING")),
 		SigKeyCommunity: []byte(os.Getenv("USER_SIG_KEY_COMMUNITY")),
 		SigKeyLibrary:   []byte(os.Getenv("USER_SIG_KEY_LIBRARY")),
+		SigKeyRec:       []byte(os.Getenv("USER_SIG_KEY_RECOMMENDER")),
 		InternalKey:     []byte(os.Getenv("INTERNAL_KEY_IDENTITY")),
 		BackendURL:      env("BACKEND_INTERNAL_URL", "http://backend:5000"),
 		SMTPURL:         os.Getenv("SMTP_URL"),
@@ -55,7 +57,8 @@ func loadConfig() (config, error) {
 	}
 	for k, v := range map[string][]byte{"IDENTITY_JWT_SECRET": c.JWTSecret, "USER_SIG_KEY_BACKEND": c.SigKeyBackend,
 		"USER_SIG_KEY_WORKSPACE": c.SigKeyWorkspace, "USER_SIG_KEY_MEDIA": c.SigKeyMedia, "USER_SIG_KEY_MESSAGING": c.SigKeyMsg,
-		"USER_SIG_KEY_COMMUNITY": c.SigKeyCommunity, "USER_SIG_KEY_LIBRARY": c.SigKeyLibrary, "INTERNAL_KEY_IDENTITY": c.InternalKey} {
+		"USER_SIG_KEY_COMMUNITY": c.SigKeyCommunity, "USER_SIG_KEY_LIBRARY": c.SigKeyLibrary, "USER_SIG_KEY_RECOMMENDER": c.SigKeyRec,
+		"INTERNAL_KEY_IDENTITY": c.InternalKey} {
 		if len(v) < 32 {
 			return c, fmt.Errorf("%s must be at least 32 characters", k)
 		}

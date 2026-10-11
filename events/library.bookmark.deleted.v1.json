@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "library.bookmark.deleted.v1.json",
+  "title": "library.bookmark.deleted",
+  "description": "A line bookmark was removed. Published by library (outbox written by triggers). Consumers keep the newest state per row by `at`, so out-of-order delivery cannot undo a later change.",
+  "allOf": [
+    {
+      "$ref": "envelope.v1.json"
+    }
+  ],
+  "properties": {
+    "type": {
+      "const": "library.bookmark.deleted"
+    },
+    "data": {
+      "type": "object",
+      "required": [
+        "bookmark_id",
+        "user_id",
+        "story_id",
+        "at"
+      ],
+      "properties": {
+        "bookmark_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "user_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "story_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  }
+}

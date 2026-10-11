@@ -163,8 +163,8 @@ func (s *server) handleFollowers(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-// GET /internal/reco/export?days=: what the backend's recommender trains on (it used to SELECT these tables itself).
-// shortcut: one big answer; at stage H the recommender reads chapter.read / story.followed events instead.
+// GET /internal/reco/export?days=: the recommender's one-time import (python -m rec import-legacy); afterwards it keeps
+// its copy from the library.* events (migrations/002_outbox.sql). Reads of the last `days` days, one row per chapter.
 func (s *server) handleRecoExport(w http.ResponseWriter, r *http.Request) error {
 	days, _ := strconv.Atoi(r.URL.Query().Get("days"))
 	if days < 1 || days > 3650 {
@@ -173,13 +173,11 @@ func (s *server) handleRecoExport(w http.ResponseWriter, r *http.Request) error 
 	ctx := r.Context()
 	out := map[string]any{}
 	for key, q := range map[string]string{
-		"reads": `SELECT user_id, story_id, count(*)::int AS n, COALESCE(sum(time_spent_seconds), 0)::int AS secs, max(read_at) AS last
-			FROM reading_history WHERE read_at > NOW() - make_interval(days => $1) GROUP BY 1, 2`,
+		"reads": `SELECT user_id, story_id, chapter_id, read_at FROM reading_history
+			WHERE read_at > NOW() - make_interval(days => $1)`,
 		"favorites": `SELECT user_id, story_id, created_at FROM user_favorites WHERE $1 > 0`,
-		"albums": `SELECT DISTINCT ON (a.user_id, x.story_id) a.user_id, x.story_id, x.added_at
-			FROM album_stories x JOIN albums a ON a.id = x.album_id WHERE $1 > 0`,
-		"bookmarks": `SELECT user_id, story_id, count(*)::int AS n, max(created_at) AS last FROM bookmarks WHERE $1 > 0 GROUP BY 1, 2`,
-		"timeline":  `SELECT user_id, story_id, read_at AS t FROM reading_history WHERE read_at > NOW() - make_interval(days => $1)`,
+		"albums":    `SELECT a.user_id, x.album_id, x.story_id, x.added_at FROM album_stories x JOIN albums a ON a.id = x.album_id WHERE $1 > 0`,
+		"bookmarks": `SELECT id, user_id, story_id, created_at FROM bookmarks WHERE $1 > 0`,
 	} {
 		rows, err := s.maps(ctx, nil, q, days)
 		if err != nil {

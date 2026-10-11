@@ -280,7 +280,7 @@ func TestHistoryFollowsBookmarks(t *testing.T) {
 		t.Fatalf("reco user: %v", ru)
 	}
 	ex := h.want(200, "internal", "GET", "/internal/reco/export?days=30", nil)["data"].(map[string]any)
-	if len(ex["reads"].([]any)) != 1 || len(ex["timeline"].([]any)) != 2 || len(ex["favorites"].([]any)) != 1 {
+	if len(ex["reads"].([]any)) != 2 || len(ex["favorites"].([]any)) != 1 {
 		t.Fatalf("reco export: %v", ex)
 	}
 
@@ -419,5 +419,50 @@ func TestReconcile(t *testing.T) {
 	h.s.db.QueryRow(context.Background(), `SELECT (SELECT count(*) FROM ext_stories), (SELECT count(*) FROM ext_chapters)`).Scan(&stories, &chapters)
 	if stories != 1 || chapters != 0 { // story B and both chapters are gone from the backend's lists
 		t.Fatalf("after reconcile: %d stories, %d chapters", stories, chapters)
+	}
+}
+
+func TestOutboxEvents(t *testing.T) {
+	h := newHarness(t)
+	ctx := context.Background()
+	story, chapter := "aaaaaaaa-0000-0000-0000-00000000e001", "cccccccc-0000-0000-0000-00000000e001"
+	var album string
+	for _, q := range []string{
+		`INSERT INTO user_favorites (user_id, story_id) VALUES ('` + hana + `', '` + story + `')`,
+		`DELETE FROM user_favorites WHERE user_id = '` + hana + `'`,
+		`INSERT INTO bookmarks (user_id, story_id, chapter_id) VALUES ('` + hana + `', '` + story + `', '` + chapter + `')`,
+		`DELETE FROM bookmarks WHERE user_id = '` + hana + `'`,
+	} {
+		if _, err := h.s.db.Exec(ctx, q); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := h.s.db.QueryRow(ctx, `INSERT INTO albums (user_id, name) VALUES ($1, 'a') RETURNING id::text`, hana).Scan(&album); err != nil {
+		t.Fatal(err)
+	}
+	h.s.db.Exec(ctx, `INSERT INTO album_stories (album_id, story_id) VALUES ($1, $2)`, album, story)
+	h.s.db.Exec(ctx, `DELETE FROM albums WHERE id = $1`, album) // the album announces its stories once (not twice through the cascade)
+
+	rows, err := h.s.db.Query(ctx, `SELECT routing_key, payload::text FROM outbox ORDER BY id`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var keys []string
+	for rows.Next() {
+		var key, body string
+		rows.Scan(&key, &body)
+		var raw map[string]any
+		json.Unmarshal([]byte(body), &raw)
+		data, _ := raw["data"].(map[string]any)
+		if raw["type"] != key || raw["event_id"] == "" || raw["version"] != float64(1) || raw["occurred_at"] == nil ||
+			data["user_id"] != hana || data["story_id"] != story || data["at"] == nil {
+			t.Fatalf("event %s: %s", key, body)
+		}
+		keys = append(keys, key)
+	}
+	want := "library.story.followed library.story.unfollowed library.bookmark.created library.bookmark.deleted " +
+		"library.album.story_added library.album.story_removed"
+	if got := strings.Join(keys, " "); got != want {
+		t.Fatalf("events: %s", got)
 	}
 }

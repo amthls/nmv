@@ -16,8 +16,9 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./sql/database.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      # TCP, not the socket: during first-run init a temporary server answers on the socket only, then restarts
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-novel_platform}"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-novel_platform}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -317,13 +318,14 @@ services:
       PGUSER: ${POSTGRES_USER:-postgres}
       PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (openssl rand -hex 24)}
       POSTGRES_DB: ${POSTGRES_DB:-novel_platform}
-      SERVICE_DBS: identity workspace media messaging community library
+      SERVICE_DBS: identity workspace media messaging community library recommender
       IDENTITY_DB_PASSWORD: ${IDENTITY_DB_PASSWORD:?Set IDENTITY_DB_PASSWORD in .env}
       WORKSPACE_DB_PASSWORD: ${WORKSPACE_DB_PASSWORD:?Set WORKSPACE_DB_PASSWORD in .env}
       MEDIA_DB_PASSWORD: ${MEDIA_DB_PASSWORD:?Set MEDIA_DB_PASSWORD in .env}
       MESSAGING_DB_PASSWORD: ${MESSAGING_DB_PASSWORD:?Set MESSAGING_DB_PASSWORD in .env}
       COMMUNITY_DB_PASSWORD: ${COMMUNITY_DB_PASSWORD:?Set COMMUNITY_DB_PASSWORD in .env}
       LIBRARY_DB_PASSWORD: ${LIBRARY_DB_PASSWORD:?Set LIBRARY_DB_PASSWORD in .env}
+      RECOMMENDER_DB_PASSWORD: ${RECOMMENDER_DB_PASSWORD:?Set RECOMMENDER_DB_PASSWORD in .env}
     volumes:
       - ./postgres/provision.sh:/provision.sh:ro
     depends_on:
@@ -353,6 +355,7 @@ services:
       USER_SIG_KEY_MESSAGING: ${USER_SIG_KEY_MESSAGING:?Set USER_SIG_KEY_MESSAGING in .env (openssl rand -hex 32)}
       USER_SIG_KEY_COMMUNITY: ${USER_SIG_KEY_COMMUNITY:?Set USER_SIG_KEY_COMMUNITY in .env (openssl rand -hex 32)}
       USER_SIG_KEY_LIBRARY: ${USER_SIG_KEY_LIBRARY:?Set USER_SIG_KEY_LIBRARY in .env (openssl rand -hex 32)}
+      USER_SIG_KEY_RECOMMENDER: ${USER_SIG_KEY_RECOMMENDER:?Set USER_SIG_KEY_RECOMMENDER in .env (openssl rand -hex 32)}
       INTERNAL_KEY_IDENTITY: ${INTERNAL_KEY_IDENTITY:?Set INTERNAL_KEY_IDENTITY in .env (openssl rand -hex 32)}
       SMTP_URL: ${SMTP_URL:-}
       MAIL_FROM: ${MAIL_FROM:-NovelHub <no-reply@novelhub.local>}
@@ -489,6 +492,37 @@ services:
       INTERNAL_KEY_LIBRARY: ${INTERNAL_KEY_LIBRARY:?Set INTERNAL_KEY_LIBRARY in .env (openssl rand -hex 32)}
       INTERNAL_KEY_BACKEND: ${INTERNAL_KEY_BACKEND:?Set INTERNAL_KEY_BACKEND in .env (openssl rand -hex 32)}
     mem_limit: ${LIBRARY_MEMORY:-128m}
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - edge
+      - data
+
+  # ============================================================================
+  # 2k. recommender (Python): "Đề xuất cho bạn", "Truyện liên quan". Own database recommender_db fed by events
+  #     (catalog.*, library.*); training runs as its own process every REC_TRAIN_INTERVAL_MIN. See Plan/recommender.md.
+  # ============================================================================
+  recommender:
+    build:
+      context: ./services/recommender
+    image: ${IMAGE_REGISTRY:-local}/nmv-recommender:${IMAGE_TAG:-latest}
+    container_name: novel_recommender
+    restart: unless-stopped
+    environment:
+      RECOMMENDER_DATABASE_URL: postgres://recommender:${RECOMMENDER_DB_PASSWORD:?Set RECOMMENDER_DB_PASSWORD in .env}@postgres:5432/recommender_db
+      BACKEND_INTERNAL_URL: http://backend:5000
+      LIBRARY_INTERNAL_URL: http://library:8080
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672
+      USER_SIG_KEY_RECOMMENDER: ${USER_SIG_KEY_RECOMMENDER:?Set USER_SIG_KEY_RECOMMENDER in .env (openssl rand -hex 32)}
+      INTERNAL_KEY_BACKEND: ${INTERNAL_KEY_BACKEND:?Set INTERNAL_KEY_BACKEND in .env (openssl rand -hex 32)}
+      INTERNAL_KEY_LIBRARY: ${INTERNAL_KEY_LIBRARY:?Set INTERNAL_KEY_LIBRARY in .env (openssl rand -hex 32)}
+      REC_TRAIN_INTERVAL_MIN: ${REC_TRAIN_INTERVAL_MIN:-30}
+    mem_limit: ${RECOMMENDER_MEMORY:-512m}
     depends_on:
       db-init:
         condition: service_completed_successfully

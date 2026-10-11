@@ -221,6 +221,7 @@ const LIBRARY_ROWS = {
       s.total_chapters, s.total_views, s.total_favorites, g.name AS group_name,
       COALESCE((SELECT json_agg(json_build_object('name', t.name, 'slug', t.slug)) FROM story_tags st JOIN tags t ON t.id = st.tag_id
                 WHERE st.story_id = s.id), '[]') AS tags,
+      s.group_id, s.synopsis, s.last_chapter_at, s.created_at, -- the recommender's copy (library ignores them)
       s.updated_at::text AS updated_at
     FROM stories s LEFT JOIN translation_groups g ON g.id = s.group_id`,
   chapters: `SELECT c.id, c.story_id, c.title, c.slug, c.chapter_number::text, c.is_published, c.updated_at::text AS updated_at
