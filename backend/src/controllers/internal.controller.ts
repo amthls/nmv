@@ -133,7 +133,8 @@ export const userProfiles = async (req: Request, res: Response) => {
   const ids = Array.isArray(req.body?.ids) ? req.body.ids.filter(isUuid).slice(0, 500) : [];
   const names = Array.isArray(req.body?.usernames) ? req.body.usernames.filter((u: unknown) => typeof u === 'string').slice(0, 500) : [];
   const r = await pool.query(
-    `SELECT id, username, display_name, avatar_url, COALESCE(is_banned, false) AS is_banned, deleted_at IS NOT NULL AS deleted
+    `SELECT id, username, display_name, avatar_url, COALESCE(is_banned, false) AS is_banned, deleted_at IS NOT NULL AS deleted,
+       COALESCE((SELECT array_agg(role::text) FROM user_roles r WHERE r.user_id = users.id), '{}') AS roles
      FROM users WHERE id = ANY($1::uuid[]) OR username = ANY($2::text[])`,
     [ids, names]
   );
@@ -154,6 +155,65 @@ export const storyFollowers = async (req: Request, res: Response) => {
     [id, after, limit]
   );
   res.json({ success: true, data: r.rows.map((row: any) => row.user_id) });
+};
+
+/**
+ * POST /internal/stories/brief {story_ids?, chapter_ids?} (at most 1000 each) -> {stories, chapters}: what community shows
+ * or links for a story/chapter (any status: approval_status tells whether it was taken down).
+ */
+export const storiesBrief = async (req: Request, res: Response) => {
+  const ids = (v: unknown) => (Array.isArray(v) ? v.filter(isUuid).slice(0, 1000) : []);
+  const [stories, chapters] = await Promise.all([
+    pool.query(`SELECT id, title, slug, cover_image_url, story_type, author_name, code, approval_status FROM stories WHERE id = ANY($1::uuid[])`,
+      [ids(req.body?.story_ids)]),
+    pool.query(`SELECT id, story_id, title, slug, trim_scale(chapter_number)::text AS chapter_number FROM chapters WHERE id = ANY($1::uuid[])`,
+      [ids(req.body?.chapter_ids)]),
+  ]);
+  res.json({ success: true, data: { stories: stories.rows, chapters: chapters.rows } });
+};
+
+/**
+ * GET /internal/stories/removed?q=&limit= -> {total, rows}: stories taken down by Admin/Mod, newest first, in the row
+ * shape of the "Đã gỡ" page (community merges them with removed posts). `q` matches code, titles, author, synopsis, uploader.
+ */
+export const removedStories = async (req: Request, res: Response) => {
+  const q = typeof req.query.q === 'string' ? req.query.q.trim().slice(0, 100) : '';
+  const pattern = q ? `%${q.replace(/[\\%_]/g, '\\$&')}%` : null;
+  const limit = Math.min(Math.max(Number(req.query.limit) || 30, 1), 3000);
+  const where = `s.approval_status = 'rejected'
+    AND ($1::text IS NULL OR s.code ILIKE $1 OR s.title ILIKE $1 OR s.original_title ILIKE $1
+         OR s.author_name ILIKE $1 OR s.synopsis ILIKE $1 OR u.username ILIKE $1)`;
+  const [total, rows] = await Promise.all([
+    pool.query(`SELECT count(*)::int AS n FROM stories s JOIN users u ON u.id = s.uploader_id WHERE ${where}`, [pattern]),
+    pool.query(`
+      SELECT 'story' AS type, s.id, s.code, s.title, s.slug, s.cover_image_url AS image,
+             u.username AS author_username, u.display_name AS author_name,
+             s.rejection_reason AS reason, s.removed_at,
+             r.username AS removed_by_username, r.display_name AS removed_by_name
+      FROM stories s JOIN users u ON u.id = s.uploader_id LEFT JOIN users r ON r.id = s.removed_by
+      WHERE ${where} ORDER BY s.removed_at DESC NULLS LAST LIMIT $2`, [pattern, limit]),
+  ]);
+  res.json({ success: true, data: { total: total.rows[0].n, rows: rows.rows } });
+};
+
+/**
+ * POST /internal/comment-counts {chapters: [{id, count}], stories: [{id, page_count}]}: fresh comment counts from
+ * community. chapters.total_comments = count; stories.total_comments = comments on the story page + on all its chapters.
+ */
+export const commentCounts = async (req: Request, res: Response) => {
+  const chapters = Array.isArray(req.body?.chapters) ? req.body.chapters.filter((c: any) => isUuid(c?.id) && Number.isInteger(c.count)) : [];
+  const stories = Array.isArray(req.body?.stories) ? req.body.stories.filter((s: any) => isUuid(s?.id) && Number.isInteger(s.page_count)) : [];
+  if (chapters.length) {
+    await pool.query(`UPDATE chapters c SET total_comments = x.n FROM unnest($1::uuid[], $2::int[]) AS x(id, n) WHERE c.id = x.id`,
+      [chapters.map((c: any) => c.id), chapters.map((c: any) => c.count)]);
+  }
+  if (stories.length) {
+    await pool.query(`
+      UPDATE stories s SET total_comments = x.n + COALESCE((SELECT sum(total_comments) FROM chapters WHERE story_id = s.id), 0)
+      FROM unnest($1::uuid[], $2::int[]) AS x(id, n) WHERE s.id = x.id`,
+      [stories.map((s: any) => s.id), stories.map((s: any) => s.page_count)]);
+  }
+  res.json({ success: true });
 };
 
 /** GET /internal/groups/:id/members -> [{user_id, role}] (404 when the group does not exist): who may use the group's chat. */

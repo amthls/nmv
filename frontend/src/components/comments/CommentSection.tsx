@@ -19,8 +19,8 @@ import {
 } from 'lucide-react';
 import ReportButton from '@/components/common/ReportButton';
 import { useAuth } from '@/context/AuthContext';
+import { COMMUNITY_URL } from '@/lib/apiJson';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
 export interface CommentItem {
   id: string;
@@ -64,7 +64,7 @@ export default function CommentSection({
     if (!targetId) return;
     setIsLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/comments?target_type=${targetType}&target_id=${targetId}`);
+      const res = await fetch(`${COMMUNITY_URL}/comments?target_type=${targetType}&target_id=${targetId}`);
       if (res.ok) {
         const json = await res.json();
         if (json.success) {
@@ -88,7 +88,7 @@ export default function CommentSection({
 
     setIsSubmitting(true);
     try {
-      const res = await authFetch(`${API_BASE_URL}/comments`, {
+      const res = await authFetch(`${COMMUNITY_URL}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -117,7 +117,7 @@ export default function CommentSection({
 
   const handleToggleLike = async (commentId: string) => {
     try {
-      const res = await authFetch(`${API_BASE_URL}/comments/${commentId}/like`, {
+      const res = await authFetch(`${COMMUNITY_URL}/comments/${commentId}/like`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -141,7 +141,7 @@ export default function CommentSection({
     if (!editText.trim()) return;
     setActionError(null);
     try {
-      const res = await authFetch(`${API_BASE_URL}/comments/${commentId}`, {
+      const res = await authFetch(`${COMMUNITY_URL}/comments/${commentId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: editText.trim() }),
@@ -163,7 +163,7 @@ export default function CommentSection({
     if (!confirm(`${warn}Bạn có chắc muốn xóa bình luận này?`)) return;
     setActionError(null);
     try {
-      const res = await authFetch(`${API_BASE_URL}/comments/${commentId}`, { method: 'DELETE' });
+      const res = await authFetch(`${COMMUNITY_URL}/comments/${commentId}`, { method: 'DELETE' });
       const json = await res.json();
       if (res.ok && json.success) {
         await fetchComments();

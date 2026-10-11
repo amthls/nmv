@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { pool } from '../config/db';
+import { communityStats } from '../services/communityClient';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import { InputError, isUuid, optionalEnum, optionalText, optionalUrl } from '../utils/validation';
 
@@ -73,16 +74,15 @@ export const getCurrentUserProfile = async (req: AuthenticatedRequest, res: Resp
     // 3. User Statistics
     const count = (sql: string) => pool.query(sql, [currentUserId]).then((r) => parseInt(r.rows[0]?.n || '0'));
     const [
-      storiesRead, chaptersRead, readingSeconds, favorites, bookmarks, posts, comments, groups,
-      albums, savedAlbums, albumSaves, followers, following, storiesUploaded, chaptersUploaded, commentLikes,
+      storiesRead, chaptersRead, readingSeconds, favorites, bookmarks, community, groups,
+      albums, savedAlbums, albumSaves, followers, following, storiesUploaded, chaptersUploaded,
     ] = await Promise.all([
       count(`SELECT count(DISTINCT story_id) AS n FROM reading_history WHERE user_id = $1`),
       count(`SELECT count(*) AS n FROM reading_history WHERE user_id = $1`),
       count(`SELECT COALESCE(sum(time_spent_seconds), 0) AS n FROM reading_history WHERE user_id = $1`),
       count(`SELECT count(*) AS n FROM user_favorites WHERE user_id = $1`),
       count(`SELECT count(*) AS n FROM bookmarks WHERE user_id = $1`),
-      count(`SELECT count(*) AS n FROM posts WHERE user_id = $1 AND is_deleted = false`),
-      count(`SELECT count(*) AS n FROM comments WHERE user_id = $1 AND is_deleted = false`),
+      communityStats(currentUserId),
       count(`SELECT count(*) AS n FROM group_members WHERE user_id = $1`),
       count(`SELECT count(*) AS n FROM albums WHERE user_id = $1`),
       count(`SELECT count(*) AS n FROM album_saves WHERE user_id = $1`),
@@ -91,8 +91,8 @@ export const getCurrentUserProfile = async (req: AuthenticatedRequest, res: Resp
       count(`SELECT count(*) AS n FROM user_follows WHERE follower_id = $1`),
       count(`SELECT count(*) AS n FROM stories WHERE uploader_id = $1`),
       count(`SELECT count(*) AS n FROM chapters WHERE uploader_id = $1`),
-      count(`SELECT COALESCE(sum(like_count), 0) AS n FROM comments WHERE user_id = $1 AND is_deleted = false`),
     ]);
+    const { posts, comments, comment_likes: commentLikes } = community;
 
     user.stats = {
       stories_read: storiesRead,
@@ -244,7 +244,7 @@ export const getUserProfile = async (req: AuthenticatedRequest, res: Response) =
       return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng' });
     }
 
-    const [storiesRes, groupsRes, postCount, commentCount] = await Promise.all([
+    const [storiesRes, groupsRes, community] = await Promise.all([
       pool.query(`
         SELECT id, title, slug, cover_image_url, story_type, status, total_chapters, total_views
         FROM stories WHERE uploader_id = $1 AND approval_status = 'approved'
@@ -256,8 +256,7 @@ export const getUserProfile = async (req: AuthenticatedRequest, res: Response) =
         WHERE gm.user_id = $1 AND g.approval_status = 'approved'
         ORDER BY gm.joined_at ASC
       `, [row.id]),
-      pool.query(`SELECT COUNT(*)::int AS n FROM posts WHERE user_id = $1 AND is_deleted = false AND approval_status = 'approved'`, [row.id]),
-      pool.query(`SELECT COUNT(*)::int AS n FROM comments WHERE user_id = $1 AND is_deleted = false`, [row.id]),
+      communityStats(row.id),
     ]);
 
     const allRoles: string[] = row.roles.map((r: any) => r.role);
@@ -273,8 +272,8 @@ export const getUserProfile = async (req: AuthenticatedRequest, res: Response) =
       roles: row.roles.filter((r: any) => r.is_visible !== false).map((r: any) => r.role),
       stats: {
         stories_count: storiesRes.rows.length,
-        posts_count: postCount.rows[0].n,
-        comments_count: commentCount.rows[0].n,
+        posts_count: community.approved_posts,
+        comments_count: community.comments,
         groups_count: groupsRes.rows.length,
       },
       stories: storiesRes.rows.slice(0, 12),
@@ -324,64 +323,6 @@ export const deleteCheck = async (req: Request, res: Response) => {
   }
   res.json({ ok: true });
 };
-
-/** Hide a deleted account's posts and comments (identity.user.deleted with purge_content). */
-export async function purgeUserContent(client: any, userId: string) {
-  await client.query(`UPDATE posts SET is_deleted = true WHERE user_id = $1 AND is_deleted = false`, [userId]);
-  await purgeUserComments(client, userId);
-}
-
-/**
- * Hide every live comment of a user (and the replies under them, like a normal comment delete),
- * then recount the comment counters of everything that was touched.
- */
-async function purgeUserComments(client: any, userId: string) {
-  const removed = await client.query(`
-    WITH RECURSIVE t AS (
-      SELECT id FROM comments WHERE user_id = $1 AND is_deleted = false
-      UNION
-      SELECT c.id FROM comments c JOIN t ON c.parent_id = t.id WHERE c.is_deleted = false
-    )
-    UPDATE comments SET is_deleted = true WHERE id IN (SELECT id FROM t) AND is_deleted = false
-    RETURNING parent_id, target_type, target_id;
-  `, [userId]);
-  if (removed.rowCount === 0) return;
-
-  const ids = (type: string) => [...new Set(removed.rows.filter((r: any) => r.target_type === type).map((r: any) => r.target_id))];
-  const parentIds = [...new Set(removed.rows.map((r: any) => r.parent_id).filter(Boolean))];
-  const chapterIds = ids('chapter');
-  const storyIds = ids('story');
-  const postIds = ids('post');
-
-  if (parentIds.length) {
-    await client.query(`
-      UPDATE comments p SET reply_count = (SELECT COUNT(*) FROM comments c WHERE c.parent_id = p.id AND c.is_deleted = false)
-      WHERE p.id = ANY($1::uuid[])
-    `, [parentIds]);
-  }
-  if (chapterIds.length) {
-    await client.query(`
-      UPDATE chapters ch SET total_comments = (
-        SELECT COUNT(*) FROM comments c WHERE c.target_type = 'chapter' AND c.target_id = ch.id AND c.is_deleted = false)
-      WHERE ch.id = ANY($1::uuid[])
-    `, [chapterIds]);
-  }
-  // A story's total counts comments on the story page and on all of its chapters
-  await client.query(`
-    UPDATE stories s SET total_comments =
-      (SELECT COUNT(*) FROM comments c WHERE c.target_type = 'story' AND c.target_id = s.id AND c.is_deleted = false)
-      + (SELECT COUNT(*) FROM comments c JOIN chapters ch ON ch.id = c.target_id
-         WHERE c.target_type = 'chapter' AND ch.story_id = s.id AND c.is_deleted = false)
-    WHERE s.id = ANY($1::uuid[]) OR s.id IN (SELECT story_id FROM chapters WHERE id = ANY($2::uuid[]))
-  `, [storyIds, chapterIds]);
-  if (postIds.length) {
-    await client.query(`
-      UPDATE posts p SET comment_count = (
-        SELECT COUNT(*) FROM comments c WHERE c.target_type = 'post' AND c.target_id = p.id AND c.is_deleted = false)
-      WHERE p.id = ANY($1::uuid[])
-    `, [postIds]);
-  }
-}
 
 export const updateUserProfile = async (req: AuthenticatedRequest, res: Response) => {
   try {

@@ -197,9 +197,11 @@ services:
       INTERNAL_KEY_IDENTITY: ${INTERNAL_KEY_IDENTITY:?Set INTERNAL_KEY_IDENTITY in .env (openssl rand -hex 32)}
       INTERNAL_KEY_WORKSPACE: ${INTERNAL_KEY_WORKSPACE:?Set INTERNAL_KEY_WORKSPACE in .env (openssl rand -hex 32)}
       INTERNAL_KEY_MESSAGING: ${INTERNAL_KEY_MESSAGING:?Set INTERNAL_KEY_MESSAGING in .env (openssl rand -hex 32)}
+      INTERNAL_KEY_COMMUNITY: ${INTERNAL_KEY_COMMUNITY:?Set INTERNAL_KEY_COMMUNITY in .env (openssl rand -hex 32)}
       IDENTITY_INTERNAL_URL: http://identity:8080
       WORKSPACE_INTERNAL_URL: http://workspace:8080
       MESSAGING_INTERNAL_URL: http://messaging:8080
+      COMMUNITY_INTERNAL_URL: http://community:8080
       ENABLE_DEMO_ACCOUNTS: ${ENABLE_DEMO_ACCOUNTS:-false}
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672
       SEARCH_URL: http://search:9200
@@ -311,11 +313,12 @@ services:
       PGUSER: ${POSTGRES_USER:-postgres}
       PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (openssl rand -hex 24)}
       POSTGRES_DB: ${POSTGRES_DB:-novel_platform}
-      SERVICE_DBS: identity workspace media messaging
+      SERVICE_DBS: identity workspace media messaging community
       IDENTITY_DB_PASSWORD: ${IDENTITY_DB_PASSWORD:?Set IDENTITY_DB_PASSWORD in .env}
       WORKSPACE_DB_PASSWORD: ${WORKSPACE_DB_PASSWORD:?Set WORKSPACE_DB_PASSWORD in .env}
       MEDIA_DB_PASSWORD: ${MEDIA_DB_PASSWORD:?Set MEDIA_DB_PASSWORD in .env}
       MESSAGING_DB_PASSWORD: ${MESSAGING_DB_PASSWORD:?Set MESSAGING_DB_PASSWORD in .env}
+      COMMUNITY_DB_PASSWORD: ${COMMUNITY_DB_PASSWORD:?Set COMMUNITY_DB_PASSWORD in .env}
     volumes:
       - ./postgres/provision.sh:/provision.sh:ro
     depends_on:
@@ -343,6 +346,7 @@ services:
       USER_SIG_KEY_WORKSPACE: ${USER_SIG_KEY_WORKSPACE:?Set USER_SIG_KEY_WORKSPACE in .env (openssl rand -hex 32)}
       USER_SIG_KEY_MEDIA: ${USER_SIG_KEY_MEDIA:?Set USER_SIG_KEY_MEDIA in .env (openssl rand -hex 32)}
       USER_SIG_KEY_MESSAGING: ${USER_SIG_KEY_MESSAGING:?Set USER_SIG_KEY_MESSAGING in .env (openssl rand -hex 32)}
+      USER_SIG_KEY_COMMUNITY: ${USER_SIG_KEY_COMMUNITY:?Set USER_SIG_KEY_COMMUNITY in .env (openssl rand -hex 32)}
       INTERNAL_KEY_IDENTITY: ${INTERNAL_KEY_IDENTITY:?Set INTERNAL_KEY_IDENTITY in .env (openssl rand -hex 32)}
       SMTP_URL: ${SMTP_URL:-}
       MAIL_FROM: ${MAIL_FROM:-NovelHub <no-reply@novelhub.local>}
@@ -419,6 +423,38 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_started
+      rabbitmq:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - edge
+      - data
+
+  # ============================================================================
+  # 2i. community (TS): Fandom posts, comments (stories, chapters, posts), reactions, reports, removed content.
+  #     Own database community_db; names/stories asked from the backend. See Plan/community.md.
+  # ============================================================================
+  community:
+    build:
+      context: ./services/community
+    image: ${IMAGE_REGISTRY:-local}/nmv-community:${IMAGE_TAG:-latest}
+    container_name: novel_community
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      COMMUNITY_DATABASE_URL: postgres://community:${COMMUNITY_DB_PASSWORD:?Set COMMUNITY_DB_PASSWORD in .env}@postgres:5432/community_db
+      BACKEND_INTERNAL_URL: http://backend:5000
+      MESSAGING_INTERNAL_URL: http://messaging:8080
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672
+      USER_SIG_KEY_COMMUNITY: ${USER_SIG_KEY_COMMUNITY:?Set USER_SIG_KEY_COMMUNITY in .env (openssl rand -hex 32)}
+      INTERNAL_KEY_COMMUNITY: ${INTERNAL_KEY_COMMUNITY:?Set INTERNAL_KEY_COMMUNITY in .env (openssl rand -hex 32)}
+      INTERNAL_KEY_BACKEND: ${INTERNAL_KEY_BACKEND:?Set INTERNAL_KEY_BACKEND in .env (openssl rand -hex 32)}
+      INTERNAL_KEY_MESSAGING: ${INTERNAL_KEY_MESSAGING:?Set INTERNAL_KEY_MESSAGING in .env (openssl rand -hex 32)}
+    mem_limit: ${COMMUNITY_MEMORY:-256m}
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
       rabbitmq:
         condition: service_healthy
     security_opt:

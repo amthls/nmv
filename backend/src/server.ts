@@ -8,11 +8,13 @@ import { startSearchSync } from './services/search.service';
 import { visitorCookie } from './services/recommender/events';
 import { requestContext } from './utils/logger';
 import { identityFromHeaders, internalAuthOK } from './middlewares/auth.middleware';
-import { permissions, exportChapters, exportSource, exportBook, userProfiles, groupMembers, storyFollowers } from './controllers/internal.controller';
+import {
+  permissions, exportChapters, exportSource, exportBook, userProfiles, groupMembers, storyFollowers, storiesBrief, removedStories, commentCounts,
+} from './controllers/internal.controller';
 import { deleteCheck } from './controllers/user.controller';
 
 // Without the keys that verify the gateway's identity headers and internal calls nobody is ever signed in: refuse to start
-for (const k of ['USER_SIG_KEY_BACKEND', 'INTERNAL_KEY_BACKEND', 'INTERNAL_KEY_IDENTITY', 'INTERNAL_KEY_WORKSPACE', 'INTERNAL_KEY_MESSAGING']) {
+for (const k of ['USER_SIG_KEY_BACKEND', 'INTERNAL_KEY_BACKEND', 'INTERNAL_KEY_IDENTITY', 'INTERNAL_KEY_WORKSPACE', 'INTERNAL_KEY_MESSAGING', 'INTERNAL_KEY_COMMUNITY']) {
   if (process.env.NODE_ENV === 'production' && (process.env[k] || '').length < 32) {
     throw new Error(`${k} is missing or shorter than 32 characters (launch.py generates it).`);
   }
@@ -85,6 +87,10 @@ app.post('/internal/exports/book', internal(exportBook));
 app.post('/internal/users/profiles', internal(userProfiles));
 app.get('/internal/groups/:id/members', internal(groupMembers));
 app.get('/internal/stories/:id/followers', internal(storyFollowers));
+// Community -> backend: stories/chapters it shows or links, removed stories for /da-go, comment counts it keeps fresh
+app.post('/internal/stories/brief', internal(storiesBrief));
+app.get('/internal/stories/removed', internal(removedStories));
+app.post('/internal/comment-counts', internal(commentCounts));
 
 // Root endpoint
 app.get('/', (req, res) => {

@@ -1,4 +1,4 @@
-﻿import express, { Router } from 'express';
+import express, { Router } from 'express';
 import { getTags } from '../controllers/tag.controller';
 import { 
   getStories, 
@@ -41,22 +41,6 @@ import {
   approveJoinRequest,
   rejectJoinRequest,
 } from '../controllers/group.controller';
-import { 
-  getPosts, 
-  getPostBySlug, 
-  createPost, 
-  updatePost,
-  deletePost,
-  approvePost,
-  rejectPost,
-  reactToPost,
-  getFandomSidebar,
-  togglePinPost,
-  togglePostMute
-} from '../controllers/post.controller';
-import { getComments, createComment, likeComment, updateComment, deleteComment } from '../controllers/comment.controller';
-import { createReport, getReports, resolveReport } from '../controllers/report.controller';
-import { getRemovedContent } from '../controllers/moderation.controller';
 import { resolveCode } from '../controllers/code.controller';
 import { 
   createStory, 
@@ -123,10 +107,6 @@ import { searchLimiter, perUserLimiter } from '../middlewares/security';
 const router = Router();
 
 // Spam control for user-generated content, per signed-in user
-const commentLimiter = perUserLimiter({ windowMs: 5 * 60_000, limit: 30, message: 'Bạn bình luận quá nhanh. Vui lòng chờ một chút.' });
-const postLimiter = perUserLimiter({ windowMs: 60 * 60_000, limit: 20, message: 'Bạn đăng bài quá nhiều. Vui lòng thử lại sau.' });
-const reactLimiter = perUserLimiter({ windowMs: 60_000, limit: 60, message: 'Bạn thả cảm xúc quá nhanh.' });
-const reportLimiter = perUserLimiter({ windowMs: 60 * 60_000, limit: 10, message: 'Bạn gửi quá nhiều báo cáo. Vui lòng thử lại sau.' });
 const albumLimiter = perUserLimiter({ windowMs: 60 * 60_000, limit: 60, message: 'Bạn tạo/sao chép album quá nhiều. Vui lòng thử lại sau.' });
 const joinRequestLimiter = perUserLimiter({ windowMs: 60 * 60_000, limit: 10, message: 'Bạn gửi quá nhiều yêu cầu gia nhập. Vui lòng thử lại sau.' });
 
@@ -232,31 +212,7 @@ router.post('/recommendations/train', requireAuth, requireRole('admin'), trainNo
 router.get('/recommendations/status', requireAuth, requireRole('admin'), getRecStatus);
 router.get('/admin/backup-status', requireAuth, requireRole('admin'), getBackupStatus);
 
-// Comments
-router.get('/comments', getComments);
-router.post('/comments', requireAuth, commentLimiter, createComment);
-router.post('/comments/:id/like', requireAuth, likeComment);
-router.put('/comments/:id', requireAuth, updateComment);
-router.delete('/comments/:id', requireAuth, deleteComment);
-
-// Violation reports
-router.post('/reports', requireAuth, reportLimiter, createReport);
-router.get('/reports', requireAuth, getReports);
-router.get('/moderation/removed', requireAuth, getRemovedContent);
-router.put('/reports/:id/resolve', requireAuth, resolveReport);
-
-// Fandom / Community Posts
-router.get('/posts', optionalAuth, getPosts);
-router.get('/posts/sidebar', optionalAuth, getFandomSidebar);
-router.get('/posts/:slug', optionalAuth, getPostBySlug);
-router.post('/posts', requireAuth, postLimiter, createPost);
-router.put('/posts/:id', requireAuth, updatePost);
-router.delete('/posts/:id', requireAuth, deletePost);
-router.post('/posts/:id/approve', requireAuth, approvePost);
-router.post('/posts/:id/reject', requireAuth, rejectPost);
-router.post('/posts/:id/react', requireAuth, reactLimiter, reactToPost);
-router.post('/posts/:id/pin', requireAuth, togglePinPost);
-router.post('/posts/:id/mute', requireAuth, togglePostMute);
+// Comments, violation reports, removed content, Fandom posts: the community service (/api/community/*)
 
 // Users & Profile Settings
 router.get('/profile/me', requireAuth, getCurrentUserProfile);

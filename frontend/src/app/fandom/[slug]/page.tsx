@@ -33,8 +33,9 @@ import RichContent from '@/components/common/RichContent';
 import ImageLightbox from '@/components/reader/ImageLightbox';
 import { useAuth } from '@/context/AuthContext';
 import { PostItem } from '@/components/fandom/PostCard';
-import { API_BASE_URL, REACTIONS, ROLE_BADGES, categoryOf, readJson, timeAgo, topRole } from '@/lib/fandom';
+import { REACTIONS, ROLE_BADGES, categoryOf, readJson, timeAgo, topRole } from '@/lib/fandom';
 import CodeBadge from '@/components/common/CodeBadge';
+import { COMMUNITY_URL } from '@/lib/apiJson';
 
 export default function PostDetailPage() {
   const params = useParams();
@@ -61,10 +62,10 @@ export default function PostDetailPage() {
     if (!slug) return;
     try {
       const fetcher = isAuthenticated ? authFetch : fetch;
-      const json = await readJson(await fetcher(`${API_BASE_URL}/posts/${slug}`, { credentials: 'include' }));
+      const json = await readJson(await fetcher(`${COMMUNITY_URL}/posts/${slug}`, { credentials: 'include' }));
       const p: PostItem = json.data;
       setPost(p);
-      const moreUrl = p.story_id ? `${API_BASE_URL}/posts?story_id=${p.story_id}&limit=6` : `${API_BASE_URL}/posts?limit=6`;
+      const moreUrl = p.story_id ? `${COMMUNITY_URL}/posts?story_id=${p.story_id}&limit=6` : `${COMMUNITY_URL}/posts?limit=6`;
       fetch(moreUrl).then(readJson).then((m) => setMore((m.data as PostItem[]).filter((x) => x.id !== p.id).slice(0, 5))).catch(() => {});
     } catch {
       setPost(null);
@@ -92,7 +93,7 @@ export default function PostDetailPage() {
     setBusy(true);
     setShowMenu(false);
     try {
-      const json = await readJson(await authFetch(`${API_BASE_URL}/posts/${post.id}${path}`, init));
+      const json = await readJson(await authFetch(`${COMMUNITY_URL}/posts/${post.id}${path}`, init));
       showToast(json.message);
       after ? after() : load();
     } catch (e: any) {
@@ -114,7 +115,7 @@ export default function PostDetailPage() {
   const toggleMute = async () => {
     if (!post) return;
     try {
-      const json = await readJson(await authFetch(`${API_BASE_URL}/posts/${post.id}/mute`, { method: 'POST' }));
+      const json = await readJson(await authFetch(`${COMMUNITY_URL}/posts/${post.id}/mute`, { method: 'POST' }));
       setPost((p) => (p ? { ...p, notifications_muted: json.muted } : p));
       showToast(json.message);
     } catch (e: any) {

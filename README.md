@@ -9,7 +9,7 @@ Nền tảng đọc **Light Novel (truyện chữ)** và **Manga (truyện tranh
 2. [Cấu trúc thư mục](#-cấu-trúc-thư-mục)
 3. [Khởi chạy](#-khởi-chạy)
 4. [Biến môi trường](#-biến-môi-trường)
-5. [Chống lạm dụng & DDoS](#-chống-lạm-dụng--ddos) · [Hiệu năng & mở rộng](#-hiệu-năng--mở-rộng-redis-realtime-pgbouncer) · [CI/CD & migration](#-cicd--migration) · [Service identity](#-service-identity) · [Service workspace](#-service-workspace-lịch-sử-chương) · [Sự kiện giữa các service](#-sự-kiện-giữa-các-service) · [Service media](#-service-media-ảnh-epubpdf) · [Sao lưu & khôi phục](#-sao-lưu--khôi-phục) · [Lộ trình bảo mật](#-lộ-trình-bảo-mật)
+5. [Chống lạm dụng & DDoS](#-chống-lạm-dụng--ddos) · [Hiệu năng & mở rộng](#-hiệu-năng--mở-rộng-redis-realtime-pgbouncer) · [CI/CD & migration](#-cicd--migration) · [Service identity](#-service-identity) · [Service workspace](#-service-workspace-lịch-sử-chương) · [Sự kiện giữa các service](#-sự-kiện-giữa-các-service) · [Service media](#-service-media-ảnh-epubpdf) · [Service community](#-service-community-fandom-bình-luận-báo-cáo) · [Sao lưu & khôi phục](#-sao-lưu--khôi-phục) · [Lộ trình bảo mật](#-lộ-trình-bảo-mật)
 6. [Hàng đợi thông báo (RabbitMQ)](#-hàng-đợi-thông-báo-rabbitmq)
 7. [Tìm kiếm với Elasticsearch](#-tìm-kiếm-với-elasticsearch)
 8. [Trình soạn thảo rich text](#️-trình-soạn-thảo-rich-text-ckeditor-5) · [Độ phân giải ảnh](#-độ-phân-giải-ảnh-cho-người-đọc) · [Hiệu ứng tải trang](#-hiệu-ứng-tải-trang)
@@ -44,7 +44,7 @@ Trình duyệt ──> nginx gateway ──┬── /api/v1 ──> Express API
                                 └── còn lại ──> Next.js                 └─ publish ─> RabbitMQ ──> messaging ──> messaging_db (thông báo)
                                                                                     worker ──> Redis (gộp lượt xem, đẩy realtime)
 mạng "edge": gateway, frontend, backend
-mạng "data": backend, postgres, pgbouncer, redis, rabbitmq, search, worker, media, identity, workspace
+mạng "data": backend, postgres, pgbouncer, redis, rabbitmq, search, worker, media, identity, workspace, messaging, community
 ```
 
 **10 container** (`docker compose ps`): `gateway`, `frontend`, `backend`, `worker`, `media`, `postgres`, `pgbouncer`, `redis`, `search`, `rabbitmq`, cộng `pgadmin` khi bật profile `tools` và `cloudflared` (HTTPS qua Cloudflare Tunnel) khi bật profile `tunnel`. Chỉ `gateway` (cổng 3000) mở ra mạng; backend, Postgres, Redis, Elasticsearch và giao diện quản trị RabbitMQ chỉ nghe trên `127.0.0.1`, còn frontend, pgbouncer và các worker không mở cổng nào. Gateway và frontend **không** nằm trong mạng `data`, nên không chạm được tới Postgres/Redis/RabbitMQ.
@@ -255,6 +255,26 @@ Tách khỏi backend ở giai đoạn D (`Plan/media.md`), TypeScript (`services
 - Crawler (`scripts/crawler.py`) nén ảnh bằng sharp trong container `media`.
 - Test: `cd services/media && yarn test` (chữ ký header).
 
+## 💬 Service community (Fandom, bình luận, báo cáo)
+
+Tách khỏi backend ở giai đoạn F (`Plan/community.md`), TypeScript (`services/community`), database riêng `community_db`
+(`posts`, `post_reactions`, `post_notification_mutes`, `comments`, `comment_likes`, `reports`; mã `P-…`, `RP-…` sinh như trước).
+- Gateway `/api/community/*` (bỏ tiền tố): **cùng đường dẫn và JSON** như `/api/v1` trước đây (`/posts`, `/comments`, `/reports`,
+  `/moderation/removed`). Khóa `USER_SIG_KEY_COMMUNITY` (identity ký `X-User-Sig-Community`, có cả vai trò để kiểm Admin/Mod).
+- Tên, ảnh, vai trò người dùng và thông tin truyện/chương hỏi backend (`POST /internal/users/profiles`, `POST /internal/stories/brief`,
+  nhớ 60 giây). Số bình luận của truyện/chương vẫn nằm ở backend: sau mỗi lần thêm/xóa, community đếm lại và gửi
+  `POST /internal/comment-counts` (đếm lại nên gửi trùng/lỡ không làm lệch). Báo cáo truyện/chương lưu ảnh chụp tên, mã, đường dẫn lúc báo cáo.
+- "Đã gỡ": bài đã gỡ của community + truyện đã gỡ từ backend (`GET /internal/stories/removed`), gộp theo thời gian gỡ.
+- Thông báo bình luận/cảm xúc/gỡ bài: community tự dựng và đẩy vào hàng `novel.notifications` (RabbitMQ hỏng → gửi thẳng messaging); tắt
+  thông báo theo bài lọc ngay tại community.
+- Backend gọi community (`INTERNAL_KEY_COMMUNITY`): mã `P-`/`RP-` (`/internal/codes/:loại/:số`), số bài/bình luận trên hồ sơ
+  (`/internal/users/:id/stats`), xóa truyện → xóa bình luận của nó + bỏ liên kết bài viết (`/internal/comments/purge`).
+- Xóa tài khoản có `purge_content`: community nghe `identity.user.deleted` (hàng `community.identity`) và ẩn bài, bình luận.
+- Chuyển dữ liệu: `docker compose run --rm community node dist/server.js import-legacy` (`scripts/migrate.sh`, `launch.py` gọi; chỉ một lần).
+  Bảng cũ ở `novel_platform` **không còn dùng**, xóa ở nhánh sau.
+- Biến mới: `COMMUNITY_DB_PASSWORD`, `USER_SIG_KEY_COMMUNITY`, `INTERNAL_KEY_COMMUNITY` (launch.py tự sinh), `COMMUNITY_MEMORY` (mặc định 256m).
+- Thử: `cd services/community && yarn test`; trọn luồng qua gateway: `python scripts/community-smoke.py --admin admin --writer reader_hana --reader reader_yuki --password …`.
+
 ## 💾 Sao lưu & khôi phục
 
 Container `backup` (`backup/`: postgres:16-alpine + [restic](https://restic.net) + crond, giờ Việt Nam) sao lưu vào kho mã hóa `backups/repo` trên máy host:
@@ -427,9 +447,8 @@ Schema thật gồm 31 bảng và 2 view (`sql/database.sql`). Nhóm chính:
 | Truyện | `stories`, `volumes`, `chapters`, `chapter_pages`, `chapter_submissions`, `story_tags`, `tags`, `tag_categories`, `story_collaborators`, `story_views`, `story_views_daily` |
 | Nhóm dịch | `translation_groups`, `group_members`, `group_join_requests` (chat nhóm: service messaging; bảng cũ `group_messages` còn lại tới khi xóa) |
 | Tin nhắn riêng | Ở service messaging (`messaging_db`: `conversations`, `conversation_members`, `messages`, `user_blocks`, `dm_labels`, `dm_label_conversations`). Bảng cũ `direct_messages`, `dm_labels`, `dm_label_conversations`, `user_blocks` ở đây **không còn dùng** (đã chép sang bằng `messaging import-legacy`), xóa ở nhánh sau |
-| Tương tác | `bookmarks`, `reading_history`, `comments`, `comment_likes`, `post_notification_mutes`; `notifications`, `broadcast_notifications`* và cột `user_settings.notify_*` **không còn dùng** (thông báo ở service messaging, đã chép bằng `import-legacy`), xóa ở nhánh sau |
-| Fandom | `posts`, `post_tags`, `post_reactions` |
-| Kiểm duyệt | `reports` |
+| Tương tác | `bookmarks`, `reading_history`; `notifications`, `broadcast_notifications`* và cột `user_settings.notify_*` **không còn dùng** (thông báo ở service messaging, đã chép bằng `import-legacy`), xóa ở nhánh sau |
+| Fandom, bình luận, báo cáo | Ở service community (`community_db`). Bảng cũ `posts`, `post_tags`, `post_reactions`, `post_notification_mutes`, `comments`, `comment_likes`, `reports` ở đây **không còn dùng** (đã chép bằng `import-legacy`), xóa ở nhánh sau |
 | Workspace | `ws_chapter_versions` (migration `023_ws_chapter_versions.sql`): phiên bản workspace mới nhất đã áp vào bản đọc `chapters`, gồm cả chương đã xóa. Nội dung và lịch sử nằm ở `workspace_db` (xem [Service workspace](#-service-workspace-lịch-sử-chương)) |
 | View | `v_trending_stories`, `v_recently_updated_stories` |
 
@@ -487,12 +506,12 @@ Ghi chú thực tế: bảng `users` **không có** cột `role`, `coins`, `exp_
 - `GET /notifications/settings`, `PUT /notifications/settings {"<nhóm>": {"web": bool}}` (nhóm: `read`, `interaction`, `group`, `workspace`, `moderation`, `system`)
 - Admin: `GET|POST /admin/broadcasts {title, message?, link?}` (link phải bắt đầu bằng `/`), `DELETE /admin/broadcasts/:id`
 
-**Bình luận & Fandom**
+**Bình luận & Fandom** (service community: các đường dẫn dưới đây nằm dưới `/api/community`, JSON như trước)
 - `GET /comments?target_type=&target_id=`, `POST /comments`, `POST /comments/:id/like`, `PUT /comments/:id` (sửa của mình), `DELETE /comments/:id` (tác giả hoặc Admin/Mod)
 - `GET /posts` (opt), `GET /posts/:slug` (opt), `POST /posts`, `PUT /posts/:id`, `DELETE /posts/:id`
 - `DELETE /posts/:id` chỉ tác giả. `POST /posts/:id/react`, `POST /posts/:id/reject` (Admin/Mod gỡ bài, `reason` tùy chọn), `POST /posts/:id/approve` (Admin/Mod khôi phục bài đã gỡ)
 
-**Báo cáo vi phạm**
+**Báo cáo vi phạm** (service community, dưới `/api/community`)
 - `POST /reports` (Auth; body `target_type` = `story|chapter|comment|post`, `target_id`, `reason` = `spam|inappropriate|copyright|wrong_info|harassment|other`, `description`)
 - `GET /reports?status=pending|resolved|dismissed|all&type=story|chapter|post|comment&q=` (Admin/Mod; mỗi dòng có `target_code`, `target_preview`, `target_path`, `target_removed`, `target_pending_count`), `PUT /reports/:id/resolve` (Admin/Mod, body `status` = `resolved|dismissed`, `resolution_note`)
 - `GET /moderation/removed?type=all|story|post&q=&page=` (Admin/Mod): truyện và bài viết đã bị gỡ, mới nhất trước, 30 mục/trang; `q` khớp mã, tên, tóm tắt/nội dung bài, username người đăng

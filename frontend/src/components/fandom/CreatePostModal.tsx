@@ -9,8 +9,8 @@ import { useAuth } from '@/context/AuthContext';
 import RichTextEditor from '@/components/common/RichTextEditor';
 import { hasRichContent } from '@/lib/richText';
 import { CATEGORIES, PostCategory } from '@/lib/fandom';
+import { COMMUNITY_URL } from '@/lib/apiJson';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
 interface CreatePostModalProps {
   isOpen: boolean;
@@ -94,7 +94,7 @@ export default function CreatePostModal({
     setIsSubmitting(true);
     setErrorMsg(null);
     try {
-      const endpoint = editPostData ? `${API_BASE_URL}/posts/${editPostData.id}` : `${API_BASE_URL}/posts`;
+      const endpoint = editPostData ? `${COMMUNITY_URL}/posts/${editPostData.id}` : `${COMMUNITY_URL}/posts`;
       const method = editPostData ? 'PUT' : 'POST';
 
       const res = await authFetch(endpoint, {

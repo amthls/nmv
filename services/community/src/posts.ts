@@ -1,12 +1,13 @@
 import { Response } from 'express';
-import { pool } from '../config/db';
-import { AuthenticatedRequest } from '../middlewares/auth.middleware';
-import { sanitizeRichText, hasRichContent } from '../utils/richText';
-import { enqueueNotificationJob } from '../services/queue.service';
-import { insertWithUniqueSlug } from '../utils/ids';
-import { InputError, isUuid, optionalEnum, optionalText, optionalUrl } from '../utils/validation';
-import { clientDbError } from '../utils/dbErrors';
-import { postReactionNotification, postReviewNotifications } from '../services/notification.service';
+import { pool } from './config';
+import { AuthedRequest, isStaff } from './auth';
+import { sanitizeRichText, hasRichContent } from './richText';
+import { InputError, isUuid, optionalEnum, optionalText, optionalUrl } from './validation';
+import { clientDbError } from './dbErrors';
+import { profiles, stories } from './backend';
+import { notify, postReactionNotification, postReviewNotifications } from './notify';
+
+// Moved from the backend's post.controller.ts (Plan/community.md): same routes and JSON under /api/community.
 
 export const POST_CATEGORIES = ['discussion', 'review', 'fanart', 'theory', 'news', 'question'] as const;
 const MAX_IMAGES = 10;
@@ -22,12 +23,24 @@ function slugify(text: string) {
     .replace(/^-+|-+$/g, '');
 }
 
-const isStaff = (req: AuthenticatedRequest) => {
-  const roles = req.user?.roles || [];
-  return roles.includes('admin') || roles.includes('mod');
-};
+/** Insert with the first free slug (`base`, `base-2`, ...), retrying when another request took it meanwhile. */
+async function insertWithUniqueSlug<T>(base: string, insert: (slug: string) => Promise<T>): Promise<T> {
+  const clean = base.slice(0, 480).replace(/-+$/, '') || 'bai-viet-fandom';
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const taken = new Set((await pool.query(`SELECT slug FROM posts WHERE slug = $1 OR slug LIKE $2`, [clean, `${clean}-%`])).rows.map((r: any) => r.slug));
+    let slug = clean;
+    for (let n = 2; taken.has(slug); n++) slug = `${clean}-${n}`;
+    try {
+      return await insert(slug);
+    } catch (err: any) {
+      if (err?.code === '23505' && String(err.constraint || '').includes('slug')) continue;
+      throw err;
+    }
+  }
+  throw new Error(`Không tìm được slug trống cho "${base}"`);
+}
 
-const fail = (res: Response, error: any, label: string) => {
+export const fail = (res: Response, error: any, label: string) => {
   if (error instanceof InputError) return res.status(error.status).json({ success: false, message: error.message });
   const clientErr = clientDbError(error);
   if (clientErr) return res.status(clientErr.status).json({ success: false, message: clientErr.message });
@@ -35,19 +48,10 @@ const fail = (res: Response, error: any, label: string) => {
   return res.status(500).json({ success: false, message: error.message });
 };
 
-/** Post columns + author, linked story, reaction summary and the viewer's own reaction ($1 = viewer id or null). */
+/** Post columns + reaction summary and the viewer's own reaction ($1 = viewer id or null); author/story via withPeople. */
 const POST_SELECT = `
   SELECT
     p.*,
-    u.username AS author_username,
-    u.display_name AS author_name,
-    u.avatar_url AS author_avatar,
-    COALESCE((SELECT json_agg(ur.role) FROM user_roles ur WHERE ur.user_id = u.id), '[]') AS author_roles,
-    s.title AS story_title,
-    s.slug AS story_slug,
-    s.cover_image_url AS story_cover,
-    s.story_type AS story_type,
-    s.author_name AS story_author,
     COALESCE((
       SELECT json_object_agg(reaction, cnt) FROM (
         SELECT reaction, count(*) AS cnt FROM post_reactions WHERE post_id = p.id GROUP BY reaction
@@ -56,12 +60,26 @@ const POST_SELECT = `
     (SELECT pr.reaction FROM post_reactions pr WHERE pr.post_id = p.id AND pr.user_id = $1::uuid) AS my_reaction,
     (SELECT COUNT(*)::int FROM comments c WHERE c.target_type = 'post' AND c.target_id = p.id AND c.is_deleted = false) AS real_comment_count,
     EXISTS (SELECT 1 FROM post_notification_mutes m WHERE m.post_id = p.id AND m.user_id = $1::uuid) AS notifications_muted
-  FROM posts p
-  JOIN users u ON p.user_id = u.id
-  LEFT JOIN stories s ON p.story_id = s.id`;
+  FROM posts p`;
+
+/** Adds the author and the linked story fields the backend's JOINs used to give. */
+async function withPeople(rows: any[]) {
+  const [people, linked] = await Promise.all([profiles(rows.map((p) => p.user_id)), stories(rows.map((p) => p.story_id))]);
+  return rows.map((p) => {
+    const u = people.get(p.user_id);
+    const s = linked.get(p.story_id);
+    return {
+      ...p,
+      author_username: u?.username ?? null, author_name: u ? u.display_name : 'Người dùng đã xóa',
+      author_avatar: u?.avatar_url ?? null, author_roles: u?.roles ?? [],
+      story_title: s?.title ?? null, story_slug: s?.slug ?? null, story_cover: s?.cover_image_url ?? null,
+      story_type: s?.story_type ?? null, story_author: s?.author_name ?? null,
+    };
+  });
+}
 
 /** Only the author and staff see why a post was refused. */
-function hidePrivate<T extends { user_id: string; rejection_reason?: string | null }>(post: T, req: AuthenticatedRequest): T {
+function hidePrivate<T extends { user_id: string; rejection_reason?: string | null }>(post: T, req: AuthedRequest): T {
   if (req.user?.id !== post.user_id && !isStaff(req)) post.rejection_reason = null;
   return post;
 }
@@ -91,8 +109,8 @@ async function readPostBody(body: any, partial: boolean) {
     if (body.story_id === null || body.story_id === '' || body.story_id === undefined) out.story_id = null;
     else {
       if (!isUuid(body.story_id)) throw new InputError('Truyện được gắn không hợp lệ.');
-      const s = await pool.query(`SELECT 1 FROM stories WHERE id = $1 AND approval_status = 'approved'`, [body.story_id]);
-      if (s.rows.length === 0) throw new InputError('Truyện được gắn không tồn tại.');
+      const s = (await stories([body.story_id])).get(body.story_id);
+      if (!s || s.approval_status !== 'approved') throw new InputError('Truyện được gắn không tồn tại.');
       out.story_id = body.story_id;
     }
   }
@@ -108,7 +126,7 @@ async function readPostBody(body: any, partial: boolean) {
 
 // ------------------------------------------------------------------ read
 
-export const getPosts = async (req: AuthenticatedRequest, res: Response) => {
+export const getPosts = async (req: AuthedRequest, res: Response) => {
   try {
     const { story_id, sort = 'newest', q, filter_status, category } = req.query;
     const page = Math.max(1, parseInt(String(req.query.page)) || 1);
@@ -166,14 +184,11 @@ export const getPosts = async (req: AuthenticatedRequest, res: Response) => {
     const countRes = await pool.query(`SELECT COUNT(*)::int AS n FROM posts p WHERE ${whereClause}`, values);
     const total = countRes.rows[0].n;
 
-    const result = await pool.query(
-      `${POST_SELECT} WHERE ${whereClause} ORDER BY ${orderBy} LIMIT ${limit} OFFSET ${offset}`,
-      values,
-    );
+    const result = await pool.query(`${POST_SELECT} WHERE ${whereClause} ORDER BY ${orderBy} LIMIT ${limit} OFFSET ${offset}`, values);
 
     return res.json({
       success: true,
-      data: result.rows.map((p) => hidePrivate(p, req)),
+      data: (await withPeople(result.rows)).map((p) => hidePrivate(p, req)),
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) || 1 },
     });
   } catch (error: any) {
@@ -181,7 +196,7 @@ export const getPosts = async (req: AuthenticatedRequest, res: Response) => {
   }
 };
 
-export const getPostBySlug = async (req: AuthenticatedRequest, res: Response) => {
+export const getPostBySlug = async (req: AuthedRequest, res: Response) => {
   try {
     const result = await pool.query(`${POST_SELECT} WHERE p.slug = $2 AND p.is_deleted = false`, [req.user?.id || null, req.params.slug]);
     const post = result.rows[0];
@@ -191,7 +206,7 @@ export const getPostBySlug = async (req: AuthenticatedRequest, res: Response) =>
       return res.status(404).json({ success: false, message: 'Bài viết không tồn tại hoặc đã bị xóa.' });
     }
     if (visible) pool.query('UPDATE posts SET view_count = view_count + 1 WHERE id = $1', [post.id]).catch(console.error);
-    return res.json({ success: true, data: hidePrivate(post, req) });
+    return res.json({ success: true, data: hidePrivate((await withPeople([post]))[0], req) });
   } catch (error: any) {
     return fail(res, error, 'getPostBySlug');
   }
@@ -203,30 +218,23 @@ export const getPostBySlug = async (req: AuthenticatedRequest, res: Response) =>
  *  - stories: stories with the most approved discussions
  *  - counts: the viewer's drafts / posts
  */
-export const getFandomSidebar = async (req: AuthenticatedRequest, res: Response) => {
+export const getFandomSidebar = async (req: AuthedRequest, res: Response) => {
   try {
     const viewerId = req.user?.id || null;
-    const [leaders, stories, counts] = await Promise.all([
+    const [leaders, top, counts] = await Promise.all([
+      // a few extra: deleted or banned people are dropped after asking the backend
       pool.query(`
-        SELECT u.username, u.display_name, u.avatar_url,
-          COALESCE((SELECT json_agg(ur.role) FROM user_roles ur WHERE ur.user_id = u.id), '[]') AS roles,
-          count(p.id)::int AS posts,
-          COALESCE(sum(p.reaction_count), 0)::int AS reactions,
-          COALESCE(sum(p.comment_count), 0)::int AS comments
-        FROM posts p JOIN users u ON u.id = p.user_id
-        WHERE p.is_deleted = false AND p.approval_status = 'approved' AND p.is_published
-          AND p.published_at > NOW() - INTERVAL '30 days'
-          AND u.deleted_at IS NULL AND COALESCE(u.is_banned, false) = false
-        GROUP BY u.id
+        SELECT p.user_id, count(p.id)::int AS posts,
+          COALESCE(sum(p.reaction_count), 0)::int AS reactions, COALESCE(sum(p.comment_count), 0)::int AS comments
+        FROM posts p
+        WHERE p.is_deleted = false AND p.approval_status = 'approved' AND p.is_published AND p.published_at > NOW() - INTERVAL '30 days'
+        GROUP BY p.user_id
         ORDER BY count(p.id) * 3 + COALESCE(sum(p.reaction_count), 0) + COALESCE(sum(p.comment_count), 0) * 2 DESC
-        LIMIT 5`),
+        LIMIT 20`),
       pool.query(`
-        SELECT s.id, s.title, s.slug, s.cover_image_url, s.story_type, count(p.id)::int AS post_count
-        FROM posts p JOIN stories s ON s.id = p.story_id
-        WHERE p.is_deleted = false AND p.approval_status = 'approved' AND p.is_published AND s.approval_status = 'approved'
-        GROUP BY s.id
-        ORDER BY count(p.id) DESC, max(p.published_at) DESC
-        LIMIT 12`),
+        SELECT story_id, count(*)::int AS post_count
+        FROM posts WHERE story_id IS NOT NULL AND is_deleted = false AND approval_status = 'approved' AND is_published
+        GROUP BY story_id ORDER BY count(*) DESC, max(published_at) DESC LIMIT 30`),
       pool.query(`
         SELECT
           (SELECT count(*)::int FROM posts WHERE is_deleted = false AND is_draft AND user_id = $1::uuid) AS drafts,
@@ -234,12 +242,26 @@ export const getFandomSidebar = async (req: AuthenticatedRequest, res: Response)
           (SELECT count(*)::int FROM posts WHERE is_deleted = false AND approval_status = 'approved' AND is_published) AS total`,
         [viewerId]),
     ]);
+    const [people, linked] = await Promise.all([profiles(leaders.rows.map((r) => r.user_id)), stories(top.rows.map((r) => r.story_id))]);
+    const leaderboard = leaders.rows
+      .map((r) => ({ r, u: people.get(r.user_id) }))
+      .filter(({ u }) => u && !u.deleted && !u.is_banned)
+      .slice(0, 5)
+      .map(({ r, u }) => ({
+        username: u!.username, display_name: u!.display_name, avatar_url: u!.avatar_url, roles: u!.roles,
+        posts: r.posts, reactions: r.reactions, comments: r.comments,
+      }));
+    const storyList = top.rows
+      .map((r) => ({ r, s: linked.get(r.story_id) }))
+      .filter(({ s }) => s && s.approval_status === 'approved')
+      .slice(0, 12)
+      .map(({ r, s }) => ({ id: s!.id, title: s!.title, slug: s!.slug, cover_image_url: s!.cover_image_url, story_type: s!.story_type, post_count: r.post_count }));
     const c = counts.rows[0];
     return res.json({
       success: true,
       data: {
-        leaderboard: leaders.rows,
-        stories: stories.rows,
+        leaderboard,
+        stories: storyList,
         counts: { total: c.total, drafts: viewerId ? c.drafts : 0, mine: viewerId ? c.mine : 0 },
       },
     });
@@ -250,15 +272,14 @@ export const getFandomSidebar = async (req: AuthenticatedRequest, res: Response)
 
 // ------------------------------------------------------------------ write
 
-export const createPost = async (req: AuthenticatedRequest, res: Response) => {
+export const createPost = async (req: AuthedRequest, res: Response) => {
   try {
-    if (!req.user?.id) return res.status(401).json({ success: false, message: 'Bạn cần đăng nhập để đăng bài viết.' });
     const f = await readPostBody(req.body || {}, false);
     // posts go live immediately; moderators can still take them down (reject) afterwards
     const status = f.is_draft ? 'draft' : 'approved';
     const published = status === 'approved';
 
-    const insertRes = await insertWithUniqueSlug(pool, 'posts', slugify(f.title!) || 'bai-viet-fandom', (slug) => pool.query(
+    const insertRes = await insertWithUniqueSlug(slugify(f.title!) || 'bai-viet-fandom', (slug) => pool.query(
       `INSERT INTO posts (user_id, story_id, title, slug, content, category, cover_image_url, images, is_draft,
                           approval_status, is_published, published_at, approved_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10, $11,
@@ -276,14 +297,13 @@ export const createPost = async (req: AuthenticatedRequest, res: Response) => {
 };
 
 /** Author only. Only the fields sent are changed. Edits publish immediately, except on a post a moderator took down. */
-export const updatePost = async (req: AuthenticatedRequest, res: Response) => {
+export const updatePost = async (req: AuthedRequest, res: Response) => {
   try {
-    if (!req.user?.id) return res.status(401).json({ success: false, message: 'Bạn chưa đăng nhập.' });
     if (!isUuid(req.params.id)) return res.status(404).json({ success: false, message: 'Bài viết không tồn tại.' });
     const checkRes = await pool.query(`SELECT * FROM posts WHERE id = $1 AND is_deleted = false`, [req.params.id]);
     const post = checkRes.rows[0];
     if (!post) return res.status(404).json({ success: false, message: 'Bài viết không tồn tại hoặc đã bị xóa.' });
-    if (post.user_id !== req.user.id) {
+    if (post.user_id !== req.user!.id) {
       return res.status(403).json({ success: false, message: 'Bạn không có quyền chỉnh sửa bài viết của người khác.' });
     }
 
@@ -322,15 +342,14 @@ export const updatePost = async (req: AuthenticatedRequest, res: Response) => {
   }
 };
 
-export const deletePost = async (req: AuthenticatedRequest, res: Response) => {
+export const deletePost = async (req: AuthedRequest, res: Response) => {
   try {
-    if (!req.user?.id) return res.status(401).json({ success: false, message: 'Bạn chưa đăng nhập.' });
     if (!isUuid(req.params.id)) return res.status(404).json({ success: false, message: 'Bài viết không tồn tại.' });
     const checkRes = await pool.query(`SELECT id, user_id FROM posts WHERE id = $1 AND is_deleted = false`, [req.params.id]);
     const post = checkRes.rows[0];
     if (!post) return res.status(404).json({ success: false, message: 'Bài viết không tồn tại hoặc đã bị xóa.' });
     // Admin/Mod don't delete other people's posts, they take them down (reject) so it can be undone
-    if (post.user_id !== req.user.id) {
+    if (post.user_id !== req.user!.id) {
       return res.status(403).json({ success: false, message: 'Chỉ tác giả mới xóa được bài viết. Ban quản trị chỉ gỡ bài vi phạm.' });
     }
     await pool.query(`UPDATE posts SET is_deleted = true, is_pinned = false, updated_at = NOW() WHERE id = $1`, [post.id]);
@@ -342,13 +361,12 @@ export const deletePost = async (req: AuthenticatedRequest, res: Response) => {
 
 // ------------------------------------------------------------------ moderation
 
-const requireStaff = (req: AuthenticatedRequest, res: Response) => {
-  if (!req.user?.id) { res.status(401).json({ success: false, message: 'Bạn chưa đăng nhập.' }); return false; }
+const requireStaff = (req: AuthedRequest, res: Response) => {
   if (!isStaff(req)) { res.status(403).json({ success: false, message: 'Chỉ Admin hoặc Mod mới làm được thao tác này.' }); return false; }
   return true;
 };
 
-const targetIdsOf = (req: AuthenticatedRequest): string[] => {
+const targetIdsOf = (req: AuthedRequest): string[] => {
   const ids = req.params.id ? [req.params.id] : (req.body?.post_ids || req.body?.ids || []);
   if (!Array.isArray(ids) || ids.length === 0) throw new InputError('Vui lòng chọn ít nhất một bài viết.');
   if (ids.length > 100) throw new InputError('Mỗi lần xử lý tối đa 100 bài viết.');
@@ -356,7 +374,7 @@ const targetIdsOf = (req: AuthenticatedRequest): string[] => {
   return ids;
 };
 
-async function review(req: AuthenticatedRequest, res: Response, approve: boolean) {
+async function review(req: AuthedRequest, res: Response, approve: boolean) {
   try {
     if (!requireStaff(req, res)) return;
     const ids = targetIdsOf(req);
@@ -373,8 +391,7 @@ async function review(req: AuthenticatedRequest, res: Response, approve: boolean
          WHERE id = ANY($1::uuid[]) AND is_deleted = false AND approval_status <> 'draft'
          RETURNING id, user_id, title`, [ids, reason, req.user!.id])).rows;
 
-    enqueueNotificationJob({ kind: 'notify', items: postReviewNotifications(rows, approve, req.user!.id, reason) })
-      .catch((err: any) => console.error('[Notification] enqueue failed:', err.message));
+    void notify(postReviewNotifications(rows, approve, req.user!.id, reason));
 
     if (req.params.id && rows.length === 0) return res.status(404).json({ success: false, message: 'Bài viết không tồn tại.' });
     return res.json({
@@ -388,11 +405,11 @@ async function review(req: AuthenticatedRequest, res: Response, approve: boolean
 }
 
 /** Staff: take a post down (reject, with an optional reason) or restore it (approve). */
-export const approvePost = (req: AuthenticatedRequest, res: Response) => review(req, res, true);
-export const rejectPost = (req: AuthenticatedRequest, res: Response) => review(req, res, false);
+export const approvePost = (req: AuthedRequest, res: Response) => review(req, res, true);
+export const rejectPost = (req: AuthedRequest, res: Response) => review(req, res, false);
 
 /** POST /posts/:id/pin (staff): pin / unpin a published post at the top of the feed. */
-export const togglePinPost = async (req: AuthenticatedRequest, res: Response) => {
+export const togglePinPost = async (req: AuthedRequest, res: Response) => {
   try {
     if (!requireStaff(req, res)) return;
     if (!isUuid(req.params.id)) return res.status(404).json({ success: false, message: 'Bài viết không tồn tại.' });
@@ -407,17 +424,16 @@ export const togglePinPost = async (req: AuthenticatedRequest, res: Response) =>
 };
 
 /** POST /posts/:id/mute : stop / resume notifications about this post (comments, replies, reactions). */
-export const togglePostMute = async (req: AuthenticatedRequest, res: Response) => {
+export const togglePostMute = async (req: AuthedRequest, res: Response) => {
   try {
-    if (!req.user?.id) return res.status(401).json({ success: false, message: 'Bạn chưa đăng nhập.' });
     if (!isUuid(req.params.id)) return res.status(404).json({ success: false, message: 'Bài viết không tồn tại.' });
-    const removed = await pool.query(`DELETE FROM post_notification_mutes WHERE user_id = $1 AND post_id = $2 RETURNING 1`, [req.user.id, req.params.id]);
+    const removed = await pool.query(`DELETE FROM post_notification_mutes WHERE user_id = $1 AND post_id = $2 RETURNING 1`, [req.user!.id, req.params.id]);
     if (removed.rows.length > 0) {
       return res.json({ success: true, muted: false, message: 'Đã bật lại thông báo cho bài viết này.' });
     }
     await pool.query(
       `INSERT INTO post_notification_mutes (user_id, post_id) SELECT $1, id FROM posts WHERE id = $2 AND is_deleted = false ON CONFLICT DO NOTHING`,
-      [req.user.id, req.params.id]);
+      [req.user!.id, req.params.id]);
     return res.json({ success: true, muted: true, message: 'Đã tắt thông báo về bài viết này.' });
   } catch (error: any) {
     return fail(res, error, 'togglePostMute');
@@ -426,11 +442,10 @@ export const togglePostMute = async (req: AuthenticatedRequest, res: Response) =
 
 // ------------------------------------------------------------------ reactions
 
-export const reactToPost = async (req: AuthenticatedRequest, res: Response) => {
+export const reactToPost = async (req: AuthedRequest, res: Response) => {
   try {
-    if (!req.user?.id) return res.status(401).json({ success: false, message: 'Bạn chưa đăng nhập' });
     const { id } = req.params;
-    const userId = req.user.id;
+    const userId = req.user!.id;
     const { reaction } = req.body || {};
     if (!isUuid(id)) return res.status(404).json({ success: false, message: 'Bài viết không tồn tại.' });
     if (!['like', 'love', 'haha', 'wow', 'sad', 'angry'].includes(reaction)) {
@@ -451,22 +466,20 @@ export const reactToPost = async (req: AuthenticatedRequest, res: Response) => {
         await pool.query(`DELETE FROM post_reactions WHERE post_id = $1 AND user_id = $2`, [id, userId]);
         action = 'removed';
       } else {
-        await pool.query(`UPDATE post_reactions SET reaction = $1::reaction_type WHERE post_id = $2 AND user_id = $3`, [reaction, id, userId]);
+        await pool.query(`UPDATE post_reactions SET reaction = $1 WHERE post_id = $2 AND user_id = $3`, [reaction, id, userId]);
         action = 'changed';
       }
     } else {
-      await pool.query(`INSERT INTO post_reactions (post_id, user_id, reaction) VALUES ($1, $2, $3::reaction_type)`, [id, userId, reaction]);
+      await pool.query(`INSERT INTO post_reactions (post_id, user_id, reaction) VALUES ($1, $2, $3)`, [id, userId, reaction]);
     }
     await pool.query(`UPDATE posts SET reaction_count = (SELECT count(*) FROM post_reactions WHERE post_id = $1) WHERE id = $1`, [id]);
 
     if (action !== 'removed') {
-      enqueueNotificationJob({
-        kind: 'notify',
-        items: postReactionNotification({
-          postId: id, postTitle: target.title, postOwnerId: target.user_id, actorId: userId,
-          actorName: req.user.display_name || req.user.username, reaction,
-        }),
-      }).catch((err: any) => console.error('[Notification] enqueue failed:', err.message));
+      const me = (await profiles([userId]).catch(() => new Map())).get(userId);
+      void notify(postReactionNotification({
+        postId: id, postTitle: target.title, postOwnerId: target.user_id, actorId: userId,
+        actorName: me?.display_name || me?.username || 'Ai đó', reaction,
+      }));
     }
 
     const summaryRes = await pool.query(`

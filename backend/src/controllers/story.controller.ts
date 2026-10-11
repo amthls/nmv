@@ -9,6 +9,7 @@ import { sanitizeRichText } from '../utils/richText';
 import { InputError, isUuid, optionalEnum, optionalText, optionalUrl, requiredText } from '../utils/validation';
 import { clientDbError } from '../utils/dbErrors';
 import { enqueueNotificationJob } from '../services/queue.service';
+import { callCommunity } from '../services/communityClient';
 
 function slugify(text: string) {
   return text
@@ -879,6 +880,7 @@ export const deleteStory = async (req: AuthenticatedRequest, res: Response) => {
     }
 
     // Use a transaction for safe cascade deletion
+    let purgeComments = async () => {};
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -896,17 +898,15 @@ export const deleteStory = async (req: AuthenticatedRequest, res: Response) => {
         DELETE FROM chapter_pages WHERE chapter_id IN (SELECT id FROM chapters WHERE story_id = $1)
       `, [id]);
       await client.query(`DELETE FROM chapter_submissions WHERE story_id = $1`, [id]);
-      await client.query(`DELETE FROM comments WHERE target_type = 'chapter' AND target_id IN (SELECT id FROM chapters WHERE story_id = $1)`, [id]);
-      await client.query(`DELETE FROM chapters WHERE story_id = $1`, [id]);
+      const chapterIds = (await client.query(`DELETE FROM chapters WHERE story_id = $1 RETURNING id`, [id])).rows.map((r: any) => r.id);
+      purgeComments = () => callCommunity('POST', '/internal/comments/purge', { story_id: id, chapter_ids: chapterIds })
+        .then((r) => { if (r.status !== 200) throw new Error(`HTTP ${r.status}`); })
+        .catch((err) => console.error(`[stories] comments of deleted story ${id} not purged in community: ${err.message}`));
 
       // 3. Delete volumes
       await client.query(`DELETE FROM volumes WHERE story_id = $1`, [id]);
 
-      // 4. Unlink posts related to this story
-      await client.query(`UPDATE posts SET story_id = NULL WHERE story_id = $1`, [id]);
-
-      // 5. Delete comments left directly on the story, then the story record
-      await client.query(`DELETE FROM comments WHERE target_type = 'story' AND target_id = $1`, [id]);
+      // 4. The story record (its comments and the posts about it: community, after the commit)
       await client.query(`DELETE FROM stories WHERE id = $1`, [id]);
 
       await client.query('COMMIT');
@@ -918,6 +918,7 @@ export const deleteStory = async (req: AuthenticatedRequest, res: Response) => {
     }
 
     await removeStoryFromIndex(id);
+    await purgeComments();
 
     res.json({
       success: true,

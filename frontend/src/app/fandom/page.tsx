@@ -23,6 +23,7 @@ import CreatePostModal from '@/components/fandom/CreatePostModal';
 import SmartImage from '@/components/common/SmartImage';
 import { useAuth } from '@/context/AuthContext';
 import { API_BASE_URL, CATEGORIES, ROLE_BADGES, readJson, topRole } from '@/lib/fandom';
+import { COMMUNITY_URL } from '@/lib/apiJson';
 
 type Feed = 'all' | 'mine' | 'drafts';
 type Sort = 'newest' | 'hot' | 'top' | 'views';
@@ -95,11 +96,11 @@ function FandomContent() {
     if (category !== 'all') params.set('category', category);
     if (story) params.set('story_id', story.id);
     if (query) params.set('q', query);
-    return `${API_BASE_URL}/posts?${params}`;
+    return `${COMMUNITY_URL}/posts?${params}`;
   };
 
   const loadSidebar = useCallback(() => {
-    fetcher(`${API_BASE_URL}/posts/sidebar`).then(readJson).then((j) => setSidebar(j.data)).catch(() => {});
+    fetcher(`${COMMUNITY_URL}/posts/sidebar`).then(readJson).then((j) => setSidebar(j.data)).catch(() => {});
   }, [isAuthenticated]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadPosts = useCallback(async () => {

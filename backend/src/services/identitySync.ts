@@ -73,10 +73,7 @@ export async function applyUserSnapshot(client: any, u: UserSnapshot, deleted = 
     await client.query(`DELETE FROM group_members WHERE user_id = $1`, [u.id]);
     await client.query(`DELETE FROM group_join_requests WHERE user_id = $1 AND status = 'pending'`, [u.id]);
     await client.query(`DELETE FROM user_follows WHERE follower_id = $1 OR following_id = $1`, [u.id]);
-    if (u.purge_content) {
-      const { purgeUserContent } = await import('../controllers/user.controller');
-      await purgeUserContent(client, u.id);
-    }
+    // purge_content (posts, comments): the community service applies the same event
   }
   return true;
 }
