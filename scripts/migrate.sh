@@ -25,10 +25,6 @@ applied=0
 for f in sql/migrations/*.sql; do
   name=$(basename "$f")
   [ "$(psql_db -tAc "SELECT 1 FROM schema_migrations WHERE name = '$name'")" = "1" ] && continue
-  if [ "$applied" = 0 ] && [ "${SKIP_BACKUP:-}" != 1 ]; then
-    echo "[migrate] backup snapshot first (SKIP_BACKUP=1 to skip)"
-    docker compose exec -T backup backup.sh run pre-migrate || { echo "[migrate] backup failed, nothing applied" >&2; exit 1; }
-  fi
   echo "[migrate] applying $name"
   { cat "$f"; echo; echo "INSERT INTO schema_migrations (name) VALUES ('$name');"; } | psql_db --single-transaction
   applied=$((applied + 1))

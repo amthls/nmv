@@ -43,7 +43,6 @@ import SmartImage from '@/components/common/SmartImage';
 import ImageUploadDropzone from '@/components/common/ImageUploadDropzone';
 import AlbumCard from '@/components/album/AlbumCard';
 import RecommenderPanel from '@/components/admin/RecommenderPanel';
-import BackupPanel from '@/components/admin/BackupPanel';
 import SecurityTab from '@/components/account/SecurityTab';
 import { useConfirmPassword } from '@/components/account/ConfirmPassword';
 import { IDENTITY_URL } from '@/lib/session';
@@ -806,7 +805,6 @@ export default function UserProfilePage() {
       {/* Tab: Admin Role Assignment */}
       {isAdmin && activeTab === 'admin_roles' && (
         <div className="space-y-6">
-          <BackupPanel />
           <RecommenderPanel />
           <div className="glass-panel p-6 rounded-3xl border border-rose-500/30 bg-glass space-y-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

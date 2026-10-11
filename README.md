@@ -16,7 +16,7 @@ Nền tảng đọc **Light Novel (truyện chữ)** và **Manga (truyện tranh
 2. [Cấu trúc thư mục](#-cấu-trúc-thư-mục)
 3. [Khởi chạy](#-khởi-chạy)
 4. [Biến môi trường](#-biến-môi-trường)
-5. [Chống lạm dụng & DDoS](#-chống-lạm-dụng--ddos) · [Hiệu năng & mở rộng](#-hiệu-năng--mở-rộng-redis-realtime-pgbouncer) · [CI/CD & migration](#-cicd--migration) · [Service identity](#-service-identity) · [Service workspace](#-service-workspace-lịch-sử-chương) · [Sự kiện giữa các service](#-sự-kiện-giữa-các-service) · [Service media](#-service-media-ảnh-epubpdf) · [Service community](#-service-community-fandom-bình-luận-báo-cáo) · [Service library](#-service-library-theo-dõi-bookmark-lịch-sử-đọc-album) · [Service recommender](#-service-recommender-gợi-ý-truyện) · [Sao lưu & khôi phục](#-sao-lưu--khôi-phục) · [Lộ trình bảo mật](#-lộ-trình-bảo-mật)
+5. [Chống lạm dụng & DDoS](#-chống-lạm-dụng--ddos) · [Hiệu năng & mở rộng](#-hiệu-năng--mở-rộng-redis-realtime-pgbouncer) · [CI/CD & migration](#-cicd--migration) · [Service identity](#-service-identity) · [Service workspace](#-service-workspace-lịch-sử-chương) · [Sự kiện giữa các service](#-sự-kiện-giữa-các-service) · [Service media](#-service-media-ảnh-epubpdf) · [Service community](#-service-community-fandom-bình-luận-báo-cáo) · [Service library](#-service-library-theo-dõi-bookmark-lịch-sử-đọc-album) · [Service recommender](#-service-recommender-gợi-ý-truyện) · [Sao lưu](#-sao-lưu) · [Lộ trình bảo mật](#-lộ-trình-bảo-mật)
 6. [Hàng đợi thông báo (RabbitMQ)](#-hàng-đợi-thông-báo-rabbitmq)
 7. [Tìm kiếm với Elasticsearch](#-tìm-kiếm-với-elasticsearch)
 8. [Trình soạn thảo rich text](#️-trình-soạn-thảo-rich-text-ckeditor-5) · [Độ phân giải ảnh](#-độ-phân-giải-ảnh-cho-người-đọc) · [Hiệu ứng tải trang](#-hiệu-ứng-tải-trang)
@@ -54,7 +54,7 @@ Một cổng vào (nginx), một frontend Next.js và **8 service**, mỗi servi
 | Hàng đợi | RabbitMQ 3.13: sự kiện giữa các service (outbox), job thông báo (messaging nhận) |
 | Cache / realtime | Redis 7.4: cache API công khai, đếm lượt xem, rate limit dùng chung, kênh `rt:events` → messaging đẩy WebSocket |
 | Cổng vào | nginx 1.27: giới hạn tần suất, IP thật, cache ảnh, WebSocket; hỏi identity (`auth_request`) cho mọi request API |
-| Hạ tầng | Docker Compose (2 mạng: `edge`, `data`), GitHub Actions (CI/CD), image trên GHCR, sao lưu restic |
+| Hạ tầng | Docker Compose (2 mạng: `edge`, `data`), GitHub Actions (CI/CD), image trên GHCR |
 
 ```
                          (duy nhất cổng 3000 mở ra ngoài)
@@ -70,10 +70,10 @@ Trình duyệt ──> nginx gateway ── auth_request ──> identity (cooki
                      ├── /api/media     ──> media
                      └── còn lại        ──> Next.js (frontend)
 mạng "edge": gateway, frontend, catalog, các service có API công khai
-mạng "data": mọi service, postgres, pgbouncer, redis, rabbitmq, search, worker, backup
+mạng "data": mọi service, postgres, pgbouncer, redis, rabbitmq, search, worker
 ```
 
-**Container** (`docker compose ps`): hạ tầng `postgres`, `pgbouncer`, `redis`, `rabbitmq`, `search`, `backup` (+ `db-init` chạy một lần);
+**Container** (`docker compose ps`): hạ tầng `postgres`, `pgbouncer`, `redis`, `rabbitmq`, `search` (+ `db-init` chạy một lần);
 `gateway`, `frontend`; service `catalog` (+ `worker` cùng image: sự kiện identity/workspace, gộp lượt xem, đối soát, kệ "Đang hot"),
 `identity`, `workspace`, `messaging`, `community`, `library`, `recommender`, `media`. Profile `tools` thêm `pgadmin`, profile `tunnel` thêm
 `cloudflared`. Chỉ `gateway` (cổng 3000) mở ra mạng; catalog, Postgres, Redis, Elasticsearch và trang quản trị RabbitMQ chỉ nghe trên
@@ -127,10 +127,8 @@ Trình duyệt gọi `/api/v1/...` và `/uploads/...` cùng origin; qua gateway 
 ├── sql/database.sql, sql/migrations/ # schema catalog (novel_platform); mỗi service có migrations riêng trong thư mục của nó
 ├── nginx/nginx.conf                  # gateway
 ├── postgres/provision.sh             # container db-init: mỗi service một database + role riêng
-├── backup/                           # container sao lưu: Dockerfile + backup.sh (xem Sao lưu & khôi phục)
-├── backups/                          # kho restic + status.json (không commit)
 ├── uploads/                          # ảnh người dùng tải lên
-├── scripts/                          # migrate.sh, restore.sh, smoke test, bench, crawler
+├── scripts/                          # migrate.sh, smoke test, bench, crawler
 ├── Plan/, Branches/                  # kế hoạch từng giai đoạn, thông tin từng nhánh
 ├── launch.py, docker-compose.yml
 └── .env / .env.example
@@ -139,7 +137,7 @@ Trình duyệt gọi `/api/v1/...` và `/uploads/...` cùng origin; qua gateway 
 ## 🚀 Khởi chạy
 
 ```bash
-cp .env.example .env         # BẮT BUỘC đặt POSTGRES_PASSWORD, IDENTITY_DB_PASSWORD, IDENTITY_JWT_SECRET, USER_SIG_KEY_*, INTERNAL_KEY_*, ELASTIC_PASSWORD, RESTIC_PASSWORD, RABBITMQ_PASSWORD, REDIS_PASSWORD, PGADMIN_DEFAULT_PASSWORD (openssl rand -hex 24); compose không chạy nếu thiếu
+cp .env.example .env         # BẮT BUỘC đặt POSTGRES_PASSWORD, IDENTITY_DB_PASSWORD, IDENTITY_JWT_SECRET, USER_SIG_KEY_*, INTERNAL_KEY_*, ELASTIC_PASSWORD, RABBITMQ_PASSWORD, REDIS_PASSWORD, PGADMIN_DEFAULT_PASSWORD (openssl rand -hex 24); compose không chạy nếu thiếu
 docker compose up -d --build # toàn bộ container
 sh scripts/migrate.sh        # chạy các migration mới (xem mục CI/CD & migration)
 ```
@@ -184,7 +182,6 @@ Chạy không qua Docker (cần Postgres sẵn): `yarn dev:local` (catalog + fro
 | `GATEWAY_BIND` / `GATEWAY_PORT` | `127.0.0.1` / `3000` | Địa chỉ/cổng gateway trên máy host. Mặc định chỉ máy này vào được (đường công khai là Cloudflare tunnel); `GATEWAY_BIND=0.0.0.0` để máy khác trong LAN vào |
 | `SERVICE_NAME` | `catalog` | Trường `service` trong log JSON (compose đặt `worker`; media mặc định `media`) |
 | `REDIS_PASSWORD` / `REDIS_PORT` | *(không có)* / `6380` | **Bắt buộc** `REDIS_PASSWORD`. Compose tự ghép `REDIS_URL` cho catalog và worker |
-| `RESTIC_PASSWORD` | *(không có)* | **Bắt buộc**, khóa mã hóa kho sao lưu `backups/repo`. `launch.py` tự sinh nếu thiếu và **không bao giờ đổi** (mật khẩu mới không mở được bản cũ). Mất nó là mất mọi bản sao lưu: chép ra nơi khác |
 | `REDIS_URL` | compose tự ghép | Để trống (chạy ngoài Docker) thì app vẫn chạy: không cache, rate limit trong RAM, ghi lượt xem thẳng DB, không đẩy realtime (trang tự hỏi lại định kỳ) |
 | `DB_POOL_MAX` | `50` | Số kết nối tối đa của mỗi tiến trình Node tới Postgres/PgBouncer |
 | `PGBOUNCER_MAX_CLIENT_CONN` / `PGBOUNCER_POOL_SIZE` / `PGBOUNCER_MAX_DB_CONN` | `1000` / `20` / `60` | Kết nối từ app vào PgBouncer / kết nối thật tới Postgres |
@@ -247,7 +244,7 @@ Mục tiêu: chịu được vài nghìn đến vài chục nghìn người onli
 Service đầu tiên tách khỏi catalog (`Plan/microservices.md`, chi tiết `Plan/identity.md`). Mọi đăng ký, đăng nhập, phiên, mật khẩu, email, vai trò site và khóa/xóa tài khoản đi qua đây; gateway hỏi identity cho **mọi** request `/api/v1/*`, `/api/ws/*`, `/api/media/*`, `/api/msg/*` (`auth_request` → `/internal/verify`) rồi gắn header `X-User-Id/Roles/Exp/Sig` (HMAC bằng `USER_SIG_KEY_CATALOG`; workspace nhận chữ ký riêng bằng `USER_SIG_KEY_WORKSPACE`); catalog **chỉ tin header có chữ ký đúng** (`middlewares/auth.middleware.ts`), vai trò lấy từ header, hồ sơ từ bảng `users` (bản sao, cập nhật bởi worker từ sự kiện, hoặc đọc xuyên `GET /internal/users/:id` khi sự kiện chưa tới). Thiếu CSRF khi ghi → gateway trả 403 JSON; identity không trả lời → 503 JSON. Frontend: `src/lib/session.ts` (cookie, header `X-CSRF-Token`, gặp 401 thì `POST /api/identity/refresh` một lần rồi thử lại).
 
 - `services/identity/` (Go, ~25 MB RAM, image `scratch`, chạy bằng user nobody). Database riêng `identity_db`, role Postgres riêng `identity` (không kết nối được `novel_platform`); bảng tạo bằng migration nhúng trong service (`services/identity/migrations/`), chạy lúc khởi động trong một transaction có khóa.
-- Container một-lần **`db-init`** (`postgres/provision.sh`) tạo role + database cho mọi service trong `SERVICE_DBS` mỗi lần `docker compose up` (đổi mật khẩu trong `.env` là tự áp dụng), và bỏ quyền `CONNECT` mặc định trên `novel_platform`. Backup đã dump mọi database.
+- Container một-lần **`db-init`** (`postgres/provision.sh`) tạo role + database cho mọi service trong `SERVICE_DBS` mỗi lần `docker compose up` (đổi mật khẩu trong `.env` là tự áp dụng), và bỏ quyền `CONNECT` mặc định trên `novel_platform`.
 - Giữ: tài khoản, email, mật khẩu (**argon2id**; băm bcrypt cũ vẫn đăng nhập được và tự đổi sang argon2id), xác thực email, vai trò site, khóa/xóa tài khoản, phiên đăng nhập (mỗi thiết bị một dòng), token đặt lại mật khẩu/xác thực email, nhật ký bảo mật 90 ngày, mail tài khoản.
 - Phiên: cookie `nh_access` (JWT 15 phút, chỉ mã người dùng + mã phiên), `nh_refresh` (30 ngày, chỉ gửi tới `/api/identity`, **xoay vòng** mỗi lần dùng; dùng lại token cũ sau 30 giây = bị lộ → thu hồi cả phiên), `nh_csrf` (gửi lại qua header `X-CSRF-Token` cho request ghi). Thu hồi có hiệu lực ngay (Redis `identity:revoked:`, không có Redis thì đọc Postgres).
 - Mật khẩu mới: 8–128 ký tự, không nằm trong ~2.100 mật khẩu phổ biến, không chứa tên đăng nhập/phần đầu email. Sai 5 lần trong 15 phút → khóa tạm 15 phút. Đổi vai trò, khóa/mở khóa, xóa tài khoản, thu hồi mọi phiên toàn hệ thống: **nhập lại mật khẩu**.
@@ -376,28 +373,12 @@ NDCG@10 giấu-truyện-cuối); trên cùng dữ liệu cho điểm ngang bản
 - Thử: `cd services/recommender && pip install -r requirements-dev.txt && REC_TEST_DATABASE_URL=postgres://…/rec_test python -m pytest tests`
   (xóa sạch DB đó); trọn luồng qua gateway: `python scripts/recommender-smoke.py --admin admin --reader reader_yuki --password … --story berserker-of-gluttony`.
 
-## 💾 Sao lưu & khôi phục
+## 💾 Sao lưu
 
-Container `backup` (`backup/`: postgres:16-alpine + [restic](https://restic.net) + crond, giờ Việt Nam) sao lưu vào kho mã hóa `backups/repo` trên máy host:
-- **3:00 hằng ngày:** `pg_dumpall --globals-only` + `pg_dump` **từng database** (trừ `*_restored`) + thư mục `uploads/`. restic chỉ lưu phần mới (khử trùng lặp), rồi dọn theo lịch giữ **14 bản ngày · 8 bản tuần · 12 bản tháng**. Mất tối đa 1 ngày dữ liệu (không lưu WAL).
-- **5:00 Chủ nhật:** `restic check` + khôi phục dump mới nhất vào database tạm `restore_check`, so số bảng (phải bằng) và số dòng (≥ 90% bản thật), rồi xóa.
-- **Mỗi giờ:** quá 26 giờ không có bản thành công → thông báo hệ thống cho mọi Admin (một lần mỗi ngày). Sao lưu hoặc thử khôi phục lỗi cũng gửi thông báo.
-- **Trước migration:** `scripts/migrate.sh` chụp một bản (`pre-migrate`) trước khi chạy file mới, sao lưu lỗi thì không chạy (`SKIP_BACKUP=1` để bỏ qua); `launch.py` chụp mỗi lần chạy migration (lỗi chỉ cảnh báo).
-- **Trạng thái:** `backups/status/status.json`, hiện trong `/tai-khoan` → tab quản trị (Admin). Web **không** có nút khôi phục. Log: `docker compose logs backup`.
-- Không sao lưu (dựng lại được): Redis, Elasticsearch, RabbitMQ, cache ảnh, `exports/`.
-
-Chạy tay: `docker compose exec backup backup.sh run` · `docker compose exec backup backup.sh check`.
-
-**Khôi phục** (`scripts/restore.sh`):
-```sh
-sh scripts/restore.sh list db                       # các bản DB (giờ, mã snapshot)
-sh scripts/restore.sh db latest                     # khôi phục vào DB riêng novel_platform_restored, DB thật không đổi
-sh scripts/restore.sh db <mã> --replace             # THAY DB thật: hỏi xác nhận, chụp bản hiện tại, dừng app, khôi phục, xóa cache Redis, chạy lại app
-sh scripts/restore.sh uploads latest ./khoi-phuc    # ảnh ra ./khoi-phuc/data/uploads, chép lại bằng tay
-```
-Sau `--replace`: chỉ mục tìm kiếm Elasticsearch có thể lệch tới khi truyện được sửa/đánh index lại. Xóa DB thử sau khi xem xong: `docker compose exec backup psql -d postgres -c 'DROP DATABASE novel_platform_restored'`.
-
-**Rủi ro còn lại:** máy chỉ có một ổ, kho sao lưu nằm cùng ổ với dữ liệu: hỏng ổ, mất máy hay ransomware là mất cả hai. Có ổ thứ hai hoặc cloud thì thêm bản ngoài máy (`restic copy` sang kho mới). Nhớ cất `RESTIC_PASSWORD` ở nơi khác.
+**Không có sao lưu** (chủ dự án quyết định 2026-10-11): container `backup`, `scripts/restore.sh` và trang trạng thái đã bỏ.
+Hỏng ổ, mất máy, xóa nhầm hay migration lỗi là **mất dữ liệu**. Tự `pg_dump` bằng tay trước việc rủi ro nếu cần:
+`docker compose exec -T postgres pg_dump -U postgres -Fc novel_platform > novel_platform.dump` (lặp lại cho `*_db` của từng service).
+Thư mục `./backups` (kho restic cũ, nếu còn) không còn được dùng, xóa tay được.
 
 ## 🔐 Lộ trình bảo mật
 
@@ -420,7 +401,7 @@ Thông báo nằm ở **service messaging** (`messaging_db`, `Plan/messaging.md`
 | Xin vào nhóm / kết quả / được thêm | Trưởng nhóm, mod nhóm (gộp theo nhóm) / người xin | `group_join_request`, `group_join_rejected`, `group_member_add` (nhóm dịch) |
 | Đề xuất, nháp, việc ở workspace | Người giữ truyện / chủ nháp / người được giao | `draft_*`, `task_opened` (workspace) |
 | Admin/Mod gỡ / khôi phục bài viết hoặc truyện | Tác giả / người đăng truyện | `post_removed`, `post_restored`, `story_removed`, `story_restored` (kiểm duyệt) |
-| Đối soát, sao lưu, cảnh báo identity | Mọi Admin | `admin_alert` (hệ thống) |
+| Đối soát, cảnh báo identity | Mọi Admin | `admin_alert` (hệ thống) |
 
 - **Loại** là chuỗi, đăng ký trong `services/messaging/notify.go` (nhóm, tắt được không, có gộp không). **Không tắt được:** kết quả xin vào nhóm/được thêm, đề xuất được gộp/trả lại, nội dung bị gỡ/khôi phục, cảnh báo Admin, thông báo toàn site.
 - **Chuông:** số là **chưa xem** (mở chuông → về 0), từng dòng vẫn "chưa đọc" tới khi bấm; tab Tất cả / Chưa đọc / Nhóm dịch / Workspace. Trang `/thong-bao`: lọc theo nhóm, chỉ chưa đọc, tải thêm, xóa, **cài đặt nhóm × kênh** (web; email chưa có). Đã đọc giữ 30 ngày, chưa đọc 60 ngày (messaging dọn mỗi giờ).
@@ -557,7 +538,7 @@ Schema thật gồm 19 bảng và 2 view (`sql/database.sql`). Nhóm chính:
 Các bảng cũ đã chuyển sang service khác (tin nhắn, thông báo, Fandom/bình luận/báo cáo, theo dõi/lịch sử/album, `rec_*`,
 `story_exports`) bị xóa ở migration `027_drop_legacy_tables.sql` sau khi `import-legacy` của từng service đã chép. Bản cài mới vì thế
 không có bài Fandom, bình luận, thông báo hay lượt theo dõi mẫu. **Nâng cấp máy chạy bản cũ hơn PR #77:** cập nhật lên #77 và chạy
-`scripts/migrate.sh` trước (để chép xong), rồi mới lên bản này; nếu lỡ, dữ liệu còn trong bản backup `pre-migrate`.
+`scripts/migrate.sh` trước (để chép xong), rồi mới lên bản này; nếu lỡ, dữ liệu cũ mất (không còn sao lưu).
 
 **Migration cho DB đã tồn tại:** `sql/database.sql` chỉ chạy khi tạo volume mới. Với DB đang chạy: `sh scripts/migrate.sh` (xem [CI/CD & migration](#-cicd--migration)); bảng `schema_migrations` ghi lại file nào đã chạy. Lượt xem nằm ở `stories.total_views`, `chapters.total_views` và `story_views_daily` (theo ngày); bảng `story_views` (từng lượt) không còn được ghi.
 
@@ -641,7 +622,6 @@ Ghi chú thực tế: bảng `users` **không có** cột `role`, `coins`, `exp_
 **Người dùng & Upload**
 - `GET /profile/me`, `PUT /profile/me`, `PUT /profile/me/settings`
 - `GET /users`
-- `GET /admin/backup-status` (Admin): trạng thái sao lưu do container `backup` ghi (`null` nếu chưa chạy lần nào)
 - `GET /codes/:code`: tra mã thông minh → `{ type, path }` (không phân biệt hoa thường, chỉ dựa vào số). Nội dung ẩn trả 404 như mã sai: bài nháp hoặc bị gỡ (trừ tác giả/staff), album riêng tư (trừ chủ), người bị khóa/xóa và báo cáo (trừ Admin/Mod)
 - `GET /users/:username`: hồ sơ công khai (trang `/nguoi-dung/:username`), chỉ gồm tên, ảnh, giới thiệu, vai trò công khai, thống kê, nhóm dịch và truyện đã đăng; không có email/cài đặt/lịch sử. Admin/Mod nhận thêm khối `moderation` (email, trạng thái khóa, các thao tác được phép)
 - Quản trị tài khoản (khóa/mở khóa, xóa, phân quyền, tra email): ở identity, phải **nhập lại mật khẩu**. Quy tắc giữ nguyên: không ai tác động lên chính mình hoặc Admin; Mod chỉ tác động lên người dùng thường; Admin và Mod đều cấp được quyền Mod cho người dùng thường, chỉ Admin thu hồi quyền Mod. Catalog làm phần của mình khi nhận `identity.user.deleted` (ẩn danh hồ sơ, rời nhóm, bỏ theo dõi, `purge_content` ẩn bài viết/bình luận) và trả lời `GET /internal/users/:id/delete-check` (không xóa Trưởng nhóm duy nhất).
@@ -677,7 +657,7 @@ Email có dạng `<tên ngắn>@novelhub.vn` (ví dụ `admin@novelhub.vn`, `sak
 - Test tự động mới chỉ có `isTokenRevoked` (`catalog/src/middlewares/auth.middleware.test.ts`) và `parseCode` (`catalog/src/controllers/code.controller.test.ts`).
 - Web miễn phí nên **không làm** hệ thống xu, nạp tiền, mua chương hay cấp độ.
 
-- Sao lưu chỉ nằm trên cùng ổ đĩa với web (chưa có bản ngoài máy), xem [Sao lưu & khôi phục](#-sao-lưu--khôi-phục).
+- **Không có sao lưu** (đã bỏ theo quyết định của chủ dự án), xem [Sao lưu](#-sao-lưu).
 
 **Bảo mật (cần xử lý trước khi chạy thật)**
 - **Tài khoản mẫu vẫn dùng mật khẩu `password123`** (kể cả `admin`), bất kể danh sách demo đang tắt. Nếu website đang mở ra Internet (ví dụ qua tunnel), hãy đổi mật khẩu hoặc xóa các tài khoản này.

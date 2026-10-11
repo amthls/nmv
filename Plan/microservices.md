@@ -435,13 +435,13 @@ thùng rác) vẫn được backup giữ lại, gọn và **tìm lại được*
 - Kho lưu trữ cũng phải nằm trong bản sao lưu ngoài máy (3-2-1).
 - Lưu ý pháp lý/riêng tư: người dùng tưởng đã xóa nhưng hệ thống vẫn giữ → ghi rõ trong điều khoản sử dụng; **không** lưu thông tin
   đăng nhập (email, mật khẩu, token) của người dùng vào kho.
-- [ ] Kho lưu trữ: API nhận phần, lưu gói nén + hash, `archived_items` + tìm kiếm, trang Admin, khôi phục từ kho
+- [x] ~~Kho lưu trữ~~: bỏ (2026-10-11, chủ dự án bỏ hẳn backup, `Plan/remove-backup-purge.md`)
 
 - [x] Chốt (2026-10-10): máy **chỉ có một ổ** → chưa có bản ngoài máy; RPO **1 ngày** (chỉ `pg_dump` hằng đêm, **không** WAL);
       giữ bản ngày 14 · tuần 8 · tháng 12. Rủi ro còn lại: hỏng ổ/mất máy là mất cả web lẫn backup (ghi trong README).
 - [x] Container `backup` (postgres:16-alpine + restic, crond): kho restic `./backups` trên host, `RESTIC_PASSWORD` trong `.env` (launch.py tự sinh)
 - [x] `pg_dump` từng database + globals hằng đêm; sao lưu `uploads/`; `restic forget --prune` theo lịch giữ
-- [ ] Đẩy bản ra ngoài máy: hoãn cho tới khi có ổ thứ hai/cloud (`restic copy` sang kho mới là xong)
+- [x] ~~Đẩy bản ra ngoài máy~~: bỏ cùng container backup (2026-10-11)
 - [x] Tự thử khôi phục hằng tuần (`restic check` + khôi phục dump vào DB tạm, so số bảng/dòng) + báo lỗi (thông báo cho Admin, quá 26 giờ không có bản mới)
 - [x] `scripts/migrate.sh` và `launch.py` chụp bản trước khi chạy
 - [x] Script + hướng dẫn khôi phục (`scripts/restore.sh`): đã thử khôi phục DB vào DB riêng và `uploads/` (giống hệt); `--replace` chưa thử trên DB thật
