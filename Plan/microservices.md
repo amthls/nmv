@@ -527,6 +527,7 @@ Bẫy (giai đoạn A):
 - [x] Chịu tải: `ulimit -n` cho container, nginx `worker_connections`/`worker_rlimit_nofile`, chỉ người đăng nhập mới mở kết nối,
       đóng khi tab ẩn lâu, ping ~30s, giới hạn số tab/tài khoản, client kết nối lại **chờ ngẫu nhiên tăng dần**, kênh Redis theo user/hội thoại
 - [ ] **Thử tải thật** (client giả lập bằng Go/k6): 10k → 30k → 100k kết nối giữ lâu + gửi tin + thông báo hàng loạt; ghi RAM/CPU
+      (2026-10-11: 10k và 30k đạt, số liệu ở `Plan/messaging.md` E4; **100k chưa thử**: cần máy riêng cho messaging + client)
       mỗi kết nối, độ trễ; ước tính máy hiện tại (~7,6 GB) chịu ~10–30k, trên 100k cần nhiều bản `messaging-realtime` ở máy riêng
       + nhiều bản cloudflared
 - [x] Cấu trúc "cuộc trò chuyện" (chuyển `direct_messages`, `group_messages`), `last_read_message_id`, phân trang theo id (E2: `last_read_seq`)

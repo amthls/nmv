@@ -99,4 +99,20 @@
     `legacy_imports`, mỗi phần chuyển một lần. amqplib khai báo TTL hàng retry kiểu `short`: Go phải dùng `int16(10000)` cho khớp.
 
 ## E4 thử tải
-- [ ] Client giả lập Go: 10k → 30k kết nối giữ lâu + phát hàng loạt; ghi RAM/CPU mỗi kết nối, độ trễ; ước tính giới hạn máy hiện tại
+- [x] Client giả lập Go: 10k → 30k kết nối giữ lâu + phát hàng loạt; ghi RAM/CPU mỗi kết nối, độ trễ; ước tính giới hạn máy hiện tại
+  - Cách chạy: `docker compose run --rm --no-deps messaging loadtest <N> ws://messaging:8080/ws <giây giữ> <tiền tố>`; một container
+    tối đa ~28k kết nối (cổng nguồn tới một địa chỉ) → 30k = 2 container × 15k, tiền tố khác nhau. Messaging chạy `MESSAGING_MEMORY=3g`
+    lúc thử. Đi thẳng vào messaging (không qua gateway/identity), mỗi kết nối một người.
+  - Đo 2026-10-11 (máy 12 lõi, Docker 7,6 GB):
+
+    | Kết nối | Nối xong | Phát lần 1 (p50 / p95) | Sau 100 s giữ (3 lượt ping) | RAM messaging | CPU |
+    |---|---|---|---|---|---|
+    | 10.000 | 0,8 s | 80 / 100 ms | còn 10.000/10.000, p95 51 ms | 388–441 MB (~40–44 KB/kết nối) | rảnh ~0%, lượt ping ~0,7 lõi chốc lát |
+    | 30.000 | 2,4 s | 112–202 / 191–228 ms | còn 30.000/30.000, p95 78–86 ms | 1,12–1,28 GB (~40 KB/kết nối) | rảnh ~0%, lượt ping ~1,9 lõi chốc lát |
+
+  - Kết luận: `mem_limit` mặc định 512m quá sát ở 10k (441 MB) → đổi thành **768m** (~15k); 30k cần `MESSAGING_MEMORY=1.5g`.
+    Máy này (stack ~1,4 GB lúc rảnh) chịu được ~60k kết nối nếu messaging lấy ~2,6 GB; 100k (~4,3 GB chỉ riêng messaging, cộng client
+    giả lập) không thử được trên một máy: cần messaging chạy nhiều bản ở máy riêng (đã chạy nhiều bản được nhờ Redis `rt:events`).
+  - Chưa đo: đường qua gateway (nginx giữ thêm một kết nối/tab) và cloudflared.
+  - Bẫy: client `coder/websocket` chỉ trả pong khi đang `Read`: client thử tải ngừng đọc thì server cắt sau 45 s (đúng thiết kế) → mỗi
+    kết nối giả phải đọc liên tục như trình duyệt.
