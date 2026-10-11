@@ -413,7 +413,7 @@ services:
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672 # novel.notifications jobs
     ulimits:
       nofile: 65536 # one per open socket
-    mem_limit: ${MESSAGING_MEMORY:-512m} # ~37 KB per open socket (2,000 measured): ~10k sockets
+    mem_limit: ${MESSAGING_MEMORY:-768m} # ~40-44 KB per open socket (10k: 441 MB, 30k: 1.28 GB measured): ~15k sockets; 30k needs 1.5g
     depends_on:
       db-init:
         condition: service_completed_successfully
