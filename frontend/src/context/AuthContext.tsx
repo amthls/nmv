@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { connectRealtime, disconnectRealtime } from '@/lib/realtime';
 import { apiFetch, IDENTITY_URL } from '@/lib/session';
+import { mergeGuestHistory } from '@/lib/readingHistory';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -92,6 +93,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const merged: UserProfile = { ...account, ...(profile || {}), email: account.email, email_verified: account.email_verified };
       setUser(merged);
       cacheUser(merged);
+      mergeGuestHistory(apiFetch);
     } catch (e) {
       console.error('Failed to load the session:', e);
     }

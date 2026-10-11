@@ -143,7 +143,7 @@ func (s *server) reconcile(ctx context.Context) error {
 			logInfo(ctx, fmt.Sprintf("reconcile: dropped %d %s copies", tag.RowsAffected(), t.kind))
 		}
 	}
-	return nil
+	return s.pruneHistory(ctx)
 }
 
 func (s *server) syncLoop(ctx context.Context) {

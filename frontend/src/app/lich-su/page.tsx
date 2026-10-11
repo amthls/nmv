@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import SmartImage from '@/components/common/SmartImage';
 import { useAuth } from '@/context/AuthContext';
-import { getGuestHistory, setGuestHistory } from '@/lib/readingHistory';
+import { getGuestHistory, positionHash, setGuestHistory } from '@/lib/readingHistory';
 import { LIBRARY_URL } from '@/lib/apiJson';
 
 
@@ -362,7 +362,7 @@ export default function ReadingHistoryPage() {
             const storySlug = item.story_slug || item.slug || '';
             const chapterSlug = item.chapter_slug || '';
             const readChapterHref = chapterSlug && storySlug
-              ? `/truyen/${storySlug}/${chapterSlug}`
+              ? `/truyen/${storySlug}/${chapterSlug}${positionHash(item)}`
               : `/truyen/${storySlug}`;
             const storyHref = `/truyen/${storySlug}`;
             const coverUrl = item.story_cover || item.cover_image_url || '';

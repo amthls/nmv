@@ -87,6 +87,8 @@ func main() {
 	}
 
 	go s.syncLoop(ctx)
+	flushed := make(chan struct{})
+	go s.flushLoop(ctx, flushed)
 	go s.consumeIdentity(ctx)
 
 	srv := &http.Server{
@@ -106,6 +108,7 @@ func main() {
 		logError(ctx, err.Error())
 		os.Exit(1)
 	}
+	<-flushed // the last reading positions are written before exiting
 }
 
 // userFrom: the gateway's signed identity headers (same check as the backend's auth.middleware). "" = guest.

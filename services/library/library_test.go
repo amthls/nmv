@@ -156,6 +156,7 @@ func (h *harness) want(status int, user, method, path string, body any) map[stri
 func list(m map[string]any) []any { l, _ := m["data"].([]any); return l }
 
 func TestHistoryFollowsBookmarks(t *testing.T) {
+	ctx := context.Background()
 	h := newHarness(t)
 	h.want(401, "", "GET", "/history", nil)
 	h.want(400, hana, "POST", "/history", map[string]any{"chapter_id": "x"})
@@ -169,6 +170,60 @@ func TestHistoryFollowsBookmarks(t *testing.T) {
 	rows := list(h.want(200, hana, "GET", "/history", nil))
 	if len(rows) != 1 || rows[0].(map[string]any)["chapter_slug"] != "chuong-2" || rows[0].(map[string]any)["group_name"] != "Nhóm" {
 		t.Fatalf("history list (one row per story, its latest chapter): %v", rows)
+	}
+	// positions are buffered: reading one's own history writes them first; the seconds of both posts were added up
+	var scroll float64
+	var secs int
+	h.s.db.QueryRow(ctx, `SELECT scroll_position, time_spent_seconds FROM reading_history WHERE user_id = $1 AND chapter_id = $2`,
+		hana, ch1).Scan(&scroll, &secs)
+	if scroll != 40.5 || secs != 90 {
+		t.Fatalf("flushed position: %v %v", scroll, secs)
+	}
+	h.want(200, yuki, "POST", "/history", map[string]any{"chapter_id": ch1, "scroll_position": 12})
+	if err := h.s.flushPositions(ctx, ""); err != nil {
+		t.Fatal(err)
+	}
+	if n := len(h.s.pos.take("")); n != 0 {
+		t.Fatalf("buffer after flush: %d", n)
+	}
+
+	// guest history merged after sign-in: only newer reads overwrite, unknown chapters and bad items are skipped
+	old := time.Now().Add(-time.Hour).Format(time.RFC3339)
+	m := h.want(200, hana, "POST", "/history/merge", map[string]any{"items": []map[string]any{
+		{"chapter_id": ch1, "read_at": old, "scroll_position": 99},
+		{"chapter_id": "cccccccc-0000-0000-0000-00000000ffff", "read_at": old},
+		{"chapter_id": "x", "read_at": "yesterday"}}})
+	if m["data"].(map[string]any)["merged"].(float64) != 0 {
+		t.Fatalf("an older guest read overwrote the account's: %v", m)
+	}
+	m = h.want(200, hana, "POST", "/history/merge", map[string]any{"items": []map[string]any{
+		{"chapter_id": ch1, "read_at": time.Now().Add(time.Hour).Format(time.RFC3339), "scroll_position": 70}}})
+	h.s.db.QueryRow(ctx, `SELECT scroll_position FROM reading_history WHERE user_id = $1 AND chapter_id = $2`, hana, ch1).Scan(&scroll)
+	if m["data"].(map[string]any)["merged"].(float64) != 1 || scroll != 70 {
+		t.Fatalf("newer guest read: %v %v", m, scroll)
+	}
+
+	// at most 1000 stories per person: the oldest story's rows go
+	if _, err := h.s.db.Exec(ctx, `INSERT INTO reading_history (user_id, story_id, chapter_id, read_at)
+		SELECT $1, gen_random_uuid(), gen_random_uuid(), NOW() FROM generate_series(1, 1000)`, yuki); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.s.pruneHistory(ctx); err != nil {
+		t.Fatal(err)
+	}
+	var kept, keptCh1 int
+	h.s.db.QueryRow(ctx, `SELECT count(DISTINCT story_id), count(*) FILTER (WHERE chapter_id = $2) FROM reading_history WHERE user_id = $1`,
+		yuki, ch1).Scan(&kept, &keptCh1)
+	if kept != 1000 || keptCh1 != 0 {
+		t.Fatalf("prune: %d stories, ch1 rows %d", kept, keptCh1)
+	}
+	h.s.db.Exec(ctx, `DELETE FROM reading_history WHERE user_id = $1`, yuki)
+	// deleting a story from one's history right after reading it: the pending position must not bring it back
+	h.want(200, yuki, "POST", "/history", map[string]any{"chapter_id": ch1, "scroll_position": 5})
+	h.want(200, yuki, "DELETE", "/history/"+storyA, nil)
+	h.s.flushPositions(ctx, "")
+	if l := list(h.want(200, yuki, "GET", "/history", nil)); len(l) != 0 {
+		t.Fatalf("deleted history came back: %v", l)
 	}
 
 	// follow, move to another shelf, unfollow; the backend hears the counts

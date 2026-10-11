@@ -58,6 +58,9 @@ func (s *server) handleUserOverview(w http.ResponseWriter, r *http.Request) erro
 		return notFound("no such user")
 	}
 	ctx := r.Context()
+	if err := s.flushPositions(ctx, id); err != nil {
+		return err
+	}
 	stats, err := s.one(ctx, `SELECT
 		  (SELECT count(DISTINCT story_id) FROM reading_history WHERE user_id = $1)::int AS stories_read,
 		  (SELECT count(*) FROM reading_history WHERE user_id = $1)::int AS chapters_read,

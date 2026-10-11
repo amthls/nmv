@@ -50,5 +50,27 @@ xóa truyện, xóa chương (`workspaceSync`), xóa tài khoản (`identitySync
     truyện cộng chuỗi khi bấm theo dõi (lỗi cũ).
 
 ## G2 `feat/library-reading-position`
-- [ ] Lịch sử gom qua Redis (như lượt xem), `chapter.read` ≤ 1 lần/chương/ngày, `story.followed|unfollowed` (outbox)
-- [ ] Vị trí đọc (% cuộn) + "Đọc tiếp" đúng đoạn; giới hạn ~1.000 truyện/người; gộp lịch sử khách khi đăng nhập
+
+**Thiết kế (chốt 2026-10-11):**
+- Trang đọc gửi `POST /api/library/history {chapter_id, scroll_position}` (% cuộn) mỗi 15 giây nếu đổi và khi rời trang/ẩn tab
+  (`fetch keepalive`). Khách: lưu % vào mục lịch sử trong trình duyệt. Mở chương thì backend vẫn ghi "đã đọc" (`/internal/history`);
+  bỏ lời gọi thừa `POST /api/v1/history` của frontend (404 từ G1).
+- **Gom ghi:** library giữ vị trí trong bộ nhớ (theo người → chương, ghi đè %, cộng giây), ghi xuống DB mỗi 60 giây bằng một câu
+  (`jsonb_to_recordset`), khi tắt service, và **ngay trước khi đọc lịch sử của chính người đó** (`GET /history`, overview hồ sơ) nên
+  không thấy dữ liệu cũ. shortcut: bộ nhớ trong process thay vì Redis (library chạy 1 bản, mất tối đa 60 s vị trí nếu sập); đổi sang
+  Redis khi chạy nhiều bản.
+- **"Đọc tiếp" đúng chỗ:** link ở `/lich-su` và trang truyện thêm `#vt=<%>`; trang đọc thấy `#vt=` thì cuộn tới đó sau khi nội dung hiện.
+- **Giới hạn ~1.000 truyện/người:** đối soát hằng đêm xóa lịch sử của các truyện cũ hơn 1.000 truyện gần nhất.
+- **Gộp lịch sử khách:** đăng nhập xong, frontend gửi `POST /api/library/history/merge {items: [{chapter_id, read_at, scroll_position}]}`
+  (≤ 200 mục, chỉ chương đã đăng, chỉ ghi đè khi mới hơn) rồi xóa danh sách khách trên trình duyệt.
+- **Để giai đoạn H** (chưa ai nhận): sự kiện `chapter.read` (≤ 1 lần/chương/ngày) và `story.followed|unfollowed`; recommender Python
+  là bên nhận đầu tiên, làm cùng lúc để thử được hai đầu.
+
+- [x] library: bộ đệm vị trí + flush (60 s, tắt service, trước khi đọc), `POST /history/merge`, cắt 1.000 truyện trong reconcile, test
+- [x] frontend: gửi vị trí 15 s / rời trang (cả khách), `#vt=` khi mở + link "Đọc tiếp", gộp lịch sử khách khi đăng nhập, bỏ POST thừa
+- [x] Thử: smoke (vị trí, merge), trình duyệt (cuộn → rời → Đọc tiếp đúng chỗ, khách → đăng nhập), README, Branches; PR, tự merge
+  - 2026-10-11: smoke 32/32; trình duyệt: cuộn 60% → rời → link `#vt=60` → mở lại đúng 60%; mục khách gộp vào tài khoản (33%), trình duyệt
+    xóa danh sách khách. Bẫy: `html { scroll-behavior: smooth }` làm `scrollTo` thành hoạt ảnh → dùng `behavior: 'instant'`; nội dung
+    chương dựng chậm → đợi chiều cao trang ổn định rồi mới cuộn; xóa lịch sử phải ghi bộ đệm trước (không thì dòng vừa xóa quay lại).
+    Tab Chrome tự động bị ẩn: không có sự kiện scroll và timer bị hãm, phải phát tay khi thử. Còn lại: trang `/lich-su` mở ngay sau khi
+    rời chương có thể chưa thấy vị trí mới nhất (POST đến sau GET), lần gộp khách hiện ở lần tải sau.

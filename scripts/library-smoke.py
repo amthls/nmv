@@ -5,7 +5,7 @@
 
 --keeper must be able to publish chapters of --story; --reader an ordinary account (same password).
 The reader follows the story, the keeper publishes a throwaway chapter (the reader must be notified), the reader
-reads it (history), bookmarks a line, makes an album with the story, resolves its AL- code; then the chapter is
+reads it (history, scroll position, guest merge), bookmarks a line, makes an album with the story, resolves its AL- code; then the chapter is
 deleted (history + bookmark must go), the album deleted and the follow put back as it was. Exit code 1 on any failure.
 """
 import argparse
@@ -105,6 +105,10 @@ check("read the chapter", st == 200, str(st))
 check("history has it", eventually(lambda: cid in json.dumps(reader.req("GET", f"{L}/history")[1])))
 st, js = reader.req("POST", f"{L}/history", {"chapter_id": cid, "scroll_position": 40})
 check("save history (scroll)", st == 200, f"{st} {js}")
+row = next((h for h in reader.req("GET", f"{L}/history")[1].get("data", []) if h["chapter_id"] == cid), {})
+check("position shows in history at once (buffer written before reading)", float(row.get("scroll_position") or 0) == 40, str(row))
+st, js = reader.req("POST", f"{L}/history/merge", {"items": [{"chapter_id": cid, "read_at": "2020-01-01T00:00:00Z", "scroll_position": 90}]})
+check("guest history merge: an older read does not overwrite", st == 200 and js["data"]["merged"] == 0, f"{st} {js}")
 
 # Line bookmark
 st, js = reader.req("POST", f"{L}/bookmarks", {"story_id": sid, "chapter_id": cid, "line_index": 0, "line_text": "Nội dung thử."})

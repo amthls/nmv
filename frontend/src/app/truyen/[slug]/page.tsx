@@ -36,7 +36,7 @@ import RecommendationRail from '@/components/home/RecommendationRail';
 import { useAuth } from '@/context/AuthContext';
 import RichContent from '@/components/common/RichContent';
 import { stripHtml } from '@/lib/richText';
-import { getGuestHistory } from '@/lib/readingHistory';
+import { getGuestHistory, positionHash } from '@/lib/readingHistory';
 import { chapterUploadHref } from '@/lib/chapterUpload';
 import CodeBadge from '@/components/common/CodeBadge';
 import { LIBRARY_URL } from '@/lib/apiJson';
@@ -58,7 +58,7 @@ export default function StoryDetailPage() {
   const [albumsChanged, setAlbumsChanged] = useState(0); // reloads the albums section
   const [isDeleting, setIsDeleting] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
-  const [lastReadChapter, setLastReadChapter] = useState<{ slug: string; title?: string; chapter_number?: number } | null>(null);
+  const [lastReadChapter, setLastReadChapter] = useState<{ slug: string; title?: string; chapter_number?: number; hash: string } | null>(null);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -112,6 +112,7 @@ export default function StoryDetailPage() {
           slug: found.chapter_slug || found.slug,
           title: found.chapter_title,
           chapter_number: found.chapter_number,
+          hash: positionHash(found),
         });
       } else {
         setLastReadChapter(null); // e.g. after logout, don't keep the previous account's position
@@ -530,7 +531,7 @@ export default function StoryDetailPage() {
                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-2.5">
                   {lastReadChapter ? (
                     <Link
-                      href={`/truyen/${story.slug}/${lastReadChapter.slug}`}
+                      href={`/truyen/${story.slug}/${lastReadChapter.slug}${lastReadChapter.hash}`}
                       className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-snow font-bold text-sm shadow-lg shadow-emerald-500/25 flex items-center gap-2 transition-all hover:scale-[1.03]"
                     >
                       <BookOpen className="w-4 h-4" />
