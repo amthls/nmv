@@ -3,7 +3,7 @@
 - **Mục tiêu:** Giai đoạn E4: thử tải messaging 10k → 30k kết nối
 - **Tạo từ:** `origin/main` @ c0aa8ae, ngày 2026-10-11
 - **Trạng thái:** xong, chờ CI
-- **PR:** (chưa mở)
+- **PR:** https://github.com/amthls/nmv/pull/72
 - **Plan:** `Plan/messaging.md` (E4), `Plan/microservices.md` (giai đoạn E, mục "Thử tải thật")
 
 ## Thay đổi
