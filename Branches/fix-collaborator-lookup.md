@@ -3,7 +3,7 @@
 - **Mục tiêu:** Thêm cộng tác viên lỗi 500: truy vấn cột users.email đã xóa ở migration 026
 - **Tạo từ:** `origin/main` @ 42e7f25, ngày 2026-10-11
 - **Trạng thái:** xong, chờ CI
-- **PR:** (chưa mở)
+- **PR:** https://github.com/amthls/nmv/pull/71
 - **Plan:** không (sửa lỗi nhỏ)
 
 ## Thay đổi
