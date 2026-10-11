@@ -21,7 +21,7 @@ Service chính `catalog` (thư mục `catalog/`, trước đây tên `backend`; 
    đã kiểm tra những gì, link PR, plan liên quan. CI (job `branch-info`) báo đỏ nếu PR thiếu file này.
 3. **PR đã merge thì nhánh đó coi như đóng.** Việc tiếp theo, kể cả sửa nhỏ cho PR vừa merge, phải tạo nhánh mới
    bằng script. Trước khi push, kiểm tra: `git fetch && git log origin/main..HEAD` chỉ chứa commit của việc hiện tại.
-4. Làm xong và đã kiểm tra (test, smoke, trình duyệt) thì **tự commit, push, mở PR vào `main` và tự merge** (squash),
+4. Làm xong và đã kiểm tra trên máy (test, `scripts/*-smoke.py`, trình duyệt; CI không còn job smoke) thì **tự commit, push, mở PR vào `main` và tự merge** (squash),
    không cần chờ chủ dự án duyệt (chủ dự án quyết định 2026-10-10). Không merge khi CI có check đỏ. Không xếp chồng PR
    (PR nhắm vào nhánh khác `main`): mỗi việc một PR thẳng vào `main`. Commit kết thúc bằng dòng Co-Authored-By.
 5. Không bao giờ commit `.env` hay token. Token bị dán vào chat coi như đã lộ: nhắc chủ dự án thu hồi.
