@@ -3,7 +3,7 @@
 - **Mục tiêu:** Giai đoạn I1: xóa bảng cũ đã chuyển sang service khác (sau import-legacy)
 - **Tạo từ:** `origin/main` @ 6e61bb7, ngày 2026-10-11
 - **Trạng thái:** xong, chờ chủ dự án chạy `scripts/migrate.sh` trên DB local
-- **PR:** (chưa mở)
+- **PR:** https://github.com/amthls/nmv/pull/78
 - **Plan:** `Plan/catalog.md` (I1)
 
 ## Thay đổi
