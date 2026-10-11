@@ -42,7 +42,10 @@ let stopped = false;
 export const queueEnabled = () => RABBITMQ_URL.length > 0;
 export const queueStatus = (): 'disabled' | 'up' | 'down' => (!queueEnabled() ? 'disabled' : publishChannel ? 'up' : 'down');
 
+const EVENTS_EXCHANGE = 'novelhub.events';
+
 async function assertTopology(ch: any) {
+  await ch.assertExchange(EVENTS_EXCHANGE, 'topic', { durable: true });
   await ch.assertQueue(DLQ, { durable: true });
   await ch.assertQueue(RETRY_QUEUE, {
     durable: true,
@@ -85,6 +88,22 @@ export function connectQueue(): void {
   })().finally(() => {
     connecting = false;
   });
+}
+
+/**
+ * An event on novelhub.events ({event_id, type, version, occurred_at, request_id, data}, schemas in events/), sent
+ * without an outbox: only for behaviour counts where a lost one is fine (RabbitMQ down = dropped). Never throws.
+ */
+export function publishEvent(type: string, data: Record<string, unknown>): void {
+  if (!publishChannel) return;
+  const eventId = crypto.randomUUID();
+  const body = { event_id: eventId, type, version: 1, occurred_at: new Date().toISOString(), request_id: currentRequestId() || '', data };
+  try {
+    publishChannel.publish(EVENTS_EXCHANGE, type, Buffer.from(JSON.stringify(body)),
+      { contentType: 'application/json', messageId: eventId }, () => {}); // confirm not awaited
+  } catch (err: any) {
+    console.warn(`[Queue] ${type} dropped:`, err.message);
+  }
 }
 
 export async function closeQueue(): Promise<void> {

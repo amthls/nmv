@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
-import { pool } from '../../config/db';
+import { publishEvent } from './queue.service';
 
 /**
  * Anonymous visitor id (cookie `nh_vid`), so guests get session-based recommendations and their
@@ -27,16 +27,16 @@ export function visitorCookie(req: Request, res: Response, next: NextFunction) {
 
 export const visitorIdOf = (req: Request): string | null => (req as any).visitorId || null;
 
-export type RecEventKind = 'view' | 'read' | 'impression' | 'click';
-
-/** Fire-and-forget: a lost event must never break the page that produced it. */
-export function logRecEvent(e: {
-  userId?: string | null; visitorId?: string | null; storyId: string; chapterId?: string | null;
-  kind: RecEventKind; source?: string | null;
-}) {
+/**
+ * A story page or chapter was opened: catalog.story.viewed / catalog.chapter.read for the recommender
+ * (schemas in events/). Fire-and-forget, never breaks the page.
+ */
+export function publishBehavior(e: { userId?: string | null; visitorId?: string | null; storyId: string; chapterId?: string }) {
   if (!e.userId && !e.visitorId) return;
-  pool.query(
-    `INSERT INTO rec_events (user_id, visitor_id, story_id, chapter_id, kind, source) VALUES ($1, $2, $3, $4, $5, $6)`,
-    [e.userId || null, e.userId ? null : e.visitorId, e.storyId, e.chapterId || null, e.kind, e.source || null],
-  ).catch((err) => console.error('[rec_events] insert failed:', err.message));
+  publishEvent(e.chapterId ? 'catalog.chapter.read' : 'catalog.story.viewed', {
+    ...(e.userId ? { user_id: e.userId } : { visitor_id: e.visitorId }),
+    story_id: e.storyId,
+    ...(e.chapterId ? { chapter_id: e.chapterId } : {}),
+    at: new Date().toISOString(),
+  });
 }

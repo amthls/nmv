@@ -9,7 +9,6 @@
     "test": "tsx --test src/**/*.test.ts",
     "start": "node dist/server.js",
     "db:check": "tsx scripts/check-db.ts",
-    "sim:readers": "tsx src/scripts/simulateReaders.ts",
     "db:import": "tsx scripts/import-sql.ts",
     "db:pull": "prisma db pull",
     "db:generate": "prisma generate",

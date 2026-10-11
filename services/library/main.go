@@ -87,6 +87,7 @@ func main() {
 	}
 
 	go s.syncLoop(ctx)
+	go s.publishLoop(ctx)
 	flushed := make(chan struct{})
 	go s.flushLoop(ctx, flushed)
 	go s.consumeIdentity(ctx)

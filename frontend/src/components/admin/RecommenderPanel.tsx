@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Brain, Loader2, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+import { REC_URL } from '@/lib/apiJson';
 
 const LABELS: Record<string, string> = {
   blend: 'Mô hình trộn (đang dùng)',
@@ -58,14 +58,14 @@ export default function RecommenderPanel() {
   const [msg, setMsg] = useState<string | null>(null);
 
   const load = () =>
-    authFetch(`${API_BASE_URL}/recommendations/status`).then((r) => r.json()).then((j) => j.success && setRuns(j.data)).catch(() => {});
+    authFetch(`${REC_URL}/status`).then((r) => r.json()).then((j) => j.success && setRuns(j.data)).catch(() => {});
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const train = async () => {
     setBusy(true);
     setMsg(null);
     try {
-      const j = await (await authFetch(`${API_BASE_URL}/recommendations/train`, { method: 'POST' })).json();
+      const j = await (await authFetch(`${REC_URL}/train`, { method: 'POST' })).json();
       setMsg(j.message || (j.success ? 'Đã huấn luyện.' : 'Thất bại.'));
       load();
     } catch (e: any) {
@@ -87,7 +87,7 @@ export default function RecommenderPanel() {
             <Brain className="w-5 h-5 text-brand-400" /> Mô hình gợi ý truyện
           </h3>
           <p className="text-xs text-gray-400 mt-1">
-            Tự huấn luyện lại mỗi 30 phút trong worker. Điểm đo bằng cách giấu truyện đọc gần nhất của mỗi người rồi xem mô hình có đoán ra trong top 10 không.
+            Tự huấn luyện lại mỗi 30 phút (service recommender). Điểm đo bằng cách giấu truyện đọc gần nhất của mỗi người rồi xem mô hình có đoán ra trong top 10 không.
           </p>
         </div>
         <button

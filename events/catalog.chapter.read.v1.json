@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "catalog.chapter.read.v1.json",
+  "title": "catalog.chapter.read",
+  "description": "A chapter was opened for reading. Published by the backend (catalog) straight to the exchange, without an outbox: behaviour counts, a lost one is acceptable. Exactly one of user_id (signed in) or visitor_id (anonymous cookie nh_vid) is set.",
+  "allOf": [
+    {
+      "$ref": "envelope.v1.json"
+    }
+  ],
+  "properties": {
+    "type": {
+      "const": "catalog.chapter.read"
+    },
+    "data": {
+      "type": "object",
+      "required": [
+        "story_id",
+        "chapter_id",
+        "at"
+      ],
+      "properties": {
+        "user_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "visitor_id": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{32}$"
+        },
+        "story_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "chapter_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "user_id"
+          ]
+        },
+        {
+          "required": [
+            "visitor_id"
+          ]
+        }
+      ]
+    }
+  }
+}

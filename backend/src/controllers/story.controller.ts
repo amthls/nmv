@@ -1,7 +1,7 @@
 ﻿import { Request, Response } from 'express';
 import { pool } from '../config/db';
 import { recordView } from '../services/viewCounter';
-import { logRecEvent, visitorIdOf } from '../services/recommender/events';
+import { publishBehavior, visitorIdOf } from '../services/behaviorEvents';
 import { AuthenticatedRequest, internalAuthHeader } from '../middlewares/auth.middleware';
 import { searchStoryIds, indexStory, removeStoryFromIndex } from '../services/search.service';
 import { sanitizeRichText } from '../utils/richText';
@@ -635,7 +635,7 @@ export const getStoryBySlug = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Không tìm thấy truyện' });
     }
 
-    logRecEvent({ userId: currentUserId, visitorId: visitorIdOf(req), storyId: story.id, kind: 'view' });
+    publishBehavior({ userId: currentUserId, visitorId: visitorIdOf(req), storyId: story.id });
 
     res.json({
       success: true,
@@ -734,7 +734,7 @@ export const getChapterBySlug = async (req: Request, res: Response) => {
         .catch((err) => console.error('[library] reading history not saved:', err.message));
     }
 
-    logRecEvent({ userId: currentUserId, visitorId: visitorIdOf(req), storyId: story.id, chapterId: chapter.id, kind: 'read' });
+    publishBehavior({ userId: currentUserId, visitorId: visitorIdOf(req), storyId: story.id, chapterId: chapter.id });
 
     recordView(story.id, chapter.id);
 

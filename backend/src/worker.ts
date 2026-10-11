@@ -1,7 +1,6 @@
 import './config/env';
 import { pool } from './config/db';
 import { connectQueue, closeQueue } from './services/queue.service';
-import { scheduleRecommender } from './services/recommender/train';
 import { flushViews } from './services/viewCounter';
 import { startIdentityConsumer } from './services/identitySync';
 import { startWorkspaceConsumer } from './services/workspaceSync';
@@ -41,7 +40,6 @@ async function main() {
   }
 
   // Recommendation models: retrained on a timer in this process, not in the API
-  if (process.env.REC_TRAINING !== 'off') scheduleRecommender();
 
   // Copies of identity/workspace data and the event pipeline checked every 6 hours (admin notification if off)
   scheduleReconcile();

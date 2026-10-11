@@ -135,7 +135,7 @@ keeper.req("POST", f"{L}/albums/{aid}/save")
 # Profile overview comes from library
 st, js = reader.req("GET", "/api/v1/profile/me")
 check("profile has library stats", st == 200 and aid in json.dumps(js), str(st))
-st, _ = Client().req("GET", "/api/v1/recommendations/home")
+st, _ = Client().req("GET", "/api/rec/home")
 check("recommendations still answer", st == 200, str(st))
 
 # Deleting the chapter purges its history + bookmark

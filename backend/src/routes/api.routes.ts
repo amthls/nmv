@@ -63,13 +63,6 @@ import {
   offerDraft,
 } from '../controllers/chapter.controller';
 
-import {
-  getHomeRecommendations,
-  getRelatedStories,
-  postRecEvents,
-  trainNow,
-  getRecStatus
-} from '../controllers/recommendation.controller';
 import { getBackupStatus } from '../controllers/backup.controller';
 import { queueStatus } from '../services/queue.service';
 import { cacheJson } from '../middlewares/cache';
@@ -151,13 +144,6 @@ router.post('/drafts/:id/offer', requireAuth, offerDraft);
 
 // Albums: named story lists, shareable by link, saveable and copyable by other users
 
-// Recommendations (trained by the worker; see services/recommender)
-const recEventLimiter = perUserLimiter({ windowMs: 60_000, limit: 120, message: 'Quá nhiều yêu cầu.' });
-router.get('/recommendations/home', optionalAuth, getHomeRecommendations);
-router.get('/recommendations/related/:storyId', optionalAuth, getRelatedStories);
-router.post('/recommendations/events', optionalAuth, recEventLimiter, postRecEvents);
-router.post('/recommendations/train', requireAuth, requireRole('admin'), trainNow);
-router.get('/recommendations/status', requireAuth, requireRole('admin'), getRecStatus);
 router.get('/admin/backup-status', requireAuth, requireRole('admin'), getBackupStatus);
 
 // Comments, violation reports, removed content, Fandom posts: the community service (/api/community/*)

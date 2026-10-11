@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "library.album.story_added.v1.json",
+  "title": "library.album.story_added",
+  "description": "A story was put into one of the user's albums. Published by library (outbox written by triggers). Consumers keep the newest state per row by `at`, so out-of-order delivery cannot undo a later change.",
+  "allOf": [
+    {
+      "$ref": "envelope.v1.json"
+    }
+  ],
+  "properties": {
+    "type": {
+      "const": "library.album.story_added"
+    },
+    "data": {
+      "type": "object",
+      "required": [
+        "user_id",
+        "album_id",
+        "story_id",
+        "at"
+      ],
+      "properties": {
+        "user_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "album_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "story_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  }
+}
