@@ -5,6 +5,7 @@ import { flushViews } from './services/viewCounter';
 import { startIdentityConsumer } from './services/identitySync';
 import { startWorkspaceConsumer } from './services/workspaceSync';
 import { scheduleReconcile } from './services/reconcile';
+import { scheduleHotShelf } from './services/hotShelf';
 
 /**
  * Background worker: `node dist/worker.js` (its own container in docker-compose, same image as the API).
@@ -43,6 +44,8 @@ async function main() {
 
   // Copies of identity/workspace data and the event pipeline checked every 6 hours (admin notification if off)
   scheduleReconcile();
+  // "Đang hot" shelf precomputed into Redis every 2 minutes
+  scheduleHotShelf();
 
   console.log('[Worker] running');
 

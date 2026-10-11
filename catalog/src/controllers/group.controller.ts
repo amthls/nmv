@@ -720,10 +720,12 @@ export const rejectJoinRequest = async (req: AuthenticatedRequest, res: Response
 };
 
 const WORKFLOW_STEPS = ['raw', 'translate', 'edit', 'proofread'];
+const MERGER_ROLES = ['mod', 'translator', 'editor', 'raw_provider', 'proofreader', 'member']; // CHECK in migration 028
 
 /**
- * PUT /groups/:id/workflow {steps}: the steps a chapter of this group goes through before a story keeper merges it
- * (Plan/chapter-workspace.md, stage 4b). Kept in the fixed order raw -> translate -> edit -> proofread. Leader/mod only.
+ * PUT /groups/:id/workflow {steps, mergers?}: the steps a chapter of this group goes through before a story keeper merges it
+ * (Plan/chapter-workspace.md, stage 4b), kept in the fixed order raw -> translate -> edit -> proofread, and the roles besides
+ * the leader that may merge (Plan/catalog.md, I3). Leader/mod only.
  */
 export const updateGroupWorkflow = async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -731,13 +733,23 @@ export const updateGroupWorkflow = async (req: AuthenticatedRequest, res: Respon
     if (!isUuid(id)) return res.status(404).json({ success: false, message: 'Nhóm dịch không tồn tại' });
     const actor = await getGroupActor(req, id);
     if (!actor.isManager) return res.status(403).json({ success: false, message: 'Chỉ Trưởng nhóm/Mod nhóm đổi được quy trình.' });
-    const steps = req.body?.steps;
+    const { steps, mergers } = req.body || {};
     if (!Array.isArray(steps) || steps.some((s) => !WORKFLOW_STEPS.includes(s))) throw new InputError('Bước quy trình không hợp lệ.');
     const ordered = WORKFLOW_STEPS.filter((s) => steps.includes(s));
     if (ordered.length === 0) throw new InputError('Quy trình cần ít nhất một bước trước khi gộp.');
-    const r = await pool.query(`UPDATE translation_groups SET workflow = $1, updated_at = NOW() WHERE id = $2 RETURNING workflow`, [ordered, id]);
+    // who besides the leader merges (the story owner and the leader always do); omitted: unchanged
+    if (mergers !== undefined && (!Array.isArray(mergers) || mergers.some((m) => !MERGER_ROLES.includes(m)))) {
+      throw new InputError('Vai trò được gộp không hợp lệ.');
+    }
+    if (mergers !== undefined && !actor.isLeader) {
+      return res.status(403).json({ success: false, message: 'Chỉ Trưởng nhóm đổi được ai được gộp.' });
+    }
+    const r = await pool.query(
+      `UPDATE translation_groups SET workflow = $1, mergers = COALESCE($3, mergers), updated_at = NOW() WHERE id = $2 RETURNING workflow, mergers`,
+      [ordered, id, mergers === undefined ? null : MERGER_ROLES.filter((m) => mergers.includes(m))],
+    );
     if (r.rows.length === 0) return res.status(404).json({ success: false, message: 'Nhóm dịch không tồn tại' });
-    res.json({ success: true, message: 'Đã lưu quy trình của nhóm.', data: { workflow: r.rows[0].workflow } });
+    res.json({ success: true, message: 'Đã lưu quy trình của nhóm.', data: { workflow: r.rows[0].workflow, mergers: r.rows[0].mergers } });
   } catch (error: any) {
     sendError(res, error);
   }
