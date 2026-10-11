@@ -3,7 +3,7 @@
 - **Mục tiêu:** Bỏ container backup, code và image (chủ dự án không cần)
 - **Tạo từ:** `origin/main` @ b5d5c3d, ngày 2026-10-11
 - **Trạng thái:** xong
-- **PR:** (chưa mở)
+- **PR:** https://github.com/amthls/nmv/pull/83
 - **Plan:** `Plan/remove-backup-purge.md` (nhánh 1)
 
 ## Thay đổi
