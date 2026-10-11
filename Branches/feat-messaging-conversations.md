@@ -3,7 +3,7 @@
 - **Mục tiêu:** Tin nhắn riêng + chat nhóm chuyển sang service messaging (giai đoạn E2)
 - **Tạo từ:** `origin/main` @ d9d4e5c, ngày 2026-10-11
 - **Trạng thái:** xong, chờ CI
-- **PR:** (chưa mở)
+- **PR:** https://github.com/amthls/nmv/pull/69
 - **Plan:** `Plan/messaging.md` (E2), `Plan/microservices.md` (giai đoạn E)
 
 ## Thay đổi
