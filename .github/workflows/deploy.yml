@@ -36,13 +36,13 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/build-push-action@v6
         with:
-          context: backend
+          context: catalog
           push: true
           tags: |
-            ${{ steps.reg.outputs.registry }}/nmv-backend:${{ github.sha }}
-            ${{ steps.reg.outputs.registry }}/nmv-backend:latest
-          cache-from: type=gha,scope=backend
-          cache-to: type=gha,scope=backend,mode=max
+            ${{ steps.reg.outputs.registry }}/nmv-catalog:${{ github.sha }}
+            ${{ steps.reg.outputs.registry }}/nmv-catalog:latest
+          cache-from: type=gha,scope=catalog
+          cache-to: type=gha,scope=catalog,mode=max
       - uses: docker/build-push-action@v6
         with:
           context: frontend
@@ -133,8 +133,8 @@ jobs:
             cd "${{ secrets.DEPLOY_PATH }}"
             git pull --ff-only
             export IMAGE_TAG="${{ github.sha }}"
-            docker compose pull backend worker identity workspace media messaging community library recommender frontend
+            docker compose pull catalog worker identity workspace media messaging community library recommender frontend
             sh scripts/migrate.sh   # schema first: the new code may need it (Postgres is already running)
             docker compose up -d --no-build
             for i in $(seq 1 30); do curl -fsS http://localhost:3000/api/v1/health >/dev/null && exit 0; sleep 5; done
-            echo "health check failed" && docker compose logs --tail 100 backend && exit 1
+            echo "health check failed" && docker compose logs --tail 100 catalog && exit 1

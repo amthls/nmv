@@ -1,5 +1,5 @@
 {
-  "name": "novel-platform-backend",
+  "name": "novel-platform-catalog",
   "version": "1.0.0",
   "description": "RESTful API Backend for Novel & Manga Platform",
   "main": "dist/server.js",

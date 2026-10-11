@@ -6,17 +6,17 @@
   "scripts": {
     "dev": "docker compose up -d --build",
     "dev:local": "concurrently -n \"BACKEND,FRONTEND\" -c \"blue,magenta\" \"yarn dev:be\" \"yarn dev:fe\"",
-    "dev:be": "yarn --cwd backend dev",
+    "dev:be": "yarn --cwd catalog dev",
     "dev:fe": "yarn --cwd frontend dev",
     "up": "docker compose up -d",
     "down": "docker compose down",
     "restart": "docker compose restart",
     "logs": "docker compose logs -f",
     "build": "docker compose build",
-    "db:check": "yarn --cwd backend db:check",
-    "db:import": "yarn --cwd backend db:import",
-    "db:studio": "yarn --cwd backend db:studio",
-    "db:pull": "yarn --cwd backend db:pull",
+    "db:check": "yarn --cwd catalog db:check",
+    "db:import": "yarn --cwd catalog db:import",
+    "db:studio": "yarn --cwd catalog db:studio",
+    "db:pull": "yarn --cwd catalog db:pull",
     "pgadmin": "docker compose --profile tools up -d pgadmin"
   },
   "devDependencies": {

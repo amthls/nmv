@@ -33,7 +33,7 @@ const MEDIA_URL = '/api/media'; // uploads and EPUB/PDF downloads: the media ser
 const MAX_IMAGE_BYTES = 25 * 1024 * 1024; // same limit as the API
 
 // The server only keeps: p, br, strong/b, em/i, u, s, h2-h4, ul/ol/li, blockquote, a, hr,
-// figure/figcaption and <img> of files uploaded to this site (backend/src/utils/richText.ts).
+// figure/figcaption and <img> of files uploaded to this site (catalog/src/utils/richText.ts).
 // Keep the toolbar within that set.
 export interface RichTextEditorProps {
   value: string;

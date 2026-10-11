@@ -10,7 +10,7 @@ postgres_data/
 logs/
 uploads/manga/
 exports/
-backend/exports/
+catalog/exports/
 backups/
 scripts/__pycache__/
 __pycache__/

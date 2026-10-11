@@ -10,7 +10,7 @@ Usage:
     python3 launch.py crawl      # run the MangaDex importer now, in the foreground
     python3 launch.py update     # git pull, then rebuild only if this machine runs an old build
 
-Old-build detection: after each build a fingerprint of the source (backend/, frontend/, nginx/,
+Old-build detection: after each build a fingerprint of the source (catalog/, frontend/, nginx/,
 docker-compose.yml) is saved in .build-stamp.json. "up" and "update" compare it with the code on
 disk and report when the running images are older than the code. "update" first pulls the latest
 commits (fast-forward only, skipped when there are local changes) and rebuilds only when needed.
@@ -51,11 +51,11 @@ CRAWLER_LOG = os.path.join(ROOT, "logs", "crawler.log")
 MANGA_DIR = os.path.join(ROOT, "uploads", "manga")
 BUILD_STAMP = os.path.join(ROOT, ".build-stamp.json")
 # What goes into the Docker images; generated folders are skipped
-BUILD_INPUTS = ["backend", "frontend", "nginx", "docker-compose.yml"]
+BUILD_INPUTS = ["catalog", "frontend", "nginx", "docker-compose.yml"]
 SKIP_DIRS = {"node_modules", ".next", "dist", "build", "__pycache__", ".git"}
 SKIP_FILES = {"tsconfig.tsbuildinfo"}
 
-SERVICES = ["postgres", "search", "rabbitmq", "backend", "worker", "media", "frontend", "gateway"]
+SERVICES = ["postgres", "search", "rabbitmq", "catalog", "worker", "media", "frontend", "gateway"]
 
 GREEN, RED, YELLOW, BOLD, RESET = "\033[32m", "\033[31m", "\033[33m", "\033[1m", "\033[0m"
 if not sys.stdout.isatty():
@@ -114,8 +114,8 @@ def ensure_env():
             env = read_env(ENV_FILE)
         # identity service secrets: added to older .env files instead of refusing to start
         added = {k: secrets.token_hex(32) for k in ("IDENTITY_DB_PASSWORD", "IDENTITY_JWT_SECRET", "WORKSPACE_DB_PASSWORD", "MEDIA_DB_PASSWORD", "MESSAGING_DB_PASSWORD", "COMMUNITY_DB_PASSWORD", "LIBRARY_DB_PASSWORD", "RECOMMENDER_DB_PASSWORD",
-                                                         "USER_SIG_KEY_BACKEND", "USER_SIG_KEY_WORKSPACE", "USER_SIG_KEY_MEDIA", "USER_SIG_KEY_MESSAGING", "USER_SIG_KEY_COMMUNITY", "USER_SIG_KEY_LIBRARY", "USER_SIG_KEY_RECOMMENDER",
-                                                         "INTERNAL_KEY_BACKEND", "INTERNAL_KEY_IDENTITY", "INTERNAL_KEY_WORKSPACE", "INTERNAL_KEY_MESSAGING", "INTERNAL_KEY_COMMUNITY", "INTERNAL_KEY_LIBRARY")
+                                                         "USER_SIG_KEY_CATALOG", "USER_SIG_KEY_WORKSPACE", "USER_SIG_KEY_MEDIA", "USER_SIG_KEY_MESSAGING", "USER_SIG_KEY_COMMUNITY", "USER_SIG_KEY_LIBRARY", "USER_SIG_KEY_RECOMMENDER",
+                                                         "INTERNAL_KEY_CATALOG", "INTERNAL_KEY_IDENTITY", "INTERNAL_KEY_WORKSPACE", "INTERNAL_KEY_MESSAGING", "INTERNAL_KEY_COMMUNITY", "INTERNAL_KEY_LIBRARY")
                  if not env.get(k) or env[k] == "change-me"}
         if added:
             set_env_values(added)
@@ -157,11 +157,11 @@ def ensure_env():
         "ELASTIC_PASSWORD": secrets.token_hex(24),
         "IDENTITY_DB_PASSWORD": secrets.token_hex(32),
         "IDENTITY_JWT_SECRET": secrets.token_hex(32),
-        "USER_SIG_KEY_BACKEND": secrets.token_hex(32),
+        "USER_SIG_KEY_CATALOG": secrets.token_hex(32),
         "USER_SIG_KEY_WORKSPACE": secrets.token_hex(32),
         "USER_SIG_KEY_MEDIA": secrets.token_hex(32),
         "USER_SIG_KEY_MESSAGING": secrets.token_hex(32),
-        "INTERNAL_KEY_BACKEND": secrets.token_hex(32),
+        "INTERNAL_KEY_CATALOG": secrets.token_hex(32),
         "INTERNAL_KEY_IDENTITY": secrets.token_hex(32),
         "INTERNAL_KEY_WORKSPACE": secrets.token_hex(32),
         "INTERNAL_KEY_MESSAGING": secrets.token_hex(32),
@@ -260,7 +260,7 @@ def check_ports(env):
         return  # ports are probably held by our own stack
     ports = {
         "gateway": int(env.get("GATEWAY_PORT", 3000)),
-        "backend": int(env.get("PORT", 5000)),
+        "catalog": int(env.get("PORT", 5000)),
         "postgres": int(env.get("POSTGRES_PORT", 5432)),
         "search": int(env.get("SEARCH_PORT", 9201)),
         "rabbitmq-ui": int(env.get("RABBITMQ_MANAGEMENT_PORT", 15673)),
@@ -423,7 +423,7 @@ def seed_accounts():
     return res.returncode == 0, summary
 
 
-# Sample-data seeders from backend/scripts, run in order inside a one-off backend container.
+# Sample-data seeders from catalog/scripts, run in order inside a one-off catalog container.
 SEEDERS = [
     ("sample stories, volumes, chapters", ["npx", "tsx", "scripts/seed-stories.ts"]),
 ]
@@ -441,13 +441,13 @@ def story_count(env):
 
 def run_seeders():
     """The runtime image only ships dist/, so mount the scripts."""
-    backend = os.path.join(ROOT, "backend")
+    catalog = os.path.join(ROOT, "catalog")
     all_ok = True
     for desc, cmd in SEEDERS:
         res = subprocess.run(
             ["docker", "compose", "run", "--rm", "--no-deps", "-T",
-             "-v", f"{backend}/scripts:/app/scripts:ro",
-             "backend", *cmd],
+             "-v", f"{catalog}/scripts:/app/scripts:ro",
+             "catalog", *cmd],
             cwd=ROOT, capture_output=True, text=True,
         )
         if res.returncode == 0:
@@ -455,8 +455,8 @@ def run_seeders():
         else:
             all_ok = False
             fail(f"seed {desc}: {(res.stderr or res.stdout).strip()[-400:]}")
-    # novelsearch is fully re-synced only when the backend starts
-    compose("restart", "backend", capture=True, check=False)
+    # novelsearch is fully re-synced only when catalog starts
+    compose("restart", "catalog", capture=True, check=False)
     return all_ok
 
 
@@ -532,13 +532,13 @@ def run_checks(env, timeout, seed=None):
     def backend_up():
         code, body = http("GET", f"{be}/api/v1/health")
         return code == 200, f"{code} {body[:120]}"
-    passed, detail = wait_until("backend /health", backend_up, timeout)
+    passed, detail = wait_until("catalog /health", backend_up, timeout)
     queue = ""
     if passed:
         queue = json.loads(detail.split(" ", 1)[1]).get("queue", "?")
-    record("backend  GET /api/v1/health", passed, f"(queue={queue})" if passed else detail)
+    record("catalog  GET /api/v1/health", passed, f"(queue={queue})" if passed else detail)
     if passed and queue != "up":
-        record("backend  RabbitMQ connection", False, f"queue={queue}; notification jobs go straight to messaging", soft=True)
+        record("catalog  RabbitMQ connection", False, f"queue={queue}; notification jobs go straight to messaging", soft=True)
 
     # Migrations need Postgres up; run them once we know the DB is reachable
     if st.get("postgres", ("",))[0] == "running":
@@ -549,8 +549,8 @@ def run_checks(env, timeout, seed=None):
         if seed is True or (seed is None and count == 0):
             info(f"Seeding sample data ({count} stories in DB)...")
             record("sample data seeded", run_seeders())
-            passed, detail = wait_until("backend restart", backend_up, timeout)
-            record("backend  healthy after seeding", passed, "" if passed else detail)
+            passed, detail = wait_until("catalog restart", backend_up, timeout)
+            record("catalog  healthy after seeding", passed, "" if passed else detail)
         elif seed is None:
             info(f"Database already has {count} stories, skipping seeders (use --seed to force)")
 
@@ -619,7 +619,7 @@ def run_checks(env, timeout, seed=None):
             pass
     record("api      GET /api/v1/stories (DB read)", code == 200, f"({code}, {count} stories)" if count is not None else f"({code})")
     if count == 0:
-        record("sample data", False, "no stories in DB (sql/database.sql seeds none; see backend/scripts/seed-stories.ts)", soft=True)
+        record("sample data", False, "no stories in DB (sql/database.sql seeds none; see catalog/scripts/seed-stories.ts)", soft=True)
 
     code, body = http("GET", f"{gw}/api/v1/stories/explore?q=a")
     record("api      GET /api/v1/stories/explore?q=a (search)", code == 200, f"({code})")

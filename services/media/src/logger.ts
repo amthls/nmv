@@ -6,7 +6,7 @@ import type { Request, Response, NextFunction } from 'express';
 /**
  * One JSON line per log entry: {time, level, service, request_id, msg, ...fields}. Importing this module
  * reroutes console.* through it, so existing console.log/error calls get the same format, the current
- * request_id and redaction for free. Loaded first by config.ts. (Copy of backend/src/utils/logger.ts.)
+ * request_id and redaction for free. Loaded first by config.ts. (Copy of catalog/src/utils/logger.ts.)
  */
 const SERVICE = process.env.SERVICE_NAME || 'media';
 const ctx = new AsyncLocalStorage<string>();

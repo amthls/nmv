@@ -8,7 +8,7 @@ import type { Request, Response, NextFunction } from 'express';
  * reroutes console.* through it, so existing console.log/error calls get the same format, the current
  * request_id and redaction for free. Loaded first by config/env.ts.
  */
-const SERVICE = process.env.SERVICE_NAME || 'backend';
+const SERVICE = process.env.SERVICE_NAME || 'catalog';
 const ctx = new AsyncLocalStorage<string>();
 
 export const currentRequestId = () => ctx.getStore();

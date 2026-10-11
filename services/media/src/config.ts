@@ -5,10 +5,10 @@ import { Pool } from 'pg';
 
 export const PORT = Number(process.env.PORT || 8080);
 export const IS_PROD = process.env.NODE_ENV === 'production';
-export const BACKEND_URL = (process.env.BACKEND_INTERNAL_URL || 'http://backend:5000').replace(/\/+$/, '');
-// USER_SIG_KEY_MEDIA: identity signs the gateway's X-User-* for us alone; INTERNAL_KEY_BACKEND: our calls to the backend
+export const BACKEND_URL = (process.env.CATALOG_INTERNAL_URL || 'http://catalog:5000').replace(/\/+$/, '');
+// USER_SIG_KEY_MEDIA: identity signs the gateway's X-User-* for us alone; INTERNAL_KEY_CATALOG: our calls to the backend
 export const USER_SIG_KEY = process.env.USER_SIG_KEY_MEDIA || '';
-export const BACKEND_KEY = process.env.INTERNAL_KEY_BACKEND || '';
+export const BACKEND_KEY = process.env.INTERNAL_KEY_CATALOG || '';
 export const UPLOAD_DIR = path.resolve(process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads'));
 export const EXPORT_DIR = path.resolve(process.env.EXPORT_DIR || path.join(process.cwd(), 'exports'));
 export const CACHE_DIR = path.resolve(process.env.IMAGE_CACHE_DIR || path.join(process.cwd(), '.cache', 'images'));

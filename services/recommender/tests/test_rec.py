@@ -153,7 +153,7 @@ def test_api(conn):
     seed_catalogue(conn)
     users = seed_readers(conn)
     train(conn)
-    cfg = Config({"RECOMMENDER_DATABASE_URL": DB, "USER_SIG_KEY_RECOMMENDER": KEY, "INTERNAL_KEY_BACKEND": "b" * 32,
+    cfg = Config({"RECOMMENDER_DATABASE_URL": DB, "USER_SIG_KEY_RECOMMENDER": KEY, "INTERNAL_KEY_CATALOG": "b" * 32,
                   "INTERNAL_KEY_LIBRARY": "l" * 32, "LIBRARY_INTERNAL_URL": "http://127.0.0.1:9"})  # library down: empty history
     pool = ConnectionPool(DB, kwargs={"row_factory": dict_row, "autocommit": True}, open=True)
     with TestClient(create_app(cfg, pool=pool, background=False)) as c:

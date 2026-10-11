@@ -1043,7 +1043,7 @@ def main():
     p.add_argument("--sources", default=",".join(SOURCES), help=f"comma-separated, from: {', '.join(SOURCES)}")
     p.add_argument("--max-failures", type=int, default=8, help="drop a source after this many failed imports in a row (default 8)")
     p.add_argument("--dry-run", action="store_true", help="list what would be imported, write nothing")
-    p.add_argument("--no-reindex", action="store_true", help="don't restart the backend to refresh search afterwards")
+    p.add_argument("--no-reindex", action="store_true", help="don't restart catalog to refresh search afterwards")
     p.add_argument("--download-ratio", type=float, default=0.3,
                    help="after crawling, allow EPUB/PDF downloads on this share of imported stories, picked at random (default 0.3, 0 = off)")
     args = p.parse_args()
@@ -1059,8 +1059,8 @@ def main():
             except Exception as e:  # e.g. migration 007 not applied yet
                 log(f"could not enable random downloads: {e}")
         if imported and not args.dry_run and not args.no_reindex:
-            subprocess.run(["docker", "compose", "restart", "backend"], cwd=ROOT, capture_output=True)
-            log("backend restarted to refresh the search index")
+            subprocess.run(["docker", "compose", "restart", "catalog"], cwd=ROOT, capture_output=True)
+            log("catalog restarted to refresh the search index")
     except KeyboardInterrupt:
         log("interrupted")
     except Exception as e:

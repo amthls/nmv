@@ -32,7 +32,7 @@ type config struct {
 	Port        string
 	SigKey      []byte // USER_SIG_KEY_MESSAGING: identity signs the gateway's X-User-* for us alone
 	InternalKey []byte // INTERNAL_KEY_MESSAGING: verifies the backend's calls to /internal
-	BackendKey  []byte // INTERNAL_KEY_BACKEND: signs our calls to the backend
+	BackendKey  []byte // INTERNAL_KEY_CATALOG: signs our calls to the backend
 	BackendURL  string
 	LibraryKey  []byte // INTERNAL_KEY_LIBRARY: our calls to the library (who follows a story)
 	LibraryURL  string
@@ -70,8 +70,8 @@ func main() {
 		Port:        env("PORT", "8080"),
 		SigKey:      []byte(os.Getenv("USER_SIG_KEY_MESSAGING")),
 		InternalKey: []byte(os.Getenv("INTERNAL_KEY_MESSAGING")),
-		BackendKey:  []byte(os.Getenv("INTERNAL_KEY_BACKEND")),
-		BackendURL:  strings.TrimRight(env("BACKEND_INTERNAL_URL", "http://backend:5000"), "/"),
+		BackendKey:  []byte(os.Getenv("INTERNAL_KEY_CATALOG")),
+		BackendURL:  strings.TrimRight(env("CATALOG_INTERNAL_URL", "http://catalog:5000"), "/"),
 		LibraryKey:  []byte(os.Getenv("INTERNAL_KEY_LIBRARY")),
 		LibraryURL:  strings.TrimRight(env("LIBRARY_INTERNAL_URL", "http://library:8080"), "/"),
 		RedisURL:    os.Getenv("REDIS_URL"),
@@ -80,7 +80,7 @@ func main() {
 		LegacyURL:   os.Getenv("LEGACY_DATABASE_URL"),
 	}
 	if len(cfg.SigKey) < 32 || len(cfg.InternalKey) < 32 || len(cfg.BackendKey) < 32 || len(cfg.LibraryKey) < 32 || cfg.RedisURL == "" || cfg.DatabaseURL == "" {
-		logError(ctx, "USER_SIG_KEY_MESSAGING, INTERNAL_KEY_MESSAGING, INTERNAL_KEY_BACKEND, INTERNAL_KEY_LIBRARY (>= 32 chars), REDIS_URL and MESSAGING_DATABASE_URL are required")
+		logError(ctx, "USER_SIG_KEY_MESSAGING, INTERNAL_KEY_MESSAGING, INTERNAL_KEY_CATALOG, INTERNAL_KEY_LIBRARY (>= 32 chars), REDIS_URL and MESSAGING_DATABASE_URL are required")
 		os.Exit(1)
 	}
 	db, err := pgxpool.New(ctx, cfg.DatabaseURL)

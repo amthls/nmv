@@ -18,7 +18,7 @@ import { importLegacy } from './importLegacy';
  *   backend -> /internal/*    (smart codes, profile stats, comments of a deleted story)
  */
 
-for (const k of ['COMMUNITY_DATABASE_URL', 'USER_SIG_KEY_COMMUNITY', 'INTERNAL_KEY_COMMUNITY', 'INTERNAL_KEY_BACKEND', 'INTERNAL_KEY_MESSAGING']) {
+for (const k of ['COMMUNITY_DATABASE_URL', 'USER_SIG_KEY_COMMUNITY', 'INTERNAL_KEY_COMMUNITY', 'INTERNAL_KEY_CATALOG', 'INTERNAL_KEY_MESSAGING']) {
   if (IS_PROD && (process.env[k] || '').length < (k === 'COMMUNITY_DATABASE_URL' ? 1 : 32)) throw new Error(`${k} is missing`);
 }
 

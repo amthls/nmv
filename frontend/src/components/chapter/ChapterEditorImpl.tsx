@@ -49,7 +49,7 @@ const MEDIA_URL = '/api/media'; // uploads and EPUB/PDF downloads: the media ser
 const MAX_IMAGE_BYTES = 25 * 1024 * 1024; // same limit as the API
 
 // Everything below is expressed as classes (alignment, font size, highlight) so the reader can restyle
-// it per theme; the API keeps exactly these (sanitizeChapterHtml in backend/src/utils/richText.ts).
+// it per theme; the API keeps exactly these (sanitizeChapterHtml in catalog/src/utils/richText.ts).
 export interface ChapterEditorProps {
   value: string;
   onChange: (html: string) => void;

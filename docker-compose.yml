@@ -82,7 +82,7 @@ services:
       - gateway_cache:/var/cache/nginx
     depends_on:
       - frontend
-      - backend
+      - catalog
       - identity # auth_request target for every API call
       - workspace
     security_opt:
@@ -174,15 +174,15 @@ services:
       - data
 
   # ============================================================================
-  # 2. Backend RESTful API Service (Node.js / Express / Prisma)
+  # 2. catalog: stories, chapters, groups, views (Node.js / Express), formerly `backend` (Plan/catalog.md)
   # ============================================================================
-  backend:
+  catalog:
     # Local: built from source. CI/CD: pulled from the registry (IMAGE_REGISTRY / IMAGE_TAG), see .github/workflows
-    image: ${IMAGE_REGISTRY:-local}/nmv-backend:${IMAGE_TAG:-latest}
+    image: ${IMAGE_REGISTRY:-local}/nmv-catalog:${IMAGE_TAG:-latest}
     build:
-      context: ./backend
+      context: ./catalog
       dockerfile: Dockerfile
-    container_name: novel_backend
+    container_name: novel_catalog
     restart: unless-stopped
     ports:
       # Loopback only (debugging). The site reaches the API through the frontend proxy on the Docker network.
@@ -193,8 +193,8 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (openssl rand -hex 24)}@pgbouncer:5432/${POSTGRES_DB:-novel_platform}?schema=public
       CORS_ORIGIN: http://localhost:3000
       # One key per receiving service (the gateway's X-User-* signature, X-Internal-Auth): see README "Khóa giữa các service"
-      USER_SIG_KEY_BACKEND: ${USER_SIG_KEY_BACKEND:?Set USER_SIG_KEY_BACKEND in .env (openssl rand -hex 32)}
-      INTERNAL_KEY_BACKEND: ${INTERNAL_KEY_BACKEND:?Set INTERNAL_KEY_BACKEND in .env (openssl rand -hex 32)}
+      USER_SIG_KEY_CATALOG: ${USER_SIG_KEY_CATALOG:?Set USER_SIG_KEY_CATALOG in .env (openssl rand -hex 32)}
+      INTERNAL_KEY_CATALOG: ${INTERNAL_KEY_CATALOG:?Set INTERNAL_KEY_CATALOG in .env (openssl rand -hex 32)}
       INTERNAL_KEY_IDENTITY: ${INTERNAL_KEY_IDENTITY:?Set INTERNAL_KEY_IDENTITY in .env (openssl rand -hex 32)}
       INTERNAL_KEY_WORKSPACE: ${INTERNAL_KEY_WORKSPACE:?Set INTERNAL_KEY_WORKSPACE in .env (openssl rand -hex 32)}
       INTERNAL_KEY_MESSAGING: ${INTERNAL_KEY_MESSAGING:?Set INTERNAL_KEY_MESSAGING in .env (openssl rand -hex 32)}
@@ -233,8 +233,10 @@ services:
     security_opt:
       - no-new-privileges:true
     networks:
-      - edge
-      - data
+      edge:
+        aliases: [backend] # old name, still resolves
+      data:
+        aliases: [backend]
 
   # ============================================================================
   # 2b. Queue worker: same image as the API, consumes notification jobs from RabbitMQ
@@ -242,9 +244,9 @@ services:
   #     (remove container_name first).
   # ============================================================================
   worker:
-    image: ${IMAGE_REGISTRY:-local}/nmv-backend:${IMAGE_TAG:-latest}
+    image: ${IMAGE_REGISTRY:-local}/nmv-catalog:${IMAGE_TAG:-latest}
     build:
-      context: ./backend
+      context: ./catalog
       dockerfile: Dockerfile
     container_name: novel_worker
     command: ["node", "dist/worker.js"]
@@ -253,8 +255,8 @@ services:
       NODE_ENV: production
       SERVICE_NAME: worker # "service" field of its log lines
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (openssl rand -hex 24)}@postgres:5432/${POSTGRES_DB:-novel_platform}?schema=public
-      USER_SIG_KEY_BACKEND: ${USER_SIG_KEY_BACKEND:?Set USER_SIG_KEY_BACKEND in .env (openssl rand -hex 32)}
-      INTERNAL_KEY_BACKEND: ${INTERNAL_KEY_BACKEND:?Set INTERNAL_KEY_BACKEND in .env (openssl rand -hex 32)}
+      USER_SIG_KEY_CATALOG: ${USER_SIG_KEY_CATALOG:?Set USER_SIG_KEY_CATALOG in .env (openssl rand -hex 32)}
+      INTERNAL_KEY_CATALOG: ${INTERNAL_KEY_CATALOG:?Set INTERNAL_KEY_CATALOG in .env (openssl rand -hex 32)}
       INTERNAL_KEY_IDENTITY: ${INTERNAL_KEY_IDENTITY:?Set INTERNAL_KEY_IDENTITY in .env (openssl rand -hex 32)}
       INTERNAL_KEY_WORKSPACE: ${INTERNAL_KEY_WORKSPACE:?Set INTERNAL_KEY_WORKSPACE in .env (openssl rand -hex 32)}
       IDENTITY_INTERNAL_URL: http://identity:8080
@@ -286,9 +288,9 @@ services:
     environment:
       NODE_ENV: production
       MEDIA_DATABASE_URL: postgres://media:${MEDIA_DB_PASSWORD:?Set MEDIA_DB_PASSWORD in .env}@postgres:5432/media_db
-      BACKEND_INTERNAL_URL: http://backend:5000
+      CATALOG_INTERNAL_URL: http://catalog:5000
       USER_SIG_KEY_MEDIA: ${USER_SIG_KEY_MEDIA:?Set USER_SIG_KEY_MEDIA in .env (openssl rand -hex 32)}
-      INTERNAL_KEY_BACKEND: ${INTERNAL_KEY_BACKEND:?Set INTERNAL_KEY_BACKEND in .env (openssl rand -hex 32)}
+      INTERNAL_KEY_CATALOG: ${INTERNAL_KEY_CATALOG:?Set INTERNAL_KEY_CATALOG in .env (openssl rand -hex 32)}
       EXPORT_CONCURRENCY: ${EXPORT_CONCURRENCY:-1}
       EXPORT_KEEP_DAYS: ${EXPORT_KEEP_DAYS:-7}
     volumes:
@@ -349,7 +351,7 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}@redis:6379/0
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672
       IDENTITY_JWT_SECRET: ${IDENTITY_JWT_SECRET:?Set IDENTITY_JWT_SECRET in .env (openssl rand -hex 32)}
-      USER_SIG_KEY_BACKEND: ${USER_SIG_KEY_BACKEND:?Set USER_SIG_KEY_BACKEND in .env (openssl rand -hex 32)}
+      USER_SIG_KEY_CATALOG: ${USER_SIG_KEY_CATALOG:?Set USER_SIG_KEY_CATALOG in .env (openssl rand -hex 32)}
       USER_SIG_KEY_WORKSPACE: ${USER_SIG_KEY_WORKSPACE:?Set USER_SIG_KEY_WORKSPACE in .env (openssl rand -hex 32)}
       USER_SIG_KEY_MEDIA: ${USER_SIG_KEY_MEDIA:?Set USER_SIG_KEY_MEDIA in .env (openssl rand -hex 32)}
       USER_SIG_KEY_MESSAGING: ${USER_SIG_KEY_MESSAGING:?Set USER_SIG_KEY_MESSAGING in .env (openssl rand -hex 32)}
@@ -392,8 +394,8 @@ services:
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672
       USER_SIG_KEY_WORKSPACE: ${USER_SIG_KEY_WORKSPACE:?Set USER_SIG_KEY_WORKSPACE in .env (openssl rand -hex 32)}
       INTERNAL_KEY_WORKSPACE: ${INTERNAL_KEY_WORKSPACE:?Set INTERNAL_KEY_WORKSPACE in .env (openssl rand -hex 32)}
-      INTERNAL_KEY_BACKEND: ${INTERNAL_KEY_BACKEND:?Set INTERNAL_KEY_BACKEND in .env (openssl rand -hex 32)}
-      BACKEND_INTERNAL_URL: http://backend:5000
+      INTERNAL_KEY_CATALOG: ${INTERNAL_KEY_CATALOG:?Set INTERNAL_KEY_CATALOG in .env (openssl rand -hex 32)}
+      CATALOG_INTERNAL_URL: http://catalog:5000
     mem_limit: 128m
     depends_on:
       db-init:
@@ -420,9 +422,9 @@ services:
       REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}@redis:6379
       USER_SIG_KEY_MESSAGING: ${USER_SIG_KEY_MESSAGING:?Set USER_SIG_KEY_MESSAGING in .env (openssl rand -hex 32)}
       INTERNAL_KEY_MESSAGING: ${INTERNAL_KEY_MESSAGING:?Set INTERNAL_KEY_MESSAGING in .env (openssl rand -hex 32)}
-      INTERNAL_KEY_BACKEND: ${INTERNAL_KEY_BACKEND:?Set INTERNAL_KEY_BACKEND in .env (openssl rand -hex 32)}
+      INTERNAL_KEY_CATALOG: ${INTERNAL_KEY_CATALOG:?Set INTERNAL_KEY_CATALOG in .env (openssl rand -hex 32)}
       MESSAGING_DATABASE_URL: postgres://messaging:${MESSAGING_DB_PASSWORD:?Set MESSAGING_DB_PASSWORD in .env}@postgres:5432/messaging_db
-      BACKEND_INTERNAL_URL: http://backend:5000
+      CATALOG_INTERNAL_URL: http://catalog:5000
       INTERNAL_KEY_LIBRARY: ${INTERNAL_KEY_LIBRARY:?Set INTERNAL_KEY_LIBRARY in .env (openssl rand -hex 32)}
       LIBRARY_INTERNAL_URL: http://library:8080 # who follows a story
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672 # novel.notifications jobs
@@ -455,12 +457,12 @@ services:
     environment:
       NODE_ENV: production
       COMMUNITY_DATABASE_URL: postgres://community:${COMMUNITY_DB_PASSWORD:?Set COMMUNITY_DB_PASSWORD in .env}@postgres:5432/community_db
-      BACKEND_INTERNAL_URL: http://backend:5000
+      CATALOG_INTERNAL_URL: http://catalog:5000
       MESSAGING_INTERNAL_URL: http://messaging:8080
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672
       USER_SIG_KEY_COMMUNITY: ${USER_SIG_KEY_COMMUNITY:?Set USER_SIG_KEY_COMMUNITY in .env (openssl rand -hex 32)}
       INTERNAL_KEY_COMMUNITY: ${INTERNAL_KEY_COMMUNITY:?Set INTERNAL_KEY_COMMUNITY in .env (openssl rand -hex 32)}
-      INTERNAL_KEY_BACKEND: ${INTERNAL_KEY_BACKEND:?Set INTERNAL_KEY_BACKEND in .env (openssl rand -hex 32)}
+      INTERNAL_KEY_CATALOG: ${INTERNAL_KEY_CATALOG:?Set INTERNAL_KEY_CATALOG in .env (openssl rand -hex 32)}
       INTERNAL_KEY_MESSAGING: ${INTERNAL_KEY_MESSAGING:?Set INTERNAL_KEY_MESSAGING in .env (openssl rand -hex 32)}
     mem_limit: ${COMMUNITY_MEMORY:-256m}
     depends_on:
@@ -486,11 +488,11 @@ services:
     restart: unless-stopped
     environment:
       LIBRARY_DATABASE_URL: postgres://library:${LIBRARY_DB_PASSWORD:?Set LIBRARY_DB_PASSWORD in .env}@postgres:5432/library_db
-      BACKEND_INTERNAL_URL: http://backend:5000
+      CATALOG_INTERNAL_URL: http://catalog:5000
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672
       USER_SIG_KEY_LIBRARY: ${USER_SIG_KEY_LIBRARY:?Set USER_SIG_KEY_LIBRARY in .env (openssl rand -hex 32)}
       INTERNAL_KEY_LIBRARY: ${INTERNAL_KEY_LIBRARY:?Set INTERNAL_KEY_LIBRARY in .env (openssl rand -hex 32)}
-      INTERNAL_KEY_BACKEND: ${INTERNAL_KEY_BACKEND:?Set INTERNAL_KEY_BACKEND in .env (openssl rand -hex 32)}
+      INTERNAL_KEY_CATALOG: ${INTERNAL_KEY_CATALOG:?Set INTERNAL_KEY_CATALOG in .env (openssl rand -hex 32)}
     mem_limit: ${LIBRARY_MEMORY:-128m}
     depends_on:
       db-init:
@@ -515,11 +517,11 @@ services:
     restart: unless-stopped
     environment:
       RECOMMENDER_DATABASE_URL: postgres://recommender:${RECOMMENDER_DB_PASSWORD:?Set RECOMMENDER_DB_PASSWORD in .env}@postgres:5432/recommender_db
-      BACKEND_INTERNAL_URL: http://backend:5000
+      CATALOG_INTERNAL_URL: http://catalog:5000
       LIBRARY_INTERNAL_URL: http://library:8080
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672
       USER_SIG_KEY_RECOMMENDER: ${USER_SIG_KEY_RECOMMENDER:?Set USER_SIG_KEY_RECOMMENDER in .env (openssl rand -hex 32)}
-      INTERNAL_KEY_BACKEND: ${INTERNAL_KEY_BACKEND:?Set INTERNAL_KEY_BACKEND in .env (openssl rand -hex 32)}
+      INTERNAL_KEY_CATALOG: ${INTERNAL_KEY_CATALOG:?Set INTERNAL_KEY_CATALOG in .env (openssl rand -hex 32)}
       INTERNAL_KEY_LIBRARY: ${INTERNAL_KEY_LIBRARY:?Set INTERNAL_KEY_LIBRARY in .env (openssl rand -hex 32)}
       REC_TRAIN_INTERVAL_MIN: ${REC_TRAIN_INTERVAL_MIN:-30}
     mem_limit: ${RECOMMENDER_MEMORY:-512m}
@@ -604,11 +606,11 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
-      API_URL: http://backend:5000/api/v1
+      API_URL: http://catalog:5000/api/v1
     volumes:
       - ./uploads:/app/public/uploads
     depends_on:
-      - backend
+      - catalog
     security_opt:
       - no-new-privileges:true
     networks:
@@ -648,10 +650,10 @@ volumes:
     driver: local
 
 networks:
-  # Public-facing tier: only what serves browsers (gateway -> frontend/backend)
+  # Public-facing tier: only what serves browsers (gateway -> frontend/catalog)
   edge:
     driver: bridge
   # Data tier: databases, queues, cache, workers. gateway and frontend are NOT on it, so a bug in
-  # either can't reach Postgres/Redis/RabbitMQ directly. Only backend sits on both.
+  # either can't reach Postgres/Redis/RabbitMQ directly. Only catalog sits on both.
   data:
     driver: bridge

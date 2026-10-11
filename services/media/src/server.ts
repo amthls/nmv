@@ -15,7 +15,7 @@ import { cleanupExports, exportLoop, recoverExports } from './export';
  * One process serves the API and builds the EPUB/PDF files (EXPORT_CONCURRENCY at a time).
  */
 
-for (const k of ['MEDIA_DATABASE_URL', 'USER_SIG_KEY_MEDIA', 'INTERNAL_KEY_BACKEND']) {
+for (const k of ['MEDIA_DATABASE_URL', 'USER_SIG_KEY_MEDIA', 'INTERNAL_KEY_CATALOG']) {
   if (IS_PROD && (process.env[k] || '').length < (k === 'MEDIA_DATABASE_URL' ? 1 : 32)) throw new Error(`${k} is missing`);
 }
 

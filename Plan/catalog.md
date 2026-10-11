@@ -33,7 +33,9 @@ Bẫy:
 - [x] README (bảng, hạn chế, nâng cấp), Branches, PR #78, merge
 
 ## I2: đổi tên backend → catalog
-- [ ] Thư mục, service/container compose, biến môi trường, CI, gateway, scripts, launch.py, README; alias `backend`
+- [x] Thư mục, service/container compose, biến môi trường, CI, gateway, scripts, launch.py, README; alias `backend`
+  Bẫy: script đổi `./backend` cũng đổi nhầm `import './backend'` trong community (file `backend.ts`); gateway không bị tạo lại → `nginx -s reload`.
+  Giữ tên hàng đợi `backend.*`, tên biến/hàm trong code và chữ "backend" trong comment.
 
 ## I3: quy trình nhóm + kệ "Đang hot"
 - [ ] Cài đặt quy trình nhóm (bước bật, ai được gộp) + API quyền trả về cho workspace
