@@ -45,4 +45,6 @@ Bẫy:
   worker tắt thì API vẫn tự tính khi hụt. Giữ nguyên cách xếp (lượt xem tổng).
 
 ## I4: đo tải + README kiến trúc
-- [ ] Đo lại bằng `scripts/bench.mjs`, so với mốc giai đoạn A; README viết lại phần kiến trúc
+- [x] Đo lại bằng `scripts/bench.mjs`, so với mốc giai đoạn A; README viết lại phần kiến trúc
+  2026-10-11: p50 trending 3 ms, truyện API 8, trang truyện 10 (p95 13), chương API 8, trang chương 9 (ngang mốc A).
+  RAM rảnh ~1,45 GB (ES 572 MB lớn nhất; trước khi tách ~1,3 GB, ước tính 1,9–2,2 GB).

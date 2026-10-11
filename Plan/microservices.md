@@ -84,7 +84,7 @@ bộ gom log từ Docker; ~100–200 MB) → **~21–22**~~ (**bỏ bộ giám s
 
 **Ước tính RAM lúc rảnh:** hiện tại ~1,3 GB (đo 2026-10-09) → sau khi chuyển ~1,9–2,2 GB (không còn bộ giám sát; ES ~670 MB vẫn là lớn nhất; 6 service Go
 ~15–25 MB mỗi cái; 3 service TS ~70–100 MB; recommender-api ~70 MB). Máy hiện có ~7,6 GB. Mọi container đặt `mem_limit`.
-- [ ] Đo lại RAM thực tế sau mỗi giai đoạn tách, ghi vào đây.
+- [x] Đo lại RAM thực tế sau mỗi giai đoạn tách, ghi vào đây. 2026-10-11 (sau giai đoạn I): ~1,45 GB lúc rảnh (README, Kiến trúc).
   - 2026-10-10 sau B (identity) + C (workspace): tổng ~1,36 GB; identity 45 MB, workspace 8 MB, backend 64 MB, export-worker 40 MB.
   - 2026-10-10 sau D (media): backend 39 MB, media 99 MB (sau khi dựng EPUB+PDF), không còn export-worker; tổng ~1,34 GB.
 
@@ -563,9 +563,9 @@ Bẫy (giai đoạn A):
 
 ### Giai đoạn I: catalog (phần còn lại của backend cũ)
 Chi tiết từng nhánh: `Plan/catalog.md`. Bảng thừa đã xóa ở migration 027 (I1).
-- [ ] Đổi tên backend còn lại thành `catalog`, xóa code đã chuyển đi, dọn bảng thừa trong `catalog_db`
-- [ ] Cài đặt quy trình nhóm (bước bật, ai được gộp) + API quyền trả về cho workspace; kệ "Đang hot" tính sẵn vào Redis
-- [ ] Đo lại tải so với mốc ở giai đoạn A; README viết lại phần kiến trúc
+- [x] Đổi tên backend còn lại thành `catalog`, xóa code đã chuyển đi, dọn bảng thừa trong `catalog_db` (#78, #79; DB giữ tên `novel_platform`)
+- [x] Cài đặt quy trình nhóm (bước bật, ai được gộp) + API quyền trả về cho workspace; kệ "Đang hot" tính sẵn vào Redis (#81)
+- [x] Đo lại tải so với mốc ở giai đoạn A; README viết lại phần kiến trúc
 
 ## Rủi ro / bẫy
 - Số container tăng (~10 → ~17): kiểm tra RAM máy chạy; service nhỏ đặt giới hạn bộ nhớ trong compose.
