@@ -3,7 +3,7 @@
 - **Mục tiêu:** Giai đoạn I3: nhóm chọn ai được gộp + kệ Đang hot tính sẵn vào Redis
 - **Tạo từ:** `origin/main` @ 50da18c, ngày 2026-10-11
 - **Trạng thái:** xong
-- **PR:** (chưa mở)
+- **PR:** https://github.com/amthls/nmv/pull/81
 - **Plan:** `Plan/catalog.md` (I3)
 
 ## Thay đổi
