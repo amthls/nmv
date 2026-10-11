@@ -15,3 +15,6 @@ backups/
 scripts/__pycache__/
 __pycache__/
 .build-stamp.json
+
+# Go binaries from a local `go build`
+services/*/*.exe
