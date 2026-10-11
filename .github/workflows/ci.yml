@@ -246,6 +246,8 @@ jobs:
             echo "USER_SIG_KEY_LIBRARY=$(openssl rand -hex 32)"
             echo "INTERNAL_KEY_LIBRARY=$(openssl rand -hex 32)"
             echo "LIBRARY_DB_PASSWORD=$(openssl rand -hex 32)"
+            echo "USER_SIG_KEY_RECOMMENDER=$(openssl rand -hex 32)"
+            echo "RECOMMENDER_DB_PASSWORD=$(openssl rand -hex 32)"
           } > .env
 
       - name: Build images
