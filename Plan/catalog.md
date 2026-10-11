@@ -29,8 +29,8 @@ Bẫy:
 - [x] Prisma schema bỏ model/enum của các bảng đã xóa; script dev cũ ghi vào bảng đã xóa: xóa hoặc sửa
 - [x] recommender import-legacy bỏ qua khi không còn `rec_events`
 - [x] Thử trên DB nháp: bản sao `novel_platform` + 027 (chạy lại không lỗi), cài mới từ `database.sql` → 19 bảng; tsc, py_compile
-- [ ] Chạy `migrate.sh` trên DB local: **chủ dự án chạy** (auto mode chặn lệnh xóa dữ liệu trên DB thật)
-- [ ] README (bảng, hạn chế, nâng cấp), Branches, PR, merge
+- [x] Chạy `migrate.sh` trên DB local (chủ dự án cho phép, 2026-10-11): 20 bảng; smoke workspace, community, library OK; log không lỗi bảng thiếu
+- [x] README (bảng, hạn chế, nâng cấp), Branches, PR #78, merge
 
 ## I2: đổi tên backend → catalog
 - [ ] Thư mục, service/container compose, biến môi trường, CI, gateway, scripts, launch.py, README; alias `backend`

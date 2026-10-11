@@ -2,7 +2,7 @@
 
 - **Mục tiêu:** Giai đoạn I1: xóa bảng cũ đã chuyển sang service khác (sau import-legacy)
 - **Tạo từ:** `origin/main` @ 6e61bb7, ngày 2026-10-11
-- **Trạng thái:** xong, chờ chủ dự án chạy `scripts/migrate.sh` trên DB local
+- **Trạng thái:** xong, đã chạy trên DB local
 - **PR:** https://github.com/amthls/nmv/pull/78
 - **Plan:** `Plan/catalog.md` (I1)
 
@@ -25,4 +25,4 @@
 
 ## Ghi chú cho người review
 - Bản cài mới không còn bài Fandom, bình luận, thông báo, theo dõi mẫu (seed nằm ở các bảng bị xóa).
-- Chưa chạy trên DB local: auto mode chặn lệnh xóa dữ liệu trên DB thật → chủ dự án chạy `sh scripts/migrate.sh`.
+- Đã chạy `scripts/migrate.sh` trên DB local (chủ dự án đồng ý bỏ dữ liệu cũ): còn 20 bảng; `workspace-smoke`, `community-smoke`, `library-smoke` qua; trang chủ, /fandom, trang truyện 200; log backend/worker không có lỗi bảng thiếu.
