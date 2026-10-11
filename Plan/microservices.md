@@ -542,12 +542,15 @@ Bẫy (giai đoạn A):
 - [x] Bài Fandom, bình luận, cảm xúc, báo cáo, nội dung đã gỡ (truyện đã gỡ nhận qua `story.removed/restored`)
       (2026-10-11, `Plan/community.md`; truyện đã gỡ hỏi API backend thay vì sự kiện: đổi khi có catalog, giai đoạn I)
 
-### Giai đoạn F2: search
-- [ ] search-service nhận sự kiện từ catalog, community, identity; chuyển Elasticsearch từ backend cũ sang (index truyện hiện có)
-- [ ] Index bài viết, nhóm, người dùng; API `/search`, `/search/suggest`; ô tìm chung ở menu (nhóm theo loại)
-- [ ] Dựng lại index qua alias; SQL dự phòng cho trang khám phá
-- [ ] Tìm riêng tư bằng `pg_trgm` + `unaccent` ở messaging, community, identity (thay `ILIKE` hiện tại)
-- [ ] Từ khóa hot + trang Admin xem từ khóa không ra kết quả
+### Giai đoạn F2: search — **TẠM HOÃN** (chủ dự án, 2026-10-11)
+> Chưa tách search-service. **Tạm thời giữ nguyên:** backend gọi thẳng Elasticsearch (`backend/src/services/search.service.ts`:
+> index `novel_stories`, dựng lại khi backend khởi động, khám phá đổi `q` thành id truyện, ES hỏng thì `ILIKE`). Phần bảo mật của
+> search (khóa riêng, ai được gọi ES) chủ dự án tính sau. Các mục dưới đây giữ lại, làm khi chủ dự án mở lại giai đoạn này.
+- [ ] (hoãn) search-service nhận sự kiện từ catalog, community, identity; chuyển Elasticsearch từ backend cũ sang (index truyện hiện có)
+- [ ] (hoãn) Index bài viết, nhóm, người dùng; API `/search`, `/search/suggest`; ô tìm chung ở menu (nhóm theo loại)
+- [ ] (hoãn) Dựng lại index qua alias; SQL dự phòng cho trang khám phá (SQL dự phòng đã có ở backend)
+- [ ] (hoãn) Tìm riêng tư bằng `pg_trgm` + `unaccent` ở messaging, community, identity (thay `ILIKE` hiện tại)
+- [ ] (hoãn) Từ khóa hot + trang Admin xem từ khóa không ra kết quả
 
 ### Giai đoạn G: library
 - [ ] Theo dõi, bookmark, lịch sử đọc (gom qua Redis như lượt xem), album; phát `chapter.read`, `story.followed`
