@@ -40,6 +40,15 @@ if docker compose config --services 2>/dev/null | grep -qx identity; then
   docker compose run --rm --no-deps identity seed-demo
 fi
 
+# Direct messages and group chats live in the messaging service: copy what the backend database still has
+# (the one-time move; later runs add nothing). Only adds, never overwrites.
+if docker compose config --services 2>/dev/null | grep -qx messaging; then
+  pg_pw=$(grep '^POSTGRES_PASSWORD=' .env | cut -d= -f2- | tr -d '\r')
+  pg_user=$(grep '^POSTGRES_USER=' .env | cut -d= -f2- | tr -d '\r'); pg_user=${pg_user:-postgres}
+  pg_db=$(grep '^POSTGRES_DB=' .env | cut -d= -f2- | tr -d '\r'); pg_db=${pg_db:-novel_platform}
+  docker compose run --rm --no-deps -e LEGACY_DATABASE_URL="postgres://$pg_user:$pg_pw@postgres:5432/$pg_db" messaging import-legacy
+fi
+
 # Chapter content lives in the workspace service: every chapter it does not know yet becomes version 1 there
 # (all of them the first time; on a fresh install the sample chapters). Needs the backend running.
 if docker compose config --services 2>/dev/null | grep -qx workspace; then

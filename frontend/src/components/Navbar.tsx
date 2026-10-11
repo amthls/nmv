@@ -104,7 +104,7 @@ export default function Navbar() {
       console.error('Failed to fetch notifications:', e);
     }
     try {
-      const res = await authFetch(`${API_BASE_URL}/messages`);
+      const res = await authFetch(`/api/msg/messages`);
       const json = await res.json();
       if (res.ok && json.success) setUnreadMessages(json.data.unread_count || 0);
     } catch (e) {}

@@ -41,9 +41,6 @@ import {
   addGroupMember,
   updateGroupMemberRole,
   removeGroupMember,
-  getGroupMessages,
-  sendGroupMessage,
-  deleteGroupMessage,
   requestToJoinGroup,
   cancelMyJoinRequest,
   getGroupJoinRequests,
@@ -125,11 +122,6 @@ import {
   getRecStatus
 } from '../controllers/recommendation.controller';
 import { getBackupStatus } from '../controllers/backup.controller';
-import {
-  getConversations, getThread, sendDirectMessage,
-  getLabels, createLabel, updateLabel, deleteLabel, setConversationLabels,
-  blockUser, unblockUser, pinMessage, unpinMessage,
-} from '../controllers/message.controller';
 import { queueStatus } from '../services/queue.service';
 import { cacheJson } from '../middlewares/cache';
 import { searchLimiter, perUserLimiter } from '../middlewares/security';
@@ -141,7 +133,6 @@ const commentLimiter = perUserLimiter({ windowMs: 5 * 60_000, limit: 30, message
 const postLimiter = perUserLimiter({ windowMs: 60 * 60_000, limit: 20, message: 'Bạn đăng bài quá nhiều. Vui lòng thử lại sau.' });
 const reactLimiter = perUserLimiter({ windowMs: 60_000, limit: 60, message: 'Bạn thả cảm xúc quá nhanh.' });
 const reportLimiter = perUserLimiter({ windowMs: 60 * 60_000, limit: 10, message: 'Bạn gửi quá nhiều báo cáo. Vui lòng thử lại sau.' });
-const chatLimiter = perUserLimiter({ windowMs: 60_000, limit: 30, message: 'Bạn nhắn quá nhanh.' });
 const albumLimiter = perUserLimiter({ windowMs: 60 * 60_000, limit: 60, message: 'Bạn tạo/sao chép album quá nhiều. Vui lòng thử lại sau.' });
 const joinRequestLimiter = perUserLimiter({ windowMs: 60 * 60_000, limit: 10, message: 'Bạn gửi quá nhiều yêu cầu gia nhập. Vui lòng thử lại sau.' });
 
@@ -300,24 +291,6 @@ router.get('/groups/:id/join-requests', requireAuth, getGroupJoinRequests);
 router.post('/groups/:id/join-requests/:requestId/approve', requireAuth, approveJoinRequest);
 router.post('/groups/:id/join-requests/:requestId/reject', requireAuth, rejectJoinRequest);
 
-// Group Chatroom Messages
-router.get('/groups/:id/messages', optionalAuth, getGroupMessages);
-router.post('/groups/:id/messages', requireAuth, chatLimiter, sendGroupMessage);
-router.delete('/groups/:id/messages/:messageId', requireAuth, deleteGroupMessage);
-
-// Direct messages between two users
-router.get('/messages', requireAuth, getConversations);
-// Labels first: otherwise "labels" would be taken for a username
-router.get('/messages/labels', requireAuth, getLabels);
-router.post('/messages/labels', requireAuth, createLabel);
-router.patch('/messages/labels/:id', requireAuth, updateLabel);
-router.delete('/messages/labels/:id', requireAuth, deleteLabel);
-router.get('/messages/:username', requireAuth, getThread);
-router.post('/messages/:username', requireAuth, chatLimiter, sendDirectMessage);
-router.put('/messages/:username/labels', requireAuth, setConversationLabels);
-router.post('/messages/:username/block', requireAuth, blockUser);
-router.delete('/messages/:username/block', requireAuth, unblockUser);
-router.post('/messages/:username/pins/:messageId', requireAuth, pinMessage);
-router.delete('/messages/:username/pins/:messageId', requireAuth, unpinMessage);
+// Direct messages and group chat: the messaging service (/api/msg/*)
 
 export default router;

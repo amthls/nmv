@@ -45,7 +45,7 @@ func TestUserFrom(t *testing.T) {
 // socket, _disconnect closes them all.
 func TestHub(t *testing.T) {
 	h := newHub()
-	srv := httptest.NewServer(withRequestLog(routes(config{SigKey: []byte(testKey)}, nil, h))) // as in main: the upgrade must get through the log wrapper
+	srv := httptest.NewServer(withRequestLog((&server{cfg: config{SigKey: []byte(testKey)}, hub: h, now: time.Now}).routes())) // as in main: the upgrade must get through the log wrapper
 	defer srv.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

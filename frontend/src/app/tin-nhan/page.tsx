@@ -13,7 +13,7 @@ import DraftCard from '@/components/workspace/DraftCard';
 import { DmLabel, labelStyle } from '@/components/messages/labels';
 import { useAuth } from '@/context/AuthContext';
 import { useRealtime } from '@/lib/realtime';
-import { apiJson } from '@/lib/apiJson';
+import { apiJson, MESSAGING_URL } from '@/lib/apiJson';
 
 const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100';
 
@@ -79,7 +79,7 @@ function MessagesInner() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const labelMenuRef = useRef<HTMLDivElement>(null);
 
-  const api = (path: string, init?: RequestInit & { json?: unknown }) => apiJson(authFetch, path, init);
+  const api = (path: string, init?: RequestInit & { json?: unknown }) => apiJson(authFetch, path, init, MESSAGING_URL);
 
   const fetchConversations = async () => {
     const params = new URLSearchParams();

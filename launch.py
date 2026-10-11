@@ -113,9 +113,9 @@ def ensure_env():
             info("Added a random REDIS_PASSWORD to .env")
             env = read_env(ENV_FILE)
         # identity service secrets: added to older .env files instead of refusing to start
-        added = {k: secrets.token_hex(32) for k in ("IDENTITY_DB_PASSWORD", "IDENTITY_JWT_SECRET", "WORKSPACE_DB_PASSWORD", "MEDIA_DB_PASSWORD",
+        added = {k: secrets.token_hex(32) for k in ("IDENTITY_DB_PASSWORD", "IDENTITY_JWT_SECRET", "WORKSPACE_DB_PASSWORD", "MEDIA_DB_PASSWORD", "MESSAGING_DB_PASSWORD",
                                                          "USER_SIG_KEY_BACKEND", "USER_SIG_KEY_WORKSPACE", "USER_SIG_KEY_MEDIA", "USER_SIG_KEY_MESSAGING",
-                                                         "INTERNAL_KEY_BACKEND", "INTERNAL_KEY_IDENTITY", "INTERNAL_KEY_WORKSPACE")
+                                                         "INTERNAL_KEY_BACKEND", "INTERNAL_KEY_IDENTITY", "INTERNAL_KEY_WORKSPACE", "INTERNAL_KEY_MESSAGING")
                  if not env.get(k) or env[k] == "change-me"}
         if added:
             set_env_values(added)
@@ -164,8 +164,10 @@ def ensure_env():
         "INTERNAL_KEY_BACKEND": secrets.token_hex(32),
         "INTERNAL_KEY_IDENTITY": secrets.token_hex(32),
         "INTERNAL_KEY_WORKSPACE": secrets.token_hex(32),
+        "INTERNAL_KEY_MESSAGING": secrets.token_hex(32),
         "WORKSPACE_DB_PASSWORD": secrets.token_hex(32),
         "MEDIA_DB_PASSWORD": secrets.token_hex(32),
+        "MESSAGING_DB_PASSWORD": secrets.token_hex(32),
         "POSTGRES_PASSWORD": pg_pw,
         "DATABASE_URL": f"postgresql://postgres:{pg_pw}@localhost:5432/novel_platform?schema=public",
         "PGADMIN_DEFAULT_PASSWORD": secrets.token_hex(16),
@@ -550,6 +552,14 @@ def run_checks(env, timeout, seed=None):
 
         passed, detail = seed_accounts()
         record("accounts in identity (seed-demo)", passed, detail)
+
+        url = (f"postgres://{env.get('POSTGRES_USER', 'postgres')}:{env['POSTGRES_PASSWORD']}@postgres:5432/"
+               f"{env.get('POSTGRES_DB', 'novel_platform')}")
+        res = subprocess.run(["docker", "compose", "run", "--rm", "--no-deps", "-e", f"LEGACY_DATABASE_URL={url}", "messaging", "import-legacy"],
+                             cwd=ROOT, capture_output=True)
+        out = (res.stdout + res.stderr).decode(errors="replace")
+        record("messages in messaging (import-legacy)", res.returncode == 0,
+               next((l for l in out.splitlines() if "import-legacy" in l), out.strip()[-300:]))
 
         res = subprocess.run(["docker", "compose", "run", "--rm", "workspace", "import"], cwd=ROOT, capture_output=True)
         out = (res.stdout + res.stderr).decode(errors="replace")
