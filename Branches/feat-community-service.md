@@ -3,7 +3,7 @@
 - **Mục tiêu:** Giai đoạn F: bài Fandom, bình luận, cảm xúc, báo cáo, nội dung đã gỡ chuyển sang service community
 - **Tạo từ:** `origin/main` @ 47ff8df, ngày 2026-10-11
 - **Trạng thái:** xong, chờ CI
-- **PR:** (chưa mở)
+- **PR:** https://github.com/amthls/nmv/pull/73
 - **Plan:** `Plan/community.md`, `Plan/microservices.md` (giai đoạn F)
 
 ## Thay đổi
