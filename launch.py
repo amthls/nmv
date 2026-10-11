@@ -426,7 +426,6 @@ def seed_accounts():
 # Sample-data seeders from backend/scripts, run in order inside a one-off backend container.
 SEEDERS = [
     ("sample stories, volumes, chapters", ["npx", "tsx", "scripts/seed-stories.ts"]),
-    ("fandom posts", ["npx", "tsx", "scripts/seed-fandom.ts"]),
 ]
 
 
@@ -441,13 +440,13 @@ def story_count(env):
 
 
 def run_seeders():
-    """The runtime image only ships dist/, so mount the scripts (and src/, which seed-fandom imports)."""
+    """The runtime image only ships dist/, so mount the scripts."""
     backend = os.path.join(ROOT, "backend")
     all_ok = True
     for desc, cmd in SEEDERS:
         res = subprocess.run(
             ["docker", "compose", "run", "--rm", "--no-deps", "-T",
-             "-v", f"{backend}/scripts:/app/scripts:ro", "-v", f"{backend}/src:/app/src:ro",
+             "-v", f"{backend}/scripts:/app/scripts:ro",
              "backend", *cmd],
             cwd=ROOT, capture_output=True, text=True,
         )

@@ -562,6 +562,7 @@ Bẫy (giai đoạn A):
 - [x] API gợi ý (FastAPI) đọc kết quả tính sẵn: trang chủ, truyện liên quan
 
 ### Giai đoạn I: catalog (phần còn lại của backend cũ)
+Chi tiết từng nhánh: `Plan/catalog.md`. Bảng thừa đã xóa ở migration 027 (I1).
 - [ ] Đổi tên backend còn lại thành `catalog`, xóa code đã chuyển đi, dọn bảng thừa trong `catalog_db`
 - [ ] Cài đặt quy trình nhóm (bước bật, ai được gộp) + API quyền trả về cho workspace; kệ "Đang hot" tính sẵn vào Redis
 - [ ] Đo lại tải so với mốc ở giai đoạn A; README viết lại phần kiến trúc

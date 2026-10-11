@@ -32,7 +32,7 @@
 - [x] Thử: upload ảnh bài viết, bìa, trang manga (quyền), `?w=`, xuất EPUB + PDF (tạo, tiến độ, tải), crawler nén ảnh; đo RAM; README, Branches; PR, tự merge
 
 ## Còn lại (nhánh sau)
-- [ ] Migration backend xóa bảng `story_exports` cũ trong `novel_platform` (không còn ai đọc) khi đã chạy ổn
+- [x] Migration backend xóa bảng `story_exports` cũ trong `novel_platform` (không còn ai đọc) khi đã chạy ổn
 
 ## Bẫy
 - `@types/express` + `express-rate-limit`: handler async trong Express 4 phải bọc `.catch(next)` (`wrap` trong `server.ts`).

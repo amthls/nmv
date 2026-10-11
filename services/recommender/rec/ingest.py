@@ -181,8 +181,10 @@ def import_legacy(cfg):
         done = {r["part"] for r in conn.execute("SELECT part FROM legacy_imports")}
         if "rec_events" not in done and cfg.legacy_url:
             with connect(cfg.legacy_url) as legacy, conn.transaction():
+                # the table is gone once migration 027 ran (fresh installs never have it)
+                has_table = legacy.execute("SELECT to_regclass('rec_events') IS NOT NULL AS ok").fetchone()["ok"]
                 rows = legacy.execute("""SELECT user_id, visitor_id, story_id, chapter_id, kind, source, created_at
-                    FROM rec_events ORDER BY id""").fetchall()
+                    FROM rec_events ORDER BY id""").fetchall() if has_table else []
                 with conn.cursor() as cur:
                     cur.executemany("""INSERT INTO events (user_id, visitor_id, story_id, chapter_id, kind, source, created_at)
                         VALUES (%(user_id)s, %(visitor_id)s, %(story_id)s, %(chapter_id)s, %(kind)s, %(source)s, %(created_at)s)

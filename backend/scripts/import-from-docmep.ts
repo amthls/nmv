@@ -67,14 +67,10 @@ async function importFromDocmep() {
     const adminUser = await client.query("SELECT id FROM users WHERE username = 'admin' LIMIT 1");
     const nekoUser = await client.query("SELECT id FROM users WHERE username = 'neko_trans' LIMIT 1");
     const nekoGroup = await client.query("SELECT id FROM translation_groups WHERE slug = 'neko-translation' LIMIT 1");
-    const readerHana = await client.query("SELECT id FROM users WHERE username = 'reader_hana' LIMIT 1");
-    const readerKaito = await client.query("SELECT id FROM users WHERE username = 'kaito_kid' LIMIT 1");
 
     const adminId = adminUser.rows[0]?.id;
     const uploaderId = nekoUser.rows[0]?.id || adminId;
     const groupId = nekoGroup.rows[0]?.id || null;
-    const hanaId = readerHana.rows[0]?.id || adminId;
-    const kaitoId = readerKaito.rows[0]?.id || adminId;
 
     const items = fs.readdirSync(docmepPath);
 
@@ -258,31 +254,11 @@ async function importFromDocmep() {
                   }
                 }
 
-                // Bình luận mẫu
-                if (chapterNum === 1) {
-                  await client.query(`
-                    INSERT INTO comments (user_id, target_type, target_id, content, like_count)
-                    VALUES 
-                      ($1, 'chapter', $2, 'Tranh minh họa đẹp mê li luôn nhóm dịch ơi! Hóng chương sau quá <3', 12),
-                      ($3, 'chapter', $2, 'Bộ này bên raw cuốn cực, cảm ơn nhóm đã thầu nha!', 8)
-                    ON CONFLICT DO NOTHING;
-                  `, [hanaId, insertedChapterId, kaitoId]);
-                }
-
                 chapterNum++;
               }
             }
           }
         }
-
-        // 5. Thêm bình luận mẫu cho Trang truyện
-        await client.query(`
-          INSERT INTO comments (user_id, target_type, target_id, content, like_count)
-          VALUES 
-            ($1, 'story', $2, 'Bộ truyện siêu phẩm, dịch rất mượt và có tâm! 10/10 sao!', 25),
-            ($3, 'story', $2, 'Art minh họa chất lượng cao, cốt truyện dark hài hước độc lạ.', 14)
-          ON CONFLICT DO NOTHING;
-        `, [hanaId, storyId, kaitoId]);
 
         console.log(`✅ Đã lưu toàn bộ file ảnh vào uploads/ và cập nhật liên kết trong Database cho: ${title}`);
       }
