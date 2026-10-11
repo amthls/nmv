@@ -124,3 +124,28 @@ export const exportBook = async (req: Request, res: Response) => {
   }
   res.json({ success: true, data: await loadBook(story_id, chapter_ids) });
 };
+
+/**
+ * POST /internal/users/profiles {ids?: uuid[], usernames?: string[]} (at most 500): what other services show for a
+ * person (messaging: inbox, threads, group chat). Deleted accounts come back flagged, banned ones too.
+ */
+export const userProfiles = async (req: Request, res: Response) => {
+  const ids = Array.isArray(req.body?.ids) ? req.body.ids.filter(isUuid).slice(0, 500) : [];
+  const names = Array.isArray(req.body?.usernames) ? req.body.usernames.filter((u: unknown) => typeof u === 'string').slice(0, 500) : [];
+  const r = await pool.query(
+    `SELECT id, username, display_name, avatar_url, COALESCE(is_banned, false) AS is_banned, deleted_at IS NOT NULL AS deleted
+     FROM users WHERE id = ANY($1::uuid[]) OR username = ANY($2::text[])`,
+    [ids, names]
+  );
+  res.json({ success: true, data: r.rows });
+};
+
+/** GET /internal/groups/:id/members -> [{user_id, role}] (404 when the group does not exist): who may use the group's chat. */
+export const groupMembers = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  if (!isUuid(id)) return res.status(404).json({ success: false });
+  const g = await pool.query(`SELECT 1 FROM translation_groups WHERE id = $1`, [id]);
+  if (!g.rowCount) return res.status(404).json({ success: false });
+  const r = await pool.query(`SELECT user_id, role FROM group_members WHERE group_id = $1`, [id]);
+  res.json({ success: true, data: r.rows });
+};

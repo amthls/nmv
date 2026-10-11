@@ -5,7 +5,6 @@ import { sanitizeRichText } from '../utils/richText';
 import { insertWithUniqueSlug } from '../utils/ids';
 import { InputError, isUuid, optionalText, optionalUrl, requiredText } from '../utils/validation';
 import { enqueueNotificationJob } from '../services/queue.service';
-import { emitToUsers } from '../services/realtime';
 import { groupJoinRequestNotifications, groupJoinDecisionNotification, NotifyItem } from '../services/notification.service';
 
 function slugify(text: string) {
@@ -21,7 +20,6 @@ function slugify(text: string) {
 
 const GROUP_ROLES = ['leader', 'mod', 'translator', 'editor', 'raw_provider', 'proofreader', 'member'];
 const MANAGER_ROLES = ['leader', 'mod'];
-const MAX_CHAT_MESSAGE = 2000;
 
 function sendError(res: Response, error: any) {
   if (error instanceof InputError) return res.status(error.status).json({ success: false, message: error.message });
@@ -513,118 +511,6 @@ export const removeGroupMember = async (req: AuthenticatedRequest, res: Response
 };
 
 /** Internal chat: members only. Returns the latest 100 messages, oldest first. */
-export const getGroupMessages = async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const { id } = req.params;
-    if (!isUuid(id)) return res.status(404).json({ success: false, message: 'Nhóm dịch không tồn tại' });
-    if (!req.user) return res.status(401).json({ success: false, message: 'Bạn chưa đăng nhập.' });
-
-    const actor = await getGroupActor(req, id);
-    if (!actor.groupRole) {
-      return res.status(403).json({ success: false, message: 'Chỉ thành viên nhóm mới xem được chatroom nội bộ.' });
-    }
-
-    const result = await pool.query(`
-      SELECT * FROM (
-        SELECT
-          m.*,
-          u.username, u.display_name, u.avatar_url,
-          gm.role as member_role
-        FROM group_messages m
-        JOIN users u ON m.user_id = u.id
-        LEFT JOIN group_members gm ON m.group_id = gm.group_id AND m.user_id = gm.user_id
-        WHERE m.group_id = $1
-        ORDER BY m.created_at DESC
-        LIMIT 100
-      ) latest
-      ORDER BY created_at ASC;
-    `, [id]);
-
-    res.json({
-      success: true,
-      data: result.rows,
-    });
-  } catch (error: any) {
-    sendError(res, error);
-  }
-};
-
-export const sendGroupMessage = async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    if (!req.user || !req.user.id) {
-      return res.status(401).json({ success: false, message: 'Bạn chưa đăng nhập.' });
-    }
-
-    const { id } = req.params;
-    if (!isUuid(id)) return res.status(404).json({ success: false, message: 'Nhóm dịch không tồn tại' });
-    const message = requiredText(req.body?.message, MAX_CHAT_MESSAGE, 'Nội dung tin nhắn');
-
-    const senderId = req.user.id;
-    const actor = await getGroupActor(req, id);
-    if (!actor.groupRole) {
-      return res.status(403).json({
-        success: false,
-        message: 'Chỉ thành viên trong nhóm mới có quyền gửi tin nhắn trong chatroom nội bộ.',
-      });
-    }
-
-    // Attachments aren't supported by the UI; never store arbitrary client JSON
-    const insertRes = await pool.query(`
-      INSERT INTO group_messages (group_id, user_id, message, attachments)
-      VALUES ($1, $2, $3, '[]'::jsonb)
-      RETURNING *;
-    `, [id, senderId, message]);
-
-    const msg = insertRes.rows[0];
-    msg.username = req.user.username;
-    msg.display_name = req.user.display_name;
-    msg.avatar_url = req.user.avatar_url;
-    msg.member_role = actor.groupRole;
-    pool.query(`SELECT user_id FROM group_members WHERE group_id = $1`, [id])
-      .then((r) => emitToUsers(r.rows.map((m: any) => m.user_id), 'group_message', { groupId: id }))
-      .catch(() => {});
-
-    res.status(201).json({
-      success: true,
-      data: msg,
-    });
-  } catch (error: any) {
-    sendError(res, error);
-  }
-};
-
-export const deleteGroupMessage = async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    if (!req.user || !req.user.id) {
-      return res.status(401).json({ success: false, message: 'Bạn chưa đăng nhập.' });
-    }
-
-    const { id, messageId } = req.params;
-    if (!isUuid(id) || !isUuid(messageId)) {
-      return res.status(404).json({ success: false, message: 'Tin nhắn không tồn tại' });
-    }
-
-    const msgRes = await pool.query(`SELECT user_id FROM group_messages WHERE id = $1 AND group_id = $2`, [messageId, id]);
-    if (msgRes.rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Tin nhắn không tồn tại' });
-    }
-
-    const isOwner = msgRes.rows[0].user_id === req.user.id;
-    if (!isOwner && !(await getGroupActor(req, id)).isManager) {
-      return res.status(403).json({
-        success: false,
-        message: 'Bạn chỉ có thể xóa tin nhắn của chính mình.',
-      });
-    }
-
-    await pool.query(`DELETE FROM group_messages WHERE id = $1`, [messageId]);
-
-    res.json({ success: true, message: 'Đã xóa tin nhắn' });
-  } catch (error: any) {
-    sendError(res, error);
-  }
-};
-
 // ---------------------------------------------------------------- join requests
 // A user asks to join; a group leader/mod approves or rejects it.
 

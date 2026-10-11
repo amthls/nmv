@@ -8,11 +8,11 @@ import { startSearchSync } from './services/search.service';
 import { visitorCookie } from './services/recommender/events';
 import { requestContext } from './utils/logger';
 import { identityFromHeaders, internalAuthOK } from './middlewares/auth.middleware';
-import { permissions, exportChapters, exportSource, exportBook } from './controllers/internal.controller';
+import { permissions, exportChapters, exportSource, exportBook, userProfiles, groupMembers } from './controllers/internal.controller';
 import { deleteCheck } from './controllers/user.controller';
 
 // Without the keys that verify the gateway's identity headers and internal calls nobody is ever signed in: refuse to start
-for (const k of ['USER_SIG_KEY_BACKEND', 'INTERNAL_KEY_BACKEND', 'INTERNAL_KEY_IDENTITY', 'INTERNAL_KEY_WORKSPACE']) {
+for (const k of ['USER_SIG_KEY_BACKEND', 'INTERNAL_KEY_BACKEND', 'INTERNAL_KEY_IDENTITY', 'INTERNAL_KEY_WORKSPACE', 'INTERNAL_KEY_MESSAGING']) {
   if (process.env.NODE_ENV === 'production' && (process.env[k] || '').length < 32) {
     throw new Error(`${k} is missing or shorter than 32 characters (launch.py generates it).`);
   }
@@ -81,6 +81,9 @@ app.get('/internal/chapters/export', internal(exportChapters));
 // Media -> backend: what an EPUB/PDF may contain, and the content itself
 app.post('/internal/exports/source', internal(exportSource));
 app.post('/internal/exports/book', internal(exportBook));
+// Messaging -> backend: names/avatars to show, and who is in a group (its chat)
+app.post('/internal/users/profiles', internal(userProfiles));
+app.get('/internal/groups/:id/members', internal(groupMembers));
 
 // Root endpoint
 app.get('/', (req, res) => {

@@ -35,10 +35,28 @@
   - Bẫy: lớp ghi log bọc `ResponseWriter` phải có `Unwrap()`/`Hijack()`, không thì nâng cấp WebSocket trả 501 (test giờ đi qua lớp bọc).
 
 ## E2 `feat/messaging-conversations`: tin nhắn riêng + chat nhóm chuyển sang messaging
-- [ ] `messaging_db`: `conversations`, `conversation_members` (`last_read_message_id`, tắt tiếng, ghim, nhãn), `messages` (id tăng dần), `user_blocks`,
-      `dm_labels`; bản sao người dùng `ext_users` (từ `identity.user.*`) và thành viên nhóm (từ backend, sự kiện `catalog.group.member_changed` mới)
-- [ ] API `/api/msg/*` thay `/api/v1/messages/*` + chat nhóm; chuyển dữ liệu `direct_messages`, `group_messages`, nhãn, chặn, ghim (lệnh `messaging import`)
-- [ ] Frontend `/tin-nhan`, chat nhóm; backend bỏ code tin nhắn + migration xóa bảng cũ sau khi chạy ổn
+
+**Thiết kế (2026-10-10):**
+- **API giữ nguyên hình dạng JSON**, chỉ đổi gốc: `/api/v1/messages/*` → `/api/msg/messages/*`, `/api/v1/groups/:id/messages*` →
+  `/api/msg/groups/:id/messages*` (frontend chỉ đổi đường dẫn). Tin nhắn có `id` UUID như cũ.
+- `messaging_db`: `conversations` (dm | group; dm có `dm_key` = cặp id đã sắp xếp, group có `group_id`), `conversation_members`
+  (người dùng, `last_read_seq`, `last_read_at`; dm: 2 dòng; group: không lưu thành viên — quyền hỏi backend), `messages` (`id` UUID, `seq`
+  BIGSERIAL để so đã đọc, `sender_id`, nội dung, `draft_id`, `pinned_at/by`), `user_blocks`, `dm_labels`, `dm_label_conversations`.
+  `read_at` của tin dm = `last_read_at` của người nhận nếu `seq` ≤ `last_read_seq`.
+- **Hồ sơ hiển thị và nhóm vẫn ở backend:** messaging hỏi API nội bộ backend (cache trong bộ nhớ 60 s):
+  `POST /internal/users/profiles {ids}` / `{usernames}` → id, username, tên, ảnh, khóa/xóa; `GET /internal/groups/:id/members` → [{user_id, role}]
+  (quyền đọc/gửi = có trong danh sách; xóa tin người khác = leader/mod; người nhận tín hiệu = mọi thành viên).
+  shortcut: hỏi API thay vì giữ bản sao `ext_` theo sự kiện — backend chưa có outbox cho hồ sơ/nhóm; đổi khi làm catalog (giai đoạn I).
+- Thẻ nháp trong tin nhắn (workspace chia sẻ nháp): backend gọi `POST /internal/dm {from, to, message, draft_id}` của messaging
+  (`INTERNAL_KEY_MESSAGING`), messaging kiểm tra chặn → 403.
+- **Chuyển dữ liệu một lần:** `messaging import-legacy` (như identity) đọc `novel_platform.direct_messages, group_messages, user_blocks,
+  dm_labels, dm_label_conversations` bằng `LEGACY_DATABASE_URL` (chỉ lúc chuyển), giữ UUID; chạy lại an toàn (chỉ thêm phần thiếu).
+  `scripts/migrate.sh` + `launch.py` chạy nó. Bảng cũ xóa ở nhánh sau khi đã chạy ổn.
+
+- [x] Backend: `/internal/users/profiles`, `/internal/groups/:id/members`; `chapter.controller` gửi thẻ nháp qua messaging; bỏ code + route tin nhắn
+- [x] messaging: DB + migration nhúng, API dm (hộp thư + lọc nhãn + tìm, luồng, gửi, nhãn, chặn, ghim), chat nhóm, `/internal/dm`, `import-legacy`, test tích hợp
+- [x] Gateway `/api/msg/*`; compose (`messaging_db`, khóa), migrate.sh/launch.py chạy import; frontend đổi đường dẫn
+- [x] Thử: chuyển dữ liệu thật (đếm khớp), hộp thư/luồng/nhãn/chặn/ghim/nhóm qua gateway, thẻ nháp; README, Branches; PR, tự merge
 
 ## E3 `feat/messaging-notifications`: hộp thông báo
 - [ ] Bảng `notifications` mới (category, type chuỗi, actors, data ảnh chụp, group_key, seen/read), cài đặt nhóm × kênh, thông báo toàn site 1 dòng,

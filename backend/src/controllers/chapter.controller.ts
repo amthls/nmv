@@ -13,7 +13,7 @@ import { sanitizeRichText, sanitizeChapterHtml, richTextToPlain } from '../utils
 import { callWorkspace, applyRevisionNow, Revision } from '../services/workspaceSync';
 import { storyRole } from './internal.controller';
 import { draftNotifications } from '../services/notification.service';
-import { BLOCKED_MESSAGE, blockStatus, findPartner, insertDirectMessage } from './message.controller';
+import { dmBlocked, sendDraftCard } from '../services/messagingClient';
 
 export function slugify(text: string) {
   return text
@@ -880,9 +880,14 @@ export const returnDraft = async (req: AuthenticatedRequest, res: Response) => {
 
 // ---- Working together on drafts (stage 4a) ----------------------------------------------------------------
 
-/** The person named in a share / hand-over, who must take part in the draft's story. */
+const BLOCKED_MESSAGE = 'Không thể gửi tin nhắn cho người này.';
+
+/** The person named in a share / hand-over, who must take part in the draft's story. Deleted accounts can't. */
 async function draftRecipient(res: Response, d: any, username: unknown, me: string) {
-  const partner = await findPartner(typeof username === 'string' ? username.trim().replace(/^@/, '') : username);
+  const name = typeof username === 'string' ? username.trim().replace(/^@/, '') : '';
+  const partner = name
+    ? (await pool.query(`SELECT id, username, display_name FROM users WHERE username = $1 AND deleted_at IS NULL`, [name])).rows[0]
+    : null;
   if (!partner) {
     res.status(404).json({ success: false, message: 'Người dùng không tồn tại.' });
     return null;
@@ -910,8 +915,7 @@ export const shareDraft = async (req: AuthenticatedRequest, res: Response) => {
     if (d.owner_id !== me) return res.status(403).json({ success: false, message: 'Chỉ chủ bản nháp chia sẻ được.' });
     const partner = await draftRecipient(res, d, req.body?.username, me);
     if (!partner) return;
-    const block = await blockStatus(me, partner.id);
-    if (block.blocked_by_me || block.blocked_me) return res.status(403).json({ success: false, message: BLOCKED_MESSAGE });
+    if (await dmBlocked(me, partner.id)) return res.status(403).json({ success: false, message: BLOCKED_MESSAGE });
     const canEdit = req.body?.can_edit === true;
     const r = await callWorkspace('POST', `/internal/drafts/${d.id}/shares`, {
       owner_id: me, user_id: partner.id, user_name: partner.display_name || partner.username, can_edit: canEdit,
@@ -920,7 +924,7 @@ export const shareDraft = async (req: AuthenticatedRequest, res: Response) => {
     const text = typeof req.body?.message === 'string' && req.body.message.trim()
       ? requiredText(req.body.message, 2000, 'Lời nhắn')
       : canEdit ? 'Mình chia sẻ bản nháp này, bạn sửa giúp nhé (sửa lần lượt, mỗi lúc một người).' : 'Mình chia sẻ bản nháp này, bạn xem giúp nhé.';
-    await insertDirectMessage(me, req.user!.username, partner.id, text, d.id);
+    await sendDraftCard(me, partner.id, text, d.id);
     res.json({ success: true, message: `Đã chia sẻ với ${partner.display_name || partner.username} qua tin nhắn.`, data: r.json.data });
   } catch (error: any) {
     if (sendClientError(res, error)) return;

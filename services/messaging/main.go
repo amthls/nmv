@@ -1,8 +1,9 @@
-// messaging: realtime pushes over plain WebSocket (later: direct messages, group chat, notifications). See Plan/messaging.md.
+// messaging: realtime pushes over plain WebSocket, direct messages, group chat (later: notifications). See Plan/messaging.md.
 //
 //	messaging               serve HTTP on :PORT (default 8080)
 //	messaging healthcheck   exit 0 when the local server answers /health (Docker healthcheck)
 //	messaging loadtest N url [hold]   N fake sockets + one push to all (see loadtest.go)
+//	messaging import-legacy  copy direct/group messages, blocks, labels from the backend database (once, safe to re-run)
 package main
 
 import (
@@ -20,6 +21,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -27,9 +29,14 @@ import (
 const rtChannel = "rt:events"
 
 type config struct {
-	Port     string
-	SigKey   []byte // USER_SIG_KEY_MESSAGING: identity signs the gateway's X-User-* for us alone
-	RedisURL string
+	Port        string
+	SigKey      []byte // USER_SIG_KEY_MESSAGING: identity signs the gateway's X-User-* for us alone
+	InternalKey []byte // INTERNAL_KEY_MESSAGING: verifies the backend's calls to /internal
+	BackendKey  []byte // INTERNAL_KEY_BACKEND: signs our calls to the backend
+	BackendURL  string
+	RedisURL    string
+	DatabaseURL string
+	LegacyURL   string // novel_platform, only for `messaging import-legacy`
 }
 
 func env(k, def string) string {
@@ -56,10 +63,36 @@ func main() {
 		}
 		return
 	}
-	cfg := config{Port: env("PORT", "8080"), SigKey: []byte(os.Getenv("USER_SIG_KEY_MESSAGING")), RedisURL: os.Getenv("REDIS_URL")}
-	if len(cfg.SigKey) < 32 || cfg.RedisURL == "" {
-		logError(ctx, "USER_SIG_KEY_MESSAGING (>= 32 chars) and REDIS_URL are required")
+	cfg := config{
+		Port:        env("PORT", "8080"),
+		SigKey:      []byte(os.Getenv("USER_SIG_KEY_MESSAGING")),
+		InternalKey: []byte(os.Getenv("INTERNAL_KEY_MESSAGING")),
+		BackendKey:  []byte(os.Getenv("INTERNAL_KEY_BACKEND")),
+		BackendURL:  strings.TrimRight(env("BACKEND_INTERNAL_URL", "http://backend:5000"), "/"),
+		RedisURL:    os.Getenv("REDIS_URL"),
+		DatabaseURL: os.Getenv("MESSAGING_DATABASE_URL"),
+		LegacyURL:   os.Getenv("LEGACY_DATABASE_URL"),
+	}
+	if len(cfg.SigKey) < 32 || len(cfg.InternalKey) < 32 || len(cfg.BackendKey) < 32 || cfg.RedisURL == "" || cfg.DatabaseURL == "" {
+		logError(ctx, "USER_SIG_KEY_MESSAGING, INTERNAL_KEY_MESSAGING, INTERNAL_KEY_BACKEND (>= 32 chars), REDIS_URL and MESSAGING_DATABASE_URL are required")
 		os.Exit(1)
+	}
+	db, err := pgxpool.New(ctx, cfg.DatabaseURL)
+	if err != nil {
+		logError(ctx, "database: "+err.Error())
+		os.Exit(1)
+	}
+	defer db.Close()
+	if err := migrate(ctx, db); err != nil {
+		logError(ctx, "migrate: "+err.Error())
+		os.Exit(1)
+	}
+	if len(os.Args) > 1 && os.Args[1] == "import-legacy" {
+		if err := importLegacy(ctx, db, cfg.LegacyURL); err != nil {
+			logError(ctx, "import-legacy: "+err.Error())
+			os.Exit(1)
+		}
+		return
 	}
 	opt, err := redis.ParseURL(cfg.RedisURL)
 	if err != nil {
@@ -71,10 +104,12 @@ func main() {
 
 	h := newHub()
 	go subscribeLoop(ctx, rdb, h)
+	s := &server{cfg: cfg, db: db, rdb: rdb, be: newBackend(cfg.BackendURL, cfg.BackendKey), hub: h, now: time.Now,
+		rate: &rateLimiter{limit: 30, hits: map[string][]time.Time{}}}
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
-		Handler:           withRequestLog(routes(cfg, rdb, h)),
+		Handler:           withRequestLog(s.routes()),
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}
@@ -90,30 +125,6 @@ func main() {
 		logError(ctx, err.Error())
 		os.Exit(1)
 	}
-}
-
-// Paths are what the gateway forwards after stripping /api/msg.
-func routes(cfg config, rdb *redis.Client, h *hub) http.Handler {
-	m := http.NewServeMux()
-	m.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) { writeJSON(w, 200, map[string]any{"success": true}) })
-	m.HandleFunc("GET /ready", func(w http.ResponseWriter, r *http.Request) {
-		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
-		defer cancel()
-		if err := rdb.Ping(ctx).Err(); err != nil {
-			writeJSON(w, 503, map[string]any{"success": false, "data": map[string]string{"redis": "down"}})
-			return
-		}
-		writeJSON(w, 200, map[string]any{"success": true, "data": map[string]any{"redis": "ok", "connections": h.count()}})
-	})
-	m.HandleFunc("GET /ws", func(w http.ResponseWriter, r *http.Request) {
-		user := userFrom(cfg.SigKey, r, time.Now())
-		if user == "" {
-			writeJSON(w, 401, map[string]any{"success": false, "message": "Bạn chưa đăng nhập."})
-			return
-		}
-		h.serve(w, r, user, r.URL.Query().Get("tab"))
-	})
-	return m
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

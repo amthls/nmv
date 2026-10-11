@@ -193,7 +193,7 @@ export default function GroupDetailPage() {
   const fetchMessages = async () => {
     if (!group?.id || !canSeeInternal) return;
     try {
-      const res = await authFetch(`${API_BASE_URL}/groups/${group.id}/messages`);
+      const res = await authFetch(`/api/msg/groups/${group.id}/messages`);
       if (res.ok) {
         const json = await res.json();
         if (json.success) setMessages(json.data || []);
@@ -224,7 +224,7 @@ export default function GroupDetailPage() {
 
     setIsSendingMsg(true);
     try {
-      const res = await authFetch(`${API_BASE_URL}/groups/${group.id}/messages`, {
+      const res = await authFetch(`/api/msg/groups/${group.id}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: newMessage.trim() }),
@@ -245,7 +245,7 @@ export default function GroupDetailPage() {
   const handleDeleteMessage = async (messageId: string) => {
     if (!group?.id || !confirm('Xóa tin nhắn này?')) return;
     try {
-      await authFetch(`${API_BASE_URL}/groups/${group.id}/messages/${messageId}`, {
+      await authFetch(`/api/msg/groups/${group.id}/messages/${messageId}`, {
         method: 'DELETE',
       });
       fetchMessages();
