@@ -50,7 +50,9 @@ def log(level, msg, **fields):
 # ---- database ------------------------------------------------------------------------------------------------------
 
 def make_pool(url, size=8):
-    pool = ConnectionPool(url, min_size=1, max_size=size, kwargs={"row_factory": dict_row, "autocommit": True}, open=True)
+    # check: a connection killed meanwhile (Postgres restarted) is replaced instead of failing the request
+    pool = ConnectionPool(url, min_size=1, max_size=size, kwargs={"row_factory": dict_row, "autocommit": True},
+                          check=ConnectionPool.check_connection, open=True)
     pool.wait(timeout=30)
     return pool
 
