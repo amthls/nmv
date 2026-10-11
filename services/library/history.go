@@ -40,6 +40,9 @@ func (s *server) handleHistory(w http.ResponseWriter, r *http.Request, me string
 	if limit < 1 {
 		limit = 100
 	}
+	if err := s.flushPositions(r.Context(), me); err != nil {
+		return err
+	}
 	rows, err := s.maps(r.Context(), nil, `
 		SELECT * FROM (
 		  SELECT DISTINCT ON (rh.story_id)
@@ -100,23 +103,13 @@ func (s *server) handleSaveHistory(w http.ResponseWriter, r *http.Request, me st
 	if err != nil {
 		return err
 	}
-	row, err := s.one(r.Context(), `
-		INSERT INTO reading_history (user_id, story_id, chapter_id, scroll_position, page_number, read_at, time_spent_seconds)
-		VALUES ($1, $2, $3, $4, $5, NOW(), $6)
-		ON CONFLICT (user_id, chapter_id) DO UPDATE
-		SET scroll_position = EXCLUDED.scroll_position, page_number = EXCLUDED.page_number, story_id = EXCLUDED.story_id,
-		    read_at = NOW(), time_spent_seconds = reading_history.time_spent_seconds + EXCLUDED.time_spent_seconds
-		RETURNING *`,
-		me, story, body.ChapterID, clamp(body.Scroll, 0, 100, 0), int(math.Round(clamp(body.Page, 1, 100000, 1))),
-		int(math.Round(clamp(body.Seconds, 0, 86400, 0))))
-	if err != nil {
-		return err
-	}
-	// same keys as the backend's UserReadingLog object
+	p := pendingRead{UserID: me, StoryID: story, ChapterID: body.ChapterID, Scroll: math.Round(clamp(body.Scroll, 0, 100, 0)*100) / 100,
+		Page: int(math.Round(clamp(body.Page, 1, 100000, 1))), Seconds: int(math.Round(clamp(body.Seconds, 0, 86400, 0))), ReadAt: s.now()}
+	p = s.pos.add(p) // written within a minute (positions.go)
+	// same keys as the backend's UserReadingLog object (no row id: the row is written later)
 	writeJSON(w, 200, map[string]any{"success": true, "message": "Đã ghi nhận lịch sử đọc thành công", "data": map[string]any{
-		"id": row["id"], "userId": row["user_id"], "storyId": row["story_id"], "chapterId": row["chapter_id"],
-		"scrollPosition": row["scroll_position"], "pageNumber": row["page_number"], "readAt": row["read_at"],
-		"timeSpentSeconds": row["time_spent_seconds"],
+		"userId": me, "storyId": story, "chapterId": body.ChapterID, "scrollPosition": p.Scroll, "pageNumber": p.Page,
+		"readAt": p.ReadAt, "timeSpentSeconds": p.Seconds,
 	}})
 	return nil
 }
@@ -152,6 +145,9 @@ func (s *server) handleInternalHistory(w http.ResponseWriter, r *http.Request) e
 // DELETE /history/{id}: one row, or (a story id) every row of that story.
 func (s *server) handleDeleteHistory(w http.ResponseWriter, r *http.Request, me string) error {
 	id := r.PathValue("id")
+	if err := s.flushPositions(r.Context(), me); err != nil { // else a pending position would bring the row back
+		return err
+	}
 	if isUUID(id) {
 		tag, err := s.db.Exec(r.Context(), `DELETE FROM reading_history WHERE (id = $1 OR story_id = $1) AND user_id = $2`, id, me)
 		if err != nil {
@@ -166,6 +162,9 @@ func (s *server) handleDeleteHistory(w http.ResponseWriter, r *http.Request, me 
 }
 
 func (s *server) handleClearHistory(w http.ResponseWriter, r *http.Request, me string) error {
+	if err := s.flushPositions(r.Context(), me); err != nil { // else a pending position would bring the row back
+		return err
+	}
 	if _, err := s.db.Exec(r.Context(), `DELETE FROM reading_history WHERE user_id = $1`, me); err != nil {
 		return err
 	}

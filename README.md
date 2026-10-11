@@ -292,6 +292,11 @@ Tách khỏi backend ở giai đoạn G (`Plan/library.md`), Go (`services/libra
 - Chuyển dữ liệu: `docker compose run --rm library import-legacy` (`scripts/migrate.sh`, `launch.py` gọi; chỉ một lần, cần backend đang chạy).
   Bảng cũ ở `novel_platform` **không còn dùng**, xóa ở nhánh sau. `backend/src/scripts/simulateReaders.ts` vẫn ghi bảng cũ (xem Hạn chế).
 - Biến mới: `LIBRARY_DB_PASSWORD`, `USER_SIG_KEY_LIBRARY`, `INTERNAL_KEY_LIBRARY` (launch.py tự sinh), `LIBRARY_MEMORY` (mặc định 128m).
+- **Vị trí đọc:** trang đọc gửi `POST /history {chapter_id, scroll_position}` (% cuộn) mỗi 15 giây nếu đổi và khi ẩn tab/rời chương;
+  library giữ trong bộ nhớ, ghi xuống DB mỗi 60 giây, khi tắt và ngay trước khi đọc/xóa lịch sử của chính người đó (mất tối đa 1 phút vị trí
+  nếu library sập). Link "Đọc tiếp" (`/lich-su`, trang truyện) thêm `#vt=<%>`, trang đọc cuộn tới đó. Mỗi người giữ lịch sử của 1.000 truyện
+  đọc gần nhất (cắt khi đối soát hằng đêm). Khách: lịch sử + vị trí trong trình duyệt, đăng nhập xong gửi `POST /history/merge`
+  (≤ 200 mục, chỉ ghi đè khi mới hơn) rồi xóa khỏi trình duyệt.
 - Thử: `cd services/library && go test ./...` (thêm `LIBRARY_TEST_DATABASE_URL=postgres://…/library_test` cho test tích hợp, xóa sạch DB đó);
   trọn luồng qua gateway: `python scripts/library-smoke.py --keeper admin --reader reader_yuki --password … --story berserker-of-gluttony`.
 
@@ -522,6 +527,7 @@ Ghi chú thực tế: bảng `users` **không có** cột `role`, `coins`, `exp_
 - `GET|POST /bookmarks`, `DELETE /bookmarks/:id`
 - `GET|POST /history`, `DELETE /history/:id`, `DELETE /history`
 - `GET /albums/me`, `GET /albums/saved`, `GET /albums/by-story/:storyId`, `POST /albums`, `PUT /albums/me/visibility`, `GET|PUT|DELETE /albums/:id`,
+  `POST /history/merge {items: [{chapter_id, read_at, scroll_position}]}` (lịch sử khách sau khi đăng nhập),
   `POST /albums/:id/share-link/reset`, `POST /albums/:id/stories`, `DELETE /albums/:id/stories/:storyId`, `POST /albums/:id/save`, `POST /albums/:id/copy`
 
 **Thông báo** (Auth, **service messaging**, dưới `/api/msg`)

@@ -41,7 +41,7 @@ import MangaReader from '@/components/reader/MangaReader';
 import { rewriteHtmlImages, useImageQuality } from '@/lib/imageQuality';
 import { useAuth } from '@/context/AuthContext';
 import { useReadingSession } from '@/context/ReadingSessionContext';
-import { logChapterRead } from '@/lib/readingHistory';
+import { logChapterRead, saveReadingPosition } from '@/lib/readingHistory';
 import CodeBadge from '@/components/common/CodeBadge';
 import { LIBRARY_URL } from '@/lib/apiJson';
 
@@ -127,8 +127,6 @@ export default function ChapterReaderPage() {
       chapterTitle: chapterData.title,
       chapterNumber: chapterData.chapter_number,
       isAuthenticated,
-      authFetch,
-      apiBaseUrl: API_BASE_URL,
     });
 
     // Feed the global "continue reading" miniplayer so it can follow the user off this page.
@@ -156,16 +154,34 @@ export default function ChapterReaderPage() {
     if (!chapterData?.id) return;
     const chapterId = chapterData.id;
 
+    let current = 0;
+    let saved = -1;
     const handleScroll = () => {
       const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
       const percent = totalHeight > 0 ? Math.min(100, Math.max(0, Math.round((window.scrollY / totalHeight) * 100))) : 0;
+      current = percent;
       updateScrollPercent(chapterId, percent);
     };
+    // The reading position for "Đọc tiếp": every 15 s if it moved, and when the tab is hidden or the chapter left
+    const save = () => {
+      if (current === saved) return;
+      saved = current;
+      saveReadingPosition(chapterId, current, isAuthenticated, authFetch);
+    };
+    const onHidden = () => { if (document.visibilityState === 'hidden') save(); };
 
     handleScroll();
+    saved = current; // opening the chapter is recorded already
     window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [chapterData?.id, updateScrollPercent]);
+    document.addEventListener('visibilitychange', onHidden);
+    const timer = setInterval(save, 15000);
+    return () => {
+      save();
+      clearInterval(timer);
+      window.removeEventListener('scroll', handleScroll);
+      document.removeEventListener('visibilitychange', onHidden);
+    };
+  }, [chapterData?.id, updateScrollPercent, isAuthenticated, authFetch]);
 
   // Check for line hash or search param to auto-scroll
   useEffect(() => {
@@ -180,6 +196,23 @@ export default function ChapterReaderPage() {
     } else if (window.location.hash.startsWith('#line-')) {
       const parsed = parseInt(window.location.hash.replace('#line-', ''));
       if (!isNaN(parsed)) targetIndex = parsed;
+    }
+
+    const resume = window.location.hash.match(/^#vt=(\d{1,3})$/);
+    if (targetIndex === null && resume) {
+      // "Đọc tiếp": back to the saved scroll %, once the page height stops changing (content still laying out), max ~5 s.
+      // shortcut: manga pages loading later can still move it; anchor to a page/paragraph if readers notice.
+      let lastHeight = -1;
+      let tries = 0;
+      const timer = setInterval(() => {
+        const height = document.documentElement.scrollHeight;
+        if ((height === lastHeight && height > window.innerHeight) || ++tries > 25) {
+          clearInterval(timer);
+          window.scrollTo({ top: (Math.min(100, Number(resume[1])) / 100) * (height - window.innerHeight), behavior: 'instant' });
+        }
+        lastHeight = height;
+      }, 200);
+      return () => clearInterval(timer);
     }
 
     if (targetIndex !== null) {

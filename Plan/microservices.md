@@ -553,8 +553,8 @@ Bẫy (giai đoạn A):
 - [ ] (hoãn) Từ khóa hot + trang Admin xem từ khóa không ra kết quả
 
 ### Giai đoạn G: library
-- [ ] Theo dõi, bookmark, lịch sử đọc (gom qua Redis như lượt xem), album; phát `chapter.read`, `story.followed`
-- [ ] Vị trí đọc (% cuộn) + "Đọc tiếp" đúng đoạn; `ext_stories` cho `/lich-su`; giới hạn ~1.000 truyện/người; gộp lịch sử khách
+- [x] Theo dõi, bookmark, lịch sử đọc (gom ghi trong bộ nhớ library), album (#75 + G2, `Plan/library.md`); phát `chapter.read`, `story.followed` → để giai đoạn H
+- [x] Vị trí đọc (% cuộn) + "Đọc tiếp" đúng đoạn; `ext_stories` cho `/lich-su`; giới hạn ~1.000 truyện/người; gộp lịch sử khách
 
 ### Giai đoạn H: recommender (Python)
 - [ ] Viết lại bằng Python: nhận sự kiện thay vì đọc DB chung (thư viện nhận sự kiện bản Python + JSON Schema)

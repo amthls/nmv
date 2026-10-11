@@ -1,10 +1,10 @@
+import { LIBRARY_URL } from './apiJson';
+
 /**
- * Records that a user just opened a chapter: POST /history when authenticated,
- * otherwise guest history in localStorage. The two never mix, so a shared
- * browser doesn't leak one person's history into another account. Shared
- * by the full chapter reader page and the miniplayer's own chapter
- * navigation, so both count as "read" the same way instead of duplicating
- * this logic.
+ * Records that a visitor just opened a chapter. Signed in: nothing to do here, the backend records it when serving
+ * the chapter. Signed out: guest history in localStorage, sent to the account once after signing in
+ * (mergeGuestHistory) and then cleared. Shared by the full chapter reader page and the miniplayer's own chapter
+ * navigation, so both count as "read" the same way.
  */
 
 const GUEST_HISTORY_KEY = 'novelhub_guest_history';
@@ -48,8 +48,6 @@ interface LogChapterReadParams {
   chapterTitle: string;
   chapterNumber: number | string;
   isAuthenticated: boolean;
-  authFetch: (url: string, options?: RequestInit) => Promise<Response>;
-  apiBaseUrl: string;
 }
 
 export function logChapterRead(params: LogChapterReadParams): void {
@@ -66,8 +64,6 @@ export function logChapterRead(params: LogChapterReadParams): void {
     chapterTitle,
     chapterNumber,
     isAuthenticated,
-    authFetch,
-    apiBaseUrl,
   } = params;
 
   if (!isAuthenticated) {
@@ -88,17 +84,49 @@ export function logChapterRead(params: LogChapterReadParams): void {
       group_name: groupName || '',
     };
     setGuestHistory([newItem, ...getGuestHistory().filter((h: any) => h.story_id !== storyId)]);
+  }
+}
+
+type AuthFetch = (url: string, options?: RequestInit) => Promise<Response>;
+
+/** Where the reader is in a chapter (scroll %), for "Đọc tiếp". keepalive: also sent when the page is being left. */
+export function saveReadingPosition(chapterId: string, percent: number, isAuthenticated: boolean, authFetch: AuthFetch): void {
+  if (!isAuthenticated) {
+    const list = getGuestHistory();
+    const item = list.find((h: any) => h.chapter_id === chapterId);
+    if (item) {
+      item.scroll_position = percent;
+      setGuestHistory(list);
+    }
     return;
   }
-
-  authFetch(`${apiBaseUrl}/history`, {
+  authFetch(`${LIBRARY_URL}/history`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      story_id: storyId,
-      chapter_id: chapterId,
-      scroll_position: 0,
-      page_number: 1,
-    }),
-  }).catch((err: any) => console.error('Failed to log reading history:', err));
+    body: JSON.stringify({ chapter_id: chapterId, scroll_position: percent }),
+    keepalive: true,
+  }).catch(() => {}); // a lost position is not worth an error
+}
+
+/** "#vt=<%>" for a "Đọc tiếp" link: the reader page scrolls back there (nothing when near the top). */
+export function positionHash(item: { scroll_position?: number | string | null }): string {
+  const pct = Math.round(Number(item?.scroll_position) || 0);
+  return pct > 1 ? `#vt=${Math.min(pct, 100)}` : '';
+}
+
+/** After signing in: this browser's guest history goes to the account (newer reads only), then it is cleared. */
+export async function mergeGuestHistory(authFetch: AuthFetch): Promise<void> {
+  const list = getGuestHistory();
+  if (!list.length) return;
+  const items = list.slice(0, 200).map((h: any) => ({ chapter_id: h.chapter_id, read_at: h.read_at, scroll_position: Number(h.scroll_position) || 0 }));
+  try {
+    const res = await authFetch(`${LIBRARY_URL}/history/merge`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items }),
+    });
+    if (res.ok) setGuestHistory([]);
+  } catch {
+    // kept for the next page load
+  }
 }

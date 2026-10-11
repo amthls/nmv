@@ -20,6 +20,7 @@ type server struct {
 	db  *pgxpool.Pool
 	be  *backendClient
 	now func() time.Time
+	pos positionBuffer
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
@@ -200,6 +201,7 @@ func (s *server) routes() http.Handler {
 	m.HandleFunc("POST /history", s.authed(s.handleSaveHistory))
 	m.HandleFunc("DELETE /history/{id}", s.authed(s.handleDeleteHistory))
 	m.HandleFunc("DELETE /history", s.authed(s.handleClearHistory))
+	m.HandleFunc("POST /history/merge", s.authed(s.handleMergeHistory))
 
 	m.HandleFunc("GET /bookmarks", s.authed(s.handleBookmarks))
 	m.HandleFunc("POST /bookmarks", s.authed(s.handleCreateBookmark))

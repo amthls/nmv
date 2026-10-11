@@ -71,8 +71,6 @@ export default function MiniplayerReaderView({ session }: { session: ReadingSess
           chapterTitle: chapter.title,
           chapterNumber: chapter.chapter_number,
           isAuthenticated,
-          authFetch,
-          apiBaseUrl: API_BASE_URL,
         });
 
         setSession({
