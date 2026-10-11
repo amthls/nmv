@@ -23,6 +23,7 @@ func (s *server) signHeaders(h http.Header, uid, roles string) {
 	h.Set("X-User-Sig-Media", signUserHeaders(s.cfg.SigKeyMedia, uid, roles, exp))
 	h.Set("X-User-Sig-Msg", signUserHeaders(s.cfg.SigKeyMsg, uid, roles, exp))
 	h.Set("X-User-Sig-Community", signUserHeaders(s.cfg.SigKeyCommunity, uid, roles, exp))
+	h.Set("X-User-Sig-Library", signUserHeaders(s.cfg.SigKeyLibrary, uid, roles, exp))
 }
 
 // GET /internal/verify: nginx auth_request for every /api/v1 and /socket.io request (no body; the original

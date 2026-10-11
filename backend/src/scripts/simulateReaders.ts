@@ -15,6 +15,8 @@ import { rng } from '../services/recommender/algorithms';
  * story they often pick a similar one next, which is the pattern co-visitation should find.
  * Re-running replaces the previous simulation. Their favorites update story counters
  * through the usual triggers, and --clear rolls those back the same way.
+ * shortcut: still writes the old reading_history/user_favorites tables, which the library service (Plan/library.md)
+ * no longer reads, so new runs do not reach the recommender; give library an import endpoint if the simulation is needed again.
  */
 
 const USER_PREFIX = 'sim_reader_';

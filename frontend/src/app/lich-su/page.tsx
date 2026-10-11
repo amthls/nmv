@@ -19,8 +19,8 @@ import {
 import SmartImage from '@/components/common/SmartImage';
 import { useAuth } from '@/context/AuthContext';
 import { getGuestHistory, setGuestHistory } from '@/lib/readingHistory';
+import { LIBRARY_URL } from '@/lib/apiJson';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
 export default function ReadingHistoryPage() {
   const { isAuthenticated, isLoading: isAuthLoading, openAuthModal, authFetch } = useAuth();
@@ -38,7 +38,7 @@ export default function ReadingHistoryPage() {
     let combinedList: any[] = [];
     if (isAuthenticated) {
       try {
-        const res = await authFetch(`${API_BASE_URL}/history`);
+        const res = await authFetch(`${LIBRARY_URL}/history`);
         if (res.ok) {
           const json = await res.json();
           if (json.success && Array.isArray(json.data)) combinedList = [...json.data];
@@ -99,7 +99,7 @@ export default function ReadingHistoryPage() {
     } else {
       const idToDelete = storyId || targetId;
       try {
-        const res = await authFetch(`${API_BASE_URL}/history/${idToDelete}`, { method: 'DELETE' });
+        const res = await authFetch(`${LIBRARY_URL}/history/${idToDelete}`, { method: 'DELETE' });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
       } catch (err) {
         console.error('Failed to delete history item:', err);
@@ -120,7 +120,7 @@ export default function ReadingHistoryPage() {
       setGuestHistory([]);
     } else {
       try {
-        const res = await authFetch(`${API_BASE_URL}/history`, { method: 'DELETE' });
+        const res = await authFetch(`${LIBRARY_URL}/history`, { method: 'DELETE' });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
       } catch (err) {
         console.error('Failed to clear history:', err);

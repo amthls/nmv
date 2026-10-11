@@ -1,4 +1,3 @@
-import { UserReadingLog } from '../models/readingHistory.model';
 ﻿import { Request, Response } from 'express';
 import { pool } from '../config/db';
 import { recordView } from '../services/viewCounter';
@@ -10,6 +9,7 @@ import { InputError, isUuid, optionalEnum, optionalText, optionalUrl, requiredTe
 import { clientDbError } from '../utils/dbErrors';
 import { enqueueNotificationJob } from '../services/queue.service';
 import { callCommunity } from '../services/communityClient';
+import { callLibrary, libraryData, purgeLibrary } from '../services/libraryClient';
 
 function slugify(text: string) {
   return text
@@ -618,12 +618,10 @@ export const getStoryBySlug = async (req: Request, res: Response) => {
     const currentUserId = (req as any).user?.id;
     const currentUserRoles: string[] = (req as any).user?.roles || [];
     if (currentUserId) {
-      const favCheck = await pool.query(
-        'SELECT id, category FROM user_favorites WHERE user_id = $1::uuid AND story_id = $2::uuid',
-        [currentUserId, story.id]
-      );
-      story.is_favorite = favCheck.rows.length > 0;
-      story.favorite_category = favCheck.rows[0]?.category || null;
+      // followed? the library service's (the page still opens if it is down)
+      const fav = await libraryData(`/internal/favorites/${currentUserId}/${story.id}`, 2000).catch(() => null);
+      story.is_favorite = Boolean(fav?.is_favorite);
+      story.favorite_category = fav?.category || null;
       story.can_manage = await canUserManageStory(currentUserId, story.id);
     } else {
       story.is_favorite = false;
@@ -730,11 +728,10 @@ export const getChapterBySlug = async (req: Request, res: Response) => {
     // Tự động sinh bản ghi log đọc truyện nếu người dùng đã đăng nhập
     const currentUserId = (req as AuthenticatedRequest).user?.id;
     if (currentUserId) {
-      UserReadingLog.recordLog({
-        userId: currentUserId,
-        storyId: story.id,
-        chapterId: chapter.id,
-      }).catch((err) => console.error('[UserReadingLog] Tự động ghi log thất bại:', err));
+      // reading history: the library service's (in the background; reading never waits for it)
+      callLibrary('POST', '/internal/history', { user_id: currentUserId, chapter_id: chapter.id })
+        .then((r) => { if (r.status !== 200) throw new Error(`HTTP ${r.status}`); })
+        .catch((err) => console.error('[library] reading history not saved:', err.message));
     }
 
     logRecEvent({ userId: currentUserId, visitorId: visitorIdOf(req), storyId: story.id, chapterId: chapter.id, kind: 'read' });
@@ -885,10 +882,7 @@ export const deleteStory = async (req: AuthenticatedRequest, res: Response) => {
     try {
       await client.query('BEGIN');
 
-      // 1. Delete reading history, bookmarks, favorites
-      await client.query(`DELETE FROM reading_history WHERE story_id = $1`, [id]);
-      await client.query(`DELETE FROM bookmarks WHERE story_id = $1`, [id]);
-      await client.query(`DELETE FROM user_favorites WHERE story_id = $1`, [id]);
+      // 1. Views, tags, collaborators (reading history, bookmarks, follows: the library service, after the commit)
       await client.query(`DELETE FROM story_views WHERE story_id = $1`, [id]);
       await client.query(`DELETE FROM story_tags WHERE story_id = $1`, [id]);
       await client.query(`DELETE FROM story_collaborators WHERE story_id = $1`, [id]);
@@ -919,6 +913,7 @@ export const deleteStory = async (req: AuthenticatedRequest, res: Response) => {
 
     await removeStoryFromIndex(id);
     await purgeComments();
+    await purgeLibrary({ story_ids: [id] });
 
     res.json({
       success: true,

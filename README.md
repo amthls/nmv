@@ -9,7 +9,7 @@ Nền tảng đọc **Light Novel (truyện chữ)** và **Manga (truyện tranh
 2. [Cấu trúc thư mục](#-cấu-trúc-thư-mục)
 3. [Khởi chạy](#-khởi-chạy)
 4. [Biến môi trường](#-biến-môi-trường)
-5. [Chống lạm dụng & DDoS](#-chống-lạm-dụng--ddos) · [Hiệu năng & mở rộng](#-hiệu-năng--mở-rộng-redis-realtime-pgbouncer) · [CI/CD & migration](#-cicd--migration) · [Service identity](#-service-identity) · [Service workspace](#-service-workspace-lịch-sử-chương) · [Sự kiện giữa các service](#-sự-kiện-giữa-các-service) · [Service media](#-service-media-ảnh-epubpdf) · [Service community](#-service-community-fandom-bình-luận-báo-cáo) · [Sao lưu & khôi phục](#-sao-lưu--khôi-phục) · [Lộ trình bảo mật](#-lộ-trình-bảo-mật)
+5. [Chống lạm dụng & DDoS](#-chống-lạm-dụng--ddos) · [Hiệu năng & mở rộng](#-hiệu-năng--mở-rộng-redis-realtime-pgbouncer) · [CI/CD & migration](#-cicd--migration) · [Service identity](#-service-identity) · [Service workspace](#-service-workspace-lịch-sử-chương) · [Sự kiện giữa các service](#-sự-kiện-giữa-các-service) · [Service media](#-service-media-ảnh-epubpdf) · [Service community](#-service-community-fandom-bình-luận-báo-cáo) · [Service library](#-service-library-theo-dõi-bookmark-lịch-sử-đọc-album) · [Sao lưu & khôi phục](#-sao-lưu--khôi-phục) · [Lộ trình bảo mật](#-lộ-trình-bảo-mật)
 6. [Hàng đợi thông báo (RabbitMQ)](#-hàng-đợi-thông-báo-rabbitmq)
 7. [Tìm kiếm với Elasticsearch](#-tìm-kiếm-với-elasticsearch)
 8. [Trình soạn thảo rich text](#️-trình-soạn-thảo-rich-text-ckeditor-5) · [Độ phân giải ảnh](#-độ-phân-giải-ảnh-cho-người-đọc) · [Hiệu ứng tải trang](#-hiệu-ứng-tải-trang)
@@ -275,6 +275,26 @@ Tách khỏi backend ở giai đoạn F (`Plan/community.md`), TypeScript (`serv
 - Biến mới: `COMMUNITY_DB_PASSWORD`, `USER_SIG_KEY_COMMUNITY`, `INTERNAL_KEY_COMMUNITY` (launch.py tự sinh), `COMMUNITY_MEMORY` (mặc định 256m).
 - Thử: `cd services/community && yarn test`; trọn luồng qua gateway: `python scripts/community-smoke.py --admin admin --writer reader_hana --reader reader_yuki --password …`.
 
+## 📚 Service library (theo dõi, bookmark, lịch sử đọc, album)
+
+Tách khỏi backend ở giai đoạn G (`Plan/library.md`), Go (`services/library`), database riêng `library_db`
+(`user_favorites`, `bookmarks`, `reading_history`, `albums`, `album_stories`, `album_saves`, `user_follows`; mã `AL-…` giữ nguyên số).
+- Gateway `/api/library/*` (bỏ tiền tố): **cùng JSON** như `/api/v1` trước đây (`/favorites`, `/bookmarks`, `/history`, `/albums/*`).
+  Khóa `USER_SIG_KEY_LIBRARY` (identity ký `X-User-Sig-Library`).
+- **Bản sao truyện/chương** `ext_stories`, `ext_chapters`: library hỏi backend `GET /internal/library/stories|chapters?since=&after=` mỗi 30 giây
+  (theo `updated_at`), chương vừa đăng chưa có thì hỏi đúng dòng đó (`?ids=`); mỗi ngày đối soát cả bảng (`/internal/library/ids`) để bỏ dòng đã xóa.
+  Xóa truyện/chương: backend gọi `POST /internal/purge` của library (xóa lịch sử, bookmark, theo dõi, chỗ trong album).
+- Tên, ảnh, số mã chủ album hỏi backend (`POST /internal/users/profiles`, nhớ 60 giây). Số người theo dõi `stories.total_favorites` vẫn ở backend:
+  library đếm lại và gửi `POST /internal/favorite-counts` sau mỗi lần theo dõi/bỏ.
+- Backend hỏi library (`INTERNAL_KEY_LIBRARY`): đọc chương → ghi lịch sử (`/internal/history`), trang truyện (`/internal/favorites/:user/:story`),
+  hồ sơ (`/internal/users/:id/overview`), mã `AL-` (`/internal/codes/album/:số`), gợi ý truyện (`/internal/reco/export`, `/internal/reco/user/:id`,
+  cả trong `worker`). Messaging hỏi `/internal/stories/:id/followers` để báo chương mới. Xóa tài khoản: library nghe `identity.user.deleted`.
+- Chuyển dữ liệu: `docker compose run --rm library import-legacy` (`scripts/migrate.sh`, `launch.py` gọi; chỉ một lần, cần backend đang chạy).
+  Bảng cũ ở `novel_platform` **không còn dùng**, xóa ở nhánh sau. `backend/src/scripts/simulateReaders.ts` vẫn ghi bảng cũ (xem Hạn chế).
+- Biến mới: `LIBRARY_DB_PASSWORD`, `USER_SIG_KEY_LIBRARY`, `INTERNAL_KEY_LIBRARY` (launch.py tự sinh), `LIBRARY_MEMORY` (mặc định 128m).
+- Thử: `cd services/library && go test ./...` (thêm `LIBRARY_TEST_DATABASE_URL=postgres://…/library_test` cho test tích hợp, xóa sạch DB đó);
+  trọn luồng qua gateway: `python scripts/library-smoke.py --keeper admin --reader reader_yuki --password … --story berserker-of-gluttony`.
+
 ## 💾 Sao lưu & khôi phục
 
 Container `backup` (`backup/`: postgres:16-alpine + [restic](https://restic.net) + crond, giờ Việt Nam) sao lưu vào kho mã hóa `backups/repo` trên máy host:
@@ -443,11 +463,12 @@ Schema thật gồm 31 bảng và 2 view (`sql/database.sql`). Nhóm chính:
 
 | Nhóm | Bảng |
 |:---|:---|
-| Người dùng | `users`, `user_roles` (**bản sao** từ identity qua sự kiện `identity.user.*`: tên đăng nhập, vai trò, khóa/xóa; hồ sơ hiển thị vẫn do backend giữ), `user_settings`, `user_follows`*, `user_favorites`, `processed_events` (sự kiện đã áp dụng). Email, mật khẩu, token tài khoản **không có ở đây** (identity giữ; đã xóa ở migration 026) |
+| Người dùng | `users`, `user_roles` (**bản sao** từ identity qua sự kiện `identity.user.*`: tên đăng nhập, vai trò, khóa/xóa; hồ sơ hiển thị vẫn do backend giữ), `user_settings`, `processed_events` (sự kiện đã áp dụng). Email, mật khẩu, token tài khoản **không có ở đây** (identity giữ; đã xóa ở migration 026) |
 | Truyện | `stories`, `volumes`, `chapters`, `chapter_pages`, `chapter_submissions`, `story_tags`, `tags`, `tag_categories`, `story_collaborators`, `story_views`, `story_views_daily` |
 | Nhóm dịch | `translation_groups`, `group_members`, `group_join_requests` (chat nhóm: service messaging; bảng cũ `group_messages` còn lại tới khi xóa) |
 | Tin nhắn riêng | Ở service messaging (`messaging_db`: `conversations`, `conversation_members`, `messages`, `user_blocks`, `dm_labels`, `dm_label_conversations`). Bảng cũ `direct_messages`, `dm_labels`, `dm_label_conversations`, `user_blocks` ở đây **không còn dùng** (đã chép sang bằng `messaging import-legacy`), xóa ở nhánh sau |
-| Tương tác | `bookmarks`, `reading_history`; `notifications`, `broadcast_notifications`* và cột `user_settings.notify_*` **không còn dùng** (thông báo ở service messaging, đã chép bằng `import-legacy`), xóa ở nhánh sau |
+| Theo dõi, bookmark, lịch sử, album | Ở service library (`library_db`). Bảng cũ `user_favorites`, `user_follows`, `bookmarks`, `reading_history`, `albums`, `album_stories`, `album_saves` ở đây **không còn dùng** (đã chép bằng `import-legacy`), xóa ở nhánh sau |
+| Thông báo | `notifications`, `broadcast_notifications`* và cột `user_settings.notify_*` **không còn dùng** (thông báo ở service messaging, đã chép bằng `import-legacy`), xóa ở nhánh sau |
 | Fandom, bình luận, báo cáo | Ở service community (`community_db`). Bảng cũ `posts`, `post_tags`, `post_reactions`, `post_notification_mutes`, `comments`, `comment_likes`, `reports` ở đây **không còn dùng** (đã chép bằng `import-legacy`), xóa ở nhánh sau |
 | Workspace | `ws_chapter_versions` (migration `023_ws_chapter_versions.sql`): phiên bản workspace mới nhất đã áp vào bản đọc `chapters`, gồm cả chương đã xóa. Nội dung và lịch sử nằm ở `workspace_db` (xem [Service workspace](#-service-workspace-lịch-sử-chương)) |
 | View | `v_trending_stories`, `v_recently_updated_stories` |
@@ -496,10 +517,12 @@ Ghi chú thực tế: bảng `users` **không có** cột `role`, `coins`, `exp_
 - `GET /chapters/:id` (Auth, dữ liệu để sửa, kèm `ws_version`), `PUT /chapters/:id` (Auth, sửa chương đã đăng; gửi lại `expected_version` = `ws_version`, đã có người sửa trước thì 409), `DELETE /chapters/:id` (Auth)
 - Nháp: `POST /drafts`, `PUT /drafts/:id`, `POST /drafts/:id/publish` (Auth). Lịch sử, so sánh, khôi phục bản cũ, danh sách/bỏ/cập nhật nháp: `/api/ws/*` (xem [Service workspace](#-service-workspace-lịch-sử-chương))
 
-**Theo dõi, Bookmark, Lịch sử**
+**Theo dõi, Bookmark, Lịch sử, Album** (service library: các đường dẫn dưới đây nằm dưới `/api/library`, JSON như trước)
 - `GET /favorites`, `POST /favorites/toggle`, `GET /favorites/status/:storyId`
 - `GET|POST /bookmarks`, `DELETE /bookmarks/:id`
 - `GET|POST /history`, `DELETE /history/:id`, `DELETE /history`
+- `GET /albums/me`, `GET /albums/saved`, `GET /albums/by-story/:storyId`, `POST /albums`, `PUT /albums/me/visibility`, `GET|PUT|DELETE /albums/:id`,
+  `POST /albums/:id/share-link/reset`, `POST /albums/:id/stories`, `DELETE /albums/:id/stories/:storyId`, `POST /albums/:id/save`, `POST /albums/:id/copy`
 
 **Thông báo** (Auth, **service messaging**, dưới `/api/msg`)
 - `GET /notifications?category=&unread=1&before=&limit=` (mới nhất trước, gồm thông báo toàn site; kèm `unseen_count`, `unread_count`), `POST /notifications/seen` (mở chuông), `PUT /notifications/:id/read`, `PUT /notifications/read-all?category=`, `DELETE /notifications/:id`
@@ -562,7 +585,8 @@ Email có dạng `<tên ngắn>@novelhub.vn` (ví dụ `admin@novelhub.vn`, `sak
 - Diff3 so đoạn theo nội dung: ảnh minh họa của chương nhập cũ (khối ảnh riêng) và đoạn có định dạng mà trình soạn thảo viết lại HTML khác đi vẫn có thể hiện là "đã sửa" sau lần lưu đầu.
 - Chương không gỡ riêng được: Admin/Mod chỉ gỡ cả truyện. Bài viết do tác giả tự xóa hoặc bị ẩn khi xóa tài khoản (`purge_content`) không nằm trong `/da-go`.
 - Báo cáo vi phạm chưa tự ẩn/xóa nội dung: Admin/Mod phải tự xử lý rồi đánh dấu báo cáo.
-- Các bảng `user_follows`, `broadcast_notifications` chưa được code sử dụng.
+- Bảng `broadcast_notifications` chưa được code sử dụng; `user_follows` (ở library) chỉ dùng để đếm.
+- `backend/src/scripts/simulateReaders.ts` (người đọc giả cho gợi ý) vẫn ghi bảng cũ `reading_history`/`user_favorites` mà library không đọc nữa.
 - Tin nhắn riêng chưa có xóa/sửa tin, gửi ảnh hay báo cáo tin nhắn; chặn chỉ áp dụng cho tin nhắn (người bị chặn vẫn thấy bài viết, bình luận của bạn).
 - Test tự động mới chỉ có `isTokenRevoked` (`backend/src/middlewares/auth.middleware.test.ts`) và `parseCode` (`backend/src/controllers/code.controller.test.ts`).
 - Web miễn phí nên **không làm** hệ thống xu, nạp tiền, mua chương hay cấp độ.

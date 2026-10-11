@@ -133,28 +133,12 @@ export const userProfiles = async (req: Request, res: Response) => {
   const ids = Array.isArray(req.body?.ids) ? req.body.ids.filter(isUuid).slice(0, 500) : [];
   const names = Array.isArray(req.body?.usernames) ? req.body.usernames.filter((u: unknown) => typeof u === 'string').slice(0, 500) : [];
   const r = await pool.query(
-    `SELECT id, username, display_name, avatar_url, COALESCE(is_banned, false) AS is_banned, deleted_at IS NOT NULL AS deleted,
+    `SELECT id, username, display_name, avatar_url, COALESCE(is_banned, false) AS is_banned, deleted_at IS NOT NULL AS deleted, code_no::int AS code_no,
        COALESCE((SELECT array_agg(role::text) FROM user_roles r WHERE r.user_id = users.id), '{}') AS roles
      FROM users WHERE id = ANY($1::uuid[]) OR username = ANY($2::text[])`,
     [ids, names]
   );
   res.json({ success: true, data: r.rows });
-};
-
-/**
- * GET /internal/stories/:id/followers?after=<user uuid>&limit=<=1000 -> [user_id] in id order: who wants new-chapter
- * notifications for the story (messaging pages through it; its own settings decide the rest).
- */
-export const storyFollowers = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const after = typeof req.query.after === 'string' && isUuid(req.query.after) ? req.query.after : '00000000-0000-0000-0000-000000000000';
-  const limit = Math.min(Math.max(Number(req.query.limit) || 1000, 1), 1000);
-  if (!isUuid(id)) return res.status(404).json({ success: false });
-  const r = await pool.query(
-    `SELECT user_id FROM user_favorites WHERE story_id = $1 AND user_id > $2 AND notify_updates IS NOT FALSE ORDER BY user_id LIMIT $3`,
-    [id, after, limit]
-  );
-  res.json({ success: true, data: r.rows.map((row: any) => row.user_id) });
 };
 
 /**
@@ -224,4 +208,53 @@ export const groupMembers = async (req: Request, res: Response) => {
   if (!g.rowCount) return res.status(404).json({ success: false });
   const r = await pool.query(`SELECT user_id, role FROM group_members WHERE group_id = $1`, [id]);
   res.json({ success: true, data: r.rows });
+};
+
+/**
+ * GET /internal/library/{stories|chapters}?since=&after=&limit= -> rows changed since (updated_at, id), oldest first: the
+ * library service's read copies (Plan/library.md). updated_at comes back as Postgres text (microseconds kept) and is
+ * handed back as `since`. Rows from the last 2 seconds wait for the next call (a transaction still open could commit
+ * with an older time).
+ */
+const LIBRARY_ROWS = {
+  stories: `SELECT s.id, s.title, s.slug, s.cover_image_url, s.author_name, s.story_type::text, s.status::text, s.approval_status::text,
+      s.total_chapters, s.total_views, s.total_favorites, g.name AS group_name,
+      COALESCE((SELECT json_agg(json_build_object('name', t.name, 'slug', t.slug)) FROM story_tags st JOIN tags t ON t.id = st.tag_id
+                WHERE st.story_id = s.id), '[]') AS tags,
+      s.updated_at::text AS updated_at
+    FROM stories s LEFT JOIN translation_groups g ON g.id = s.group_id`,
+  chapters: `SELECT c.id, c.story_id, c.title, c.slug, c.chapter_number::text, c.is_published, c.updated_at::text AS updated_at
+    FROM chapters c`,
+};
+export const librarySync = (kind: 'stories' | 'chapters') => async (req: Request, res: Response) => {
+  const since = typeof req.query.since === 'string' && req.query.since ? req.query.since : '1970-01-01T00:00:00Z';
+  const after = isUuid(req.query.after) ? req.query.after : '00000000-0000-0000-0000-000000000000';
+  const limit = Math.min(Math.max(Number(req.query.limit) || 500, 1), 2000);
+  const t = kind === 'stories' ? 's' : 'c';
+  if (typeof req.query.ids === 'string') { // exact rows (a chapter published a moment ago), the cursor is not involved
+    const ids = req.query.ids.split(',').filter(isUuid).slice(0, 100);
+    const r = await pool.query(`${LIBRARY_ROWS[kind]} WHERE ${t}.id = ANY($1::uuid[])`, [ids]);
+    return res.json({ success: true, data: r.rows });
+  }
+  const r = await pool.query(
+    `${LIBRARY_ROWS[kind]} WHERE (${t}.updated_at, ${t}.id) > ($1::timestamptz, $2::uuid) AND ${t}.updated_at < NOW() - INTERVAL '2 seconds'
+     ORDER BY ${t}.updated_at, ${t}.id LIMIT $3`, [since, after, limit]);
+  res.json({ success: true, data: r.rows });
+};
+
+/** GET /internal/library/ids?type=story|chapter -> every id (the library drops copies of rows that are gone). */
+export const libraryIds = async (req: Request, res: Response) => {
+  const table = req.query.type === 'chapter' ? 'chapters' : 'stories';
+  const r = await pool.query(`SELECT id FROM ${table}`);
+  res.json({ success: true, data: r.rows.map((row: any) => row.id) });
+};
+
+/** POST /internal/favorite-counts {stories: [{id, count}]}: fresh follower counts from the library (stories.total_favorites). */
+export const favoriteCounts = async (req: Request, res: Response) => {
+  const list = Array.isArray(req.body?.stories) ? req.body.stories.filter((s: any) => isUuid(s?.id) && Number.isInteger(s.count)) : [];
+  if (list.length) {
+    await pool.query(`UPDATE stories s SET total_favorites = x.n FROM unnest($1::uuid[], $2::int[]) AS x(id, n) WHERE s.id = x.id`,
+      [list.map((s: any) => s.id), list.map((s: any) => s.count)]);
+  }
+  res.json({ success: true });
 };

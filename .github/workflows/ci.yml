@@ -158,6 +158,33 @@ jobs:
           MESSAGING_TEST_DATABASE_URL: postgres://postgres:test@127.0.0.1:5432/messaging_test
         run: go test -count=1 ./...
 
+  library:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: library_test
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U postgres" --health-interval 5s --health-retries 10
+    defaults:
+      run:
+        working-directory: services/library
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: services/library/go.mod
+          cache-dependency-path: services/library/go.sum
+      - name: gofmt
+        run: test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+      - run: go vet ./...
+      - name: Tests
+        env:
+          LIBRARY_TEST_DATABASE_URL: postgres://postgres:test@127.0.0.1:5432/library_test
+        run: go test -count=1 ./...
+
   smoke:
     needs: typecheck
     runs-on: ubuntu-latest
@@ -190,6 +217,9 @@ jobs:
             echo "USER_SIG_KEY_COMMUNITY=$(openssl rand -hex 32)"
             echo "INTERNAL_KEY_COMMUNITY=$(openssl rand -hex 32)"
             echo "COMMUNITY_DB_PASSWORD=$(openssl rand -hex 32)"
+            echo "USER_SIG_KEY_LIBRARY=$(openssl rand -hex 32)"
+            echo "INTERNAL_KEY_LIBRARY=$(openssl rand -hex 32)"
+            echo "LIBRARY_DB_PASSWORD=$(openssl rand -hex 32)"
           } > .env
 
       - name: Build images
@@ -227,6 +257,15 @@ jobs:
         with:
           scan-type: image
           image-ref: local/nmv-media:latest
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          trivyignores: .trivyignore
+      - name: Scan library image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: local/nmv-library:latest
           severity: CRITICAL
           ignore-unfixed: true
           exit-code: '1'

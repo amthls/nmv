@@ -62,35 +62,6 @@ import {
   transferDraft,
   offerDraft,
 } from '../controllers/chapter.controller';
-import { 
-  getReadingHistory, 
-  saveReadingHistory, 
-  deleteReadingHistoryItem, 
-  clearReadingHistory 
-} from '../controllers/history.controller';
-import { 
-  getBookmarks, 
-  createBookmark, 
-  deleteBookmark, 
-  getFavorites, 
-  toggleFavorite,
-  checkFavoriteStatus
-} from '../controllers/bookmark.controller';
-import {
-  getMyAlbums,
-  getSavedAlbums,
-  getAlbumsByStory,
-  getAlbum,
-  createAlbum,
-  updateAlbum,
-  setAllAlbumsVisibility,
-  deleteAlbum,
-  resetShareLink,
-  addStoryToAlbum,
-  removeStoryFromAlbum,
-  toggleSaveAlbum,
-  copyAlbum
-} from '../controllers/album.controller';
 
 import {
   getHomeRecommendations,
@@ -175,33 +146,10 @@ router.post('/drafts/:id/offer', requireAuth, offerDraft);
 // Notifications: the messaging service (/api/msg/notifications*)
 
 // Reading History
-router.get('/history', requireAuth, getReadingHistory);
-router.post('/history', requireAuth, saveReadingHistory);
-router.delete('/history/:id', requireAuth, deleteReadingHistoryItem);
-router.delete('/history', requireAuth, clearReadingHistory);
 
 // Bookmarks & Favorites
-router.get('/bookmarks', requireAuth, getBookmarks);
-router.post('/bookmarks', requireAuth, createBookmark);
-router.delete('/bookmarks/:id', requireAuth, deleteBookmark);
-router.get('/favorites', requireAuth, getFavorites);
-router.post('/favorites/toggle', requireAuth, toggleFavorite);
-router.get('/favorites/status/:storyId', optionalAuth, checkFavoriteStatus);
 
 // Albums: named story lists, shareable by link, saveable and copyable by other users
-router.get('/albums/me', requireAuth, getMyAlbums);
-router.get('/albums/saved', requireAuth, getSavedAlbums);
-router.get('/albums/by-story/:storyId', optionalAuth, getAlbumsByStory);
-router.post('/albums', requireAuth, albumLimiter, createAlbum);
-router.put('/albums/me/visibility', requireAuth, setAllAlbumsVisibility); // before /albums/:id
-router.get('/albums/:id', optionalAuth, getAlbum);
-router.put('/albums/:id', requireAuth, updateAlbum);
-router.delete('/albums/:id', requireAuth, deleteAlbum);
-router.post('/albums/:id/share-link/reset', requireAuth, resetShareLink);
-router.post('/albums/:id/stories', requireAuth, addStoryToAlbum);
-router.delete('/albums/:id/stories/:storyId', requireAuth, removeStoryFromAlbum);
-router.post('/albums/:id/save', requireAuth, toggleSaveAlbum);
-router.post('/albums/:id/copy', requireAuth, albumLimiter, copyAlbum);
 
 // Recommendations (trained by the worker; see services/recommender)
 const recEventLimiter = perUserLimiter({ windowMs: 60_000, limit: 120, message: 'Quá nhiều yêu cầu.' });

@@ -34,6 +34,8 @@ type config struct {
 	InternalKey []byte // INTERNAL_KEY_MESSAGING: verifies the backend's calls to /internal
 	BackendKey  []byte // INTERNAL_KEY_BACKEND: signs our calls to the backend
 	BackendURL  string
+	LibraryKey  []byte // INTERNAL_KEY_LIBRARY: our calls to the library (who follows a story)
+	LibraryURL  string
 	RedisURL    string
 	DatabaseURL string
 	RabbitURL   string // jobs on novel.notifications (empty: only /internal/notifications/jobs)
@@ -70,13 +72,15 @@ func main() {
 		InternalKey: []byte(os.Getenv("INTERNAL_KEY_MESSAGING")),
 		BackendKey:  []byte(os.Getenv("INTERNAL_KEY_BACKEND")),
 		BackendURL:  strings.TrimRight(env("BACKEND_INTERNAL_URL", "http://backend:5000"), "/"),
+		LibraryKey:  []byte(os.Getenv("INTERNAL_KEY_LIBRARY")),
+		LibraryURL:  strings.TrimRight(env("LIBRARY_INTERNAL_URL", "http://library:8080"), "/"),
 		RedisURL:    os.Getenv("REDIS_URL"),
 		DatabaseURL: os.Getenv("MESSAGING_DATABASE_URL"),
 		RabbitURL:   os.Getenv("RABBITMQ_URL"),
 		LegacyURL:   os.Getenv("LEGACY_DATABASE_URL"),
 	}
-	if len(cfg.SigKey) < 32 || len(cfg.InternalKey) < 32 || len(cfg.BackendKey) < 32 || cfg.RedisURL == "" || cfg.DatabaseURL == "" {
-		logError(ctx, "USER_SIG_KEY_MESSAGING, INTERNAL_KEY_MESSAGING, INTERNAL_KEY_BACKEND (>= 32 chars), REDIS_URL and MESSAGING_DATABASE_URL are required")
+	if len(cfg.SigKey) < 32 || len(cfg.InternalKey) < 32 || len(cfg.BackendKey) < 32 || len(cfg.LibraryKey) < 32 || cfg.RedisURL == "" || cfg.DatabaseURL == "" {
+		logError(ctx, "USER_SIG_KEY_MESSAGING, INTERNAL_KEY_MESSAGING, INTERNAL_KEY_BACKEND, INTERNAL_KEY_LIBRARY (>= 32 chars), REDIS_URL and MESSAGING_DATABASE_URL are required")
 		os.Exit(1)
 	}
 	db, err := pgxpool.New(ctx, cfg.DatabaseURL)
@@ -106,7 +110,7 @@ func main() {
 
 	h := newHub()
 	go subscribeLoop(ctx, rdb, h)
-	s := &server{cfg: cfg, db: db, rdb: rdb, be: newBackend(cfg.BackendURL, cfg.BackendKey), hub: h, now: time.Now,
+	s := &server{cfg: cfg, db: db, rdb: rdb, be: newBackend(cfg.BackendURL, cfg.BackendKey), lib: newBackend(cfg.LibraryURL, cfg.LibraryKey), hub: h, now: time.Now,
 		rate: &rateLimiter{limit: 30, hits: map[string][]time.Time{}}}
 	go s.consumeLoop(ctx, cfg.RabbitURL)
 	go s.cleanupLoop(ctx)

@@ -4,7 +4,8 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { CheckCircle2, Copy, Loader2, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { API_BASE_URL, AlbumSummary, readJson } from '@/lib/albums';
+import { AlbumSummary, readJson } from '@/lib/albums';
+import { LIBRARY_URL } from '@/lib/apiJson';
 
 interface CopyAlbumModalProps {
   /** the album to copy; null keeps the modal closed */
@@ -33,7 +34,7 @@ export default function CopyAlbumModal({ album, shareKey, onClose, onCopied }: C
     setMode('new');
     setError(null);
     setDone(null);
-    authFetch(`${API_BASE_URL}/albums/me`)
+    authFetch(`${LIBRARY_URL}/albums/me`)
       .then(readJson)
       .then((json) => {
         const list: AlbumSummary[] = json.data.filter((a: AlbumSummary) => a.id !== album.id);
@@ -51,7 +52,7 @@ export default function CopyAlbumModal({ album, shareKey, onClose, onCopied }: C
     setIsBusy(true);
     setError(null);
     try {
-      const res = await authFetch(`${API_BASE_URL}/albums/${album.id}/copy`, {
+      const res = await authFetch(`${LIBRARY_URL}/albums/${album.id}/copy`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(mode === 'new'

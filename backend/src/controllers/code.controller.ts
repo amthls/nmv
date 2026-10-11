@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { pool } from '../config/db';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import { callCommunity } from '../services/communityClient';
+import { callLibrary } from '../services/libraryClient';
 
 /**
  * Smart codes (sql/migrations/017_smart_codes.sql). Only the fixed number is used to find the row:
@@ -65,10 +66,11 @@ export const resolveCode = async (req: AuthenticatedRequest, res: Response) => {
           path = r.status === 200 ? r.json.data.path : null;
           break;
         }
-        case 'album':
-          // Private albums only for their owner: the share link carries a key, a code does not
-          path = await one(`SELECT '/album/' || id AS path FROM albums WHERE code_no = $1 AND (is_public OR user_id = $2)`, [parsed.no, me]);
+        case 'album': { // the library service's; private albums only for their owner (a code carries no share key)
+          const r = await callLibrary('GET', `/internal/codes/album/${parsed.no}${me ? `?me=${me}` : ''}`);
+          path = r.status === 200 ? r.json.data.path : null;
           break;
+        }
       }
     }
 

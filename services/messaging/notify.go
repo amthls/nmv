@@ -209,7 +209,7 @@ func truncate(s string, n int) string {
 	return string(r[:n])
 }
 
-// fanOutChapter tells every follower of the story (asked from the backend, 1,000 at a time) about a new chapter;
+// fanOutChapter tells every follower of the story (asked from the library service, 1,000 at a time) about a new chapter;
 // unread ones merge per story ("Truyện X có 3 chương mới").
 func (s *server) fanOutChapter(ctx context.Context, job notifyJob) (int, error) {
 	if !isUUID(job.StoryID) || !isUUID(job.ChapterID) {
@@ -224,9 +224,9 @@ func (s *server) fanOutChapter(ctx context.Context, job notifyJob) (int, error) 
 		if after != "" {
 			q.Set("after", after)
 		}
-		status, err := s.be.call(ctx, "GET", "/internal/stories/"+job.StoryID+"/followers?"+q.Encode(), nil, &page)
+		status, err := s.lib.call(ctx, "GET", "/internal/stories/"+job.StoryID+"/followers?"+q.Encode(), nil, &page)
 		if err == nil && status != 200 {
-			err = fmt.Errorf("backend followers: HTTP %d", status)
+			err = fmt.Errorf("library followers: HTTP %d", status)
 		}
 		if err != nil {
 			return total, err

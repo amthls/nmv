@@ -1,4 +1,5 @@
 import { pool } from '../../config/db';
+import { libraryData } from '../libraryClient';
 
 /**
  * Serving side: reads the precomputed tables (fast), mixes in what the viewer did since the
@@ -22,11 +23,28 @@ async function cards(ids: string[]) {
 
 const pctLabel = (p: number) => `${Math.max(1, Math.round(p * 100))}%`;
 
+/**
+ * A signed-in reader's history from the library service (stories read, reads of the last 60 days, unfinished stories).
+ * Empty when the library does not answer: the picks then fall back to what everyone reads.
+ */
+type LibraryHistory = { read_story_ids: string[]; recent: { story_id: string; t: string }[]; continue: any[] };
+const historyCache = new Map<string, { at: number; v: Promise<LibraryHistory> }>(); // one page asks 3 times
+function libraryHistory(userId: string): Promise<LibraryHistory> {
+  const hit = historyCache.get(userId);
+  if (hit && Date.now() - hit.at < 5000) return hit.v;
+  if (historyCache.size > 5000) historyCache.clear();
+  const v = libraryData<LibraryHistory>(`/internal/reco/user/${userId}`, 2000).catch((err) => {
+    console.warn(`[rec] reading history of ${userId} unavailable: ${err.message}`);
+    return { read_story_ids: [], recent: [], continue: [] };
+  });
+  historyCache.set(userId, { at: Date.now(), v });
+  return v;
+}
+
 /** Stories the viewer has read (signed in: history; guest: read events). */
 async function readStories(v: Viewer): Promise<Set<string>> {
-  const r = v.userId
-    ? await pool.query('SELECT DISTINCT story_id FROM reading_history WHERE user_id = $1', [v.userId])
-    : v.visitorId
+  if (v.userId) return new Set((await libraryHistory(v.userId)).read_story_ids);
+  const r = v.visitorId
       ? await pool.query(`SELECT DISTINCT story_id FROM rec_events WHERE visitor_id = $1 AND kind = 'read'`, [v.visitorId])
       : { rows: [] as any[] };
   return new Set(r.rows.map((x: any) => x.story_id));
@@ -35,32 +53,26 @@ async function readStories(v: Viewer): Promise<Set<string>> {
 /** The viewer's latest stories (reads count more than page views), newest first. */
 async function recentStories(v: Viewer, limit = 8): Promise<{ story_id: string; w: number }[]> {
   if (!v.userId && !v.visitorId) return [];
-  const r = await pool.query(`
-    SELECT story_id, sum(w) AS w, max(t) AS t FROM (
-      ${v.userId ? `SELECT story_id, 1.0 AS w, read_at AS t FROM reading_history WHERE user_id = $1 AND read_at > NOW() - INTERVAL '60 days'
-      UNION ALL` : ''}
-      SELECT story_id, CASE WHEN kind = 'read' THEN 1.0 ELSE 0.4 END AS w, created_at AS t
-      FROM rec_events WHERE ${v.userId ? 'user_id' : 'visitor_id'} = $1 AND kind IN ('view', 'read') AND created_at > NOW() - INTERVAL '60 days'
-    ) e GROUP BY story_id ORDER BY max(t) DESC LIMIT ${limit}`, [v.userId || v.visitorId]);
+  const [history, ev] = await Promise.all([
+    v.userId ? libraryHistory(v.userId).then((h) => h.recent) : Promise.resolve([]),
+    pool.query(`SELECT story_id, CASE WHEN kind = 'read' THEN 1.0 ELSE 0.4 END AS w, created_at AS t
+                FROM rec_events WHERE ${v.userId ? 'user_id' : 'visitor_id'} = $1 AND kind IN ('view', 'read')
+                  AND created_at > NOW() - INTERVAL '60 days'`, [v.userId || v.visitorId]),
+  ]);
+  const byStory = new Map<string, { w: number; t: number }>();
+  for (const e of [...history.map((h) => ({ story_id: h.story_id, w: 1, t: h.t })), ...ev.rows]) {
+    const cur = byStory.get(e.story_id) || { w: 0, t: 0 };
+    byStory.set(e.story_id, { w: cur.w + Number(e.w), t: Math.max(cur.t, new Date(e.t).getTime()) });
+  }
   // newer stories weigh more
-  return r.rows.map((row: any, i: number) => ({ story_id: row.story_id, w: Math.min(3, Number(row.w)) * Math.pow(0.8, i) }));
+  return [...byStory.entries()].sort((a, b) => b[1].t - a[1].t).slice(0, limit)
+    .map(([story_id, x], i) => ({ story_id, w: Math.min(3, x.w) * Math.pow(0.8, i) }));
 }
 
 /** Stories started but not finished: the "continue reading" cards. */
 async function continueReading(v: Viewer, limit = 3) {
   if (!v.userId) return [];
-  const r = await pool.query(`
-    SELECT * FROM (
-      SELECT DISTINCT ON (rh.story_id) rh.story_id, c.chapter_number, c.slug AS chapter_slug, rh.read_at,
-        (SELECT max(c2.chapter_number) FROM chapters c2 WHERE c2.story_id = rh.story_id AND c2.is_published) AS last_number,
-        (SELECT count(*) FROM reading_history r2 WHERE r2.user_id = rh.user_id AND r2.story_id = rh.story_id) AS chapters_read
-      FROM reading_history rh JOIN chapters c ON c.id = rh.chapter_id
-      WHERE rh.user_id = $1
-      ORDER BY rh.story_id, c.chapter_number DESC
-    ) t
-    WHERE t.chapter_number < t.last_number
-    ORDER BY t.read_at DESC LIMIT $2`, [v.userId, limit]);
-  return r.rows;
+  return (await libraryHistory(v.userId)).continue.slice(0, limit);
 }
 
 /** Sum of related-story scores of the viewer's recent stories: works for guests and fresh activity. */
