@@ -22,8 +22,9 @@ import {
 import SmartImage from '@/components/common/SmartImage';
 import CopyAlbumModal from '@/components/album/CopyAlbumModal';
 import { useAuth } from '@/context/AuthContext';
-import { API_BASE_URL, AlbumDetail, albumShareUrl, copyText, readJson } from '@/lib/albums';
+import { AlbumDetail, albumShareUrl, copyText, readJson } from '@/lib/albums';
 import CodeBadge from '@/components/common/CodeBadge';
+import { LIBRARY_URL } from '@/lib/apiJson';
 
 const btn = 'px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition disabled:opacity-50';
 
@@ -55,7 +56,7 @@ function AlbumPageInner() {
     setError(null);
     try {
       const fetcher = isAuthenticated ? authFetch : fetch;
-      const url = `${API_BASE_URL}/albums/${albumId}${shareKey ? `?key=${encodeURIComponent(shareKey)}` : ''}`;
+      const url = `${LIBRARY_URL}/albums/${albumId}${shareKey ? `?key=${encodeURIComponent(shareKey)}` : ''}`;
       const json = await readJson(await fetcher(url, { credentials: 'include' }));
       setAlbum(json.data);
     } catch (e: any) {
@@ -73,7 +74,7 @@ function AlbumPageInner() {
   const send = async (path: string, init: RequestInit) => {
     setIsBusy(true);
     try {
-      return await readJson(await authFetch(`${API_BASE_URL}/albums/${albumId}${path}`, {
+      return await readJson(await authFetch(`${LIBRARY_URL}/albums/${albumId}${path}`, {
         headers: { 'Content-Type': 'application/json' },
         ...init,
       }));

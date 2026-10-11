@@ -198,10 +198,12 @@ services:
       INTERNAL_KEY_WORKSPACE: ${INTERNAL_KEY_WORKSPACE:?Set INTERNAL_KEY_WORKSPACE in .env (openssl rand -hex 32)}
       INTERNAL_KEY_MESSAGING: ${INTERNAL_KEY_MESSAGING:?Set INTERNAL_KEY_MESSAGING in .env (openssl rand -hex 32)}
       INTERNAL_KEY_COMMUNITY: ${INTERNAL_KEY_COMMUNITY:?Set INTERNAL_KEY_COMMUNITY in .env (openssl rand -hex 32)}
+      INTERNAL_KEY_LIBRARY: ${INTERNAL_KEY_LIBRARY:?Set INTERNAL_KEY_LIBRARY in .env (openssl rand -hex 32)}
       IDENTITY_INTERNAL_URL: http://identity:8080
       WORKSPACE_INTERNAL_URL: http://workspace:8080
       MESSAGING_INTERNAL_URL: http://messaging:8080
       COMMUNITY_INTERNAL_URL: http://community:8080
+      LIBRARY_INTERNAL_URL: http://library:8080
       ENABLE_DEMO_ACCOUNTS: ${ENABLE_DEMO_ACCOUNTS:-false}
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672
       SEARCH_URL: http://search:9200
@@ -313,12 +315,13 @@ services:
       PGUSER: ${POSTGRES_USER:-postgres}
       PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (openssl rand -hex 24)}
       POSTGRES_DB: ${POSTGRES_DB:-novel_platform}
-      SERVICE_DBS: identity workspace media messaging community
+      SERVICE_DBS: identity workspace media messaging community library
       IDENTITY_DB_PASSWORD: ${IDENTITY_DB_PASSWORD:?Set IDENTITY_DB_PASSWORD in .env}
       WORKSPACE_DB_PASSWORD: ${WORKSPACE_DB_PASSWORD:?Set WORKSPACE_DB_PASSWORD in .env}
       MEDIA_DB_PASSWORD: ${MEDIA_DB_PASSWORD:?Set MEDIA_DB_PASSWORD in .env}
       MESSAGING_DB_PASSWORD: ${MESSAGING_DB_PASSWORD:?Set MESSAGING_DB_PASSWORD in .env}
       COMMUNITY_DB_PASSWORD: ${COMMUNITY_DB_PASSWORD:?Set COMMUNITY_DB_PASSWORD in .env}
+      LIBRARY_DB_PASSWORD: ${LIBRARY_DB_PASSWORD:?Set LIBRARY_DB_PASSWORD in .env}
     volumes:
       - ./postgres/provision.sh:/provision.sh:ro
     depends_on:
@@ -347,6 +350,7 @@ services:
       USER_SIG_KEY_MEDIA: ${USER_SIG_KEY_MEDIA:?Set USER_SIG_KEY_MEDIA in .env (openssl rand -hex 32)}
       USER_SIG_KEY_MESSAGING: ${USER_SIG_KEY_MESSAGING:?Set USER_SIG_KEY_MESSAGING in .env (openssl rand -hex 32)}
       USER_SIG_KEY_COMMUNITY: ${USER_SIG_KEY_COMMUNITY:?Set USER_SIG_KEY_COMMUNITY in .env (openssl rand -hex 32)}
+      USER_SIG_KEY_LIBRARY: ${USER_SIG_KEY_LIBRARY:?Set USER_SIG_KEY_LIBRARY in .env (openssl rand -hex 32)}
       INTERNAL_KEY_IDENTITY: ${INTERNAL_KEY_IDENTITY:?Set INTERNAL_KEY_IDENTITY in .env (openssl rand -hex 32)}
       SMTP_URL: ${SMTP_URL:-}
       MAIL_FROM: ${MAIL_FROM:-NovelHub <no-reply@novelhub.local>}
@@ -414,6 +418,8 @@ services:
       INTERNAL_KEY_BACKEND: ${INTERNAL_KEY_BACKEND:?Set INTERNAL_KEY_BACKEND in .env (openssl rand -hex 32)}
       MESSAGING_DATABASE_URL: postgres://messaging:${MESSAGING_DB_PASSWORD:?Set MESSAGING_DB_PASSWORD in .env}@postgres:5432/messaging_db
       BACKEND_INTERNAL_URL: http://backend:5000
+      INTERNAL_KEY_LIBRARY: ${INTERNAL_KEY_LIBRARY:?Set INTERNAL_KEY_LIBRARY in .env (openssl rand -hex 32)}
+      LIBRARY_INTERNAL_URL: http://library:8080 # who follows a story
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672 # novel.notifications jobs
     ulimits:
       nofile: 65536 # one per open socket
@@ -452,6 +458,35 @@ services:
       INTERNAL_KEY_BACKEND: ${INTERNAL_KEY_BACKEND:?Set INTERNAL_KEY_BACKEND in .env (openssl rand -hex 32)}
       INTERNAL_KEY_MESSAGING: ${INTERNAL_KEY_MESSAGING:?Set INTERNAL_KEY_MESSAGING in .env (openssl rand -hex 32)}
     mem_limit: ${COMMUNITY_MEMORY:-256m}
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - edge
+      - data
+
+  # ============================================================================
+  # 2j. library (Go): reading history, follows, line bookmarks, albums. Own database library_db with read copies
+  #     of the backend's stories/chapters (synced by updated_at). See Plan/library.md.
+  # ============================================================================
+  library:
+    build:
+      context: ./services/library
+    image: ${IMAGE_REGISTRY:-local}/nmv-library:${IMAGE_TAG:-latest}
+    container_name: novel_library
+    restart: unless-stopped
+    environment:
+      LIBRARY_DATABASE_URL: postgres://library:${LIBRARY_DB_PASSWORD:?Set LIBRARY_DB_PASSWORD in .env}@postgres:5432/library_db
+      BACKEND_INTERNAL_URL: http://backend:5000
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672
+      USER_SIG_KEY_LIBRARY: ${USER_SIG_KEY_LIBRARY:?Set USER_SIG_KEY_LIBRARY in .env (openssl rand -hex 32)}
+      INTERNAL_KEY_LIBRARY: ${INTERNAL_KEY_LIBRARY:?Set INTERNAL_KEY_LIBRARY in .env (openssl rand -hex 32)}
+      INTERNAL_KEY_BACKEND: ${INTERNAL_KEY_BACKEND:?Set INTERNAL_KEY_BACKEND in .env (openssl rand -hex 32)}
+    mem_limit: ${LIBRARY_MEMORY:-128m}
     depends_on:
       db-init:
         condition: service_completed_successfully

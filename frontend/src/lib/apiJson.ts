@@ -2,6 +2,7 @@ export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost
 export { IDENTITY_URL } from './session';
 export const MESSAGING_URL = '/api/msg'; // direct messages and group chat (messaging service)
 export const COMMUNITY_URL = '/api/community'; // Fandom posts, comments, reports, removed content (community service)
+export const LIBRARY_URL = '/api/library'; // reading history, follows, bookmarks, albums (library service)
 
 /**
  * Call the API with an optional JSON body. `ok` is false on HTTP errors and on `{ success: false }`.

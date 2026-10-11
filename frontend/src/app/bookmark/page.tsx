@@ -21,8 +21,8 @@ import SmartImage from '@/components/common/SmartImage';
 import AlbumCard from '@/components/album/AlbumCard';
 import { useAuth } from '@/context/AuthContext';
 import { AlbumSummary, albumShareUrl, copyText, readJson } from '@/lib/albums';
+import { LIBRARY_URL } from '@/lib/apiJson';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
 type Tab = 'albums' | 'saved_albums' | 'favorites' | 'line_bookmarks';
 
@@ -50,7 +50,7 @@ export default function BookmarkPage() {
   const fetchAlbums = async (which: 'me' | 'saved') => {
     setIsLoading(true);
     try {
-      const json = await readJson(await authFetch(`${API_BASE_URL}/albums/${which}`));
+      const json = await readJson(await authFetch(`${LIBRARY_URL}/albums/${which}`));
       (which === 'me' ? setAlbums : setSavedAlbums)(json.data);
     } catch (e) {
       console.error('Failed to load albums:', e);
@@ -63,7 +63,7 @@ export default function BookmarkPage() {
     if (!newAlbumName.trim() || isCreatingAlbum) return;
     setIsCreatingAlbum(true);
     try {
-      const json = await readJson(await authFetch(`${API_BASE_URL}/albums`, {
+      const json = await readJson(await authFetch(`${LIBRARY_URL}/albums`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newAlbumName.trim(), is_public: newAlbumPublic }),
@@ -83,7 +83,7 @@ export default function BookmarkPage() {
     const next = !album.is_public;
     setAlbums(prev => prev.map(a => (a.id === album.id ? { ...a, is_public: next } : a)));
     try {
-      await readJson(await authFetch(`${API_BASE_URL}/albums/${album.id}`, {
+      await readJson(await authFetch(`${LIBRARY_URL}/albums/${album.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_public: next }),
@@ -97,7 +97,7 @@ export default function BookmarkPage() {
 
   const handleAllVisibility = async (isPublic: boolean) => {
     try {
-      const json = await readJson(await authFetch(`${API_BASE_URL}/albums/me/visibility`, {
+      const json = await readJson(await authFetch(`${LIBRARY_URL}/albums/me/visibility`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_public: isPublic }),
@@ -118,7 +118,7 @@ export default function BookmarkPage() {
   const handleUnsaveAlbum = async (album: AlbumSummary) => {
     setSavedAlbums(prev => prev.filter(a => a.id !== album.id));
     try {
-      const json = await readJson(await authFetch(`${API_BASE_URL}/albums/${album.id}/save`, {
+      const json = await readJson(await authFetch(`${LIBRARY_URL}/albums/${album.id}/save`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key: album.share_key || undefined }),
@@ -136,7 +136,7 @@ export default function BookmarkPage() {
     let list: any[] = [];
     if (isAuthenticated) {
       try {
-        const res = await authFetch(`${API_BASE_URL}/favorites`);
+        const res = await authFetch(`${LIBRARY_URL}/favorites`);
         if (res.ok) {
           const json = await res.json();
           if (json.success && Array.isArray(json.data)) list = json.data;
@@ -154,7 +154,7 @@ export default function BookmarkPage() {
     let list: any[] = [];
     if (isAuthenticated) {
       try {
-        const res = await authFetch(`${API_BASE_URL}/bookmarks`);
+        const res = await authFetch(`${LIBRARY_URL}/bookmarks`);
         if (res.ok) {
           const json = await res.json();
           if (json.success && Array.isArray(json.data)) list = json.data;
@@ -194,7 +194,7 @@ export default function BookmarkPage() {
     setFavorites(prev => prev.filter(f => f.story_id !== storyId));
     try {
       // toggle only removes when the category matches the stored one
-      const res = await authFetch(`${API_BASE_URL}/favorites/toggle`, {
+      const res = await authFetch(`${LIBRARY_URL}/favorites/toggle`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ story_id: storyId, category: target?.category || 'reading' }),
@@ -212,7 +212,7 @@ export default function BookmarkPage() {
     e.stopPropagation();
     setLineBookmarks(prev => prev.filter(b => b.id !== id));
     try {
-      const res = await authFetch(`${API_BASE_URL}/bookmarks/${id}`, { method: 'DELETE' });
+      const res = await authFetch(`${LIBRARY_URL}/bookmarks/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
     } catch (err) {
       console.error('Failed to delete bookmark:', err);

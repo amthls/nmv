@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { pool } from '../config/db';
 import { communityStats } from '../services/communityClient';
+import { libraryData } from '../services/libraryClient';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import { InputError, isUuid, optionalEnum, optionalText, optionalUrl } from '../utils/validation';
 
@@ -73,26 +74,23 @@ export const getCurrentUserProfile = async (req: AuthenticatedRequest, res: Resp
 
     // 3. User Statistics
     const count = (sql: string) => pool.query(sql, [currentUserId]).then((r) => parseInt(r.rows[0]?.n || '0'));
-    const [
-      storiesRead, chaptersRead, readingSeconds, favorites, bookmarks, community, groups,
-      albums, savedAlbums, albumSaves, followers, following, storiesUploaded, chaptersUploaded,
-    ] = await Promise.all([
-      count(`SELECT count(DISTINCT story_id) AS n FROM reading_history WHERE user_id = $1`),
-      count(`SELECT count(*) AS n FROM reading_history WHERE user_id = $1`),
-      count(`SELECT COALESCE(sum(time_spent_seconds), 0) AS n FROM reading_history WHERE user_id = $1`),
-      count(`SELECT count(*) AS n FROM user_favorites WHERE user_id = $1`),
-      count(`SELECT count(*) AS n FROM bookmarks WHERE user_id = $1`),
+    const [library, community, groups, storiesUploaded, chaptersUploaded] = await Promise.all([
+      // reading, follows, bookmarks, albums: the library service (an empty account page part if it is down)
+      libraryData(`/internal/users/${currentUserId}/overview`).catch((err) => {
+        console.warn(`[library] overview of ${currentUserId} unavailable: ${err.message}`);
+        return { stats: {}, recent_reads: [], albums: [], tags: [] };
+      }),
       communityStats(currentUserId),
       count(`SELECT count(*) AS n FROM group_members WHERE user_id = $1`),
-      count(`SELECT count(*) AS n FROM albums WHERE user_id = $1`),
-      count(`SELECT count(*) AS n FROM album_saves WHERE user_id = $1`),
-      count(`SELECT count(*) AS n FROM album_saves sv JOIN albums a ON a.id = sv.album_id WHERE a.user_id = $1`),
-      count(`SELECT count(*) AS n FROM user_follows WHERE following_id = $1`),
-      count(`SELECT count(*) AS n FROM user_follows WHERE follower_id = $1`),
       count(`SELECT count(*) AS n FROM stories WHERE uploader_id = $1`),
       count(`SELECT count(*) AS n FROM chapters WHERE uploader_id = $1`),
     ]);
     const { posts, comments, comment_likes: commentLikes } = community;
+    const lib = library.stats;
+    const [storiesRead, chaptersRead, readingSeconds, favorites, bookmarks, albums, savedAlbums, albumSaves, followers, following] = [
+      lib.stories_read, lib.chapters_read, lib.reading_seconds, lib.favorites, lib.bookmarks, lib.albums, lib.saved_albums,
+      lib.album_saves_received, lib.followers, lib.following,
+    ].map((n) => Number(n) || 0);
 
     user.stats = {
       stories_read: storiesRead,
@@ -114,30 +112,8 @@ export const getCurrentUserProfile = async (req: AuthenticatedRequest, res: Resp
     };
 
     // 4. Overview blocks for the account page
-    const [recentRes, albumsRes, groupsRes, myStoriesRes, tagsRes] = await Promise.all([
-      // last chapter read in each of the latest stories
-      pool.query(`
-        SELECT * FROM (
-          SELECT DISTINCT ON (rh.story_id)
-            s.id AS story_id, s.title, s.slug, s.cover_image_url, s.story_type, s.total_chapters,
-            c.title AS chapter_title, c.slug AS chapter_slug, c.chapter_number, rh.read_at
-          FROM reading_history rh
-          JOIN stories s ON s.id = rh.story_id
-          JOIN chapters c ON c.id = rh.chapter_id
-          WHERE rh.user_id = $1
-          ORDER BY rh.story_id, rh.read_at DESC
-        ) t ORDER BY read_at DESC LIMIT 6
-      `, [currentUserId]),
-      pool.query(`
-        SELECT a.id, a.name, a.is_public, a.share_token, a.updated_at,
-          (SELECT count(*)::int FROM album_stories x WHERE x.album_id = a.id) AS story_count,
-          (SELECT count(*)::int FROM album_saves sv WHERE sv.album_id = a.id) AS save_count,
-          COALESCE((SELECT json_agg(p) FROM (
-            SELECT s.id, s.cover_image_url, s.title FROM album_stories x JOIN stories s ON s.id = x.story_id
-            WHERE x.album_id = a.id ORDER BY x.added_at DESC LIMIT 4) p), '[]'::json) AS preview
-        FROM albums a WHERE a.user_id = $1
-        ORDER BY a.updated_at DESC LIMIT 6
-      `, [currentUserId]),
+    // last reads, albums, genres read most: from the library overview above
+    const [groupsRes, myStoriesRes] = await Promise.all([
       pool.query(`
         SELECT g.name, g.slug, g.avatar_url, gm.role, gm.joined_at
         FROM group_members gm JOIN translation_groups g ON g.id = gm.group_id
@@ -149,21 +125,12 @@ export const getCurrentUserProfile = async (req: AuthenticatedRequest, res: Resp
         FROM stories WHERE uploader_id = $1
         ORDER BY created_at DESC LIMIT 6
       `, [currentUserId]),
-      // genres read most, from the stories in the reading history
-      pool.query(`
-        SELECT t.name, t.slug, count(DISTINCT rh.story_id)::int AS n
-        FROM reading_history rh
-        JOIN story_tags st ON st.story_id = rh.story_id
-        JOIN tags t ON t.id = st.tag_id
-        WHERE rh.user_id = $1
-        GROUP BY t.id ORDER BY n DESC, t.name LIMIT 8
-      `, [currentUserId]),
     ]);
-    user.recent_reads = recentRes.rows;
-    user.albums = albumsRes.rows;
+    user.recent_reads = library.recent_reads;
+    user.albums = library.albums;
     user.groups = groupsRes.rows;
     user.my_stories = myStoriesRes.rows;
-    user.top_tags = tagsRes.rows;
+    user.top_tags = library.tags;
 
     res.json({
       success: true,

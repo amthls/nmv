@@ -3,7 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { Check, Globe, Loader2, Lock, Plus, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { API_BASE_URL, AlbumSummary, readJson } from '@/lib/albums';
+import { AlbumSummary, readJson } from '@/lib/albums';
+import { LIBRARY_URL } from '@/lib/apiJson';
 
 interface SaveToAlbumModalProps {
   isOpen: boolean;
@@ -29,7 +30,7 @@ export default function SaveToAlbumModal({ isOpen, onClose, storyId, storyTitle,
     if (!isOpen) return;
     setError(null);
     setIsLoading(true);
-    authFetch(`${API_BASE_URL}/albums/me?story_id=${storyId}`)
+    authFetch(`${LIBRARY_URL}/albums/me?story_id=${storyId}`)
       .then(readJson)
       .then((json) => setAlbums(json.data))
       .catch((e) => setError(e.message))
@@ -49,8 +50,8 @@ export default function SaveToAlbumModal({ isOpen, onClose, storyId, storyTitle,
     setError(null);
     try {
       const res = album.has_story
-        ? await authFetch(`${API_BASE_URL}/albums/${album.id}/stories/${storyId}`, { method: 'DELETE' })
-        : await authFetch(`${API_BASE_URL}/albums/${album.id}/stories`, {
+        ? await authFetch(`${LIBRARY_URL}/albums/${album.id}/stories/${storyId}`, { method: 'DELETE' })
+        : await authFetch(`${LIBRARY_URL}/albums/${album.id}/stories`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ story_id: storyId }),
@@ -75,7 +76,7 @@ export default function SaveToAlbumModal({ isOpen, onClose, storyId, storyTitle,
     setIsCreating(true);
     setError(null);
     try {
-      const res = await authFetch(`${API_BASE_URL}/albums`, {
+      const res = await authFetch(`${LIBRARY_URL}/albums`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newName.trim(), is_public: newPublic, story_id: storyId }),

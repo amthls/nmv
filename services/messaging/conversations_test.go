@@ -84,7 +84,7 @@ func newConv(t *testing.T) *convHarness {
 	}))
 	t.Cleanup(backend.Close)
 	s := &server{cfg: config{SigKey: []byte(testKey), InternalKey: []byte(strings.Repeat("i", 32))}, db: db,
-		be: newBackend(backend.URL, []byte(strings.Repeat("b", 32))), hub: newHub(), now: time.Now,
+		be: newBackend(backend.URL, []byte(strings.Repeat("b", 32))), lib: newBackend(backend.URL, []byte(strings.Repeat("b", 32))), hub: newHub(), now: time.Now,
 		rate: &rateLimiter{limit: 30, hits: map[string][]time.Time{}}}
 	srv := httptest.NewServer(withRequestLog(s.routes()))
 	t.Cleanup(srv.Close)

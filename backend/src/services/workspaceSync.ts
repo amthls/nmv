@@ -3,6 +3,7 @@ import { internalAuthHeader } from '../middlewares/auth.middleware';
 import { currentRequestId } from '../utils/logger';
 import { startEventConsumer } from './eventConsumer';
 import { enqueueNotificationJob } from './queue.service';
+import { purgeLibrary } from './libraryClient';
 import { blocksToPlainText, slugify, notifyChapterPublished, ContentBlock } from '../controllers/chapter.controller';
 
 /**
@@ -64,7 +65,7 @@ export async function applyRevision(db: Db, rev: Revision): Promise<{ applied: b
   if (rev.deleted) {
     // Readers lose the chapter; comments stay so a restore (same id) brings them back. History is in workspace.
     await db.query(`DELETE FROM chapter_pages WHERE chapter_id = $1`, [rev.chapter_id]);
-    await db.query(`DELETE FROM reading_history WHERE chapter_id = $1`, [rev.chapter_id]);
+    void purgeLibrary({ chapter_ids: [rev.chapter_id] }); // its reading history and bookmarks (library service; never throws)
     await db.query(`DELETE FROM story_views WHERE chapter_id = $1`, [rev.chapter_id]);
     await db.query(`DELETE FROM chapters WHERE id = $1`, [rev.chapter_id]);
     await recount();

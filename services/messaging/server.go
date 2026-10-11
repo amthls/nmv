@@ -18,6 +18,7 @@ type server struct {
 	db   *pgxpool.Pool
 	rdb  *redis.Client // nil in tests: nothing is pushed
 	be   *backendClient
+	lib  *backendClient // the library service (followers), same signed internal calls
 	hub  *hub
 	now  func() time.Time
 	rate *rateLimiter

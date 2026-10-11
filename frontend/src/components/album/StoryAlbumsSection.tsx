@@ -4,8 +4,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight, Library, Plus, Shuffle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { API_BASE_URL, AlbumSummary, albumPath, readJson } from '@/lib/albums';
+import { AlbumSummary, albumPath, readJson } from '@/lib/albums';
 import AlbumCard from './AlbumCard';
+import { LIBRARY_URL } from '@/lib/apiJson';
 
 interface StoryAlbumsSectionProps {
   storyId: string;
@@ -30,7 +31,7 @@ export default function StoryAlbumsSection({ storyId, refreshKey, onOpenSave }: 
   useEffect(() => {
     const fetcher = isAuthenticated ? authFetch : fetch;
     setIsLoading(true);
-    fetcher(`${API_BASE_URL}/albums/by-story/${storyId}?limit=20`, { credentials: 'include' })
+    fetcher(`${LIBRARY_URL}/albums/by-story/${storyId}?limit=20`, { credentials: 'include' })
       .then(readJson)
       .then((json) => {
         setMine(json.data.mine);

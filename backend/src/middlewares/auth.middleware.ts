@@ -32,6 +32,7 @@ const INTERNAL_KEYS = {
   workspace: process.env.INTERNAL_KEY_WORKSPACE || '',
   messaging: process.env.INTERNAL_KEY_MESSAGING || '',
   community: process.env.INTERNAL_KEY_COMMUNITY || '',
+  library: process.env.INTERNAL_KEY_LIBRARY || '',
 };
 
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) || '';
@@ -126,7 +127,7 @@ export function internalAuthOK(value: string | undefined, now = Date.now()): boo
 }
 
 /** X-Internal-Auth for a call to another service's internal API. */
-export function internalAuthHeader(to: 'identity' | 'workspace' | 'messaging' | 'community', now = Date.now()): string {
+export function internalAuthHeader(to: 'identity' | 'workspace' | 'messaging' | 'community' | 'library', now = Date.now()): string {
   const exp = String(Math.floor(now / 1000) + 120);
   return `${exp}.${crypto.createHmac('sha256', INTERNAL_KEYS[to]).update(`internal|${exp}`).digest('hex')}`;
 }

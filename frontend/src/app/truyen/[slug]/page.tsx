@@ -39,6 +39,7 @@ import { stripHtml } from '@/lib/richText';
 import { getGuestHistory } from '@/lib/readingHistory';
 import { chapterUploadHref } from '@/lib/chapterUpload';
 import CodeBadge from '@/components/common/CodeBadge';
+import { LIBRARY_URL } from '@/lib/apiJson';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -97,7 +98,7 @@ export default function StoryDetailPage() {
         found = getGuestHistory().find((h: any) => h.story_slug === slug || (story?.id && h.story_id === story.id));
       } else {
         try {
-          const res = await authFetch(`${API_BASE_URL}/history`);
+          const res = await authFetch(`${LIBRARY_URL}/history`);
           if (res.ok) {
             const json = await res.json();
             if (json.success && Array.isArray(json.data)) {
@@ -142,7 +143,7 @@ export default function StoryDetailPage() {
     applyStatus(nextStatus);
 
     try {
-      const res = await authFetch(`${API_BASE_URL}/favorites/toggle`, {
+      const res = await authFetch(`${LIBRARY_URL}/favorites/toggle`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         // Send the stored category: the server only removes when it matches (otherwise it re-categorizes)

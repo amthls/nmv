@@ -1,4 +1,5 @@
 import { pool } from '../../config/db';
+import { libraryData } from '../libraryClient';
 import {
   AlsModel, ContentDoc, Interaction, ItemSim, coVisitation, contentSimilarity, dot, itemCosine, rankMetrics, trainAls,
 } from './algorithms';
@@ -95,27 +96,26 @@ async function loadDataset(): Promise<Dataset> {
   const touch = (p: Pair, t: any) => { p.last = Math.max(p.last, new Date(t).getTime() || 0); };
 
   const since = `NOW() - INTERVAL '${HISTORY_DAYS} days'`;
-  const [reads, events, favs, albums, bms, timelineRes] = await Promise.all([
-    pool.query(`SELECT user_id, story_id, count(*)::int AS n, COALESCE(sum(time_spent_seconds), 0)::int AS secs, max(read_at) AS last
-                FROM reading_history WHERE read_at > ${since} GROUP BY 1, 2`),
+  // reading history, follows, albums, bookmarks: the library service (shortcut: one export per run; stage H reads events)
+  const [lib, events, guestTimeline] = await Promise.all([
+    libraryData<any>(`/internal/reco/export?days=${HISTORY_DAYS}`, 60_000),
     // signed-in reads are already in reading_history; from events take their views, and everything for guests
     pool.query(`SELECT COALESCE('u:' || user_id::text, 'v:' || visitor_id) AS actor, story_id, kind,
                        count(*)::int AS n, count(DISTINCT chapter_id)::int AS chapters, max(created_at) AS last
                 FROM rec_events
                 WHERE kind IN ('view', 'read') AND created_at > ${since} AND (kind = 'view' OR user_id IS NULL)
                 GROUP BY 1, 2, 3`),
-    pool.query(`SELECT user_id, story_id, created_at FROM user_favorites`),
-    pool.query(`SELECT DISTINCT ON (a.user_id, x.story_id) a.user_id, x.story_id, x.added_at
-                FROM album_stories x JOIN albums a ON a.id = x.album_id`),
-    pool.query(`SELECT user_id, story_id, count(*)::int AS n, max(created_at) AS last FROM bookmarks GROUP BY 1, 2`),
-    pool.query(`
-      SELECT actor, story_id, t FROM (
-        SELECT 'u:' || user_id::text AS actor, story_id, read_at AS t FROM reading_history WHERE read_at > ${since}
-        UNION ALL
-        SELECT COALESCE('u:' || user_id::text, 'v:' || visitor_id), story_id, created_at
-        FROM rec_events WHERE kind IN ('view', 'read') AND created_at > ${since}
-      ) e ORDER BY actor, t`),
+    pool.query(`SELECT COALESCE('u:' || user_id::text, 'v:' || visitor_id) AS actor, story_id, created_at AS t
+                FROM rec_events WHERE kind IN ('view', 'read') AND created_at > ${since}`),
   ]);
+  const reads = { rows: lib.reads as any[] };
+  const favs = { rows: lib.favorites as any[] };
+  const albums = { rows: lib.albums as any[] };
+  const bms = { rows: lib.bookmarks as any[] };
+  const timelineRes = {
+    rows: [...lib.timeline.map((r: any) => ({ actor: `u:${r.user_id}`, story_id: r.story_id, t: r.t })), ...guestTimeline.rows]
+      .sort((a, b) => (a.actor < b.actor ? -1 : a.actor > b.actor ? 1 : new Date(a.t).getTime() - new Date(b.t).getTime())),
+  };
 
   for (const r of reads.rows) {
     const p = pairOf(`u:${r.user_id}`, r.story_id);

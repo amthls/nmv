@@ -43,6 +43,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useReadingSession } from '@/context/ReadingSessionContext';
 import { logChapterRead } from '@/lib/readingHistory';
 import CodeBadge from '@/components/common/CodeBadge';
+import { LIBRARY_URL } from '@/lib/apiJson';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -81,7 +82,7 @@ export default function ChapterReaderPage() {
     // Line bookmarks belong to the signed-in account and live only on the server
     if (isAuthenticated) {
       try {
-        const res = await authFetch(`${API_BASE_URL}/bookmarks?chapter_id=${chapId}`);
+        const res = await authFetch(`${LIBRARY_URL}/bookmarks?chapter_id=${chapId}`);
         if (res.ok) {
           const json = await res.json();
           if (json.success && Array.isArray(json.data)) {
@@ -237,7 +238,7 @@ export default function ChapterReaderPage() {
 
     try {
       // The server toggles: it removes an existing bookmark on the same line, otherwise adds one
-      const res = await authFetch(`${API_BASE_URL}/bookmarks`, {
+      const res = await authFetch(`${LIBRARY_URL}/bookmarks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

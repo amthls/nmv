@@ -52,6 +52,11 @@ fi
 if docker compose config --services 2>/dev/null | grep -qx community; then
   docker compose run --rm --no-deps -e LEGACY_DATABASE_URL="postgres://$pg_user:$pg_pw@postgres:5432/$pg_db" community node dist/server.js import-legacy
 fi
+# Reading history, follows, bookmarks, albums live in the library service: the same one-time copy (needs the backend
+# running: it then copies the stories/chapters the rows point at)
+if docker compose config --services 2>/dev/null | grep -qx library; then
+  docker compose run --rm --no-deps -e LEGACY_DATABASE_URL="postgres://$pg_user:$pg_pw@postgres:5432/$pg_db" library import-legacy
+fi
 
 # Chapter content lives in the workspace service: every chapter it does not know yet becomes version 1 there
 # (all of them the first time; on a fresh install the sample chapters). Needs the backend running.
