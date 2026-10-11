@@ -34,7 +34,7 @@ services:
   #     If it is down, the backend falls back to SQL ILIKE.
   # ============================================================================
   search:
-    image: elasticsearch:9.5.3
+    image: elasticsearch:9.5.5
     container_name: novel_search
     restart: unless-stopped
     environment:
