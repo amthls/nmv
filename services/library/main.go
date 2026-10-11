@@ -25,7 +25,7 @@ type config struct {
 	Port        string
 	SigKey      []byte // USER_SIG_KEY_LIBRARY: identity signs the gateway's X-User-* for us alone
 	InternalKey []byte // INTERNAL_KEY_LIBRARY: other services' calls to /internal
-	BackendKey  []byte // INTERNAL_KEY_BACKEND: our calls to the backend
+	BackendKey  []byte // INTERNAL_KEY_CATALOG: our calls to the backend
 	BackendURL  string
 	DatabaseURL string
 	RabbitURL   string // identity.user.deleted
@@ -53,14 +53,14 @@ func main() {
 		Port:        env("PORT", "8080"),
 		SigKey:      []byte(os.Getenv("USER_SIG_KEY_LIBRARY")),
 		InternalKey: []byte(os.Getenv("INTERNAL_KEY_LIBRARY")),
-		BackendKey:  []byte(os.Getenv("INTERNAL_KEY_BACKEND")),
-		BackendURL:  strings.TrimRight(env("BACKEND_INTERNAL_URL", "http://backend:5000"), "/"),
+		BackendKey:  []byte(os.Getenv("INTERNAL_KEY_CATALOG")),
+		BackendURL:  strings.TrimRight(env("CATALOG_INTERNAL_URL", "http://catalog:5000"), "/"),
 		DatabaseURL: os.Getenv("LIBRARY_DATABASE_URL"),
 		RabbitURL:   os.Getenv("RABBITMQ_URL"),
 		LegacyURL:   os.Getenv("LEGACY_DATABASE_URL"),
 	}
 	if len(cfg.SigKey) < 32 || len(cfg.InternalKey) < 32 || len(cfg.BackendKey) < 32 || cfg.DatabaseURL == "" {
-		logError(ctx, "USER_SIG_KEY_LIBRARY, INTERNAL_KEY_LIBRARY, INTERNAL_KEY_BACKEND (>= 32 chars) and LIBRARY_DATABASE_URL are required")
+		logError(ctx, "USER_SIG_KEY_LIBRARY, INTERNAL_KEY_LIBRARY, INTERNAL_KEY_CATALOG (>= 32 chars) and LIBRARY_DATABASE_URL are required")
 		os.Exit(1)
 	}
 	db, err := pgxpool.New(ctx, cfg.DatabaseURL)

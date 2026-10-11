@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 /**
  * Reader-chosen image resolution. Uploaded images (`/uploads/...`) are requested resized
- * through `?w=<width>` (see backend/src/services/image.service.ts); other images are untouched.
+ * through `?w=<width>` (see catalog/src/services/image.service.ts); other images are untouched.
  *
  * "auto" picks a width from this device: how wide the reading column is on screen times the
  * pixel density, stepped down on slow or data-saver connections.

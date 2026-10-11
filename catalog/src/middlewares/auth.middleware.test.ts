@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-process.env.USER_SIG_KEY_BACKEND = 'k'.repeat(32);
-process.env.INTERNAL_KEY_BACKEND = 'b'.repeat(32);
+process.env.USER_SIG_KEY_CATALOG = 'k'.repeat(32);
+process.env.INTERNAL_KEY_CATALOG = 'b'.repeat(32);
 process.env.INTERNAL_KEY_WORKSPACE = 'w'.repeat(32);
 // Loaded after the key is set (the module reads it once)
 const auth = import('./auth.middleware');

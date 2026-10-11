@@ -43,7 +43,7 @@ type cached[T any] struct {
 
 type backendClient struct {
 	url    string
-	key    []byte // INTERNAL_KEY_BACKEND
+	key    []byte // INTERNAL_KEY_CATALOG
 	hc     *http.Client
 	mu     sync.Mutex
 	byID   map[string]cached[profile]

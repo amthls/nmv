@@ -5,7 +5,7 @@
 version: 2
 updates:
   - package-ecosystem: npm
-    directory: /backend
+    directory: /catalog
     schedule: { interval: weekly }
     open-pull-requests-limit: 3
     ignore:
@@ -25,7 +25,7 @@ updates:
       minor-and-patch:
         update-types: ["minor", "patch"]
   - package-ecosystem: docker
-    directory: /backend
+    directory: /catalog
     schedule: { interval: weekly }
     open-pull-requests-limit: 3
     ignore:

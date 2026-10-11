@@ -14,7 +14,7 @@ import {
 import { deleteCheck } from './controllers/user.controller';
 
 // Without the keys that verify the gateway's identity headers and internal calls nobody is ever signed in: refuse to start
-for (const k of ['USER_SIG_KEY_BACKEND', 'INTERNAL_KEY_BACKEND', 'INTERNAL_KEY_IDENTITY', 'INTERNAL_KEY_WORKSPACE', 'INTERNAL_KEY_MESSAGING', 'INTERNAL_KEY_COMMUNITY', 'INTERNAL_KEY_LIBRARY']) {
+for (const k of ['USER_SIG_KEY_CATALOG', 'INTERNAL_KEY_CATALOG', 'INTERNAL_KEY_IDENTITY', 'INTERNAL_KEY_WORKSPACE', 'INTERNAL_KEY_MESSAGING', 'INTERNAL_KEY_COMMUNITY', 'INTERNAL_KEY_LIBRARY']) {
   if (process.env.NODE_ENV === 'production' && (process.env[k] || '').length < 32) {
     throw new Error(`${k} is missing or shorter than 32 characters (launch.py generates it).`);
   }

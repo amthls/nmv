@@ -2,7 +2,7 @@ import amqp from 'amqplib';
 import { RABBITMQ_URL } from './config';
 
 /**
- * Consumer side of the novelhub.events exchange (copy of backend/src/services/eventConsumer.ts) (other services' outboxes publish there; schemas in events/).
+ * Consumer side of the novelhub.events exchange (copy of catalog/src/services/eventConsumer.ts) (other services' outboxes publish there; schemas in events/).
  * Own durable queue per subscriber, retries 10 s apart through <queue>.retry, then <queue>.dlq after MAX_ATTEMPTS.
  * `handle` must be idempotent (processed_events + version checks) and throw to have the event retried.
  */

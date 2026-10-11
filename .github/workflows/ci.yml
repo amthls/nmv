@@ -40,12 +40,12 @@ jobs:
           node-version: 22
           cache: yarn
           cache-dependency-path: |
-            backend/yarn.lock
+            catalog/yarn.lock
             frontend/yarn.lock
             services/media/yarn.lock
             services/community/yarn.lock
       - name: Backend
-        working-directory: backend
+        working-directory: catalog
         run: |
           yarn install --frozen-lockfile
           npx prisma generate
@@ -233,11 +233,11 @@ jobs:
             echo "ELASTIC_PASSWORD=$(openssl rand -hex 24)"
             echo "IDENTITY_DB_PASSWORD=$(openssl rand -hex 32)"
             echo "IDENTITY_JWT_SECRET=$(openssl rand -hex 32)"
-            echo "USER_SIG_KEY_BACKEND=$(openssl rand -hex 32)"
+            echo "USER_SIG_KEY_CATALOG=$(openssl rand -hex 32)"
             echo "USER_SIG_KEY_WORKSPACE=$(openssl rand -hex 32)"
             echo "USER_SIG_KEY_MEDIA=$(openssl rand -hex 32)"
             echo "USER_SIG_KEY_MESSAGING=$(openssl rand -hex 32)"
-            echo "INTERNAL_KEY_BACKEND=$(openssl rand -hex 32)"
+            echo "INTERNAL_KEY_CATALOG=$(openssl rand -hex 32)"
             echo "INTERNAL_KEY_IDENTITY=$(openssl rand -hex 32)"
             echo "INTERNAL_KEY_WORKSPACE=$(openssl rand -hex 32)"
             echo "WORKSPACE_DB_PASSWORD=$(openssl rand -hex 32)"
@@ -261,7 +261,7 @@ jobs:
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: image
-          image-ref: local/nmv-backend:latest
+          image-ref: local/nmv-catalog:latest
           severity: CRITICAL
           ignore-unfixed: true
           exit-code: '1'

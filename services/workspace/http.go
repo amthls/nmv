@@ -25,7 +25,7 @@ type config struct {
 	RabbitURL   string
 	SigKey      []byte // USER_SIG_KEY_WORKSPACE: verifies the gateway's X-User-* headers (identity signs them for us alone)
 	InternalKey []byte // INTERNAL_KEY_WORKSPACE: verifies X-Internal-Auth of calls to us
-	BackendKey  []byte // INTERNAL_KEY_BACKEND: signs our calls to the backend
+	BackendKey  []byte // INTERNAL_KEY_CATALOG: signs our calls to the backend
 	BackendURL  string
 }
 
@@ -36,11 +36,11 @@ func loadConfig() (config, error) {
 		RabbitURL:   os.Getenv("RABBITMQ_URL"),
 		SigKey:      []byte(os.Getenv("USER_SIG_KEY_WORKSPACE")),
 		InternalKey: []byte(os.Getenv("INTERNAL_KEY_WORKSPACE")),
-		BackendKey:  []byte(os.Getenv("INTERNAL_KEY_BACKEND")),
-		BackendURL:  strings.TrimRight(env("BACKEND_INTERNAL_URL", "http://backend:5000"), "/"),
+		BackendKey:  []byte(os.Getenv("INTERNAL_KEY_CATALOG")),
+		BackendURL:  strings.TrimRight(env("CATALOG_INTERNAL_URL", "http://catalog:5000"), "/"),
 	}
 	if c.DatabaseURL == "" || len(c.SigKey) < 32 || len(c.InternalKey) < 32 || len(c.BackendKey) < 32 {
-		return c, errors.New("WORKSPACE_DATABASE_URL, USER_SIG_KEY_WORKSPACE, INTERNAL_KEY_WORKSPACE and INTERNAL_KEY_BACKEND (>= 32 chars) are required")
+		return c, errors.New("WORKSPACE_DATABASE_URL, USER_SIG_KEY_WORKSPACE, INTERNAL_KEY_WORKSPACE and INTERNAL_KEY_CATALOG (>= 32 chars) are required")
 	}
 	return c, nil
 }

@@ -46,7 +46,7 @@ python scripts/launch.py
 This one command:
 
 1. **Creates `.env`** from `.env.example` the first time, with a random `JWT_SECRET` and `RABBITMQ_PASSWORD`. If `.env` already exists, it is kept.
-2. **Builds and starts** all 7 containers: `gateway`, `frontend`, `backend`, `worker`, `postgres`, `search`, `rabbitmq`. The first build takes a few minutes.
+2. **Builds and starts** all 7 containers: `gateway`, `frontend`, `catalog`, `worker`, `postgres`, `search`, `rabbitmq`. The first build takes a few minutes.
 3. **Applies the SQL migrations** in `sql/migrations/`. They are safe to run many times.
 4. **Seeds sample data** (runs every time by default, see section 4).
 5. **Checks** that everything works and prints `[OK]`, `[WARN]` or `[FAIL]` for each check.
@@ -70,7 +70,7 @@ Open **http://localhost:3000** and log in with **`admin` / `password123`**.
 | `python scripts/launch.py check` | Only run the checks on a stack that is already running (no seeding) |
 | `python scripts/launch.py status` | Show the containers and their state |
 | `python scripts/launch.py logs` | Follow the logs of all containers (Ctrl+C to exit) |
-| `python scripts/launch.py logs backend` | Follow the logs of one container (`backend`, `frontend`, `postgres`...) |
+| `python scripts/launch.py logs catalog` | Follow the logs of one container (`catalog`, `frontend`, `postgres`...) |
 | `python scripts/launch.py down` | Stop and remove the containers. **Data is kept** (Docker volumes) |
 | `python scripts/launch.py --timeout 900` | Wait longer for slow machines (default 600 seconds) |
 
@@ -78,13 +78,13 @@ The script exits with code `0` if all checks pass and `1` if any fail, so you ca
 
 ## 4. Sample data (seeders)
 
-When the database has no stories yet (or with `--seed`), the script runs these seeders from `backend/scripts/`, in order:
+When the database has no stories yet (or with `--seed`), the script runs these seeders from `catalog/scripts/`, in order:
 
 | Seeder | Result |
 |:---|:---|
 | `seed-stories.ts` | Adds 8 sample stories (Light Novel and Manga) with volumes and chapters |
 
-Running them again does **not** create duplicate stories. After seeding, the backend is restarted so the search engine indexes the new stories.
+Running them again does **not** create duplicate stories. After seeding, catalog is restarted so the search engine indexes the new stories.
 
 > ⚠️ **Never use `--seed` once real people use the site.** The password seeder resets *every* account (including real users) to `password123`, and the story seeder overwrites edits made to the sample stories.
 
@@ -93,7 +93,7 @@ Running them again does **not** create duplicate stories. After seeding, the bac
 | Check | Meaning if it fails |
 |:---|:---|
 | `container <name>` | That container stopped or is unhealthy. Look at `logs <name>` |
-| `backend GET /api/v1/health` | The API is not answering. `queue=up` means RabbitMQ is connected |
+| `catalog GET /api/v1/health` | The API is not answering. `queue=up` means RabbitMQ is connected |
 | `database migrations` | A SQL migration failed (the error is printed) |
 | `sample data seeded` | A seeder failed (the error is printed) |
 | `search GET /_cluster/health` | Elasticsearch is down (search falls back to plain SQL) |
@@ -114,7 +114,7 @@ If a check fails, the script prints the last 30 log lines of every stopped conta
 | Code changed but the site did not | Run without `--no-build` so the images are rebuilt |
 | `Python was not found; run without arguments to install from the Microsoft Store` (Windows) | Run `python scripts\launch.py` or `py scripts\launch.py` instead of `python3`. See the Windows note in section 2 |
 | `can't open file '...\scripts\scripts\launch.py'` | You are inside `scripts\`. `cd ..` to the project root first, or run `python launch.py` |
-| Build fails at `RUN apt-get update ... exit code: 100`, and the log shows `Release file ... is not valid yet` | The computer clock is behind. `backend/Dockerfile` already tolerates this, but sync the clock anyway (see below) |
+| Build fails at `RUN apt-get update ... exit code: 100`, and the log shows `Release file ... is not valid yet` | The computer clock is behind. `catalog/Dockerfile` already tolerates this, but sync the clock anyway (see below) |
 
 ### Fix the clock (Windows + Docker Desktop)
 

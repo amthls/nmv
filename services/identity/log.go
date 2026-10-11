@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-// JSON log lines with the same shape and redaction rules as backend/src/utils/logger.ts:
+// JSON log lines with the same shape and redaction rules as catalog/src/utils/logger.ts:
 // {time, level, service, request_id, msg, ...fields}. Never log request bodies, cookies or tokens.
 
 type ctxKey int

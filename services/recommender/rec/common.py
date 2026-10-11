@@ -22,9 +22,9 @@ class Config:
     def __init__(self, env=os.environ):
         self.database_url = env.get("RECOMMENDER_DATABASE_URL", "")
         self.sig_key = env.get("USER_SIG_KEY_RECOMMENDER", "").encode()
-        self.backend_key = env.get("INTERNAL_KEY_BACKEND", "").encode()
+        self.backend_key = env.get("INTERNAL_KEY_CATALOG", "").encode()
         self.library_key = env.get("INTERNAL_KEY_LIBRARY", "").encode()
-        self.backend_url = env.get("BACKEND_INTERNAL_URL", "http://backend:5000").rstrip("/")
+        self.backend_url = env.get("CATALOG_INTERNAL_URL", "http://catalog:5000").rstrip("/")
         self.library_url = env.get("LIBRARY_INTERNAL_URL", "http://library:8080").rstrip("/")
         self.rabbit_url = env.get("RABBITMQ_URL", "")
         self.legacy_url = env.get("LEGACY_DATABASE_URL", "")
@@ -35,7 +35,7 @@ class Config:
     def check(self):
         keys = (self.sig_key, self.backend_key, self.library_key)
         if not self.database_url or any(len(k) < 32 for k in keys):
-            log("error", "RECOMMENDER_DATABASE_URL, USER_SIG_KEY_RECOMMENDER, INTERNAL_KEY_BACKEND and INTERNAL_KEY_LIBRARY (>= 32 chars) are required")
+            log("error", "RECOMMENDER_DATABASE_URL, USER_SIG_KEY_RECOMMENDER, INTERNAL_KEY_CATALOG and INTERNAL_KEY_LIBRARY (>= 32 chars) are required")
             sys.exit(1)
 
 

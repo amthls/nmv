@@ -7,7 +7,7 @@ import { readThroughUser } from '../services/identitySync';
 /**
  * Who is calling. Sign-in lives in the identity service; the gateway asks it about every request
  * (nginx auth_request) and forwards X-User-Id / X-User-Roles / X-User-Exp plus X-User-Sig, an HMAC over
- * them with USER_SIG_KEY_BACKEND (the workspace gets its own signature with its own key). They are believed only with a valid, unexpired signature, so a request that
+ * them with USER_SIG_KEY_CATALOG (the workspace gets its own signature with its own key). They are believed only with a valid, unexpired signature, so a request that
  * reaches the backend any other way (or a client sending these headers itself) is just a guest.
  * Roles come from the headers (fresh from identity); the profile (name, avatar) from the local users copy.
  */
@@ -24,10 +24,10 @@ export interface AuthenticatedRequest extends Request {
   user?: AuthenticatedUser;
 }
 
-const HEADER_KEY = process.env.USER_SIG_KEY_BACKEND || '';
+const HEADER_KEY = process.env.USER_SIG_KEY_CATALOG || '';
 // One key per RECEIVING service: holding another service's key only lets you call that service's internal API
 const INTERNAL_KEYS = {
-  backend: process.env.INTERNAL_KEY_BACKEND || '',
+  backend: process.env.INTERNAL_KEY_CATALOG || '',
   identity: process.env.INTERNAL_KEY_IDENTITY || '',
   workspace: process.env.INTERNAL_KEY_WORKSPACE || '',
   messaging: process.env.INTERNAL_KEY_MESSAGING || '',

@@ -12,7 +12,7 @@ type config struct {
 	RedisURL        string
 	RabbitURL       string
 	JWTSecret       []byte // signs nh_access
-	SigKeyBackend   []byte // signs X-User-* for the backend (USER_SIG_KEY_BACKEND, the backend has it too)
+	SigKeyBackend   []byte // signs X-User-* for the backend (USER_SIG_KEY_CATALOG, the backend has it too)
 	SigKeyWorkspace []byte // signs them again for the workspace (USER_SIG_KEY_WORKSPACE): neither can forge for the other
 	SigKeyMedia     []byte // and for the media service (USER_SIG_KEY_MEDIA)
 	SigKeyMsg       []byte // and for messaging (USER_SIG_KEY_MESSAGING)
@@ -36,7 +36,7 @@ func loadConfig() (config, error) {
 		RedisURL:        os.Getenv("REDIS_URL"),
 		RabbitURL:       os.Getenv("RABBITMQ_URL"),
 		JWTSecret:       []byte(os.Getenv("IDENTITY_JWT_SECRET")),
-		SigKeyBackend:   []byte(os.Getenv("USER_SIG_KEY_BACKEND")),
+		SigKeyBackend:   []byte(os.Getenv("USER_SIG_KEY_CATALOG")),
 		SigKeyWorkspace: []byte(os.Getenv("USER_SIG_KEY_WORKSPACE")),
 		SigKeyMedia:     []byte(os.Getenv("USER_SIG_KEY_MEDIA")),
 		SigKeyMsg:       []byte(os.Getenv("USER_SIG_KEY_MESSAGING")),
@@ -44,7 +44,7 @@ func loadConfig() (config, error) {
 		SigKeyLibrary:   []byte(os.Getenv("USER_SIG_KEY_LIBRARY")),
 		SigKeyRec:       []byte(os.Getenv("USER_SIG_KEY_RECOMMENDER")),
 		InternalKey:     []byte(os.Getenv("INTERNAL_KEY_IDENTITY")),
-		BackendURL:      env("BACKEND_INTERNAL_URL", "http://backend:5000"),
+		BackendURL:      env("CATALOG_INTERNAL_URL", "http://catalog:5000"),
 		SMTPURL:         os.Getenv("SMTP_URL"),
 		MailFrom:        env("MAIL_FROM", "NovelHub <no-reply@novelhub.local>"),
 		SiteURL:         strings.TrimRight(env("SITE_URL", "http://localhost:3000"), "/"),
@@ -55,7 +55,7 @@ func loadConfig() (config, error) {
 	if c.DatabaseURL == "" {
 		return c, fmt.Errorf("IDENTITY_DATABASE_URL is required")
 	}
-	for k, v := range map[string][]byte{"IDENTITY_JWT_SECRET": c.JWTSecret, "USER_SIG_KEY_BACKEND": c.SigKeyBackend,
+	for k, v := range map[string][]byte{"IDENTITY_JWT_SECRET": c.JWTSecret, "USER_SIG_KEY_CATALOG": c.SigKeyBackend,
 		"USER_SIG_KEY_WORKSPACE": c.SigKeyWorkspace, "USER_SIG_KEY_MEDIA": c.SigKeyMedia, "USER_SIG_KEY_MESSAGING": c.SigKeyMsg,
 		"USER_SIG_KEY_COMMUNITY": c.SigKeyCommunity, "USER_SIG_KEY_LIBRARY": c.SigKeyLibrary, "USER_SIG_KEY_RECOMMENDER": c.SigKeyRec,
 		"INTERNAL_KEY_IDENTITY": c.InternalKey} {

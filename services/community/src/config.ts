@@ -5,14 +5,14 @@ import { Pool } from 'pg';
 
 export const PORT = Number(process.env.PORT || 8080);
 export const IS_PROD = process.env.NODE_ENV === 'production';
-export const BACKEND_URL = (process.env.BACKEND_INTERNAL_URL || 'http://backend:5000').replace(/\/+$/, '');
+export const BACKEND_URL = (process.env.CATALOG_INTERNAL_URL || 'http://catalog:5000').replace(/\/+$/, '');
 export const MESSAGING_URL = (process.env.MESSAGING_INTERNAL_URL || 'http://messaging:8080').replace(/\/+$/, '');
 export const RABBITMQ_URL = process.env.RABBITMQ_URL || '';
 // USER_SIG_KEY_COMMUNITY: identity signs the gateway's X-User-* for us alone; INTERNAL_KEY_COMMUNITY: calls to us;
-// INTERNAL_KEY_BACKEND / INTERNAL_KEY_MESSAGING: our calls to them
+// INTERNAL_KEY_CATALOG / INTERNAL_KEY_MESSAGING: our calls to them
 export const USER_SIG_KEY = process.env.USER_SIG_KEY_COMMUNITY || '';
 export const INTERNAL_KEY = process.env.INTERNAL_KEY_COMMUNITY || '';
-export const BACKEND_KEY = process.env.INTERNAL_KEY_BACKEND || '';
+export const BACKEND_KEY = process.env.INTERNAL_KEY_CATALOG || '';
 export const MESSAGING_KEY = process.env.INTERNAL_KEY_MESSAGING || '';
 
 export const pool = new Pool({ connectionString: process.env.COMMUNITY_DATABASE_URL, max: 10 });

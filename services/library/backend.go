@@ -30,7 +30,7 @@ type profile struct {
 
 type backendClient struct {
 	url   string
-	key   []byte // INTERNAL_KEY_BACKEND
+	key   []byte // INTERNAL_KEY_CATALOG
 	hc    *http.Client
 	mu    sync.Mutex
 	cache map[string]cachedProfile
