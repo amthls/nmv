@@ -137,7 +137,7 @@ export default function StoryDetailPage() {
       setIsFollowing(following);
       setStory((prev: any) => prev ? {
         ...prev,
-        total_favorites: Math.max(0, (prev.total_favorites || 0) + (following ? 1 : -1))
+        total_favorites: Math.max(0, Number(prev.total_favorites || 0) + (following ? 1 : -1))
       } : prev);
     };
     applyStatus(nextStatus);

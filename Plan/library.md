@@ -41,8 +41,13 @@ xóa truyện, xóa chương (`workspaceSync`), xóa tài khoản (`identitySync
   - Trạng thái 2026-10-11 (WIP, đã commit lên nhánh, CHƯA build/chạy thật): `go test` library (Postgres) qua, `tsc`+`npm test` backend qua,
     `tsc` frontend qua, test messaging qua. `.env` máy này đã thêm 3 khóa. Chưa: build container, `migrate.sh` (import), smoke qua gateway,
     trình duyệt, README, Branches, PR. `scripts/simulateReaders.ts` (dev) vẫn ghi vào bảng cũ `reading_history` — sửa hoặc ghi chú.
-- [ ] Thử: chuyển dữ liệu (đếm khớp, mã AL- giống hệt), lịch sử/theo dõi/bookmark/album qua gateway, trang truyện, hồ sơ, gợi ý,
+- [x] Thử: chuyển dữ liệu (đếm khớp, mã AL- giống hệt), lịch sử/theo dõi/bookmark/album qua gateway, trang truyện, hồ sơ, gợi ý,
       thông báo chương mới tới người theo dõi, xóa truyện; README, Branches; PR, tự merge
+  - 2026-10-11: import khớp (392 theo dõi, 2.932 lịch sử, 184 album, 767 truyện-album, 43 lưu, 8 theo dõi người; 184 mã AL- giống hệt).
+    `scripts/library-smoke.py` qua gateway 30/30 (xóa chương thay cho xóa truyện: cùng `/internal/purge`). Trình duyệt: lịch sử,
+    tủ truyện, album, nút theo dõi. Lỗi tìm được và đã sửa: `code_no` bigint tới Go dạng chuỗi (tạo album 500); chương vừa đăng < 2 s
+    không vào lịch sử (thêm `?ids=` hỏi đúng dòng); `worker` thiếu khóa/URL library (huấn luyện gợi ý); số người theo dõi trên trang
+    truyện cộng chuỗi khi bấm theo dõi (lỗi cũ).
 
 ## G2 `feat/library-reading-position`
 - [ ] Lịch sử gom qua Redis (như lượt xem), `chapter.read` ≤ 1 lần/chương/ngày, `story.followed|unfollowed` (outbox)

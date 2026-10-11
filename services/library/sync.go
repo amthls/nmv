@@ -43,6 +43,35 @@ var syncTables = []struct {
 		  synced_at = NOW()`},
 }
 
+// syncChapter copies one chapter and its story right now. The cursor sync skips rows changed in the last 2 s, so a
+// chapter published a moment ago would not be found by syncOnce yet.
+func (s *server) syncChapter(ctx context.Context, chapterID string) error {
+	storyID := ""
+	for i, id := range []*string{&chapterID, &storyID} {
+		t := syncTables[1-i] // chapters first, then the story it belongs to
+		var page []json.RawMessage
+		status, err := s.be.call(ctx, "GET", t.path+"?ids="+url.QueryEscape(*id), nil, &page)
+		if err == nil && status != 200 {
+			err = fmt.Errorf("backend %s: HTTP %d", t.path, status)
+		}
+		if err != nil || len(page) == 0 {
+			return err
+		}
+		if i == 0 {
+			var c struct {
+				StoryID string `json:"story_id"`
+			}
+			json.Unmarshal(page[0], &c)
+			storyID = c.StoryID
+		}
+		body, _ := json.Marshal(page)
+		if _, err := s.db.Exec(ctx, t.upsert, string(body)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // syncOnce copies every row changed since the cursor of each table. Returns how many came.
 func (s *server) syncOnce(ctx context.Context) error {
 	for _, t := range syncTables {

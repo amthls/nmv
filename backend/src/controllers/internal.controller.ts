@@ -133,7 +133,7 @@ export const userProfiles = async (req: Request, res: Response) => {
   const ids = Array.isArray(req.body?.ids) ? req.body.ids.filter(isUuid).slice(0, 500) : [];
   const names = Array.isArray(req.body?.usernames) ? req.body.usernames.filter((u: unknown) => typeof u === 'string').slice(0, 500) : [];
   const r = await pool.query(
-    `SELECT id, username, display_name, avatar_url, COALESCE(is_banned, false) AS is_banned, deleted_at IS NOT NULL AS deleted, code_no,
+    `SELECT id, username, display_name, avatar_url, COALESCE(is_banned, false) AS is_banned, deleted_at IS NOT NULL AS deleted, code_no::int AS code_no,
        COALESCE((SELECT array_agg(role::text) FROM user_roles r WHERE r.user_id = users.id), '{}') AS roles
      FROM users WHERE id = ANY($1::uuid[]) OR username = ANY($2::text[])`,
     [ids, names]
@@ -231,6 +231,11 @@ export const librarySync = (kind: 'stories' | 'chapters') => async (req: Request
   const after = isUuid(req.query.after) ? req.query.after : '00000000-0000-0000-0000-000000000000';
   const limit = Math.min(Math.max(Number(req.query.limit) || 500, 1), 2000);
   const t = kind === 'stories' ? 's' : 'c';
+  if (typeof req.query.ids === 'string') { // exact rows (a chapter published a moment ago), the cursor is not involved
+    const ids = req.query.ids.split(',').filter(isUuid).slice(0, 100);
+    const r = await pool.query(`${LIBRARY_ROWS[kind]} WHERE ${t}.id = ANY($1::uuid[])`, [ids]);
+    return res.json({ success: true, data: r.rows });
+  }
   const r = await pool.query(
     `${LIBRARY_ROWS[kind]} WHERE (${t}.updated_at, ${t}.id) > ($1::timestamptz, $2::uuid) AND ${t}.updated_at < NOW() - INTERVAL '2 seconds'
      ORDER BY ${t}.updated_at, ${t}.id LIMIT $3`, [since, after, limit]);

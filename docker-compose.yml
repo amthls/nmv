@@ -258,6 +258,8 @@ services:
       INTERNAL_KEY_WORKSPACE: ${INTERNAL_KEY_WORKSPACE:?Set INTERNAL_KEY_WORKSPACE in .env (openssl rand -hex 32)}
       IDENTITY_INTERNAL_URL: http://identity:8080
       WORKSPACE_INTERNAL_URL: http://workspace:8080
+      INTERNAL_KEY_LIBRARY: ${INTERNAL_KEY_LIBRARY:?Set INTERNAL_KEY_LIBRARY in .env (openssl rand -hex 32)}
+      LIBRARY_INTERNAL_URL: http://library:8080 # recommender training data
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672
       REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}@redis:6379
     depends_on:

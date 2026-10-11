@@ -73,7 +73,7 @@ func (s *server) chapterStory(ctx context.Context, chapterID string) (string, er
 			return "", err
 		}
 		if attempt == 0 {
-			if err := s.syncOnce(ctx); err != nil {
+			if err := s.syncChapter(ctx, chapterID); err != nil {
 				logf(ctx, "warn", "history: sync before retry failed: "+err.Error())
 			}
 		}
