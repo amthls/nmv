@@ -31,65 +31,108 @@ Nền tảng đọc **Light Novel (truyện chữ)** và **Manga (truyện tranh
 
 ## 🛠 Kiến trúc & Công nghệ
 
+Một cổng vào (nginx), một frontend Next.js và **8 service**, mỗi service một database riêng trong cùng Postgres
+(`Plan/microservices.md`). Service không đọc database của nhau: cần dữ liệu thì gọi API nội bộ (`/internal/*`, ký
+`INTERNAL_KEY_<service nhận>`) hoặc giữ bản sao nhỏ cập nhật qua sự kiện RabbitMQ (exchange `novelhub.events`, outbox).
+
+| Service | Ngôn ngữ | Database | Giữ gì |
+|:---|:---|:---|:---|
+| `catalog` | Node 22 / Express / TS | `novel_platform` | Truyện, tập, chương (bản đọc), thể loại, nhóm dịch + thành viên + quy trình, cộng tác viên, lượt xem, tìm kiếm (Elasticsearch), quyền theo truyện (`/internal/permissions`), kệ "Đang hot" (worker) |
+| `identity` | Go | `identity_db` | Tài khoản, mật khẩu, phiên, vai trò site, khóa/xóa tài khoản; ký `X-User-*` cho từng service |
+| `workspace` | Go | `workspace_db` | Nội dung chương + mọi phiên bản, nháp, đề xuất, gộp, việc theo quy trình, hẹn giờ đăng |
+| `messaging` | Go | `messaging_db` | Tin nhắn riêng, chat nhóm, thông báo, WebSocket realtime |
+| `community` | Node / TS | `community_db` | Bài Fandom, bình luận, báo cáo |
+| `library` | Go | `library_db` | Theo dõi, bookmark, lịch sử + vị trí đọc, album |
+| `recommender` | Python (FastAPI) | `recommender_db` | Gợi ý trang chủ, truyện liên quan (huấn luyện định kỳ) |
+| `media` | Node / TS | `media_db` | Tải ảnh (sharp), xuất EPUB/PDF |
+
 | Tầng | Công nghệ |
 |:---|:---|
-| Frontend | Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS, Lucide Icons, CKEditor 5 (trình soạn thảo rich text) |
-| Catalog | Node.js 22, Express, TypeScript, header danh tính ký HMAC từ gateway (đăng nhập ở service identity, Go), sanitize-html; ảnh và EPUB/PDF ở service media (multer, sharp, pdfkit) |
-| Database | PostgreSQL 16 (khóa chính UUID), truy vấn bằng `pg` (raw SQL); Prisma chỉ dùng cho `db pull/generate/studio` |
-| Tìm kiếm | Elasticsearch 9.5 (1 node, đã tối ưu RAM; tùy chọn, có fallback về SQL `ILIKE`) |
-| Hàng đợi | RabbitMQ 3.13: job thông báo (service messaging nhận), sự kiện giữa các service; broker chết thì catalog gửi thẳng job cho messaging |
-| Cache / realtime | Redis 7.4 (`ioredis`): cache API công khai, đếm lượt xem, bộ đếm rate limit dùng chung; kênh Redis `rt:events` → service messaging (Go) đẩy tín hiệu qua WebSocket thường |
-| Gom kết nối DB | PgBouncer 1.26 (transaction pooling) giữa API và Postgres |
-| Cổng vào | nginx 1.27 (giới hạn tần suất, IP thật, cache ảnh, WebSocket) + helmet / express-rate-limit ở catalog |
-| Hạ tầng | Docker Compose (2 mạng: `edge`, `data`), GitHub Actions (CI/CD), image trên GHCR |
+| Frontend | Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS, Lucide Icons, CKEditor 5 |
+| Database | PostgreSQL 16 (khóa chính UUID), raw SQL (`pg`, `pgx`, `psycopg`); PgBouncer 1.26 (transaction pooling) trước Postgres |
+| Tìm kiếm | Elasticsearch 9.5 (1 node; catalog gọi thẳng, lỗi thì lùi về SQL `ILIKE`) |
+| Hàng đợi | RabbitMQ 3.13: sự kiện giữa các service (outbox), job thông báo (messaging nhận) |
+| Cache / realtime | Redis 7.4: cache API công khai, đếm lượt xem, rate limit dùng chung, kênh `rt:events` → messaging đẩy WebSocket |
+| Cổng vào | nginx 1.27: giới hạn tần suất, IP thật, cache ảnh, WebSocket; hỏi identity (`auth_request`) cho mọi request API |
+| Hạ tầng | Docker Compose (2 mạng: `edge`, `data`), GitHub Actions (CI/CD), image trên GHCR, sao lưu restic |
 
 ```
-                      (duy nhất cổng 3000 mở ra ngoài)
-Trình duyệt ──> nginx gateway ──┬── /api/v1 ──> Express API ──> PgBouncer ──> PostgreSQL
-                                │                                       │  ├──> Redis (cache, đếm, rate limit, pub/sub)
-                                │                                       │  └──> Elasticsearch (tùy chọn)
-                                └── còn lại ──> Next.js                 └─ publish ─> RabbitMQ ──> messaging ──> messaging_db (thông báo)
-                                                                                    worker ──> Redis (gộp lượt xem, đẩy realtime)
-mạng "edge": gateway, frontend, catalog
-mạng "data": catalog, postgres, pgbouncer, redis, rabbitmq, search, worker, media, identity, workspace, messaging, community
+                         (duy nhất cổng 3000 mở ra ngoài)
+Trình duyệt ──> nginx gateway ── auth_request ──> identity (cookie → X-User-* có chữ ký)
+                     │
+                     ├── /api/v1        ──> catalog ──> PgBouncer ──> Postgres (novel_platform)
+                     ├── /api/identity  ──> identity                      ├── Redis, Elasticsearch
+                     ├── /api/ws        ──> workspace                     └── RabbitMQ (novelhub.events)
+                     ├── /api/msg (+WS) ──> messaging                            │ sự kiện / job
+                     ├── /api/community ──> community        identity, workspace, messaging, community,
+                     ├── /api/library   ──> library          library, recommender nhận/phát qua đây
+                     ├── /api/rec       ──> recommender
+                     ├── /api/media     ──> media
+                     └── còn lại        ──> Next.js (frontend)
+mạng "edge": gateway, frontend, catalog, các service có API công khai
+mạng "data": mọi service, postgres, pgbouncer, redis, rabbitmq, search, worker, backup
 ```
 
-**10 container** (`docker compose ps`): `gateway`, `frontend`, `catalog`, `worker`, `media`, `postgres`, `pgbouncer`, `redis`, `search`, `rabbitmq`, cộng `pgadmin` khi bật profile `tools` và `cloudflared` (HTTPS qua Cloudflare Tunnel) khi bật profile `tunnel`. Chỉ `gateway` (cổng 3000) mở ra mạng; catalog, Postgres, Redis, Elasticsearch và giao diện quản trị RabbitMQ chỉ nghe trên `127.0.0.1`, còn frontend, pgbouncer và các worker không mở cổng nào. Gateway và frontend **không** nằm trong mạng `data`, nên không chạm được tới Postgres/Redis/RabbitMQ.
+**Container** (`docker compose ps`): hạ tầng `postgres`, `pgbouncer`, `redis`, `rabbitmq`, `search`, `backup` (+ `db-init` chạy một lần);
+`gateway`, `frontend`; service `catalog` (+ `worker` cùng image: sự kiện identity/workspace, gộp lượt xem, đối soát, kệ "Đang hot"),
+`identity`, `workspace`, `messaging`, `community`, `library`, `recommender`, `media`. Profile `tools` thêm `pgadmin`, profile `tunnel` thêm
+`cloudflared`. Chỉ `gateway` (cổng 3000) mở ra mạng; catalog, Postgres, Redis, Elasticsearch và trang quản trị RabbitMQ chỉ nghe trên
+`127.0.0.1`. Gateway và frontend **không** nằm trong mạng `data`.
 
-Trình duyệt gọi `/api/v1/...` và `/uploads/...` cùng origin; qua gateway các đường dẫn này đi thẳng tới catalog. Khi chạy frontend riêng (không có gateway), `frontend/next.config.mjs` vẫn chuyển tiếp sang `http://catalog:5000` (địa chỉ **viết cứng**, biến `API_URL` không được dùng).
+**RAM lúc rảnh** (đo 2026-10-11, `docker stats`, máy dev): tổng ~1,45 GB — Elasticsearch 572 MB, Postgres 174, frontend 169,
+RabbitMQ 153, gateway 95, recommender 65, catalog 59, media 51, community 42, worker 31, identity 23; Go nhỏ nhất (library 7, messaging 6,
+workspace 8 MB). Trước khi tách: ~1,3 GB (2026-10-09).
+
+**Độ trễ** (`node scripts/bench.mjs`, 100 lượt/đường, ~15 req/s, có cache) so với mốc giai đoạn A (2026-10-10):
+
+| Đường dẫn | Giai đoạn A p50 (p95) | Sau giai đoạn I p50 (p95) |
+|:---|:---|:---|
+| `/api/v1/stories/trending` | 3 ms | 3 ms (4) |
+| Chi tiết truyện (API) | 7 ms | 8 ms (9) |
+| Trang truyện | 9 ms (10) | 10 ms (13) |
+| Đọc chương (API) | 7 ms | 8 ms (9) |
+| Trang chương | 9 ms (12) | 9 ms (11) |
+
+Trình duyệt gọi `/api/v1/...` và `/uploads/...` cùng origin; qua gateway các đường dẫn này đi tới catalog. Khi chạy frontend riêng
+(không có gateway), `frontend/next.config.mjs` chuyển tiếp sang `CATALOG_ORIGIN` (mặc định `http://catalog:5000`).
 
 ## 📂 Cấu trúc thư mục
 
 ```
-├── catalog/
+├── catalog/                          # service catalog (Node/Express/TS), trước đây tên backend
 │   ├── src/
-│   │   ├── config/db.ts              # pg Pool + PrismaClient
-│   │   ├── controllers/              # auth, story, chapter, comment, group, post, bookmark, history,
-│   │   │                             # notification, tag, upload, user
-│   │   ├── middlewares/              # auth (requireAuth/optionalAuth/requireRole), upload
-│   │   ├── services/search.service.ts# tích hợp Elasticsearch
+│   │   ├── config/                   # db (pg Pool), redis, env
+│   │   ├── controllers/              # story, chapter, group, tag, user, auth (hồ sơ), internal (/internal/*)...
+│   │   ├── middlewares/              # auth (header ký từ identity), cache, security (rate limit)
+│   │   ├── services/                 # search (Elasticsearch), client gọi service khác, sự kiện, đối soát, hotShelf
 │   │   ├── utils/richText.ts         # lọc HTML từ trình soạn thảo (sanitize-html)
 │   │   ├── routes/api.routes.ts      # toàn bộ route /api/v1
-│   │   └── server.ts
-│   ├── scripts/                      # seed / migrate / import (chạy thủ công bằng tsx)
-│   └── prisma/
+│   │   ├── server.ts                 # API
+│   │   └── worker.ts                 # tiến trình nền (container worker)
+│   ├── scripts/                      # seed / import (chạy thủ công bằng tsx)
+│   └── prisma/                       # schema cũ, chỉ để tham khảo (code không dùng Prisma client)
 ├── frontend/src/
 │   ├── app/                          # các trang (xem bảng bên dưới)
 │   ├── components/                   # Navbar, auth, explore, reader, story, groups, fandom, comments...
 │   └── context/AuthContext.tsx
-│   ├── main.go                       # HTTP server, route REST tương thích với search.service.ts
-│   ├── index.go                      # index trong bộ nhớ, chấm điểm multi-field/fuzzy/prefix
-│   ├── text.go                       # bỏ dấu tiếng Việt, tokenize, edge-ngram, Levenshtein
-│   └── store.go                      # snapshot ra đĩa để sống sót qua restart container
-├── sql/database.sql                  # schema + dữ liệu mẫu, tự nạp khi tạo volume Postgres mới
-├── uploads/                          # ảnh người dùng tải lên (mount vào catalog và frontend)
-├── services/identity/                # service Go: tài khoản, mật khẩu, phiên, vai trò (xem mục Service identity)
-├── services/workspace/               # service Go: nội dung chương + mọi phiên bản (xem mục Service workspace)
+├── services/
+│   ├── identity/                     # Go: tài khoản, mật khẩu, phiên, vai trò
+│   ├── workspace/                    # Go: nội dung chương + phiên bản, nháp, đề xuất, việc
+│   ├── messaging/                    # Go: tin nhắn, chat nhóm, thông báo, WebSocket
+│   ├── library/                      # Go: theo dõi, bookmark, lịch sử, album
+│   ├── community/                    # TS: Fandom, bình luận, báo cáo
+│   ├── media/                        # TS: ảnh, EPUB/PDF
+│   └── recommender/                  # Python: gợi ý
 ├── events/                           # JSON Schema của mọi sự kiện trên exchange novelhub.events
+├── sql/database.sql, sql/migrations/ # schema catalog (novel_platform); mỗi service có migrations riêng trong thư mục của nó
+├── nginx/nginx.conf                  # gateway
 ├── postgres/provision.sh             # container db-init: mỗi service một database + role riêng
 ├── backup/                           # container sao lưu: Dockerfile + backup.sh (xem Sao lưu & khôi phục)
 ├── backups/                          # kho restic + status.json (không commit)
-├── docker-compose.yml
+├── uploads/                          # ảnh người dùng tải lên
+├── scripts/                          # migrate.sh, restore.sh, smoke test, bench, crawler
+├── Plan/, Branches/                  # kế hoạch từng giai đoạn, thông tin từng nhánh
+├── launch.py, docker-compose.yml
 └── .env / .env.example
 ```
 
@@ -97,7 +140,7 @@ Trình duyệt gọi `/api/v1/...` và `/uploads/...` cùng origin; qua gateway 
 
 ```bash
 cp .env.example .env         # BẮT BUỘC đặt POSTGRES_PASSWORD, IDENTITY_DB_PASSWORD, IDENTITY_JWT_SECRET, USER_SIG_KEY_*, INTERNAL_KEY_*, ELASTIC_PASSWORD, RESTIC_PASSWORD, RABBITMQ_PASSWORD, REDIS_PASSWORD, PGADMIN_DEFAULT_PASSWORD (openssl rand -hex 24); compose không chạy nếu thiếu
-docker compose up -d --build # toàn bộ 10 container
+docker compose up -d --build # toàn bộ container
 sh scripts/migrate.sh        # chạy các migration mới (xem mục CI/CD & migration)
 ```
 `python3 launch.py` làm tất cả các bước trên (tự sinh `.env` với mật khẩu ngẫu nhiên; `.env` cũ còn mật khẩu mặc định `postgres`/`admin` thì tự đổi sang mật khẩu ngẫu nhiên và áp luôn vào volume Postgres đang có bằng `ALTER USER`).
