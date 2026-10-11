@@ -539,7 +539,8 @@ Bẫy (giai đoạn A):
 - [x] Thông báo chương mới: lấy danh sách người theo dõi từ library (tạm thời từ backend cũ: `/internal/stories/:id/followers`)
 
 ### Giai đoạn F: community
-- [ ] Bài Fandom, bình luận, cảm xúc, báo cáo, nội dung đã gỡ (truyện đã gỡ nhận qua `story.removed/restored`)
+- [x] Bài Fandom, bình luận, cảm xúc, báo cáo, nội dung đã gỡ (truyện đã gỡ nhận qua `story.removed/restored`)
+      (2026-10-11, `Plan/community.md`; truyện đã gỡ hỏi API backend thay vì sự kiện: đổi khi có catalog, giai đoạn I)
 
 ### Giai đoạn F2: search
 - [ ] search-service nhận sự kiện từ catalog, community, identity; chuyển Elasticsearch từ backend cũ sang (index truyện hiện có)

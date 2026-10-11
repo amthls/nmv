@@ -3,7 +3,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ChevronUp } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { API_BASE_URL, REACTIONS, readJson } from '@/lib/fandom';
+import { REACTIONS, readJson } from '@/lib/fandom';
+import { COMMUNITY_URL } from '@/lib/apiJson';
 
 interface ReactionBarProps {
   postId: string;
@@ -36,7 +37,7 @@ export default function ReactionBar({ postId, myReaction, onChange, variant = 'b
     setBusy(true);
     setOpen(false);
     try {
-      const json = await readJson(await authFetch(`${API_BASE_URL}/posts/${postId}/react`, {
+      const json = await readJson(await authFetch(`${COMMUNITY_URL}/posts/${postId}/react`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ reaction: type }),

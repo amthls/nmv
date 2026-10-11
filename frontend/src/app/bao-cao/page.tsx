@@ -6,8 +6,8 @@ import { Flag, Check, X, Lock, ExternalLink, Search } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import PageLoader from '@/components/common/PageLoader';
 import CodeBadge from '@/components/common/CodeBadge';
+import { COMMUNITY_URL } from '@/lib/apiJson';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
 const REASON_LABELS: Record<string, string> = {
   spam: 'Spam / quảng cáo',
@@ -66,7 +66,7 @@ export default function ReportsPage() {
       const params = new URLSearchParams({ status, limit: '100' });
       if (type) params.set('type', type);
       if (query) params.set('q', query);
-      const res = await authFetch(`${API_BASE_URL}/reports?${params}`);
+      const res = await authFetch(`${COMMUNITY_URL}/reports?${params}`);
       const json = await res.json();
       if (res.ok && json.success) {
         setReports(json.data || []);
@@ -94,7 +94,7 @@ export default function ReportsPage() {
     if (note === null) return;
     setBusyId(id);
     try {
-      const res = await authFetch(`${API_BASE_URL}/reports/${id}/resolve`, {
+      const res = await authFetch(`${COMMUNITY_URL}/reports/${id}/resolve`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus, resolution_note: note.trim() || null }),

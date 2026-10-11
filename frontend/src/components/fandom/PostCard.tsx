@@ -22,7 +22,8 @@ import SmartPostGallery from './SmartPostGallery';
 import ReactionBar from './ReactionBar';
 import { useAuth } from '@/context/AuthContext';
 import { stripHtml } from '@/lib/richText';
-import { API_BASE_URL, REACTIONS, ROLE_BADGES, categoryOf, readJson, timeAgo, topRole } from '@/lib/fandom';
+import { REACTIONS, ROLE_BADGES, categoryOf, readJson, timeAgo, topRole } from '@/lib/fandom';
+import { COMMUNITY_URL } from '@/lib/apiJson';
 
 export interface PostItem {
   id: string;
@@ -99,7 +100,7 @@ export default function PostCard({
   const call = async (path: string, init: RequestInit = { method: 'POST' }) => {
     setIsProcessing(true);
     try {
-      const json = await readJson(await authFetch(`${API_BASE_URL}/posts/${post.id}${path}`, init));
+      const json = await readJson(await authFetch(`${COMMUNITY_URL}/posts/${post.id}${path}`, init));
       toast(json.message);
       onRefresh?.();
     } catch (e: any) {

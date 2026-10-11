@@ -4,8 +4,8 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Flag, X, Check } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { COMMUNITY_URL } from '@/lib/apiJson';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
 export type ReportTargetType = 'story' | 'chapter' | 'comment' | 'post';
 
@@ -53,7 +53,7 @@ export default function ReportButton({ targetType, targetId, variant = 'button',
     if (isSending) return;
     setIsSending(true);
     try {
-      const res = await authFetch(`${API_BASE_URL}/reports`, {
+      const res = await authFetch(`${COMMUNITY_URL}/reports`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ target_type: targetType, target_id: targetId, reason, description: description.trim() || null }),

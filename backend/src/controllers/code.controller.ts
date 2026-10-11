@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { pool } from '../config/db';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
+import { callCommunity } from '../services/communityClient';
 
 /**
  * Smart codes (sql/migrations/017_smart_codes.sql). Only the fixed number is used to find the row:
@@ -59,15 +60,14 @@ export const resolveCode = async (req: AuthenticatedRequest, res: Response) => {
                             WHERE s.code_no = $1 AND s.approval_status = 'approved' LIMIT 1`, [parsed.no, parsed.chapter]);
           break;
         case 'post':
-          path = await one(`SELECT '/fandom/' || slug AS path FROM posts WHERE code_no = $1 AND NOT is_deleted
-                            AND ((approval_status = 'approved' AND is_published) OR user_id = $2 OR $3)`, [parsed.no, me, isStaff]);
+        case 'report': { // community's (Plan/community.md)
+          const r = await callCommunity('GET', `/internal/codes/${parsed.kind}/${parsed.no}?staff=${isStaff ? 1 : 0}${me ? `&me=${me}` : ''}`);
+          path = r.status === 200 ? r.json.data.path : null;
           break;
+        }
         case 'album':
           // Private albums only for their owner: the share link carries a key, a code does not
           path = await one(`SELECT '/album/' || id AS path FROM albums WHERE code_no = $1 AND (is_public OR user_id = $2)`, [parsed.no, me]);
-          break;
-        case 'report':
-          if (isStaff) path = await one(`SELECT '/bao-cao' AS path FROM reports WHERE code_no = $1`, [parsed.no]);
           break;
       }
     }

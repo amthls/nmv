@@ -117,7 +117,7 @@ check("publish a new chapter -> v1", st == 201 and js["data"]["version"] == 1, f
 nid, nslug = js["data"]["id"], js["data"]["slug"]
 st, js = k.req("POST", "/api/v1/chapters/submissions", new)
 check("same chapter number again -> 409", st == 409, f"{st} {js.get('message')}")
-st, _ = k.req("POST", "/api/v1/comments", {"target_type": "chapter", "target_id": nid, "content": "bình luận thử"})
+st, _ = k.req("POST", "/api/community/comments", {"target_type": "chapter", "target_id": nid, "content": "bình luận thử"})
 st, js = k.req("DELETE", f"/api/v1/chapters/{nid}")
 check("delete", st == 200, f"{st} {js.get('message')}")
 st, _ = Client().req("GET", f"/api/v1/stories/{args.story}/chapters/{nslug}")
@@ -127,7 +127,7 @@ check("its history still shows it, marked deleted", st == 200 and js["data"][0][
 st, js = k.req("POST", f"/api/ws/chapters/{nid}/rewind", {"to_version": 1})
 check("restore from history", st == 200 and js["data"]["source"] == "restore", f"{st} {js.get('message')}")
 check("restored chapter is back for readers", eventually(lambda: Client().req("GET", f"/api/v1/stories/{args.story}/chapters/{nslug}")[0] == 200))
-st, js = Client().req("GET", f"/api/v1/comments?target_type=chapter&target_id={nid}")
+st, js = Client().req("GET", f"/api/community/comments?target_type=chapter&target_id={nid}")
 check("its comments came back with it", st == 200 and "bình luận thử" in json.dumps(js, ensure_ascii=False), str(st))
 k.req("DELETE", f"/api/v1/chapters/{nid}")  # leave no test chapter behind (history keeps it)
 

@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import PageLoader from '@/components/common/PageLoader';
 import CodeBadge from '@/components/common/CodeBadge';
 import SmartImage from '@/components/common/SmartImage';
+import { COMMUNITY_URL } from '@/lib/apiJson';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -18,7 +19,7 @@ const TYPE_TABS: { value: string; label: string }[] = [
 
 const hrefOf = (item: any) => (item.type === 'story' ? `/truyen/${item.slug}` : `/fandom/${item.slug}`);
 const restoreUrl = (item: any) =>
-  item.type === 'story' ? `${API_BASE_URL}/stories/${item.id}/restore` : `${API_BASE_URL}/posts/${item.id}/approve`;
+  item.type === 'story' ? `${API_BASE_URL}/stories/${item.id}/restore` : `${COMMUNITY_URL}/posts/${item.id}/approve`;
 
 /** Stories and posts taken down by Admin/Mod: search them and restore them. */
 export default function RemovedContentPage() {
@@ -41,7 +42,7 @@ export default function RemovedContentPage() {
     try {
       const params = new URLSearchParams({ type, page: String(pageNum) });
       if (query) params.set('q', query);
-      const res = await authFetch(`${API_BASE_URL}/moderation/removed?${params}`);
+      const res = await authFetch(`${COMMUNITY_URL}/moderation/removed?${params}`);
       const json = await res.json();
       if (res.ok && json.success) {
         setItems((prev) => (pageNum === 1 ? json.data : [...prev, ...json.data]));

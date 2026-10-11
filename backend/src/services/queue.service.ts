@@ -105,38 +105,21 @@ async function attachLinks(items: NotifyItem[]) {
     `SELECT t.i::int AS i,
        CASE t.rt WHEN 'draft' THEN '/ws/de-xuat/' || t.rid WHEN 'draft_edit' THEN '/dang-chuong?draft=' || t.rid
          WHEN 'ws_story' THEN '/ws/truyen/' || s.slug WHEN 'chapter' THEN '/truyen/' || s.slug || '/' || c.slug
-         WHEN 'story' THEN '/truyen/' || s.slug WHEN 'post' THEN '/fandom/' || p.slug WHEN 'group' THEN '/nhom-dich/' || g.slug END AS link,
+         WHEN 'story' THEN '/truyen/' || s.slug WHEN 'group' THEN '/nhom-dich/' || g.slug END AS link,
        s.cover_image_url AS image
      FROM unnest($1::text[], $2::uuid[]) WITH ORDINALITY AS t(rt, rid, i)
      LEFT JOIN chapters c ON t.rt = 'chapter' AND c.id = t.rid
      LEFT JOIN stories s ON s.id = CASE WHEN t.rt = 'chapter' THEN c.story_id WHEN t.rt IN ('story', 'ws_story') THEN t.rid END
-     LEFT JOIN posts p ON t.rt = 'post' AND p.id = t.rid
      LEFT JOIN translation_groups g ON t.rt = 'group' AND g.id = t.rid`,
     [refs.map((it) => it.referenceType), refs.map((it) => it.referenceId)]
   );
   for (const row of r.rows) Object.assign(refs[row.i - 1], { link: row.link, image: row.image });
 }
 
-/**
- * Drop what people muted about one post ("Tắt thông báo bài viết này"); a take-down of your own post still arrives.
- * shortcut: post mutes stay in this database (the post page reads them); move them when posts go to community (stage F).
- */
-async function dropMutedPosts(items: NotifyItem[]): Promise<NotifyItem[]> {
-  const about = items.filter((it) => it.referenceType === 'post' && it.referenceId && it.type !== 'post_removed' && it.type !== 'post_restored');
-  if (about.length === 0) return items;
-  const r = await pool.query(
-    `SELECT user_id || ':' || post_id AS k FROM post_notification_mutes WHERE user_id = ANY($1::uuid[]) AND post_id = ANY($2::uuid[])`,
-    [about.map((it) => it.userId), about.map((it) => it.referenceId)]
-  );
-  const muted = new Set(r.rows.map((row: any) => row.k));
-  return items.filter((it) => !about.includes(it) || !muted.has(`${it.userId}:${it.referenceId}`));
-}
-
 async function prepare(job: NotificationJob): Promise<NotificationJob> {
   if (job.kind === 'notify') {
-    const items = await dropMutedPosts(job.items);
-    await attachLinks(items);
-    return { ...job, items };
+    await attachLinks(job.items);
+    return job;
   }
   const r = await pool.query(
     `SELECT s.title, s.cover_image_url, '/truyen/' || s.slug || '/' || c.slug AS link
