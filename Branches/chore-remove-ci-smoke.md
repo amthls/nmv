@@ -3,7 +3,7 @@
 - **Mục tiêu:** Bỏ job smoke (build cả stack Docker + Trivy, ~11 phút) khỏi CI theo yêu cầu chủ dự án
 - **Tạo từ:** `origin/main` @ b5d5c3d, ngày 2026-10-11
 - **Trạng thái:** xong
-- **PR:** (chưa mở)
+- **PR:** https://github.com/amthls/nmv/pull/84
 - **Plan:** không có (việc một bước)
 
 ## Thay đổi
