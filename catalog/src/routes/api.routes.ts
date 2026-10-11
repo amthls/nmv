@@ -63,7 +63,6 @@ import {
   offerDraft,
 } from '../controllers/chapter.controller';
 
-import { getBackupStatus } from '../controllers/backup.controller';
 import { queueStatus } from '../services/queue.service';
 import { cacheJson } from '../middlewares/cache';
 import { searchLimiter, perUserLimiter } from '../middlewares/security';
@@ -144,7 +143,6 @@ router.post('/drafts/:id/offer', requireAuth, offerDraft);
 
 // Albums: named story lists, shareable by link, saveable and copyable by other users
 
-router.get('/admin/backup-status', requireAuth, requireRole('admin'), getBackupStatus);
 
 // Comments, violation reports, removed content, Fandom posts: the community service (/api/community/*)
 

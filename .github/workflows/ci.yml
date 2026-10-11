@@ -229,7 +229,6 @@ jobs:
             echo "REDIS_PASSWORD=$(openssl rand -hex 24)"
             echo "POSTGRES_PASSWORD=$(openssl rand -hex 24)"
             echo "PGADMIN_DEFAULT_PASSWORD=$(openssl rand -hex 16)"
-            echo "RESTIC_PASSWORD=$(openssl rand -hex 24)"
             echo "ELASTIC_PASSWORD=$(openssl rand -hex 24)"
             echo "IDENTITY_DB_PASSWORD=$(openssl rand -hex 32)"
             echo "IDENTITY_JWT_SECRET=$(openssl rand -hex 32)"

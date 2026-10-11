@@ -125,11 +125,6 @@ def ensure_env():
             set_env_values({"ELASTIC_PASSWORD": secrets.token_hex(24)})
             info("Added a random ELASTIC_PASSWORD to .env")
             env = read_env(ENV_FILE)
-        if not env.get("RESTIC_PASSWORD") or env["RESTIC_PASSWORD"] == "change-me":
-            # Only ever added, never replaced: a new password can't open the existing backups
-            set_env_values({"RESTIC_PASSWORD": secrets.token_hex(24)})
-            warn("Added RESTIC_PASSWORD to .env: keep a copy outside this machine, backups are unreadable without it")
-            env = read_env(ENV_FILE)
         # Old installs used the public defaults postgres/admin: replace them (sync_postgres_password
         # then applies the new Postgres password to the existing volume)
         weak = {"POSTGRES_PASSWORD": ("", "postgres", "change-me"), "PGADMIN_DEFAULT_PASSWORD": ("", "admin", "change-me")}
@@ -153,7 +148,6 @@ def ensure_env():
         "RABBITMQ_PASSWORD": rabbit_pw,
         "RABBITMQ_URL": f"amqp://novel:{rabbit_pw}@localhost:5672",
         "REDIS_PASSWORD": secrets.token_hex(24),
-        "RESTIC_PASSWORD": secrets.token_hex(24),
         "ELASTIC_PASSWORD": secrets.token_hex(24),
         "IDENTITY_DB_PASSWORD": secrets.token_hex(32),
         "IDENTITY_JWT_SECRET": secrets.token_hex(32),
@@ -391,12 +385,6 @@ def apply_migrations(env):
         return True
     user = env.get("POSTGRES_USER", "postgres")
     db = env.get("POSTGRES_DB", "novel_platform")
-    snap = subprocess.run(["docker", "compose", "exec", "-T", "backup", "backup.sh", "run", "pre-migrate"],
-                          cwd=ROOT, capture_output=True)
-    if snap.returncode == 0:
-        ok("backup snapshot before migrations")
-    else:
-        warn(f"no backup snapshot before migrations: {snap.stdout.decode(errors='replace').strip()[-300:]}")
     all_ok = True
     for name in sorted(os.listdir(MIGRATIONS_DIR)):
         if not name.endswith(".sql"):
