@@ -31,8 +31,14 @@ import { useAuth } from '@/context/AuthContext';
 import { useRealtime } from '@/lib/realtime';
 import ThemeToggle from './common/ThemeToggle';
 import StoryCaseOpening from './random/StoryCaseOpening';
+import NotificationItem, { Notification, NOTIFICATION_URL } from './notifications/NotificationItem';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+const BELL_TABS = [
+  { id: 'all', label: 'Tất cả' },
+  { id: 'unread', label: 'Chưa đọc' },
+  { id: 'group', label: 'Nhóm dịch' },
+  { id: 'workspace', label: 'Workspace' },
+] as const;
 
 // The logo already links home, so the bar only lists the other sections
 const NAV_LINKS = [
@@ -79,30 +85,34 @@ export default function Navbar() {
     router.push(q ? `/kham-pha?q=${encodeURIComponent(q)}` : '/kham-pha');
   };
 
-  // Notification state
+  // Notification state (messaging service): the badge counts what arrived since the bell was last opened
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unseenCount, setUnseenCount] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [bellTab, setBellTab] = useState<(typeof BELL_TABS)[number]['id']>('all');
   const [unreadMessages, setUnreadMessages] = useState(0);
   const notificationRef = useRef<HTMLDivElement>(null);
 
   const userMenuRef = useRef<HTMLDivElement>(null);
 
-  // Fetch notifications
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (tab = bellTab) => {
     if (!isAuthenticated) return;
     try {
-      const res = await authFetch(`${API_BASE_URL}/notifications`);
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success && json.data) {
-          setNotifications(json.data.notifications || []);
-          setUnreadCount(json.data.unread_count || 0);
-        }
+      const q = tab === 'unread' ? '&unread=1' : tab === 'all' ? '' : `&category=${tab}`;
+      const res = await authFetch(`${NOTIFICATION_URL}?limit=15${q}`);
+      const json = await res.json();
+      if (res.ok && json.success) {
+        setNotifications(json.data.notifications || []);
+        setUnseenCount(json.data.unseen_count || 0);
+        setUnreadCount(json.data.unread_count || 0);
       }
     } catch (e) {
       console.error('Failed to fetch notifications:', e);
     }
+  };
+
+  const fetchUnreadMessages = async () => {
     try {
       const res = await authFetch(`/api/msg/messages`);
       const json = await res.json();
@@ -113,17 +123,19 @@ export default function Navbar() {
   useEffect(() => {
     if (isAuthenticated) {
       fetchNotifications();
-      const timer = setInterval(fetchNotifications, 120000); // fallback; pushes arrive over the socket
+      fetchUnreadMessages();
+      const timer = setInterval(() => { fetchNotifications(); fetchUnreadMessages(); }, 120000); // fallback; pushes arrive over the socket
       return () => clearInterval(timer);
     } else {
       setNotifications([]);
+      setUnseenCount(0);
       setUnreadCount(0);
       setUnreadMessages(0);
     }
   }, [isAuthenticated]);
 
   useRealtime('notification', () => fetchNotifications());
-  useRealtime('dm', () => fetchNotifications());
+  useRealtime('dm', () => fetchUnreadMessages());
 
   // Handle clicking outside
   useEffect(() => {
@@ -139,35 +151,34 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleNotificationClick = async (notif: any) => {
+  const toggleBell = () => {
+    const opening = !isNotificationOpen;
+    setIsNotificationOpen(opening);
+    setIsUserMenuOpen(false);
+    if (opening && unseenCount > 0) {
+      setUnseenCount(0); // opened = seen; each item stays unread until clicked
+      authFetch(`${NOTIFICATION_URL}/seen`, { method: 'POST' }).catch(() => {});
+    }
+  };
+
+  const switchBellTab = (tab: typeof bellTab) => {
+    setBellTab(tab);
+    fetchNotifications(tab);
+  };
+
+  const handleNotificationClick = async (notif: Notification) => {
     if (!notif.is_read) {
-      try {
-        await authFetch(`${API_BASE_URL}/notifications/${notif.id}/read`, { method: 'PUT' });
-        setNotifications((prev) => prev.map((n) => (n.id === notif.id ? { ...n, is_read: true } : n)));
-        setUnreadCount((prev) => Math.max(0, prev - 1));
-      } catch (e) {}
+      setNotifications((prev) => prev.map((n) => (n.id === notif.id ? { ...n, is_read: true } : n)));
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+      authFetch(`${NOTIFICATION_URL}/${notif.id}/read`, { method: 'PUT' }).catch(() => {});
     }
     setIsNotificationOpen(false);
-    if (notif.reference_type === 'draft' && notif.reference_id) {
-      router.push(`/ws/de-xuat/${notif.reference_id}`); // a workspace proposal
-    } else if (notif.reference_type === 'draft_edit' && notif.reference_id) {
-      router.push(`/dang-chuong?draft=${notif.reference_id}`);
-    } else if (notif.reference_type === 'ws_story' && notif.story_slug) {
-      router.push(`/ws/truyen/${notif.story_slug}`); // a workspace task
-    } else if (notif.story_slug && notif.chapter_slug) {
-      router.push(`/truyen/${notif.story_slug}/${notif.chapter_slug}`);
-    } else if (notif.story_slug) {
-      router.push(`/truyen/${notif.story_slug}`);
-    } else if (notif.post_slug) {
-      router.push(`/fandom/${notif.post_slug}`);
-    } else if (notif.group_slug) {
-      router.push(`/nhom-dich/${notif.group_slug}`);
-    }
+    router.push(notif.link || '/thong-bao');
   };
 
   const handleMarkAllAsRead = async () => {
     try {
-      await authFetch(`${API_BASE_URL}/notifications/read-all`, { method: 'PUT' });
+      await authFetch(`${NOTIFICATION_URL}/read-all`, { method: 'PUT' });
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
       setUnreadCount(0);
     } catch (e) {}
@@ -291,30 +302,28 @@ export default function Navbar() {
               <div className="relative" ref={notificationRef}>
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsNotificationOpen(!isNotificationOpen);
-                    setIsUserMenuOpen(false);
-                  }}
+                  onClick={toggleBell}
                   className={`${ICON_BUTTON} select-none active:scale-95 ${isNotificationOpen ? 'bg-white/10 text-white' : ''}`}
                   title="Thông báo"
-                  aria-label="Thông báo"
+                  aria-label={unseenCount > 0 ? `Thông báo (${unseenCount} mới)` : 'Thông báo'}
+                  aria-expanded={isNotificationOpen}
                 >
                   <Bell className="w-[18px] h-[18px] text-rose-400" />
-                  {unreadCount > 0 && (
-                    <span className={BADGE}>{unreadCount > 9 ? '9+' : unreadCount}</span>
+                  {unseenCount > 0 && (
+                    <span className={BADGE}>{unseenCount > 9 ? '9+' : unseenCount}</span>
                   )}
                 </button>
 
                 {/* Notification Dropdown Popover */}
                 {isNotificationOpen && (
                   <div className="absolute right-0 mt-3 w-80 sm:w-96 rounded-2xl glass-menu overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-150">
-                    <div className="p-3.5 px-4 border-b border-white/10 flex items-center justify-between">
+                    <div className="p-3.5 px-4 pb-2.5 flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Bell className="w-4 h-4 text-brand-400" />
                         <span className="text-sm font-bold text-white">Thông báo</span>
                         {unreadCount > 0 && (
                           <span className="px-2 py-0.5 rounded-full bg-brand-500/20 border border-brand-500/30 text-[10px] text-brand-300 font-semibold">
-                            {unreadCount} mới
+                            {unreadCount} chưa đọc
                           </span>
                         )}
                       </div>
@@ -328,6 +337,22 @@ export default function Navbar() {
                         </button>
                       )}
                     </div>
+                    <div className="px-3 pb-2.5 flex gap-1 border-b border-white/10" role="tablist">
+                      {BELL_TABS.map((t) => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          role="tab"
+                          aria-selected={bellTab === t.id}
+                          onClick={() => switchBellTab(t.id)}
+                          className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition ${
+                            bellTab === t.id ? 'bg-white text-surface' : 'text-gray-400 hover:text-white hover:bg-white/5'
+                          }`}
+                        >
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
 
                     <div className="max-h-[380px] overflow-y-auto divide-y divide-white/5">
                       {notifications.length === 0 ? (
@@ -335,55 +360,22 @@ export default function Navbar() {
                           <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-3 text-brand-400">
                             <Bell className="w-6 h-6" />
                           </div>
-                          <p className="text-sm font-semibold text-white">Bạn chưa có thông báo nào</p>
+                          <p className="text-sm font-semibold text-white">
+                            {bellTab === 'all' ? 'Bạn chưa có thông báo nào' : 'Không có thông báo nào ở đây'}
+                          </p>
                           <p className="text-xs text-gray-400 mt-1">Khi có chương mới hoặc tương tác, thông báo sẽ hiển thị tại đây.</p>
                         </div>
                       ) : (
-                        notifications.map((n) => (
-                          <div
-                            key={n.id}
-                            onClick={() => handleNotificationClick(n)}
-                            className={`p-3.5 px-4 flex items-start gap-3 transition cursor-pointer hover:bg-white/5 ${
-                              !n.is_read ? 'bg-brand-500/10' : ''
-                            }`}
-                          >
-                            <div className="relative shrink-0 mt-0.5">
-                              {n.story_cover ? (
-                                <img
-                                  src={n.story_cover}
-                                  alt=""
-                                  className="w-10 h-14 object-cover rounded-lg border border-white/10 shadow-sm"
-                                />
-                              ) : (
-                                <div className="w-9 h-9 rounded-xl bg-brand-500/15 border border-brand-500/25 flex items-center justify-center text-brand-400">
-                                  <Sparkles className="w-4 h-4" />
-                                </div>
-                              )}
-                              {!n.is_read && (
-                                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-brand-500 ring-2 ring-surface-2" />
-                              )}
-                            </div>
-
-                            <div className="flex-1 min-w-0">
-                              <p className={`text-xs leading-snug line-clamp-2 ${!n.is_read ? 'font-bold text-white' : 'text-gray-300'}`}>
-                                {n.title}
-                              </p>
-                              <p className="text-[11px] text-gray-400 mt-1 line-clamp-2">
-                                {n.message}
-                              </p>
-                              <span className="text-[10px] text-gray-500 mt-1.5 block">
-                                {new Date(n.created_at).toLocaleDateString('vi-VN', {
-                                  hour: '2-digit',
-                                  minute: '2-digit',
-                                  day: '2-digit',
-                                  month: '2-digit',
-                                })}
-                              </span>
-                            </div>
-                          </div>
-                        ))
+                        notifications.map((n) => <NotificationItem key={n.id} n={n} onOpen={handleNotificationClick} compact />)
                       )}
                     </div>
+                    <Link
+                      href="/thong-bao"
+                      onClick={() => setIsNotificationOpen(false)}
+                      className="block text-center text-xs font-semibold text-brand-400 hover:text-brand-300 py-2.5 border-t border-white/10 hover:bg-white/5 transition"
+                    >
+                      Xem tất cả và cài đặt
+                    </Link>
                   </div>
                 )}
               </div>

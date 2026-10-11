@@ -217,8 +217,8 @@ st, js = outsider.req("POST", f"/api/v1/drafts/{pid}/submit", {"note": "ThÃªm má
 check("submit a proposal", st == 200 and js["data"]["status"] == "submitted", f"{st} {js.get('message')}")
 st, js = k.req("GET", f"/api/ws/proposals?story_id={sid}")
 check("keeper sees it waiting", st == 200 and any(p["id"] == pid for p in js["data"]), str(st))
-notified = lambda: any(n.get("reference_type") == "draft" and n.get("reference_id") == pid
-                      for n in k.req("GET", "/api/v1/notifications")[1].get("data", {}).get("notifications", []))
+notified = lambda: any(n.get("link") == f"/ws/de-xuat/{pid}"
+                      for n in k.req("GET", "/api/msg/notifications")[1].get("data", {}).get("notifications", []))
 check("keeper is notified (queue)", eventually(notified, 8))
 st, rv = k.req("GET", f"/api/ws/drafts/{pid}/review")
 ins = [o["hash"] for o in rv["data"]["changes"] if o["op"] == "ins"]
@@ -289,7 +289,7 @@ tid = js.get("data", {}).get("id")
 check("keeper assigns a chapter", st == 201 and js["data"]["status"] == "claimed" and js["data"]["kind"] == "translate", f"{st} {js.get('message')}")
 st, js = k.req("POST", "/api/ws/tasks", {"story_id": sid, "chapter_id": cid})
 check("a chapter with an active task cannot get another", st == 409, str(st))
-tnotified = lambda: any(n.get("reference_type") == "ws_story" for n in outsider.req("GET", "/api/v1/notifications")[1].get("data", {}).get("notifications", []))
+tnotified = lambda: any(n.get("type") == "task_opened" for n in outsider.req("GET", "/api/msg/notifications")[1].get("data", {}).get("notifications", []))
 check("the assignee is notified (event -> queue)", eventually(tnotified, 8))
 st, js = outsider.req("GET", "/api/ws/tasks?mine=1")
 check("it is in the assignee's tasks", st == 200 and any(t["id"] == tid for t in js["data"]), str(st))

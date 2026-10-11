@@ -1,9 +1,3 @@
-import {
-  getNotifications,
-  markNotificationAsRead,
-  markAllNotificationsAsRead,
-  deleteNotification
-} from '../controllers/notification.controller';
 ﻿import express, { Router } from 'express';
 import { getTags } from '../controllers/tag.controller';
 import { 
@@ -198,10 +192,7 @@ router.post('/drafts/:id/offer', requireAuth, offerDraft);
 
 
 // Notifications
-router.get('/notifications', requireAuth, getNotifications);
-router.put('/notifications/read-all', requireAuth, markAllNotificationsAsRead);
-router.put('/notifications/:id/read', requireAuth, markNotificationAsRead);
-router.delete('/notifications/:id', requireAuth, deleteNotification);
+// Notifications: the messaging service (/api/msg/notifications*)
 
 // Reading History
 router.get('/history', requireAuth, getReadingHistory);

@@ -15,13 +15,19 @@ log() { echo "[backup] $(date '+%F %T') $*"; }
 # psql against the main database; stdin is the SQL
 q() { psql -v ON_ERROR_STOP=1 -qtA -d "${POSTGRES_DB:-novel_platform}" "$@"; }
 
-# Site notification to every admin, once per key (dedupe_key is unique)
+# Site notification to every admin, once per key: admins come from the main database, the bell is the messaging
+# service's (messaging_db, Plan/messaging.md E3; a dedupe key is delivered once)
 notify_admins() { # key title message
-  q -v key="$1" -v title="$2" -v msg="$3" <<'SQL' || log "could not notify admins"
-INSERT INTO notifications (user_id, type, title, message, dedupe_key)
-SELECT DISTINCT user_id, 'system'::notification_type, :'title', :'msg', 'backup:' || :'key' || ':' || user_id
-FROM user_roles WHERE role = 'admin'
-ON CONFLICT DO NOTHING;
+  admins=$(q -c "SELECT string_agg(DISTINCT user_id::text, ',') FROM user_roles WHERE role = 'admin'") || admins=
+  [ -n "$admins" ] || { log "could not notify admins (no admin found)"; return 0; }
+  psql -v ON_ERROR_STOP=1 -qtA -d messaging_db -v admins="$admins" -v key="$1" -v title="$2" -v msg="$3" <<'SQL' || log "could not notify admins"
+WITH a AS (SELECT unnest(string_to_array(:'admins', ','))::uuid AS user_id),
+d AS (
+  INSERT INTO notification_dedupe (key) SELECT 'backup:' || :'key' || ':' || user_id FROM a ON CONFLICT DO NOTHING RETURNING key
+)
+INSERT INTO notifications (user_id, type, category, title, message)
+SELECT a.user_id, 'admin_alert', 'system', :'title', :'msg' FROM a
+WHERE EXISTS (SELECT 1 FROM d WHERE d.key = 'backup:' || :'key' || ':' || a.user_id);
 SQL
 }
 

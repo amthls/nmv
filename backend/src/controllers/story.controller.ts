@@ -1060,7 +1060,7 @@ const setStoryRemoved = (remove: boolean) => async (req: AuthenticatedRequest, r
     await indexStory(id);
     if (story.uploader_id !== req.user!.id) {
       enqueueNotificationJob({ kind: 'notify', items: [{
-        userId: story.uploader_id, type: 'system',
+        userId: story.uploader_id, type: remove ? 'story_removed' : 'story_restored',
         title: remove ? 'Truyện của bạn đã bị Ban quản trị gỡ' : 'Truyện của bạn đã được khôi phục',
         message: `"${story.title}"${reason ? ` · Lý do: ${reason}` : ''}`,
         referenceType: 'story', referenceId: story.id, senderId: req.user!.id,

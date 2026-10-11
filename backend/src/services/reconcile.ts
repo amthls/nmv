@@ -72,7 +72,7 @@ export async function reconcile(): Promise<string[]> {
 
   const day = new Date().toISOString().slice(0, 10);
   for (const [key, title, message] of problems) {
-    await notifyAdmins(pool, `reconcile:${key}:${day}`, title, message).catch((e) => console.error('[reconcile] notify:', e.message));
+    await notifyAdmins(`reconcile:${key}:${day}`, title, message).catch((e) => console.error('[reconcile] notify:', e.message));
   }
   console.log(problems.length ? `[reconcile] ${problems.length} problem(s): ${problems.map((p) => p[0]).join(', ')}` : '[reconcile] all copies in step');
   return problems.map((p) => p[0]);

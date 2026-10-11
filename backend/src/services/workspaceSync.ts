@@ -2,7 +2,7 @@ import { pool } from '../config/db';
 import { internalAuthHeader } from '../middlewares/auth.middleware';
 import { currentRequestId } from '../utils/logger';
 import { startEventConsumer } from './eventConsumer';
-import { insertNotifications } from './notification.service';
+import { enqueueNotificationJob } from './queue.service';
 import { blocksToPlainText, slugify, notifyChapterPublished, ContentBlock } from '../controllers/chapter.controller';
 
 /**
@@ -149,13 +149,13 @@ async function notifyTaskOpened(t: any) {
   }
   const story = await pool.query(`SELECT title FROM stories WHERE id = $1`, [t.story_id]);
   const items = [...new Set(recipients)].filter((id) => id && id !== t.actor_id).map((userId) => ({
-    userId, type: 'system' as const,
+    userId, type: 'task_opened' as const,
     title: `${t.assignee_id ? 'Bạn được giao' : 'Việc mới'}: ${STEP_LABEL[t.kind] || t.kind} chương ${Number(t.chapter_number)} (${story.rows[0]?.title || ''})`,
     message: t.note ? `"${String(t.note).slice(0, 160)}"` : t.due_at ? `Hạn: ${new Date(t.due_at).toLocaleString('vi-VN')}` : null,
     referenceType: 'ws_story' as const, referenceId: t.story_id, senderId: t.actor_id || null,
     dedupeKey: `task:${t.task_id}:${userId}`,
   }));
-  if (items.length > 0) await insertNotifications(items);
+  if (items.length > 0) await enqueueNotificationJob({ kind: 'notify', items });
 }
 
 async function handleWorkspaceEvent(evt: any): Promise<string> {

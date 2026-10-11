@@ -156,11 +156,6 @@ export default function UserProfilePage() {
   const [fontSize, setFontSize] = useState(18);
   const [lineHeight, setLineHeight] = useState(1.8);
   const [readingMode, setReadingMode] = useState('scroll');
-  const [notifyChapters, setNotifyChapters] = useState(true);
-  const [notifyGroupEvents, setNotifyGroupEvents] = useState(true);
-  const [notifyReplies, setNotifyReplies] = useState(true);
-  const [notifyPostComments, setNotifyPostComments] = useState(true);
-  const [notifyPostReactions, setNotifyPostReactions] = useState(true);
 
   // Admin User & Role Management State
   const [adminUsers, setAdminUsers] = useState<any[]>([]);
@@ -196,11 +191,6 @@ export default function UserProfilePage() {
             setFontSize(u.settings.font_size || 18);
             setLineHeight(parseFloat(u.settings.line_height) || 1.8);
             setReadingMode(u.settings.reading_mode || 'scroll');
-            setNotifyChapters(u.settings.notify_chapter_update ?? true);
-            setNotifyGroupEvents(u.settings.notify_group_events ?? true);
-            setNotifyReplies(u.settings.notify_comments ?? true);
-            setNotifyPostComments(u.settings.notify_post_comments ?? true);
-            setNotifyPostReactions(u.settings.notify_post_reactions ?? true);
           }
         }
       }
@@ -327,11 +317,6 @@ export default function UserProfilePage() {
           font_size: fontSize,
           line_height: lineHeight,
           reading_mode: readingMode,
-          notify_chapter_update: notifyChapters,
-          notify_group_events: notifyGroupEvents,
-          notify_comments: notifyReplies,
-          notify_post_comments: notifyPostComments,
-          notify_post_reactions: notifyPostReactions,
         }),
       });
 
@@ -799,47 +784,10 @@ export default function UserProfilePage() {
             </div>
             <div className="space-y-3 pt-2 border-t border-white/10">
               <label className="block text-xs font-semibold text-gray-300 pt-4">Thông báo</label>
-              <p className="text-[11px] text-gray-500 -mt-1">Muốn tắt thông báo của riêng một bài viết Fandom, bấm biểu tượng chuông trên bài viết đó.</p>
-              {[
-                {
-                  checked: notifyChapters, set: setNotifyChapters,
-                  title: 'Chương mới',
-                  desc: 'Khi truyện bạn theo dõi có chương mới',
-                },
-                {
-                  checked: notifyReplies, set: setNotifyReplies,
-                  title: 'Trả lời bình luận của tôi',
-                  desc: 'Khi có người trả lời bình luận của bạn (trong chương truyện, trang truyện hoặc bài viết Fandom)',
-                },
-                {
-                  checked: notifyPostComments, set: setNotifyPostComments,
-                  title: 'Bình luận trên bài viết của tôi',
-                  desc: 'Khi có người bình luận bài viết Fandom của bạn',
-                },
-                {
-                  checked: notifyPostReactions, set: setNotifyPostReactions,
-                  title: 'Cảm xúc trên bài viết của tôi',
-                  desc: 'Khi có người thả cảm xúc vào bài viết Fandom của bạn',
-                },
-                {
-                  checked: notifyGroupEvents, set: setNotifyGroupEvents,
-                  title: 'Hoạt động nhóm dịch',
-                  desc: 'Yêu cầu gia nhập, kết quả xin gia nhập, được thêm vào nhóm',
-                },
-              ].map((opt) => (
-                <label key={opt.title} className="flex items-start gap-3 p-3 rounded-2xl bg-white/5 border border-white/10 cursor-pointer hover:border-white/20 transition">
-                  <input
-                    type="checkbox"
-                    checked={opt.checked}
-                    onChange={(e) => opt.set(e.target.checked)}
-                    className="mt-0.5 w-4 h-4 accent-brand-500"
-                  />
-                  <span className="text-xs">
-                    <span className="block font-semibold text-white">{opt.title}</span>
-                    <span className="text-gray-400">{opt.desc}</span>
-                  </span>
-                </label>
-              ))}
+              <p className="text-xs text-gray-400">
+                Chọn loại thông báo muốn nhận ở{' '}
+                <Link href="/thong-bao#cai-dat" className="text-brand-400 hover:text-brand-300 font-semibold">trang Thông báo</Link>.
+              </p>
             </div>
             <button
               type="submit"

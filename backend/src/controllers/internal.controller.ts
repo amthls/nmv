@@ -140,6 +140,22 @@ export const userProfiles = async (req: Request, res: Response) => {
   res.json({ success: true, data: r.rows });
 };
 
+/**
+ * GET /internal/stories/:id/followers?after=<user uuid>&limit=<=1000 -> [user_id] in id order: who wants new-chapter
+ * notifications for the story (messaging pages through it; its own settings decide the rest).
+ */
+export const storyFollowers = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const after = typeof req.query.after === 'string' && isUuid(req.query.after) ? req.query.after : '00000000-0000-0000-0000-000000000000';
+  const limit = Math.min(Math.max(Number(req.query.limit) || 1000, 1), 1000);
+  if (!isUuid(id)) return res.status(404).json({ success: false });
+  const r = await pool.query(
+    `SELECT user_id FROM user_favorites WHERE story_id = $1 AND user_id > $2 AND notify_updates IS NOT FALSE ORDER BY user_id LIMIT $3`,
+    [id, after, limit]
+  );
+  res.json({ success: true, data: r.rows.map((row: any) => row.user_id) });
+};
+
 /** GET /internal/groups/:id/members -> [{user_id, role}] (404 when the group does not exist): who may use the group's chat. */
 export const groupMembers = async (req: Request, res: Response) => {
   const { id } = req.params;

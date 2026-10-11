@@ -22,6 +22,8 @@ const (
 	yuki  = "22222222-2222-2222-2222-222222222222"
 	kai   = "33333333-3333-3333-3333-333333333333"
 	group = "44444444-4444-4444-4444-444444444444"
+	boss  = "55555555-5555-5555-5555-555555555555" // signed as an admin
+	story = "66666666-6666-6666-6666-666666666666"
 )
 
 type convHarness struct {
@@ -70,6 +72,12 @@ func newConv(t *testing.T) *convHarness {
 			json.NewEncoder(w).Encode(map[string]any{"data": out})
 		case "/internal/groups/" + group + "/members":
 			json.NewEncoder(w).Encode(map[string]any{"data": []member{{hana, "leader"}, {yuki, "member"}}})
+		case "/internal/stories/" + story + "/followers": // one page: hana and yuki follow the story
+			page := []string{hana, yuki}
+			if r.URL.Query().Get("after") != "" {
+				page = []string{}
+			}
+			json.NewEncoder(w).Encode(map[string]any{"data": page})
 		default:
 			w.WriteHeader(404)
 		}
@@ -233,7 +241,25 @@ func TestImportLegacy(t *testing.T) {
 		INSERT INTO legacy.group_messages VALUES ('b0000000-0000-0000-0000-000000000001', '`+group+`', '`+yuki+`', 'nhóm cũ', NOW());
 		INSERT INTO legacy.user_blocks VALUES ('`+kai+`', '`+hana+`', NOW());
 		INSERT INTO legacy.dm_labels VALUES ('c0000000-0000-0000-0000-000000000001', '`+yuki+`', 'Cũ', 'sky', NOW());
-		INSERT INTO legacy.dm_label_conversations VALUES ('c0000000-0000-0000-0000-000000000001', '`+hana+`', NOW());`); err != nil {
+		INSERT INTO legacy.dm_label_conversations VALUES ('c0000000-0000-0000-0000-000000000001', '`+hana+`', NOW());
+		CREATE TABLE legacy.users (id UUID, username TEXT, display_name TEXT);
+		CREATE TABLE legacy.stories (id UUID, slug TEXT, cover_image_url TEXT);
+		CREATE TABLE legacy.chapters (id UUID, story_id UUID, slug TEXT);
+		CREATE TABLE legacy.posts (id UUID, slug TEXT);
+		CREATE TABLE legacy.translation_groups (id UUID, slug TEXT);
+		CREATE TABLE legacy.user_settings (user_id UUID, notify_chapter_update BOOLEAN, notify_group_events BOOLEAN, notify_comments BOOLEAN,
+			notify_post_comments BOOLEAN, notify_post_reactions BOOLEAN);
+		CREATE TABLE legacy.notifications (id UUID, user_id UUID, type TEXT, title TEXT, message TEXT, reference_type TEXT, reference_id UUID,
+			sender_id UUID, is_read BOOLEAN, read_at TIMESTAMPTZ, created_at TIMESTAMPTZ, dedupe_key TEXT);
+		INSERT INTO legacy.users VALUES ('`+yuki+`', 'yuki', 'Yuki');
+		INSERT INTO legacy.stories VALUES ('`+story+`', 'truyen-a', '/c.jpg');
+		INSERT INTO legacy.chapters VALUES ('d0000000-0000-0000-0000-000000000001', '`+story+`', 'chuong-1');
+		INSERT INTO legacy.user_settings VALUES ('`+hana+`', false, true, false, false, false), ('`+yuki+`', true, true, true, false, false);
+		INSERT INTO legacy.notifications VALUES
+			('e0000000-0000-0000-0000-000000000001', '`+hana+`', 'chapter_update', 'Chương mới: A', 'x', 'chapter', 'd0000000-0000-0000-0000-000000000001',
+			 '`+yuki+`', false, NULL, NOW(), 'chapter:d0000000-0000-0000-0000-000000000001:`+hana+`'),
+			('e0000000-0000-0000-0000-000000000002', '`+hana+`', 'system', 'Đề xuất', NULL, 'draft', 'f0000000-0000-0000-0000-000000000001',
+			 NULL, true, NULL, NOW() - interval '1 hour', NULL);`); err != nil {
 		t.Fatal(err)
 	}
 	legacyURL := os.Getenv("MESSAGING_TEST_DATABASE_URL") + "?search_path=legacy"
@@ -260,6 +286,145 @@ func TestImportLegacy(t *testing.T) {
 	_, out := h.call(yuki, "GET", "/groups/"+group+"/messages", nil)
 	if list := out["data"].([]any); len(list) != 1 {
 		t.Fatalf("imported group chat: %v", out)
+	}
+
+	inbox = data(h.want(200, hana, "GET", "/notifications", nil))
+	list := inbox["notifications"].([]any)
+	if len(list) != 2 || inbox["unread_count"].(float64) != 1 || inbox["unseen_count"].(float64) != 1 {
+		t.Fatalf("imported notifications: %v", inbox)
+	}
+	first, second := list[0].(map[string]any), list[1].(map[string]any)
+	if first["link"] != "/truyen/truyen-a/chuong-1" || first["image"] != "/c.jpg" || first["category"] != "read" ||
+		second["link"] != "/ws/de-xuat/f0000000-0000-0000-0000-000000000001" || second["category"] != "workspace" || second["is_read"] != true {
+		t.Fatalf("imported notification fields: %v", list)
+	}
+	// hana switched off chapters and every interaction kind; yuki only two of the three interaction switches
+	for user, want := range map[string]map[string]bool{hana: {"read": true, "interaction": true}, yuki: {}} {
+		for _, c := range h.want(200, user, "GET", "/notifications/settings", nil)["data"].([]any) {
+			c := c.(map[string]any)
+			if off := !c["web"].(bool); off != want[c["category"].(string)] {
+				t.Fatalf("imported settings of %s: %v", user, c)
+			}
+		}
+	}
+	// the imported dedupe key still guards against a re-delivered job
+	if n, _ := h.s.deliver(ctx, []notifyItem{{UserID: hana, Type: "group_member_add", Title: "x", DedupeKey: "chapter:d0000000-0000-0000-0000-000000000001:" + hana}}); n != 0 {
+		t.Fatal("dedupe key from the old table must hold")
+	}
+	// done once: what was deleted here does not come back
+	h.want(200, hana, "DELETE", "/notifications/e0000000-0000-0000-0000-000000000001", nil)
+	if err := importLegacy(ctx, h.s.db, legacyURL); err != nil {
+		t.Fatal(err)
+	}
+	if n := len(data(h.want(200, hana, "GET", "/notifications", nil))["notifications"].([]any)); n != 1 {
+		t.Fatalf("a deleted notification came back: %d", n)
+	}
+}
+
+func TestNotifications(t *testing.T) {
+	h := newConv(t)
+	key := strings.Repeat("i", 32)
+	job := func(j map[string]any) {
+		t.Helper()
+		var buf bytes.Buffer
+		json.NewEncoder(&buf).Encode(j)
+		req, _ := http.NewRequest("POST", h.srv.URL+"/internal/notifications/jobs", &buf)
+		req.Header.Set("X-Internal-Auth", signInternal(key))
+		res, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res.Body.Close()
+		if res.StatusCode != 200 {
+			t.Fatalf("job: HTTP %d", res.StatusCode)
+		}
+	}
+	reaction := func(from, name string) map[string]any {
+		return map[string]any{"userId": hana, "type": "post_reaction", "title": name + " đã bày tỏ cảm xúc về bài viết của bạn",
+			"message": "\"Bài\" (like)", "referenceType": "post", "referenceId": "p1", "senderId": from, "actorName": name,
+			"link": "/fandom/bai", "dedupeKey": "reaction:p1:" + from}
+	}
+	inbox := func(user, query string) map[string]any {
+		return data(h.want(200, user, "GET", "/notifications"+query, nil))
+	}
+	h.want(401, "", "GET", "/notifications", nil)
+
+	// two people react, one twice (same dedupe key): one row, 2 people, unseen
+	job(map[string]any{"kind": "notify", "items": []any{reaction(yuki, "Yuki")}})
+	job(map[string]any{"kind": "notify", "items": []any{reaction(kai, "Kai"), reaction(yuki, "Yuki")}})
+	got := inbox(hana, "")
+	list := got["notifications"].([]any)
+	if len(list) != 1 || got["unseen_count"].(float64) != 1 || got["unread_count"].(float64) != 1 {
+		t.Fatalf("grouped: %v", got)
+	}
+	n := list[0].(map[string]any)
+	if n["title"] != "Kai và 1 người khác đã bày tỏ cảm xúc về bài viết của bạn" || n["count"].(float64) != 2 || n["link"] != "/fandom/bai" {
+		t.Fatalf("grouped row: %v", n)
+	}
+	// opening the bell clears the number, the row stays unread until clicked
+	h.want(200, hana, "POST", "/notifications/seen", nil)
+	if got := inbox(hana, ""); got["unseen_count"].(float64) != 0 || got["unread_count"].(float64) != 1 {
+		t.Fatalf("seen: %v", got)
+	}
+	h.want(404, yuki, "PUT", "/notifications/"+n["id"].(string)+"/read", nil) // not yours
+	h.want(200, hana, "PUT", "/notifications/"+n["id"].(string)+"/read", nil)
+	// a read row no longer merges: the next reaction starts a new one
+	job(map[string]any{"kind": "notify", "items": []any{reaction(boss, "Boss")}})
+	if got := inbox(hana, "?unread=1"); len(got["notifications"].([]any)) != 1 || got["unread_count"].(float64) != 1 {
+		t.Fatalf("after read: %v", got)
+	}
+
+	// switched off: interaction no longer arrives; a take-down (locked) still does
+	h.want(400, hana, "PUT", "/notifications/settings", map[string]any{"nope": map[string]any{"web": false}})
+	h.want(200, hana, "PUT", "/notifications/settings", map[string]any{"interaction": map[string]any{"web": false}})
+	job(map[string]any{"kind": "notify", "items": []any{
+		map[string]any{"userId": hana, "type": "comment_reply", "title": "Yuki đã trả lời", "senderId": yuki, "dedupeKey": "c1"},
+		map[string]any{"userId": hana, "type": "post_removed", "title": "Bài viết của bạn đã bị gỡ", "dedupeKey": "r1"},
+	}})
+	if got := inbox(hana, "?category=interaction&unread=1"); len(got["notifications"].([]any)) != 1 {
+		t.Fatalf("interaction switched off: %v", got)
+	}
+	if got := inbox(hana, "?category=moderation"); len(got["notifications"].([]any)) != 1 {
+		t.Fatalf("locked kind: %v", got)
+	}
+	h.want(400, hana, "GET", "/notifications?category=nope", nil)
+
+	// new chapters: every follower but the uploader; unread ones merge per story
+	for _, ch := range []string{"d0000000-0000-0000-0000-000000000001", "d0000000-0000-0000-0000-000000000002"} {
+		job(map[string]any{"kind": "chapter_published", "storyId": story, "chapterId": ch, "chapterTitle": "Chương", "storyTitle": "Truyện A",
+			"uploaderId": yuki, "link": "/truyen/a/" + ch})
+	}
+	reads := inbox(hana, "?category=read")["notifications"].([]any)
+	if len(reads) != 1 || reads[0].(map[string]any)["title"] != "Truyện \"Truyện A\" có 2 chương mới" {
+		t.Fatalf("chapter fan-out: %v", reads)
+	}
+	if got := inbox(yuki, "?category=read"); len(got["notifications"].([]any)) != 0 {
+		t.Fatalf("the uploader got a notification: %v", got)
+	}
+
+	// site-wide announcement: admins only, everybody sees it once
+	h.want(403, hana, "POST", "/admin/broadcasts", map[string]any{"title": "x"})
+	h.want(400, boss, "POST", "/admin/broadcasts", map[string]any{"title": "Bảo trì", "link": "https://evil.example"})
+	b := data(h.want(200, boss, "POST", "/admin/broadcasts", map[string]any{"title": "Bảo trì tối nay", "message": "22h–23h"}))
+	got = inbox(kai, "")
+	if l := got["notifications"].([]any); len(l) != 1 || l[0].(map[string]any)["type"] != "broadcast" || got["unseen_count"].(float64) != 1 {
+		t.Fatalf("broadcast: %v", got)
+	}
+	h.want(200, kai, "PUT", "/notifications/"+b["id"].(string)+"/read", nil)
+	if got := inbox(kai, ""); got["unread_count"].(float64) != 0 {
+		t.Fatalf("broadcast read: %v", got)
+	}
+	if l := h.want(200, boss, "GET", "/admin/broadcasts", nil)["data"].([]any); len(l) != 1 || l[0].(map[string]any)["read_count"].(float64) != 1 {
+		t.Fatalf("broadcast list: %v", l)
+	}
+
+	h.want(200, hana, "PUT", "/notifications/read-all", nil)
+	if got := inbox(hana, ""); got["unread_count"].(float64) != 0 {
+		t.Fatalf("read-all: %v", got)
+	}
+	h.want(200, boss, "DELETE", "/admin/broadcasts/"+b["id"].(string), nil)
+	if got := inbox(kai, ""); len(got["notifications"].([]any)) != 0 {
+		t.Fatalf("deleted broadcast: %v", got)
 	}
 }
 
