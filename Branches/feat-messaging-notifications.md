@@ -3,7 +3,7 @@
 - **Mục tiêu:** Giai đoạn E3: hộp thông báo chuyển sang service messaging
 - **Tạo từ:** `origin/main` @ 5b8c589, ngày 2026-10-11
 - **Trạng thái:** xong, chờ CI
-- **PR:** (chưa mở)
+- **PR:** https://github.com/amthls/nmv/pull/70
 - **Plan:** `Plan/messaging.md` (E3), `Plan/microservices.md` (giai đoạn E)
 
 ## Thay đổi
