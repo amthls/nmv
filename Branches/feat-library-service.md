@@ -3,7 +3,7 @@
 - **Mục tiêu:** Giai đoạn G: theo dõi, bookmark, lịch sử đọc, album chuyển sang service library (Go)
 - **Tạo từ:** `origin/main` @ 00c0f3d, ngày 2026-10-11
 - **Trạng thái:** xong, chờ merge
-- **PR:** (chưa mở)
+- **PR:** https://github.com/amthls/nmv/pull/75
 - **Plan:** Plan/library.md (G1)
 
 ## Thay đổi
