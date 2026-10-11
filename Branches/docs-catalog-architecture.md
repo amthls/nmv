@@ -3,7 +3,7 @@
 - **Mục tiêu:** Giai đoạn I4: đo lại tải, RAM; README viết lại phần kiến trúc
 - **Tạo từ:** `origin/main` @ c503740, ngày 2026-10-11
 - **Trạng thái:** xong
-- **PR:** (chưa mở)
+- **PR:** https://github.com/amthls/nmv/pull/82
 - **Plan:** `Plan/catalog.md` (I4), `Plan/microservices.md` (giai đoạn I)
 
 ## Thay đổi
