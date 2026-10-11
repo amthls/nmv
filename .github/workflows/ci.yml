@@ -218,6 +218,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # ~10 images plus Trivy's exports outgrow the runner's free disk: drop preinstalled toolchains we never use
+      - name: Free disk space
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h /
+
       - name: Test .env (random secrets)
         run: |
           {
