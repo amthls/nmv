@@ -14,7 +14,8 @@ export interface StoryRole {
 }
 
 /**
- * A user's place in a story's workspace. keeper: story owner, or leader/mod of the story's group (merges, rewinds);
+ * A user's place in a story's workspace. keeper: story owner, the leader of the story's group, or a member whose role
+ * the group lets merge (translation_groups.mergers, default mod) (merges, rewinds);
  * contributor: keeper, any member of that group or a collaborator (drafts, proposals, history).
  * keeperIds: everyone who keeps the story (who to tell about a proposal).
  */
@@ -27,12 +28,13 @@ export async function storyRole(user: string, story: string): Promise<StoryRole>
            (SELECT role FROM group_members WHERE group_id = s.group_id AND user_id = $1) AS group_role,
            EXISTS (SELECT 1 FROM story_collaborators WHERE story_id = s.id AND user_id = $1) AS collaborator,
            (SELECT COALESCE(display_name, username) FROM users WHERE id = $1) AS name,
-           ARRAY(SELECT s.uploader_id UNION SELECT user_id FROM group_members WHERE group_id = s.group_id AND role IN ('leader', 'mod'))::text[] AS keepers,
-           (SELECT workflow FROM translation_groups WHERE id = s.group_id) AS workflow, s.group_id
-    FROM stories s WHERE s.id = $2`, [user, story]);
+           ARRAY(SELECT s.uploader_id UNION SELECT user_id FROM group_members
+                 WHERE group_id = s.group_id AND (role = 'leader' OR role::text = ANY(g.mergers)))::text[] AS keepers,
+           g.workflow, g.mergers, s.group_id
+    FROM stories s LEFT JOIN translation_groups g ON g.id = s.group_id WHERE s.id = $2`, [user, story]);
   const row = r.rows[0];
   if (!row) return none;
-  const keeper = row.owner || ['leader', 'mod'].includes(row.group_role);
+  const keeper = row.owner || row.group_role === 'leader' || (row.mergers || []).includes(row.group_role);
   return {
     keeper, contributor: keeper || Boolean(row.group_role) || row.collaborator, removed: row.removed, name: row.name || '',
     keeperIds: (row.keepers || []).filter(Boolean),

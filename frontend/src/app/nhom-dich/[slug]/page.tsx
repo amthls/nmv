@@ -49,6 +49,7 @@ export default function GroupDetailPage() {
   // The steps a chapter of this group goes through before a story keeper merges it (stage 4b)
   const [workflowDraft, setWorkflowDraft] = useState<string[] | null>(null);
   const [workflowMsg, setWorkflowMsg] = useState<string | null>(null);
+  const [mergersDraft, setMergersDraft] = useState<string[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Chatroom State
@@ -73,6 +74,7 @@ export default function GroupDetailPage() {
   // Mirrors the server: only the group's leader/mod manage it (site admin/mod get no extra rights here);
   // only the leader manages other managers; only members publish stories and chapters into the group.
   const isLeaderOrMod = ['leader', 'mod'].includes(currentMembership?.role);
+  const isLeader = currentMembership?.role === 'leader';
   const isGroupLeader = currentMembership?.role === 'leader';
   const isMember = isAuthenticated && Boolean(currentMembership);
   const canSeeInternal = isMember; // chat
@@ -880,18 +882,41 @@ export default function GroupDetailPage() {
                   ))}
                   <span className="px-3 py-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-200"><b>GỘP</b> <span className="text-[10px]">(người giữ truyện)</span></span>
                 </div>
-                {isLeaderOrMod && workflowDraft && (
+                <p className="text-xs text-gray-400 pt-1">
+                  Người giữ truyện (được gộp, sửa thẳng, quay lại bản cũ): chủ truyện, Trưởng nhóm và các vai trò dưới đây{isLeader ? '' : ' (Trưởng nhóm chọn)'}.
+                </p>
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  {[['mod', 'Mod nhóm'], ['editor', 'Biên tập'], ['proofreader', 'Hiệu đính'], ['translator', 'Dịch giả'], ['raw_provider', 'Cung cấp RAW'], ['member', 'Thành viên']].map(([key, label]) => {
+                    const mergers = mergersDraft || group.mergers || ['mod'];
+                    return (
+                      <label key={key} className={`px-3 py-2 rounded-xl border flex items-center gap-2 ${mergers.includes(key) ? 'border-emerald-500/60 bg-emerald-500/10 text-white' : 'border-white/10 text-gray-400'} ${isLeader ? 'cursor-pointer' : ''}`}>
+                        {isLeader && (
+                          <input
+                            type="checkbox"
+                            checked={mergers.includes(key)}
+                            onChange={(e) => setMergersDraft(e.target.checked ? [...mergers, key] : mergers.filter((x: string) => x !== key))}
+                          />
+                        )}
+                        {label}
+                      </label>
+                    );
+                  })}
+                </div>
+                {isLeaderOrMod && (workflowDraft || mergersDraft) && (
                   <button
                     type="button"
                     onClick={async () => {
+                      const body: any = { steps: workflowDraft || group.workflow || ['translate'] };
+                      if (mergersDraft) body.mergers = mergersDraft;
                       const res = await authFetch(`${API_BASE_URL}/groups/${group.id}/workflow`, {
-                        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ steps: workflowDraft }),
+                        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
                       });
                       const json = await res.json().catch(() => ({}));
                       setWorkflowMsg(json.message || (res.ok ? 'Đã lưu.' : 'Không lưu được.'));
                       if (res.ok && json.success) {
-                        setGroup({ ...group, workflow: json.data.workflow });
+                        setGroup({ ...group, workflow: json.data.workflow, mergers: json.data.mergers });
                         setWorkflowDraft(null);
+                        setMergersDraft(null);
                       }
                     }}
                     className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow text-xs font-bold"

@@ -38,8 +38,11 @@ Bẫy:
   Giữ tên hàng đợi `backend.*`, tên biến/hàm trong code và chữ "backend" trong comment.
 
 ## I3: quy trình nhóm + kệ "Đang hot"
-- [ ] Cài đặt quy trình nhóm (bước bật, ai được gộp) + API quyền trả về cho workspace
-- [ ] Kệ "Đang hot" tính sẵn vào Redis
+- [x] Cài đặt quy trình nhóm (bước bật, ai được gộp) + API quyền trả về cho workspace
+  Bước bật đã có từ 025. Thêm `translation_groups.mergers` (028, mặc định `{mod}`): chủ truyện + Trưởng nhóm luôn gộp;
+  chỉ Trưởng nhóm đổi `mergers` (Mod không tự cấp quyền cho người khác). `storyRole` → keeper/keeperIds → `/internal/permissions`.
+- [x] Kệ "Đang hot" tính sẵn vào Redis: worker ghi `cache:/api/v1/stories/trending` (cùng khóa với `cacheJson`) 2 phút/lần, TTL 6 phút;
+  worker tắt thì API vẫn tự tính khi hụt. Giữ nguyên cách xếp (lượt xem tổng).
 
 ## I4: đo tải + README kiến trúc
 - [ ] Đo lại bằng `scripts/bench.mjs`, so với mốc giai đoạn A; README viết lại phần kiến trúc
