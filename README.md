@@ -272,7 +272,7 @@ Tách khỏi backend ở giai đoạn F (`Plan/community.md`), TypeScript (`serv
   (`/internal/users/:id/stats`), xóa truyện → xóa bình luận của nó + bỏ liên kết bài viết (`/internal/comments/purge`).
 - Xóa tài khoản có `purge_content`: community nghe `identity.user.deleted` (hàng `community.identity`) và ẩn bài, bình luận.
 - Chuyển dữ liệu: `docker compose run --rm community node dist/server.js import-legacy` (`scripts/migrate.sh`, `launch.py` gọi; chỉ một lần).
-  Bảng cũ ở `novel_platform` **không còn dùng**, xóa ở nhánh sau.
+  Bảng cũ ở `novel_platform` đã xóa (migration 027).
 - Biến mới: `COMMUNITY_DB_PASSWORD`, `USER_SIG_KEY_COMMUNITY`, `INTERNAL_KEY_COMMUNITY` (launch.py tự sinh), `COMMUNITY_MEMORY` (mặc định 256m).
 - Thử: `cd services/community && yarn test`; trọn luồng qua gateway: `python scripts/community-smoke.py --admin admin --writer reader_hana --reader reader_yuki --password …`.
 
@@ -291,7 +291,7 @@ Tách khỏi backend ở giai đoạn G (`Plan/library.md`), Go (`services/libra
   hồ sơ (`/internal/users/:id/overview`), mã `AL-` (`/internal/codes/album/:số`), recommender hỏi lịch sử của người xem
   (`/internal/reco/user/:id`) và chuyển dữ liệu một lần (`/internal/reco/export`). Messaging hỏi `/internal/stories/:id/followers` để báo chương mới. Xóa tài khoản: library nghe `identity.user.deleted`.
 - Chuyển dữ liệu: `docker compose run --rm library import-legacy` (`scripts/migrate.sh`, `launch.py` gọi; chỉ một lần, cần backend đang chạy).
-  Bảng cũ ở `novel_platform` **không còn dùng**, xóa ở nhánh sau.
+  Bảng cũ ở `novel_platform` đã xóa (migration 027).
 - Phát sự kiện cho recommender: trigger trong `library_db` ghi outbox (`migrations/002_outbox.sql`) khi theo dõi/bỏ, thêm/bỏ truyện
   trong album (xóa album = bỏ từng truyện), tạo/xóa bookmark → `library.story.followed|unfollowed`, `library.album.story_added|removed`,
   `library.bookmark.created|deleted`.
@@ -321,7 +321,7 @@ NDCG@10 giấu-truyện-cuối); trên cùng dữ liệu cho điểm ngang bản
   (mặc định 30; `REC_TRAINING=off` để tắt) và khi Admin bấm "Huấn luyện lại ngay". Kết quả: `rec_item_similar`, `rec_user_scores`,
   `rec_user_factors`, `rec_item_factors`, `rec_model_runs`.
 - Chuyển dữ liệu: `docker compose run --rm recommender import-legacy` (`scripts/migrate.sh`, `launch.py` gọi; một lần): `rec_events` của backend
-  + `GET /internal/reco/export` của library. Bảng `rec_*` cũ ở `novel_platform` **không còn dùng**, xóa ở nhánh sau.
+  + `GET /internal/reco/export` của library. Bảng `rec_*` cũ ở `novel_platform` đã xóa (migration 027; không còn `rec_events` thì bỏ qua phần đó).
 - Biến mới: `RECOMMENDER_DB_PASSWORD`, `USER_SIG_KEY_RECOMMENDER` (launch.py tự sinh), `RECOMMENDER_MEMORY` (mặc định 512m).
 - Thử: `cd services/recommender && pip install -r requirements-dev.txt && REC_TEST_DATABASE_URL=postgres://…/rec_test python -m pytest tests`
   (xóa sạch DB đó); trọn luồng qua gateway: `python scripts/recommender-smoke.py --admin admin --reader reader_yuki --password … --story berserker-of-gluttony`.
@@ -490,25 +490,28 @@ Admin/Mod cũng không có quyền gì đặc biệt trong nhóm dịch (sửa n
 
 ## 🗄 Cơ sở dữ liệu
 
-Schema thật gồm 31 bảng và 2 view (`sql/database.sql`). Nhóm chính:
+Schema thật gồm 19 bảng và 2 view (`sql/database.sql`). Nhóm chính:
 
 | Nhóm | Bảng |
 |:---|:---|
 | Người dùng | `users`, `user_roles` (**bản sao** từ identity qua sự kiện `identity.user.*`: tên đăng nhập, vai trò, khóa/xóa; hồ sơ hiển thị vẫn do backend giữ), `user_settings`, `processed_events` (sự kiện đã áp dụng). Email, mật khẩu, token tài khoản **không có ở đây** (identity giữ; đã xóa ở migration 026) |
 | Truyện | `stories`, `volumes`, `chapters`, `chapter_pages`, `chapter_submissions`, `story_tags`, `tags`, `tag_categories`, `story_collaborators`, `story_views`, `story_views_daily` |
-| Nhóm dịch | `translation_groups`, `group_members`, `group_join_requests` (chat nhóm: service messaging; bảng cũ `group_messages` còn lại tới khi xóa) |
-| Tin nhắn riêng | Ở service messaging (`messaging_db`: `conversations`, `conversation_members`, `messages`, `user_blocks`, `dm_labels`, `dm_label_conversations`). Bảng cũ `direct_messages`, `dm_labels`, `dm_label_conversations`, `user_blocks` ở đây **không còn dùng** (đã chép sang bằng `messaging import-legacy`), xóa ở nhánh sau |
-| Theo dõi, bookmark, lịch sử, album | Ở service library (`library_db`). Bảng cũ `user_favorites`, `user_follows`, `bookmarks`, `reading_history`, `albums`, `album_stories`, `album_saves` ở đây **không còn dùng** (đã chép bằng `import-legacy`), xóa ở nhánh sau |
-| Thông báo | `notifications`, `broadcast_notifications`* và cột `user_settings.notify_*` **không còn dùng** (thông báo ở service messaging, đã chép bằng `import-legacy`), xóa ở nhánh sau |
-| Fandom, bình luận, báo cáo | Ở service community (`community_db`). Bảng cũ `posts`, `post_tags`, `post_reactions`, `post_notification_mutes`, `comments`, `comment_likes`, `reports` ở đây **không còn dùng** (đã chép bằng `import-legacy`), xóa ở nhánh sau |
+| Nhóm dịch | `translation_groups`, `group_members`, `group_join_requests` (chat nhóm: service messaging) |
+| Tin nhắn riêng | Ở service messaging (`messaging_db`: `conversations`, `conversation_members`, `messages`, `user_blocks`, `dm_labels`, `dm_label_conversations`) |
+| Theo dõi, bookmark, lịch sử, album | Ở service library (`library_db`) |
+| Thông báo | Ở service messaging. Cột `user_settings.notify_*` **không còn dùng** (cài đặt thông báo ở messaging) |
+| Fandom, bình luận, báo cáo | Ở service community (`community_db`) |
 | Workspace | `ws_chapter_versions` (migration `023_ws_chapter_versions.sql`): phiên bản workspace mới nhất đã áp vào bản đọc `chapters`, gồm cả chương đã xóa. Nội dung và lịch sử nằm ở `workspace_db` (xem [Service workspace](#-service-workspace-lịch-sử-chương)) |
 | View | `v_trending_stories`, `v_recently_updated_stories` |
 
-`*` = bảng đã có trong DB nhưng **chưa có API hay giao diện nào dùng** (xem Hạn chế).
+Các bảng cũ đã chuyển sang service khác (tin nhắn, thông báo, Fandom/bình luận/báo cáo, theo dõi/lịch sử/album, `rec_*`,
+`story_exports`) bị xóa ở migration `027_drop_legacy_tables.sql` sau khi `import-legacy` của từng service đã chép. Bản cài mới vì thế
+không có bài Fandom, bình luận, thông báo hay lượt theo dõi mẫu. **Nâng cấp máy chạy bản cũ hơn PR #77:** cập nhật lên #77 và chạy
+`scripts/migrate.sh` trước (để chép xong), rồi mới lên bản này; nếu lỡ, dữ liệu còn trong bản backup `pre-migrate`.
 
 **Migration cho DB đã tồn tại:** `sql/database.sql` chỉ chạy khi tạo volume mới. Với DB đang chạy: `sh scripts/migrate.sh` (xem [CI/CD & migration](#-cicd--migration)); bảng `schema_migrations` ghi lại file nào đã chạy. Lượt xem nằm ở `stories.total_views`, `chapters.total_views` và `story_views_daily` (theo ngày); bảng `story_views` (từng lượt) không còn được ghi.
 
-**Mã thông minh** (migration `017_smart_codes.sql`): `users`, `translation_groups`, `stories`, `posts`, `albums`, `reports` có cột `code_no` (số cố định, duy nhất, cấp theo thứ tự tạo) và `code` (mã hiển thị). UUID vẫn là khóa chính. Trigger trong DB tự cấp và cập nhật mã; phần thông tin tự đổi khi dữ liệu đổi, còn số thì không, nên tra mã chỉ dựa vào số (mã cũ vẫn tra được).
+**Mã thông minh** (migration `017_smart_codes.sql`): `users`, `translation_groups`, `stories` (bài viết, báo cáo: community; album: library) có cột `code_no` (số cố định, duy nhất, cấp theo thứ tự tạo) và `code` (mã hiển thị). UUID vẫn là khóa chính. Trigger trong DB tự cấp và cập nhật mã; phần thông tin tự đổi khi dữ liệu đổi, còn số thì không, nên tra mã chỉ dựa vào số (mã cũ vẫn tra được).
 
 | Đối tượng | Mẫu | Các phần |
 |:---|:---|:---|

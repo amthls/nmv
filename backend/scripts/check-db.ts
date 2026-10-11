@@ -43,15 +43,6 @@ async function checkDatabase() {
       { name: 'Group Members', query: 'SELECT count(*) FROM group_members;' },
       { name: 'Stories', query: 'SELECT count(*) FROM stories;' },
       { name: 'Chapters', query: 'SELECT count(*) FROM chapters;' },
-      { name: 'User Follows', query: 'SELECT count(*) FROM user_follows;' },
-      { name: 'Bookmarks', query: 'SELECT count(*) FROM bookmarks;' },
-      { name: 'Reading History', query: 'SELECT count(*) FROM reading_history;' },
-      { name: 'Posts (Fandom/Blog)', query: 'SELECT count(*) FROM posts;' },
-      { name: 'Post Reactions', query: 'SELECT count(*) FROM post_reactions;' },
-      { name: 'Comments', query: 'SELECT count(*) FROM comments;' },
-      { name: 'Notifications', query: 'SELECT count(*) FROM notifications;' },
-      { name: 'Broadcast Notifications', query: 'SELECT count(*) FROM broadcast_notifications;' },
-      { name: 'Reports', query: 'SELECT count(*) FROM reports;' },
     ];
 
     console.log('\n📊 Thống kê dữ liệu hiện tại:');
