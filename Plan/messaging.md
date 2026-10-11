@@ -59,9 +59,44 @@
 - [x] Thử: chuyển dữ liệu thật (đếm khớp), hộp thư/luồng/nhãn/chặn/ghim/nhóm qua gateway, thẻ nháp; README, Branches; PR, tự merge
 
 ## E3 `feat/messaging-notifications`: hộp thông báo
-- [ ] Bảng `notifications` mới (category, type chuỗi, actors, data ảnh chụp, group_key, seen/read), cài đặt nhóm × kênh, thông báo toàn site 1 dòng,
-      dọn đã đọc 30 ngày / chưa đọc 60 ngày; messaging nhận job `novel.notifications` (thay worker backend) rồi dần chuyển sang sự kiện
-- [ ] Chuông (chưa xem/chưa đọc, tab), trang `/thong-bao`; chuyển dữ liệu cũ từ enum
+
+**Thiết kế (2026-10-11):**
+- **Backend vẫn quyết định "ai nhận gì"** (các hàm dựng `NotifyItem` giữ nguyên, controller không đổi) và đẩy job vào hàng `novel.notifications`
+  như cũ; **messaging tiêu thụ hàng đó** thay worker backend. Trước khi đẩy, backend gắn `link` (đường dẫn bấm vào: truyện/chương/bài/nhóm/nháp)
+  và `image` (bìa truyện) bằng một câu SQL = **ảnh chụp**, messaging không phải hỏi lại. Tắt thông báo theo bài (`post_notification_mutes`)
+  vẫn lọc ở backend lúc đẩy. RabbitMQ không tới được → backend gọi thẳng `POST /internal/notifications/jobs` của messaging.
+  shortcut: job từ backend thay vì sự kiện miền; chuyển sang sự kiện khi tách community/catalog (F, I).
+- `type` là chuỗi, bảng loại trong code Go (`notifyTypes`): loại → `category` (`read`, `interaction`, `group`, `workspace`, `moderation`, `system`),
+  có tắt được không, khóa gộp. Bỏ enum. Loại không tắt được: kết quả xin vào nhóm, đề xuất được gộp/trả lại, nội dung bị gỡ/khôi phục, cảnh báo Admin.
+- `messaging_db.notifications`: user_id, type, category, title, message, link, image, `actors` (≤ 3 gần nhất) + `actor_count`, `count`, `data`
+  (story_title, group_name…), `group_key`, `seen_at` (đã mở chuông), `read_at` (đã bấm), created_at, updated_at.
+  **Gộp:** unique `(user_id, group_key) WHERE read_at IS NULL` → `ON CONFLICT DO UPDATE` (thêm người, `count+1`, đưa lên đầu, chưa xem lại).
+  Gộp: chương mới theo truyện, cảm xúc/bình luận theo bài, xin vào nhóm theo nhóm. Tiêu đề gộp dựng lúc đọc ("Yuki và 12 người khác…",
+  "Truyện X có 3 chương mới"). `notification_dedupe(key)` giữ chống trùng (job gửi lại không tạo trùng).
+- Chương mới: messaging hỏi người theo dõi từ backend `GET /internal/stories/:id/followers?after=&limit=1000` (đã lọc `notify_updates`), lô 1000.
+- Cài đặt: `notification_settings(user_id, category, web)`; chỉ có kênh web (email để sau). Chuyển từ `user_settings.notify_*` một lần
+  (tương tác tắt khi cả 3 công tắc cũ tắt). `/tai-khoan` bỏ các công tắc, trỏ sang `/thong-bao`.
+- Thông báo toàn site: `broadcasts` 1 dòng (hiện 30 ngày) + `broadcast_reads(user, broadcast, seen_at, read_at)`; Admin tạo/xóa ở `/thong-bao`.
+- API `/api/msg/notifications`: `GET ?category=&unread=1&before=&limit=` (+ `unseen_count`, `unread_count`), `POST /seen`, `PUT /:id/read`,
+  `PUT /read-all`, `DELETE /:id`, `GET|PUT /settings`; `GET|POST /api/msg/admin/broadcasts`, `DELETE /api/msg/admin/broadcasts/:id`.
+- Dọn mỗi giờ: đã đọc > 30 ngày, chưa đọc > 60 ngày, khóa chống trùng > 60 ngày.
+- Cảnh báo Admin (`notifyAdmins`, `backup.sh`) và thông báo từ sự kiện workspace cũng đi qua messaging. Chuyển dữ liệu: `import-legacy` chép
+  `notifications` cũ (giữ id, link dựng từ bảng backend) + cài đặt. Bảng cũ xóa ở nhánh sau (cùng bảng tin nhắn cũ).
+
+- [x] messaging: migration 002, bảng loại, xử lý job (lọc cài đặt, chống trùng, gộp, đẩy realtime), người theo dõi từ backend, consumer RabbitMQ
+      (thử lại/DLQ như worker cũ), `/internal/notifications/jobs`, API người dùng + cài đặt + broadcast, dọn định kỳ, import-legacy, test
+- [x] Backend: gắn link/ảnh khi đẩy, lọc tắt theo bài, fallback HTTP, loại cụ thể thay `system`, `/internal/stories/:id/followers`,
+      `notifyAdmins`/workspaceSync qua hàng đợi, bỏ worker thông báo + controller/route cũ + `notify_*` ở cài đặt; `backup.sh` ghi vào messaging_db
+- [x] Frontend: chuông (chưa xem, tab Tất cả/Chưa đọc/Nhóm dịch/Workspace, đã đọc hết), trang `/thong-bao` (lọc, tải thêm, cài đặt nhóm × kênh,
+      broadcast cho Admin), `/tai-khoan` trỏ sang
+- [x] Thử: chuyển dữ liệu (đếm khớp), bình luận/cảm xúc gộp, chương mới tới người theo dõi, cài đặt tắt, broadcast, realtime, Rabbit tắt → fallback;
+      README, Branches; PR, tự merge
+  - Thử 2026-10-11: 126/126 thông báo cũ chuyển sang (chạy lại: "already imported"); 3 người thả cảm xúc → 1 dòng "Administrator và 2 người
+    khác…"; tắt Tương tác → bình luận mới không tới; chương mới → 12/12 người theo dõi trong 21 ms; dừng RabbitMQ → backend gửi thẳng
+    `/internal/notifications/jobs`, bật lại → messaging/backend/worker tự nối lại; Redis nhận `{"type":"notification"}`; backup.sh ghi cảnh báo
+    vào messaging_db (chạy 2 lần → 1); trình duyệt: chuông về 0 khi mở, tab, trang `/thong-bao`, công tắc cài đặt.
+  - Bẫy: `import-legacy` chạy mỗi lần migrate → thứ đã xóa bên messaging (tin nhóm, thông báo, công tắc bật lại) bị chép lại. Sửa: bảng
+    `legacy_imports`, mỗi phần chuyển một lần. amqplib khai báo TTL hàng retry kiểu `short`: Go phải dùng `int16(10000)` cho khớp.
 
 ## E4 thử tải
 - [ ] Client giả lập Go: 10k → 30k kết nối giữ lâu + phát hàng loạt; ghi RAM/CPU mỗi kết nối, độ trễ; ước tính giới hạn máy hiện tại

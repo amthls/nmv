@@ -1,26 +1,29 @@
 import amqp from 'amqplib';
 import crypto from 'crypto';
 import { RABBITMQ_URL } from '../config/env';
-import type { NotificationJob } from './notification.service';
-import { processNotificationJob } from './notification.service';
+import { pool } from '../config/db';
+import { internalAuthHeader } from '../middlewares/auth.middleware';
+import { currentRequestId } from '../utils/logger';
+import type { NotificationJob, NotifyItem } from './notification.service';
 
 /**
- * RabbitMQ producer/consumer plumbing for notification work.
+ * Notification jobs go to the messaging service (Plan/messaging.md, E3):
  *
- *   API  --publish-->  novel.notifications  --consume-->  worker  -->  PostgreSQL
- *                          |  (failure)
- *                          +--> novel.notifications.retry (10s TTL) --> back to the main queue
- *                                  after MAX_ATTEMPTS --> novel.notifications.dlq (kept for inspection)
+ *   API/worker  --publish-->  novel.notifications  --consume-->  messaging  -->  messaging_db
+ *                                 |  (failure, handled by messaging)
+ *                                 +--> novel.notifications.retry (10s TTL) --> back to the main queue
+ *                                         after 5 attempts --> novel.notifications.dlq (kept for inspection)
  *
- * If RabbitMQ is not configured or unreachable the API never fails the user's request and never
- * loses the notification: the job simply runs in-process (bounded concurrency) instead.
+ * If RabbitMQ is not configured or unreachable the request never fails: the job is posted straight to messaging
+ * (POST /internal/notifications/jobs) instead.
  */
 
 export const QUEUE = 'novel.notifications';
 export const RETRY_QUEUE = 'novel.notifications.retry';
 export const DLQ = 'novel.notifications.dlq';
-export const MAX_ATTEMPTS = Number(process.env.NOTIFY_MAX_ATTEMPTS || 5);
-const RETRY_DELAY_MS = Number(process.env.NOTIFY_RETRY_DELAY_MS || 10_000);
+// services/messaging/notify.go declares the retry queue with this exact TTL: change both together
+const RETRY_DELAY_MS = 10_000;
+const MESSAGING_URL = (process.env.MESSAGING_INTERNAL_URL || 'http://messaging:8080').replace(/\/+$/, '');
 
 export interface Envelope {
   id: string;
@@ -92,30 +95,86 @@ export async function closeQueue(): Promise<void> {
   connection = null;
 }
 
-// --- in-process fallback -----------------------------------------------------------------------
+// --- what a job carries -----------------------------------------------------------------------------------------
 
-const MAX_INLINE = 2;
-let inlineActive = 0;
-const inlineWaiting: Array<() => void> = [];
-async function runInline(job: NotificationJob) {
-  if (inlineActive >= MAX_INLINE) await new Promise<void>((r) => inlineWaiting.push(r));
-  inlineActive += 1;
+/** Where a click on a notification goes, and the story cover to show: a snapshot taken now. */
+async function attachLinks(items: NotifyItem[]) {
+  const refs = items.filter((it) => it.referenceType && it.referenceId);
+  if (refs.length === 0) return;
+  const r = await pool.query(
+    `SELECT t.i::int AS i,
+       CASE t.rt WHEN 'draft' THEN '/ws/de-xuat/' || t.rid WHEN 'draft_edit' THEN '/dang-chuong?draft=' || t.rid
+         WHEN 'ws_story' THEN '/ws/truyen/' || s.slug WHEN 'chapter' THEN '/truyen/' || s.slug || '/' || c.slug
+         WHEN 'story' THEN '/truyen/' || s.slug WHEN 'post' THEN '/fandom/' || p.slug WHEN 'group' THEN '/nhom-dich/' || g.slug END AS link,
+       s.cover_image_url AS image
+     FROM unnest($1::text[], $2::uuid[]) WITH ORDINALITY AS t(rt, rid, i)
+     LEFT JOIN chapters c ON t.rt = 'chapter' AND c.id = t.rid
+     LEFT JOIN stories s ON s.id = CASE WHEN t.rt = 'chapter' THEN c.story_id WHEN t.rt IN ('story', 'ws_story') THEN t.rid END
+     LEFT JOIN posts p ON t.rt = 'post' AND p.id = t.rid
+     LEFT JOIN translation_groups g ON t.rt = 'group' AND g.id = t.rid`,
+    [refs.map((it) => it.referenceType), refs.map((it) => it.referenceId)]
+  );
+  for (const row of r.rows) Object.assign(refs[row.i - 1], { link: row.link, image: row.image });
+}
+
+/**
+ * Drop what people muted about one post ("Tắt thông báo bài viết này"); a take-down of your own post still arrives.
+ * shortcut: post mutes stay in this database (the post page reads them); move them when posts go to community (stage F).
+ */
+async function dropMutedPosts(items: NotifyItem[]): Promise<NotifyItem[]> {
+  const about = items.filter((it) => it.referenceType === 'post' && it.referenceId && it.type !== 'post_removed' && it.type !== 'post_restored');
+  if (about.length === 0) return items;
+  const r = await pool.query(
+    `SELECT user_id || ':' || post_id AS k FROM post_notification_mutes WHERE user_id = ANY($1::uuid[]) AND post_id = ANY($2::uuid[])`,
+    [about.map((it) => it.userId), about.map((it) => it.referenceId)]
+  );
+  const muted = new Set(r.rows.map((row: any) => row.k));
+  return items.filter((it) => !about.includes(it) || !muted.has(`${it.userId}:${it.referenceId}`));
+}
+
+async function prepare(job: NotificationJob): Promise<NotificationJob> {
+  if (job.kind === 'notify') {
+    const items = await dropMutedPosts(job.items);
+    await attachLinks(items);
+    return { ...job, items };
+  }
+  const r = await pool.query(
+    `SELECT s.title, s.cover_image_url, '/truyen/' || s.slug || '/' || c.slug AS link
+     FROM chapters c JOIN stories s ON s.id = c.story_id WHERE c.id = $1`, [job.chapterId]);
+  return { ...job, storyTitle: r.rows[0]?.title || '', link: r.rows[0]?.link || null, image: r.rows[0]?.cover_image_url || null };
+}
+
+/** RabbitMQ is down: hand the job to messaging over HTTP (it runs it before answering). */
+async function postToMessaging(job: NotificationJob) {
   try {
-    const n = await processNotificationJob(job);
-    console.log(`[Queue] processed ${job.kind} inline (broker unavailable), ${n} new notifications`);
+    const res = await fetch(`${MESSAGING_URL}/internal/notifications/jobs`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Internal-Auth': internalAuthHeader('messaging'),
+        ...(currentRequestId() ? { 'X-Request-Id': currentRequestId()! } : {}),
+      },
+      body: JSON.stringify(job),
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
   } catch (err: any) {
-    console.error('[Queue] inline notification job failed:', err.message);
-  } finally {
-    inlineActive -= 1;
-    inlineWaiting.shift()?.();
+    console.error(`[Queue] ${job.kind} lost: broker and messaging both unavailable (${err.message})`);
   }
 }
 
 /**
  * Hand a notification job to the queue. Never throws and never blocks the request for long.
- * Returns 'queued' when RabbitMQ accepted (and persisted) it, 'inline' when it fell back.
+ * Returns 'queued' when RabbitMQ accepted (and persisted) it, 'inline' when it went to messaging directly.
  */
-export async function enqueueNotificationJob(job: NotificationJob): Promise<'queued' | 'inline'> {
+export async function enqueueNotificationJob(input: NotificationJob): Promise<'queued' | 'inline'> {
+  if (input.kind === 'notify' && input.items.length === 0) return 'queued';
+  let job = input;
+  try {
+    job = await prepare(input);
+  } catch (err: any) {
+    console.warn('[Queue] could not attach links:', err.message); // still deliver, just without a link
+  }
   if (job.kind === 'notify' && job.items.length === 0) return 'queued';
   if (publishChannel) {
     try {
@@ -129,51 +188,9 @@ export async function enqueueNotificationJob(job: NotificationJob): Promise<'que
       });
       return 'queued';
     } catch (err: any) {
-      console.warn('[Queue] publish failed, running inline instead:', err.message);
+      console.warn('[Queue] publish failed, sending to messaging directly:', err.message);
     }
   }
-  void runInline(job);
+  void postToMessaging(job);
   return 'inline';
-}
-
-// --- consumer (worker process) -----------------------------------------------------------------
-
-/** Send a failed message to the retry queue, or to the DLQ once it has used up its attempts. */
-export function retryOrDeadLetter(ch: any, env: Envelope, reason: string) {
-  const next: Envelope = { ...env, attempts: env.attempts + 1 };
-  if (next.attempts >= MAX_ATTEMPTS) {
-    console.error(`[Queue] job ${env.id} (${env.job.kind}) failed ${next.attempts}x, moving to DLQ: ${reason}`);
-    ch.sendToQueue(DLQ, Buffer.from(JSON.stringify({ ...next, lastError: reason })), { persistent: true });
-  } else {
-    console.warn(`[Queue] job ${env.id} (${env.job.kind}) failed (attempt ${next.attempts}/${MAX_ATTEMPTS}), retrying in ${RETRY_DELAY_MS / 1000}s: ${reason}`);
-    ch.sendToQueue(RETRY_QUEUE, Buffer.from(JSON.stringify(next)), { persistent: true });
-  }
-}
-
-/** Open a dedicated consumer channel. `handler` receives every message; it must ack/nack. */
-export async function startConsumer(
-  prefetch: number,
-  handler: (ch: any, msg: any, env: Envelope | null) => void,
-  onClose: () => void
-): Promise<{ close: () => Promise<void> }> {
-  if (!queueEnabled()) throw new Error('RABBITMQ_URL is not set');
-  const conn: any = await amqp.connect(brokerUrl());
-  conn.on('error', (e: Error) => console.error('[Worker] connection error:', e.message));
-  conn.on('close', onClose);
-  const ch: any = await conn.createChannel();
-  await assertTopology(ch);
-  await ch.prefetch(prefetch);
-  const { consumerTag } = await ch.consume(QUEUE, (msg: any) => {
-    if (!msg) return;
-    let env: Envelope | null = null;
-    try { env = JSON.parse(msg.content.toString()); } catch {}
-    handler(ch, msg, env);
-  });
-  return {
-    close: async () => {
-      try { await ch.cancel(consumerTag); } catch {}
-      try { await ch.close(); } catch {}
-      try { await conn.close(); } catch {}
-    },
-  };
 }

@@ -1,4 +1,4 @@
-﻿import express from 'express';
+import express from 'express';
 import cors from 'cors';
 import './config/env'; // loads .env and validates required secrets first
 import apiRoutes from './routes/api.routes';
@@ -8,7 +8,7 @@ import { startSearchSync } from './services/search.service';
 import { visitorCookie } from './services/recommender/events';
 import { requestContext } from './utils/logger';
 import { identityFromHeaders, internalAuthOK } from './middlewares/auth.middleware';
-import { permissions, exportChapters, exportSource, exportBook, userProfiles, groupMembers } from './controllers/internal.controller';
+import { permissions, exportChapters, exportSource, exportBook, userProfiles, groupMembers, storyFollowers } from './controllers/internal.controller';
 import { deleteCheck } from './controllers/user.controller';
 
 // Without the keys that verify the gateway's identity headers and internal calls nobody is ever signed in: refuse to start
@@ -84,6 +84,7 @@ app.post('/internal/exports/book', internal(exportBook));
 // Messaging -> backend: names/avatars to show, and who is in a group (its chat)
 app.post('/internal/users/profiles', internal(userProfiles));
 app.get('/internal/groups/:id/members', internal(groupMembers));
+app.get('/internal/stories/:id/followers', internal(storyFollowers));
 
 // Root endpoint
 app.get('/', (req, res) => {

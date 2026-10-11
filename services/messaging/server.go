@@ -192,6 +192,19 @@ func (s *server) routes() http.Handler {
 	m.HandleFunc("POST /groups/{id}/messages", s.authed(s.handleGroupSend))
 	m.HandleFunc("DELETE /groups/{id}/messages/{messageId}", s.authed(s.handleGroupDelete))
 
+	// Notifications (the bell, /thong-bao) and site-wide announcements
+	m.HandleFunc("GET /notifications", s.authed(s.handleNotifications))
+	m.HandleFunc("POST /notifications/seen", s.authed(s.handleSeen))
+	m.HandleFunc("PUT /notifications/read-all", s.authed(s.handleReadAll))
+	m.HandleFunc("GET /notifications/settings", s.authed(s.handleNotifySettings))
+	m.HandleFunc("PUT /notifications/settings", s.authed(s.handlePutNotifySettings))
+	m.HandleFunc("PUT /notifications/{id}/read", s.authed(s.handleRead))
+	m.HandleFunc("DELETE /notifications/{id}", s.authed(s.handleDeleteNotification))
+	m.HandleFunc("GET /admin/broadcasts", s.adminOnly(s.handleBroadcasts))
+	m.HandleFunc("POST /admin/broadcasts", s.adminOnly(s.handleCreateBroadcast))
+	m.HandleFunc("DELETE /admin/broadcasts/{id}", s.adminOnly(s.handleDeleteBroadcast))
+
+	m.HandleFunc("POST /internal/notifications/jobs", s.internal(s.handleInternalJob))
 	m.HandleFunc("POST /internal/dm", s.internal(s.handleInternalDM))
 	m.HandleFunc("GET /internal/blocked", s.internal(func(w http.ResponseWriter, r *http.Request) {
 		a, b := r.URL.Query().Get("a"), r.URL.Query().Get("b")

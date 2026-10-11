@@ -522,19 +522,20 @@ Bẫy (giai đoạn A):
 - [x] Upload, đổi kích thước ảnh, xuất EPUB/PDF (export-worker hiện có chuyển sang đây); gateway định tuyến `/uploads`, `/api/media` (`Plan/media.md`, 2026-10-10)
 
 ### Giai đoạn E: messaging
-- [ ] Tin nhắn riêng, chat nhóm, hộp thông báo, worker phân phát thông báo (worker hiện có chuyển sang đây), viết bằng Go
+- [x] Tin nhắn riêng, chat nhóm, hộp thông báo, worker phân phát thông báo (worker hiện có chuyển sang đây), viết bằng Go (`Plan/messaging.md` E2, E3)
 - [x] Realtime: WebSocket thường (Go) thay Socket.IO; sửa client realtime ở frontend (kết nối lại tự động, nhận sự kiện theo loại) (`Plan/messaging.md` E1)
 - [x] Chịu tải: `ulimit -n` cho container, nginx `worker_connections`/`worker_rlimit_nofile`, chỉ người đăng nhập mới mở kết nối,
       đóng khi tab ẩn lâu, ping ~30s, giới hạn số tab/tài khoản, client kết nối lại **chờ ngẫu nhiên tăng dần**, kênh Redis theo user/hội thoại
 - [ ] **Thử tải thật** (client giả lập bằng Go/k6): 10k → 30k → 100k kết nối giữ lâu + gửi tin + thông báo hàng loạt; ghi RAM/CPU
       mỗi kết nối, độ trễ; ước tính máy hiện tại (~7,6 GB) chịu ~10–30k, trên 100k cần nhiều bản `messaging-realtime` ở máy riêng
       + nhiều bản cloudflared
-- [ ] Cấu trúc "cuộc trò chuyện" (chuyển `direct_messages`, `group_messages`), `last_read_message_id`, phân trang theo id
-- [ ] Gộp thông báo cùng loại; bản sao người theo dõi; thông báo toàn site 1 dòng; dọn đã đọc 30 ngày / chưa đọc 60 ngày
-- [ ] Bảng `notifications` mới (category, type chuỗi, actors, data ảnh chụp, group_key, seen/read); chuyển dữ liệu cũ từ enum
-- [ ] Danh mục loại thông báo + danh sách không tắt được; chuông (chưa xem/chưa đọc, tab), trang `/thong-bao`, cài đặt nhóm × kênh
+- [x] Cấu trúc "cuộc trò chuyện" (chuyển `direct_messages`, `group_messages`), `last_read_message_id`, phân trang theo id (E2: `last_read_seq`)
+- [x] Gộp thông báo cùng loại; bản sao người theo dõi; thông báo toàn site 1 dòng; dọn đã đọc 30 ngày / chưa đọc 60 ngày
+      (E3; người theo dõi hỏi API backend thay vì giữ bản sao: đổi khi có library, giai đoạn H)
+- [x] Bảng `notifications` mới (category, type chuỗi, actors, data ảnh chụp, group_key, seen/read); chuyển dữ liệu cũ từ enum
+- [x] Danh mục loại thông báo + danh sách không tắt được; chuông (chưa xem/chưa đọc, tab), trang `/thong-bao`, cài đặt nhóm × kênh
 - [x] (Sau, cùng workspace giai đoạn 4) đính kèm bản nháp trong tin nhắn (thẻ nháp, migration 024)
-- [ ] Thông báo chương mới: lấy danh sách người theo dõi từ library (tạm thời từ backend cũ)
+- [x] Thông báo chương mới: lấy danh sách người theo dõi từ library (tạm thời từ backend cũ: `/internal/stories/:id/followers`)
 
 ### Giai đoạn F: community
 - [ ] Bài Fandom, bình luận, cảm xúc, báo cáo, nội dung đã gỡ (truyện đã gỡ nhận qua `story.removed/restored`)

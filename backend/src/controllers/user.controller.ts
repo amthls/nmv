@@ -1,4 +1,4 @@
-﻿import { Request, Response } from 'express';
+import { Request, Response } from 'express';
 import { pool } from '../config/db';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
 import { InputError, isUuid, optionalEnum, optionalText, optionalUrl } from '../utils/validation';
@@ -449,9 +449,6 @@ export const updateUserSettings = async (req: AuthenticatedRequest, res: Respons
     if (primaryColor && !/^#[0-9a-fA-F]{6}$/.test(primaryColor)) throw new InputError('Màu chủ đạo phải có dạng #RRGGBB.');
     const fontSize = optionalNumber(body.font_size, 10, 40, 'Cỡ chữ');
     const lineHeight = optionalNumber(body.line_height, 1, 3, 'Giãn dòng');
-    for (const key of ['notify_chapter_update', 'notify_group_events', 'notify_comments', 'notify_system', 'notify_post_comments', 'notify_post_reactions']) {
-      if (body[key] !== undefined && typeof body[key] !== 'boolean') throw new InputError('Cài đặt thông báo không hợp lệ.');
-    }
 
     // Only the settings that were sent change; the rest keep their saved value
     const fields: [string, unknown][] = [
@@ -461,12 +458,6 @@ export const updateUserSettings = async (req: AuthenticatedRequest, res: Respons
       ['font_size', fontSize === undefined ? undefined : Math.round(fontSize)],
       ['line_height', lineHeight === undefined ? undefined : Math.round(lineHeight * 10) / 10],
       ['reading_mode', optionalText(body.reading_mode, 20, 'Chế độ đọc') || undefined],
-      ['notify_chapter_update', body.notify_chapter_update],
-      ['notify_group_events', body.notify_group_events],
-      ['notify_comments', body.notify_comments],
-      ['notify_system', body.notify_system],
-      ['notify_post_comments', body.notify_post_comments],
-      ['notify_post_reactions', body.notify_post_reactions],
     ];
 
     const columns: string[] = ['user_id'];

@@ -93,12 +93,20 @@ func (h *hub) remove(c *client) {
 	}
 }
 
-// push sends {type, data} to every socket of the event's users; a client whose buffer is full is dropped.
+// push sends {type, data} to every socket of the event's users (["*"] = everyone connected); a client whose buffer is
+// full is dropped.
 func (h *hub) push(e event) {
 	msg, _ := json.Marshal(map[string]any{"type": e.Type, "data": e.Data})
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	for _, u := range e.Users {
+	users := e.Users
+	if len(users) == 1 && users[0] == "*" {
+		users = make([]string, 0, len(h.users))
+		for u := range h.users {
+			users = append(users, u)
+		}
+	}
+	for _, u := range users {
 		for c := range h.users[u] {
 			select {
 			case c.send <- msg:

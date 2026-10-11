@@ -1,9 +1,9 @@
-// messaging: realtime pushes over plain WebSocket, direct messages, group chat (later: notifications). See Plan/messaging.md.
+// messaging: realtime pushes over plain WebSocket, direct messages, group chat, notifications. See Plan/messaging.md.
 //
 //	messaging               serve HTTP on :PORT (default 8080)
 //	messaging healthcheck   exit 0 when the local server answers /health (Docker healthcheck)
 //	messaging loadtest N url [hold]   N fake sockets + one push to all (see loadtest.go)
-//	messaging import-legacy  copy direct/group messages, blocks, labels from the backend database (once, safe to re-run)
+//	messaging import-legacy  copy messages, blocks, labels, notifications from the backend database (once, safe to re-run)
 package main
 
 import (
@@ -36,6 +36,7 @@ type config struct {
 	BackendURL  string
 	RedisURL    string
 	DatabaseURL string
+	RabbitURL   string // jobs on novel.notifications (empty: only /internal/notifications/jobs)
 	LegacyURL   string // novel_platform, only for `messaging import-legacy`
 }
 
@@ -71,6 +72,7 @@ func main() {
 		BackendURL:  strings.TrimRight(env("BACKEND_INTERNAL_URL", "http://backend:5000"), "/"),
 		RedisURL:    os.Getenv("REDIS_URL"),
 		DatabaseURL: os.Getenv("MESSAGING_DATABASE_URL"),
+		RabbitURL:   os.Getenv("RABBITMQ_URL"),
 		LegacyURL:   os.Getenv("LEGACY_DATABASE_URL"),
 	}
 	if len(cfg.SigKey) < 32 || len(cfg.InternalKey) < 32 || len(cfg.BackendKey) < 32 || cfg.RedisURL == "" || cfg.DatabaseURL == "" {
@@ -106,6 +108,8 @@ func main() {
 	go subscribeLoop(ctx, rdb, h)
 	s := &server{cfg: cfg, db: db, rdb: rdb, be: newBackend(cfg.BackendURL, cfg.BackendKey), hub: h, now: time.Now,
 		rate: &rateLimiter{limit: 30, hits: map[string][]time.Time{}}}
+	go s.consumeLoop(ctx, cfg.RabbitURL)
+	go s.cleanupLoop(ctx)
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,

@@ -2,6 +2,7 @@ import { pool } from '../config/db';
 import { startEventConsumer } from './eventConsumer';
 import { internalAuthHeader } from '../middlewares/auth.middleware';
 import { disconnectUser } from './realtime';
+import { enqueueNotificationJob } from './queue.service';
 
 /**
  * The backend's `users` / `user_roles` are a copy of identity's accounts (public fields only), kept in step by
@@ -106,14 +107,15 @@ export async function readThroughUser(id: string): Promise<void> {
 }
 
 /** Site notification to every admin, once per key (the site has no external alerting). */
-export async function notifyAdmins(db: { query: (text: string, params?: any[]) => Promise<any> }, key: string, title: string, message: string) {
-  await db.query(
-    `INSERT INTO notifications (user_id, type, title, message, dedupe_key)
-     SELECT DISTINCT user_id, 'system'::notification_type, $2, $3, $1 || ':' || user_id
-     FROM user_roles WHERE role = 'admin'
-     ON CONFLICT DO NOTHING`,
-    [String(key), String(title).slice(0, 300), String(message)]
-  );
+export async function notifyAdmins(key: string, title: string, message: string) {
+  const admins = await pool.query(`SELECT DISTINCT user_id FROM user_roles WHERE role = 'admin'`);
+  await enqueueNotificationJob({
+    kind: 'notify',
+    items: admins.rows.map((r: any) => ({
+      userId: r.user_id, type: 'admin_alert' as const, title: String(title).slice(0, 300), message: String(message),
+      referenceType: null, referenceId: null, senderId: null, dedupeKey: `${key}:${r.user_id}`,
+    })),
+  });
 }
 
 /** Apply one event exactly once. Throws to have it retried. */
@@ -138,7 +140,7 @@ export async function handleIdentityEvent(evt: any): Promise<string> {
       }
     } else if (evt.type === 'identity.alert') {
       const { key, title, message } = evt.data;
-      await notifyAdmins(client, `identity:${key}`, title, message);
+      sideEffects.push(() => notifyAdmins(`identity:${key}`, title, message).catch((e) => console.error('[identity] alert:', e.message)));
       outcome = 'applied';
     }
     await client.query('COMMIT');

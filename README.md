@@ -30,7 +30,7 @@ Nền tảng đọc **Light Novel (truyện chữ)** và **Manga (truyện tranh
 | Backend | Node.js 22, Express, TypeScript, header danh tính ký HMAC từ gateway (đăng nhập ở service identity, Go), sanitize-html; ảnh và EPUB/PDF ở service media (multer, sharp, pdfkit) |
 | Database | PostgreSQL 16 (khóa chính UUID), truy vấn bằng `pg` (raw SQL); Prisma chỉ dùng cho `db pull/generate/studio` |
 | Tìm kiếm | Elasticsearch 9.5 (1 node, đã tối ưu RAM; tùy chọn, có fallback về SQL `ILIKE`) |
-| Hàng đợi | RabbitMQ 3.13 + worker (gửi thông báo), có dự phòng chạy trực tiếp khi broker chết |
+| Hàng đợi | RabbitMQ 3.13: job thông báo (service messaging nhận), sự kiện giữa các service; broker chết thì backend gửi thẳng job cho messaging |
 | Cache / realtime | Redis 7.4 (`ioredis`): cache API công khai, đếm lượt xem, bộ đếm rate limit dùng chung; kênh Redis `rt:events` → service messaging (Go) đẩy tín hiệu qua WebSocket thường |
 | Gom kết nối DB | PgBouncer 1.26 (transaction pooling) giữa API và Postgres |
 | Cổng vào | nginx 1.27 (giới hạn tần suất, IP thật, cache ảnh, WebSocket) + helmet / express-rate-limit ở backend |
@@ -41,7 +41,7 @@ Nền tảng đọc **Light Novel (truyện chữ)** và **Manga (truyện tranh
 Trình duyệt ──> nginx gateway ──┬── /api/v1 ──> Express API ──> PgBouncer ──> PostgreSQL
                                 │                                       │  ├──> Redis (cache, đếm, rate limit, pub/sub)
                                 │                                       │  └──> Elasticsearch (tùy chọn)
-                                └── còn lại ──> Next.js                 └─ publish ─> RabbitMQ ──> worker ──> PostgreSQL
+                                └── còn lại ──> Next.js                 └─ publish ─> RabbitMQ ──> messaging ──> messaging_db (thông báo)
                                                                                     worker ──> Redis (gộp lượt xem, đẩy realtime)
 mạng "edge": gateway, frontend, backend
 mạng "data": backend, postgres, pgbouncer, redis, rabbitmq, search, worker, media, identity, workspace
@@ -116,7 +116,7 @@ Chạy không qua Docker (cần Postgres sẵn): `yarn dev:local` (backend + fro
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` / `POSTGRES_PORT` | `postgres` / *(không có)* / `novel_platform` / `5432` | **Bắt buộc** `POSTGRES_PASSWORD` (hex ngẫu nhiên). Volume giữ mật khẩu lúc tạo: đổi trong `.env` thì phải `ALTER USER` (launch.py tự làm) |
 | `PORT` | `5000` | Cổng backend |
 | `CORS_ORIGIN` | `http://localhost:3000` | Đổi thành domain thật khi đưa lên tunnel/domain |
-| `RABBITMQ_URL` / `RABBITMQ_USER` / `RABBITMQ_PASSWORD` | compose tự ghép URL từ hai biến sau | **Bắt buộc** `RABBITMQ_PASSWORD`. Để trống `RABBITMQ_URL` (chạy ngoài Docker) thì thông báo được xử lý trực tiếp, không qua hàng đợi |
+| `RABBITMQ_URL` / `RABBITMQ_USER` / `RABBITMQ_PASSWORD` | compose tự ghép URL từ hai biến sau | **Bắt buộc** `RABBITMQ_PASSWORD`. Để trống `RABBITMQ_URL` (chạy ngoài Docker) thì backend gửi job thông báo thẳng cho messaging (`POST /internal/notifications/jobs`) |
 | `ENABLE_DEMO_ACCOUNTS` | `false` | `true` mới hiện danh sách tài khoản demo và gợi ý mật khẩu trên form đăng nhập |
 | `PGADMIN_DEFAULT_PASSWORD` | *(không có)* | **Bắt buộc** (kể cả khi không bật pgAdmin, vì compose đọc cả file) |
 | `SMTP_URL` / `MAIL_FROM` | *(trống)* / `NovelHub <no-reply@novelhub.local>` | Gửi mail quên mật khẩu, xác thực email, ví dụ `smtps://user:app-password@smtp.gmail.com:465`. Để trống: không gửi, mail nằm trong `mail_outbox` của `identity_db` (xem `services/identity/mail.go`). Mỗi địa chỉ nhận tối đa **10 mail/ngày** (vượt thì bỏ qua, ghi log cảnh báo) |
@@ -124,7 +124,6 @@ Chạy không qua Docker (cần Postgres sẵn): `yarn dev:local` (backend + fro
 | `SITE_URL` | `http://localhost:3000` | Địa chỉ công khai của web, dùng để tạo link trong email |
 | `COOKIE_SECURE` | `false` | `true` ép cờ `Secure` cho cookie. Không cần khi đi qua Cloudflare/HTTPS proxy: cookie tự `Secure` khi `X-Forwarded-Proto: https` |
 | `CLOUDFLARE_TUNNEL_TOKEN` | *(trống)* | Token của Cloudflare Tunnel cho service `cloudflared` (profile `tunnel`), xem [Lộ trình bảo mật](#-lộ-trình-bảo-mật) |
-| `NOTIFY_*`, `WORKER_*` | xem bên dưới | Tinh chỉnh hàng đợi và worker |
 | `SEARCH_URL` | `http://search:9200` (trong compose) | **Để trống để tắt Elasticsearch** và dùng SQL `ILIKE` |
 | `SEARCH_INDEX` | `novel_stories` | Tên index |
 | `SEARCH_PORT` | `9201` | Cổng publish trên máy host (localhost) |
@@ -181,7 +180,7 @@ Mục tiêu: chịu được vài nghìn đến vài chục nghìn người onli
 | Nhiều bản backend × pool 50 làm hết kết nối Postgres | API đi qua PgBouncer (transaction pooling). Worker nối thẳng Postgres | `docker-compose.yml` |
 
 - **Realtime (service messaging, Go, `Plan/messaging.md`):** trình duyệt mở **WebSocket thường** `/api/msg/ws?tab=<id>` (chỉ người đã đăng nhập; gateway hỏi identity như mọi request, messaging kiểm chữ ký `USER_SIG_KEY_MESSAGING`). Backend API và worker `PUBLISH` `{users, type, data}` lên kênh Redis `rt:events`; mọi bản messaging nhận và đẩy cho các tab của những người đó (chạy nhiều bản được, không cần sticky session). `type: _disconnect` đóng mọi kết nối của một người (bị khóa/xóa). Server ping tầng giao thức mỗi 30 giây, không pong sau 45 giây thì cắt; mỗi tab một kết nối (kết nối lại thay kết nối cũ), tối đa 10 kết nối/tài khoản; tab ẩn quá 5 phút thì đóng. Client tự nối lại chờ ngẫu nhiên tăng dần (1–30 giây), bị từ chối thì làm mới phiên một lần; **không phát lại sự kiện bị lỡ**: nối lại xong mọi trang tải lại (DB là sự thật). Gateway: `worker_connections 16384`, `nofile 65536`, kết nối WebSocket mới tối đa 1/giây/IP (burst 10). Thử tải: `docker compose run --rm --no-deps messaging loadtest <N> ws://messaging:8080/ws <giây>`. `next dev` chạy riêng (không qua gateway) thì không có socket, trang vẫn chạy nhờ hỏi định kỳ.
-- **Tin nhắn riêng + chat nhóm (service messaging, `messaging_db`):** `/api/msg/messages/*`, `/api/msg/groups/:id/messages*` (JSON như trước). Mỗi cặp người một `conversation` (dm), mỗi nhóm một conversation (group); đã đọc = `last_read_seq` của từng người (`read_at` của tin suy ra từ đó). Tên/ảnh người dùng và thành viên nhóm hỏi backend (`POST /internal/users/profiles`, `GET /internal/groups/:id/members`, nhớ 60 s / 30 s; người vừa vào nhóm được hỏi lại ngay). Backend gửi thẻ nháp qua `POST /internal/dm` (kiểm chặn bằng `GET /internal/blocked`). Chuyển dữ liệu: `messaging import-legacy` (`scripts/migrate.sh`, `launch.py` chạy mỗi lần, chỉ thêm phần thiếu). Giới hạn gửi 30 tin/phút/người.
+- **Tin nhắn riêng + chat nhóm (service messaging, `messaging_db`):** `/api/msg/messages/*`, `/api/msg/groups/:id/messages*` (JSON như trước). Mỗi cặp người một `conversation` (dm), mỗi nhóm một conversation (group); đã đọc = `last_read_seq` của từng người (`read_at` của tin suy ra từ đó). Tên/ảnh người dùng và thành viên nhóm hỏi backend (`POST /internal/users/profiles`, `GET /internal/groups/:id/members`, nhớ 60 s / 30 s; người vừa vào nhóm được hỏi lại ngay). Backend gửi thẻ nháp qua `POST /internal/dm` (kiểm chặn bằng `GET /internal/blocked`). Chuyển dữ liệu: `messaging import-legacy` (`scripts/migrate.sh`, `launch.py` gọi mỗi lần; mỗi phần, tin nhắn rồi thông báo + cài đặt, chỉ chuyển **một lần**, ghi ở `legacy_imports`, nên thứ đã xóa bên messaging không bị chép lại). Giới hạn gửi 30 tin/phút/người.
 - **PgBouncer chế độ transaction** không giữ trạng thái theo phiên: không dùng advisory lock theo phiên, `SET` không `LOCAL`, `LISTEN`, prepared statement có tên, hay nhiều lệnh SQL có tham số trong một `query`. Train gợi ý dùng `pg_try_advisory_xact_lock` vì lý do này.
 - **Thêm bản backend:** bỏ `container_name` của `backend`, rồi `docker compose up -d --scale backend=3` (nginx tự phân giải tên `backend` qua DNS của Docker).
 
@@ -290,21 +289,26 @@ Sau `--replace`: chỉ mục tìm kiếm Elasticsearch có thể lệch tới kh
 
 ## 📬 Hàng đợi thông báo (RabbitMQ)
 
-Gửi thông báo cho hàng nghìn người theo dõi không còn chạy trong yêu cầu HTTP. API chỉ ghi nhận "đã có chương mới" rồi trả lời ngay; `worker` (cùng image backend, chạy `node dist/worker.js`) lo phần còn lại.
+Thông báo nằm ở **service messaging** (`messaging_db`, `Plan/messaging.md` E3). Backend vẫn quyết định "ai nhận gì" (`services/notification.service.ts`) rồi đẩy job vào hàng `novel.notifications`; trước khi đẩy nó gắn `link` (bấm vào đi đâu) và `image` (bìa truyện) = ảnh chụp lúc đó, và bỏ người đã tắt thông báo của bài viết đó. Messaging nhận job, bỏ loại người đó đã tắt, chống trùng, gộp, ghi rồi đẩy tín hiệu realtime. API không chờ.
 
-| Sự kiện | Ai được thông báo | Loại |
+| Sự kiện | Ai được thông báo | Loại (nhóm) |
 |:---|:---|:---|
-| Chương được xuất bản | Người theo dõi truyện (trừ người đăng, tôn trọng cài đặt tắt thông báo) | `chapter_update` |
-| Bình luận bài viết | Tác giả bài viết | `post_comment` |
-| Trả lời bình luận | Tác giả bình luận gốc | `comment_reply` |
-| Thả/đổi cảm xúc bài viết | Tác giả bài viết (mỗi người một thông báo mỗi bài) | `post_reaction` |
-| Admin/Mod gỡ / khôi phục bài viết hoặc truyện | Tác giả bài viết / người đăng truyện | `system` |
+| Chương được xuất bản | Người theo dõi truyện (trừ người đăng, trừ ai tắt theo dõi chương mới); chưa đọc thì **gộp theo truyện** ("Truyện X có 3 chương mới") | `chapter_update` (đọc truyện) |
+| Bình luận bài viết / thả cảm xúc | Tác giả bài viết; chưa đọc thì **gộp theo bài** ("Yuki và 12 người khác…") | `post_comment`, `post_reaction` (tương tác) |
+| Trả lời bình luận | Tác giả bình luận gốc | `comment_reply` (tương tác) |
+| Xin vào nhóm / kết quả / được thêm | Trưởng nhóm, mod nhóm (gộp theo nhóm) / người xin | `group_join_request`, `group_join_rejected`, `group_member_add` (nhóm dịch) |
+| Đề xuất, nháp, việc ở workspace | Người giữ truyện / chủ nháp / người được giao | `draft_*`, `task_opened` (workspace) |
+| Admin/Mod gỡ / khôi phục bài viết hoặc truyện | Tác giả / người đăng truyện | `post_removed`, `post_restored`, `story_removed`, `story_restored` (kiểm duyệt) |
+| Đối soát, sao lưu, cảnh báo identity | Mọi Admin | `admin_alert` (hệ thống) |
 
-- **Chống quá tải:** chương gửi theo từng khối 1000 người (phân trang theo khóa, nghỉ 25ms giữa các khối), tối đa 2 chương chạy cùng lúc; các thông báo lẻ (bình luận, cảm xúc...) được gộp lại, mỗi 200ms hoặc 100 tin thành **một** câu `INSERT`. Đo trên máy này: chương có 20.000 người theo dõi, API trả lời sau 55ms và đủ 20.000 thông báo sau 2,8 giây; 5 chương đăng cùng lúc (100.000 thông báo) xử lý xong không lỗi.
-- **Không mất, không trùng:** tin nhắn được lưu bền (`persistent`) và chỉ được xác nhận sau khi ghi DB; mỗi thông báo có `dedupe_key` duy nhất (bảng `notifications`, migration `sql/migrations/002_notification_queue.sql`), nên worker sập giữa chừng hoặc tin bị giao lại sẽ không tạo bản trùng (theo thiết kế; kịch bản giết worker giữa chừng chưa được thử thực tế).
-- **Lỗi:** thất bại thì vào hàng đợi chờ 10 giây rồi thử lại, tối đa 5 lần, sau đó vào `novel.notifications.dlq` để kiểm tra thủ công (xem ở giao diện quản trị RabbitMQ).
-- **Dự phòng:** RabbitMQ chưa cấu hình hoặc chết thì API tự xử lý ngay trong tiến trình (tối đa 2 việc cùng lúc) và yêu cầu của người dùng vẫn thành công; backend và worker tự kết nối lại khi broker sống lại.
-- **Mở rộng:** `docker compose up -d --scale worker=3` (bỏ dòng `container_name` của worker trước). Biến tinh chỉnh: `NOTIFY_FANOUT_CHUNK`, `NOTIFY_FANOUT_PAUSE_MS`, `NOTIFY_MAX_ATTEMPTS`, `NOTIFY_RETRY_DELAY_MS`, `WORKER_PREFETCH`, `WORKER_BATCH_MAX`, `WORKER_FLUSH_MS`, `WORKER_MAX_HEAVY`.
+- **Loại** là chuỗi, đăng ký trong `services/messaging/notify.go` (nhóm, tắt được không, có gộp không). **Không tắt được:** kết quả xin vào nhóm/được thêm, đề xuất được gộp/trả lại, nội dung bị gỡ/khôi phục, cảnh báo Admin, thông báo toàn site.
+- **Chuông:** số là **chưa xem** (mở chuông → về 0), từng dòng vẫn "chưa đọc" tới khi bấm; tab Tất cả / Chưa đọc / Nhóm dịch / Workspace. Trang `/thong-bao`: lọc theo nhóm, chỉ chưa đọc, tải thêm, xóa, **cài đặt nhóm × kênh** (web; email chưa có). Đã đọc giữ 30 ngày, chưa đọc 60 ngày (messaging dọn mỗi giờ).
+- **Thông báo toàn site** (Admin, ở `/thong-bao`): một dòng cho mọi người (`broadcasts` + `broadcast_reads`), hiện 30 ngày.
+- **Chương mới:** messaging hỏi người theo dõi từ backend (`GET /internal/stories/:id/followers`, khối 1000, nghỉ 25ms giữa các khối), tối đa 4 job chạy cùng lúc mỗi bản messaging. Đo cũ (worker Node, cùng thuật toán khối): 20.000 người theo dõi xong sau 2,8 giây; bản Go chưa đo lại ở quy mô đó (12 người: 21ms).
+- **Không mất, không trùng:** job lưu bền (`persistent`), messaging xác nhận sau khi ghi DB; mỗi thông báo có khóa chống trùng (`notification_dedupe`, giữ 60 ngày), nên job bị giao lại không tạo bản trùng.
+- **Lỗi:** messaging đưa job lỗi vào hàng chờ 10 giây rồi thử lại, tối đa 5 lần, sau đó vào `novel.notifications.dlq` (xem ở giao diện quản trị RabbitMQ).
+- **Dự phòng:** RabbitMQ chưa cấu hình hoặc chết thì backend gửi job thẳng cho messaging (`POST /internal/notifications/jobs`, ký `INTERNAL_KEY_MESSAGING`); cả broker lẫn messaging cùng chết thì job đó mất (có log `lost`). Backend, worker, messaging tự kết nối lại khi broker sống lại.
+- **Mở rộng:** chạy thêm bản messaging (bỏ `container_name`): các bản chia nhau hàng đợi.
 
 ## 🔎 Tìm kiếm với Elasticsearch
 
@@ -387,8 +391,9 @@ Các trang danh sách/chi tiết vẫn giữ khung xám nhấp nháy (skeleton) 
 | `/quen-mat-khau`, `/dat-lai-mat-khau`, `/xac-thuc-email` | Quên mật khẩu (link "Quên mật khẩu?" trong form đăng nhập), đặt mật khẩu mới từ link trong email, xác thực email (`?doi=1`: xác nhận email mới sau khi đổi ở tab Bảo mật). Token trong link được xóa khỏi thanh địa chỉ ngay khi đọc, trang không gửi `Referer` |
 | `/bao-cao` | Danh sách báo cáo vi phạm cho Admin/Mod: lọc theo loại nội dung (truyện, chương, bài viết, bình luận) và trạng thái, tìm theo mã báo cáo, mã/tên nội dung, mô tả; mỗi báo cáo hiện mã báo cáo, lý do, mô tả, người báo cáo, mã + link nội dung, số báo cáo đang chờ cho cùng nội dung, nội dung đã gỡ chưa; đánh dấu "đã xử lý" hoặc "bỏ qua" |
 | `/da-go` | Nội dung đã gỡ (chỉ Admin/Mod): truyện và bài viết bị gỡ, lọc theo loại, tìm theo mã, tên, nội dung hoặc người đăng, xem và khôi phục |
-| `/tai-khoan` | Hồ sơ, avatar, cài đặt đọc truyện, thông báo; tab quản lý vai trò (admin) |
-| Navbar | Tìm nhanh, biểu tượng tin nhắn kèm số tin chưa đọc, chuông thông báo (đánh dấu đã đọc, xóa), đăng nhập/đăng ký, tài khoản demo, lối vào `/bao-cao` và `/da-go` cho Admin/Mod |
+| `/tai-khoan` | Hồ sơ, avatar, cài đặt đọc truyện (cài đặt thông báo chuyển sang `/thong-bao`); tab quản lý vai trò (admin) |
+| `/thong-bao` | Mọi thông báo (lọc theo nhóm, chưa đọc, tải thêm, xóa), cài đặt nhận thông báo theo nhóm × kênh, Admin gửi/xóa thông báo toàn site |
+| Navbar | Tìm nhanh, biểu tượng tin nhắn kèm số tin chưa đọc, chuông thông báo (số chưa xem, tab, đánh dấu đã đọc, link sang `/thong-bao`), đăng nhập/đăng ký, tài khoản demo, lối vào `/bao-cao` và `/da-go` cho Admin/Mod |
 
 ## 🔐 Phân quyền
 
@@ -422,7 +427,7 @@ Schema thật gồm 31 bảng và 2 view (`sql/database.sql`). Nhóm chính:
 | Truyện | `stories`, `volumes`, `chapters`, `chapter_pages`, `chapter_submissions`, `story_tags`, `tags`, `tag_categories`, `story_collaborators`, `story_views`, `story_views_daily` |
 | Nhóm dịch | `translation_groups`, `group_members`, `group_join_requests` (chat nhóm: service messaging; bảng cũ `group_messages` còn lại tới khi xóa) |
 | Tin nhắn riêng | Ở service messaging (`messaging_db`: `conversations`, `conversation_members`, `messages`, `user_blocks`, `dm_labels`, `dm_label_conversations`). Bảng cũ `direct_messages`, `dm_labels`, `dm_label_conversations`, `user_blocks` ở đây **không còn dùng** (đã chép sang bằng `messaging import-legacy`), xóa ở nhánh sau |
-| Tương tác | `bookmarks`, `reading_history`, `comments`, `comment_likes`, `notifications`, `broadcast_notifications`* |
+| Tương tác | `bookmarks`, `reading_history`, `comments`, `comment_likes`, `post_notification_mutes`; `notifications`, `broadcast_notifications`* và cột `user_settings.notify_*` **không còn dùng** (thông báo ở service messaging, đã chép bằng `import-legacy`), xóa ở nhánh sau |
 | Fandom | `posts`, `post_tags`, `post_reactions` |
 | Kiểm duyệt | `reports` |
 | Workspace | `ws_chapter_versions` (migration `023_ws_chapter_versions.sql`): phiên bản workspace mới nhất đã áp vào bản đọc `chapters`, gồm cả chương đã xóa. Nội dung và lịch sử nằm ở `workspace_db` (xem [Service workspace](#-service-workspace-lịch-sử-chương)) |
@@ -477,8 +482,10 @@ Ghi chú thực tế: bảng `users` **không có** cột `role`, `coins`, `exp_
 - `GET|POST /bookmarks`, `DELETE /bookmarks/:id`
 - `GET|POST /history`, `DELETE /history/:id`, `DELETE /history`
 
-**Thông báo**
-- `GET /notifications`, `PUT /notifications/read-all`, `PUT /notifications/:id/read`, `DELETE /notifications/:id`
+**Thông báo** (Auth, **service messaging**, dưới `/api/msg`)
+- `GET /notifications?category=&unread=1&before=&limit=` (mới nhất trước, gồm thông báo toàn site; kèm `unseen_count`, `unread_count`), `POST /notifications/seen` (mở chuông), `PUT /notifications/:id/read`, `PUT /notifications/read-all?category=`, `DELETE /notifications/:id`
+- `GET /notifications/settings`, `PUT /notifications/settings {"<nhóm>": {"web": bool}}` (nhóm: `read`, `interaction`, `group`, `workspace`, `moderation`, `system`)
+- Admin: `GET|POST /admin/broadcasts {title, message?, link?}` (link phải bắt đầu bằng `/`), `DELETE /admin/broadcasts/:id`
 
 **Bình luận & Fandom**
 - `GET /comments?target_type=&target_id=`, `POST /comments`, `POST /comments/:id/like`, `PUT /comments/:id` (sửa của mình), `DELETE /comments/:id` (tác giả hoặc Admin/Mod)

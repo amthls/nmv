@@ -534,7 +534,7 @@ def run_checks(env, timeout, seed=None):
         queue = json.loads(detail.split(" ", 1)[1]).get("queue", "?")
     record("backend  GET /api/v1/health", passed, f"(queue={queue})" if passed else detail)
     if passed and queue != "up":
-        record("backend  RabbitMQ connection", False, f"queue={queue}; notifications fall back to inline", soft=True)
+        record("backend  RabbitMQ connection", False, f"queue={queue}; notification jobs go straight to messaging", soft=True)
 
     # Migrations need Postgres up; run them once we know the DB is reachable
     if st.get("postgres", ("",))[0] == "running":

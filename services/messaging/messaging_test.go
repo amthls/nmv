@@ -20,9 +20,13 @@ const testKey = "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm"
 
 func signed(user string) http.Header {
 	exp := strconv.FormatInt(time.Now().Add(time.Minute).Unix(), 10)
+	roles := "reader"
+	if user == boss {
+		roles = "reader,admin"
+	}
 	m := hmac.New(sha256.New, []byte(testKey))
-	m.Write([]byte(user + "|reader|" + exp))
-	return http.Header{"X-User-Id": {user}, "X-User-Roles": {"reader"}, "X-User-Exp": {exp}, "X-User-Sig": {hex.EncodeToString(m.Sum(nil))}}
+	m.Write([]byte(user + "|" + roles + "|" + exp))
+	return http.Header{"X-User-Id": {user}, "X-User-Roles": {roles}, "X-User-Exp": {exp}, "X-User-Sig": {hex.EncodeToString(m.Sum(nil))}}
 }
 
 func TestUserFrom(t *testing.T) {

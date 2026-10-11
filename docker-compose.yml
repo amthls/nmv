@@ -395,7 +395,7 @@ services:
 
   # ============================================================================
   # 2h. messaging (Go): browsers' WebSockets for realtime pings (published on Redis rt:events by any process).
-  #     Direct messages + group chat (own database messaging_db); later notifications. See Plan/messaging.md.
+  #     Direct messages, group chat, notifications (own database messaging_db; consumes novel.notifications). See Plan/messaging.md.
   # ============================================================================
   messaging:
     build:
@@ -410,6 +410,7 @@ services:
       INTERNAL_KEY_BACKEND: ${INTERNAL_KEY_BACKEND:?Set INTERNAL_KEY_BACKEND in .env (openssl rand -hex 32)}
       MESSAGING_DATABASE_URL: postgres://messaging:${MESSAGING_DB_PASSWORD:?Set MESSAGING_DB_PASSWORD in .env}@postgres:5432/messaging_db
       BACKEND_INTERNAL_URL: http://backend:5000
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-novel}:${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD in .env}@rabbitmq:5672 # novel.notifications jobs
     ulimits:
       nofile: 65536 # one per open socket
     mem_limit: ${MESSAGING_MEMORY:-512m} # ~37 KB per open socket (2,000 measured): ~10k sockets
@@ -418,6 +419,8 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_started
+      rabbitmq:
+        condition: service_healthy
     security_opt:
       - no-new-privileges:true
     networks:
