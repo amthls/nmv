@@ -3,7 +3,7 @@
 - **Mục tiêu:** Giai đoạn H: recommender viết lại bằng Python, nhận sự kiện, API FastAPI
 - **Tạo từ:** `origin/main` @ e92e92e, ngày 2026-10-11
 - **Trạng thái:** xong, chờ merge
-- **PR:** (chưa mở)
+- **PR:** https://github.com/amthls/nmv/pull/77
 - **Plan:** Plan/recommender.md
 
 ## Thay đổi
