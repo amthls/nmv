@@ -975,9 +975,9 @@ export const addStoryCollaborator = async (req: AuthenticatedRequest, res: Respo
       });
     }
 
-    // Find target user
+    // Find target user: username or id (emails live in identity and are never looked up for other people)
     const targetRes = await pool.query(
-      `SELECT id, username, display_name FROM users WHERE username = $1 OR email = $1 OR id::text = $1 LIMIT 1`,
+      `SELECT id, username, display_name FROM users WHERE (username = $1 OR id::text = $1) AND deleted_at IS NULL LIMIT 1`,
       [identifier.trim()]
     );
     if (targetRes.rows.length === 0) {

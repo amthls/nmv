@@ -244,7 +244,7 @@ st, js = k.req("POST", f"/api/v1/drafts/{kd}/share", {"username": name, "can_edi
 check("share a draft (sent as a message card)", st == 200, f"{st} {js.get('message')}")
 st, js = k.req("POST", f"/api/v1/drafts/{kd}/share", {"username": "admin"})
 check("cannot share with yourself", st == 400, str(st))
-st, conv = outsider.req("GET", f"/api/v1/messages/{args.user}")
+st, conv = outsider.req("GET", f"/api/msg/messages/{args.user}")
 check("the helper's conversation carries the draft card", st == 200 and any(m.get("draft_id") == kd for m in conv["data"]["messages"]), str(st))
 st, js = outsider.req("GET", f"/api/ws/drafts/{kd}/card")
 check("card: the helper may view", st == 200 and js["data"]["access"] == "viewer", str(js.get("data")))
