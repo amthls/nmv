@@ -2,10 +2,11 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Settings2 } from 'lucide-react';
 import SmartImage from '@/components/common/SmartImage';
 import { useReadingSession, ReadingSession } from '@/context/ReadingSessionContext';
 import MiniplayerReaderView from './MiniplayerReaderView';
+import { useMiniplayerEnabled } from '@/lib/miniplayerPref';
 
 interface Size {
   width: number;
@@ -88,6 +89,8 @@ export default function ContinueReadingMiniplayer() {
   const { session, isDismissed, dismiss } = useReadingSession();
   const pathname = usePathname();
   const router = useRouter();
+  const [enabled, setEnabled] = useMiniplayerEnabled();
+  const [menu, setMenu] = useState(false);
 
   const [size, setSize] = useState<Size>(() => clampToViewport(DEFAULT_PRESET.size));
   const [ghostPreset, setGhostPreset] = useState<Preset | null>(null);
@@ -136,7 +139,7 @@ export default function ContinueReadingMiniplayer() {
     setGhostPreset(null);
   }, []);
 
-  if (!session || isDismissed) return null;
+  if (!enabled || !session || isDismissed) return null;
 
   const chapterHref = `/truyen/${session.storySlug}/${session.chapterSlug}`;
   if (pathname === chapterHref) return null; // already reading this exact chapter, no bubble needed
@@ -194,7 +197,34 @@ export default function ContinueReadingMiniplayer() {
           />
         )}
         {tier === 'reader' && <MiniplayerReaderView session={session} />}
+        <button
+          type="button"
+          onClick={() => setMenu((v) => !v)}
+          aria-expanded={menu}
+          className="absolute bottom-1 right-1 z-20 w-5 h-5 rounded-full flex items-center justify-center text-white/40 hover:text-white hover:bg-white/10 transition"
+          title="Tùy chọn popup"
+        >
+          <Settings2 className="w-3 h-3" />
+        </button>
       </div>
+      {menu && (
+        <div
+          className="fixed right-6 z-40 w-56 rounded-xl border border-white/15 bg-zinc-900/95 p-3 shadow-2xl backdrop-blur-md"
+          style={{ bottom: size.height + 36 }}
+        >
+          <label className="flex cursor-pointer items-center justify-between gap-3 text-xs font-semibold text-white">
+            Hiện popup đọc tiếp
+            <input
+              type="checkbox"
+              role="switch"
+              checked={enabled}
+              onChange={(e) => { setEnabled(e.target.checked); setMenu(false); }}
+              className="h-4 w-8 cursor-pointer accent-brand-500"
+            />
+          </label>
+          <p className="mt-2 text-[10.5px] text-gray-400">Bật lại bất cứ lúc nào ở Tài khoản → Cài đặt đọc truyện.</p>
+        </div>
+      )}
     </>
   );
 }
