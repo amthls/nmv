@@ -3,7 +3,7 @@
 - **Mục tiêu:** Truyện bị Admin/Mod gỡ tự xóa hẳn sau 60 ngày
 - **Tạo từ:** `origin/main` @ 2113095, ngày 2026-10-11
 - **Trạng thái:** xong, chờ merge
-- **PR:** (điền sau khi mở)
+- **PR:** https://github.com/amthls/nmv/pull/85
 - **Plan:** Plan/remove-backup-purge.md (nhánh 2)
 
 ## Thay đổi
