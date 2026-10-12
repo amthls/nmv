@@ -22,6 +22,7 @@ import {
 import PullDialog from '@/components/workspace/PullDialog';
 import ShareDialog from '@/components/workspace/ShareDialog';
 import SmartImage from '@/components/common/SmartImage';
+import { goBack } from '@/lib/nav';
 import ChapterEditor from '@/components/chapter/ChapterEditor';
 import RichTextEditor from '@/components/common/RichTextEditor';
 import RichContent from '@/components/common/RichContent';
@@ -676,7 +677,7 @@ function ChapterEditorContent() {
     }
     stopSaving.current = true;
     lastSaved.current = snapshot;
-    router.push('/ws');
+    goBack(router, '/ws');
   };
 
   // Before pulling, the draft on the server must hold what is on screen
@@ -878,7 +879,7 @@ function ChapterEditorContent() {
           draft={draft}
           authFetch={authFetch}
           onChanged={() => loadDraft(draft.id)}
-          onTransferred={() => { stopSaving.current = true; router.push('/ws'); }}
+          onTransferred={() => { stopSaving.current = true; goBack(router, '/ws'); }}
           onClose={() => setShowShare(false)}
         />
       )}

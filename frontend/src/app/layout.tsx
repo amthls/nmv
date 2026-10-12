@@ -5,6 +5,7 @@ import Footer from '@/components/Footer';
 import { AuthProvider } from '@/context/AuthContext';
 import { ReadingSessionProvider } from '@/context/ReadingSessionContext';
 import NavigationProgress from '@/components/common/NavigationProgress';
+import NavTracker from '@/components/common/NavTracker';
 import ContinueReadingMiniplayer from '@/components/reader/ContinueReadingMiniplayer';
 import { THEME_INIT_SCRIPT } from '@/lib/themeScript';
 
@@ -28,6 +29,7 @@ export default function RootLayout({
         <AuthProvider>
           <ReadingSessionProvider>
             <NavigationProgress />
+            <NavTracker />
             <Navbar />
             <main className="flex-1">
               {children}
