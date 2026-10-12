@@ -3,7 +3,7 @@
 - **Mục tiêu:** Tách rõ workspace của tôi và workspace nhóm
 - **Tạo từ:** `origin/main` @ 10addf7, ngày 2026-10-12
 - **Trạng thái:** xong
-- **PR:** (điền sau khi mở)
+- **PR:** https://github.com/amthls/nmv/pull/94
 - **Plan:** Plan/ui-overhaul.md (B6)
 
 ## Thay đổi
