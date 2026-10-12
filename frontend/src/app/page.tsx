@@ -1,12 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
-import SmartImage from '@/components/common/SmartImage';
 import { Story } from '@/components/explore/StoryCardGrid';
 import FeaturedCarousel from '@/components/home/FeaturedCarousel';
 import StoryRail from '@/components/home/StoryRail';
 import RecommendationRail from '@/components/home/RecommendationRail';
+import WorkflowGuide from '@/components/home/WorkflowGuide';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -67,24 +66,7 @@ export default function HomePage() {
           source="home_rec"
         />
 
-        {/* 3. Illustration gallery (only when chapters have illustrations) */}
-        {featuredIllustrations.length > 0 && (
-          <section className="space-y-3">
-            <h2 className="text-lg sm:text-xl font-semibold tracking-tight text-white">Ảnh minh họa mới</h2>
-            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 2xl:grid-cols-8 gap-3">
-              {featuredIllustrations.slice(0, 16).map((illust, idx) => (
-                <Link
-                  key={idx}
-                  href={`/truyen/${illust.story_slug}/${illust.chapter_slug}`}
-                  className="tile group block aspect-[3/4] overflow-hidden"
-                  title={`${illust.story_title} — ${illust.chapter_title}`}
-                >
-                  <SmartImage src={illust.image_url} alt={illust.chapter_title} className="tile__img w-full h-full object-cover object-top block" />
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
+        <WorkflowGuide />
       </div>
     </div>
   );
