@@ -4,7 +4,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import BackLink from '@/components/common/BackLink';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { Activity, ArrowLeft, MessageCircle, Settings, Users } from 'lucide-react';
+import { Activity, ArrowLeft, BookOpen, GitMerge, MessageCircle, Settings, Users } from 'lucide-react';
+import SmartImage from '@/components/common/SmartImage';
 import { useAuth } from '@/context/AuthContext';
 import PageLoader from '@/components/common/PageLoader';
 import TaskCard, { STEP_LABEL, dueState } from '@/components/workspace/TaskCard';
@@ -88,19 +89,70 @@ export default function GroupWorkspacePage() {
         <ArrowLeft className="w-4 h-4" /> Workspace của tôi
       </BackLink>
 
-      <div className="rounded-3xl p-6 glass-panel border border-white/10 bg-glass shadow-xl flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-extrabold text-white">Workspace nhóm {group.name}</h1>
-          <p className="text-xs text-gray-400 mt-1">
-            {group.stories?.length || 0} truyện · {group.members?.length || 0} thành viên
-          </p>
+      <div className="relative overflow-hidden rounded-3xl border border-emerald-500/30 shadow-xl">
+        {/* the group's banner, or its covers side by side, behind its name */}
+        <div aria-hidden className="absolute inset-0 flex opacity-30 blur-sm">
+          {group.banner_url
+            ? <SmartImage src={group.banner_url} alt="" className="h-full w-full object-cover" />
+            : (group.stories || []).slice(0, 6).map((s: any) => s.cover_image_url && <SmartImage key={s.id} src={s.cover_image_url} alt="" className="h-full min-w-0 flex-1 object-cover" />)}
+        </div>
+        <div className="absolute inset-0 bg-gradient-to-r from-emerald-950/90 via-emerald-950/70 to-transparent" aria-hidden />
+        <div className="relative p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="flex items-center gap-4 min-w-0">
+          <div className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl border-2 border-emerald-400/60 bg-emerald-700 grid place-items-center text-2xl font-extrabold text-snow">
+            {group.avatar_url ? <SmartImage src={group.avatar_url} alt={group.name} className="h-full w-full object-cover" /> : group.name.slice(0, 1)}
+          </div>
+          <div className="min-w-0">
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/25 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-emerald-200">
+              <Users className="w-3 h-3" /> Workspace nhóm
+            </span>
+            <h1 className="mt-1 text-xl sm:text-2xl font-extrabold text-snow truncate">{group.name}</h1>
+            <p className="text-xs text-emerald-100/80 mt-0.5">
+              Việc chung của cả nhóm · {group.stories?.length || 0} truyện · {group.members?.length || 0} thành viên
+            </p>
+            <div className="mt-2 flex -space-x-2">
+              {(group.members || []).slice(0, 8).map((m: any) => (
+                <span key={m.user_id} title={m.display_name || m.username} className="h-7 w-7 overflow-hidden rounded-full border-2 border-emerald-950 bg-emerald-800 grid place-items-center text-[10px] font-bold text-snow">
+                  {m.avatar_url ? <SmartImage src={m.avatar_url} alt={m.display_name || m.username} className="h-full w-full object-cover" /> : (m.display_name || m.username).slice(0, 1)}
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
         <div className="grid grid-cols-3 gap-2 text-center">
           <div className="px-4 py-2 rounded-2xl bg-white/5 border border-white/10"><div className="text-lg font-extrabold text-sky-300">{board.tasks.filter((t: any) => t.status === 'claimed').length}</div><div className="text-[10px] text-gray-400 uppercase font-bold">Đang làm</div></div>
           <div className="px-4 py-2 rounded-2xl bg-white/5 border border-white/10"><div className="text-lg font-extrabold text-emerald-300">{board.proposals.length}</div><div className="text-[10px] text-gray-400 uppercase font-bold">Chờ gộp</div></div>
           <div className="px-4 py-2 rounded-2xl bg-white/5 border border-white/10"><div className={`text-lg font-extrabold ${late.length ? 'text-rose-300' : 'text-gray-300'}`}>{late.length}</div><div className="text-[10px] text-gray-400 uppercase font-bold">Sắp / đã trễ hạn</div></div>
         </div>
+        </div>
       </div>
+
+      <section className="space-y-2" aria-label="Truyện của nhóm">
+        <h2 className="text-xs font-bold text-emerald-300 uppercase tracking-wider flex items-center gap-1.5"><BookOpen className="w-4 h-4" /> Truyện của nhóm</h2>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {(group.stories || []).map((s: any) => {
+            const open = board.tasks.filter((t: any) => t.story_id === s.id && (t.status === 'open' || t.status === 'claimed')).length;
+            const waiting = board.proposals.filter((p: any) => p.story_id === s.id).length;
+            return (
+              <div key={s.id} className="flex gap-3 p-3 rounded-2xl border border-white/10 bg-white/[0.03]">
+                <div className="h-24 w-16 shrink-0 overflow-hidden rounded-lg bg-white/5">
+                  {s.cover_image_url && <SmartImage src={s.cover_image_url} alt={s.title} className="h-full w-full object-cover" />}
+                </div>
+                <div className="min-w-0 flex-1 flex flex-col justify-between">
+                  <div>
+                    <div className="text-sm font-bold text-white line-clamp-2">{s.title}</div>
+                    <div className="text-[11px] text-gray-400">{s.total_chapters || 0} chương · {open} việc đang mở · <span className={waiting ? 'text-emerald-300 font-bold' : ''}>{waiting} chờ duyệt</span></div>
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] font-bold">
+                    <Link href={`/ws/truyen/${s.slug}`} className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-snow flex items-center gap-1"><GitMerge className="w-3 h-3" /> Giao việc & duyệt</Link>
+                    <Link href={`/ws?truyen=${s.slug}`} className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-gray-100">Chương & phiên bản</Link>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
 
       <section className="p-4 rounded-3xl border border-white/10 bg-white/[0.03] space-y-2">
         <p className="text-xs text-gray-400">
