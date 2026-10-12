@@ -3,7 +3,7 @@
 - **Mục tiêu:** Tìm kiếm: đợi gõ xong, hủy yêu cầu cũ, thanh tải, cache Redis 30s
 - **Tạo từ:** `origin/main` @ c2b15f8, ngày 2026-10-12
 - **Trạng thái:** xong
-- **PR:** (điền sau khi mở)
+- **PR:** https://github.com/amthls/nmv/pull/97
 - **Plan:** Plan/ui-overhaul.md (B9)
 
 ## Thay đổi
