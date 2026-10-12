@@ -3,7 +3,7 @@
 - **Mục tiêu:** Nhãn workspace dễ hiểu, Quay lại không đi qua từng truyện/từng lần chuyển, hai trang đăng chương cùng một khung
 - **Tạo từ:** `origin/main` @ 90546e2, ngày 2026-10-12
 - **Trạng thái:** xong
-- **PR:** (điền sau khi mở)
+- **PR:** https://github.com/amthls/nmv/pull/93
 - **Plan:** Plan/ui-overhaul.md (B5)
 
 ## Thay đổi
