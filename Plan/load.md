@@ -15,7 +15,8 @@ Mỗi mục một nhánh + PR. Đo lại sau mỗi mục và ghi số.
 - [x] A1. Link chỉ tải trước khi rê chuột/chạm (`components/common/Link.tsx` thay `next/link`; `check-nav.sh` chặn import thẳng).
 - [x] A2. Bỏ request trùng. Quét 9 trang: chỉ trang truyện (truyện ×2, lịch sử ×2) và Khám phá (explore ×2) bị trùng, sửa tận gốc nên không cần `lib/fetchCache`.
   Hai API `me` là của hai service (tài khoản / hồ sơ): giữ cả hai, gọi song song.
-- [ ] A3. Tab trong trang tải lần đầu rồi giữ dữ liệu (trang truyện, tài khoản, nhóm, ws).
+- [x] A3. Tab tải lần đầu rồi giữ: `lib/memo.ts` (giữ 60 s, `forget` sau khi đổi) cho kệ truyện + phiên bản ở /ws; tab Chat của nhóm
+  chỉ tải lại khi có tin mới trong lúc ở tab khác; tab Quản lý vai trò tải một lần. (Trang truyện không có tab; ws/de-xuat không tải khi đổi tab.)
 - [x] A4. Khám phá: một request cho mỗi đợt thay đổi (chờ 150 ms; hủy request cũ đã có).
 - [ ] A5. Cache Redis cho trang truyện + nội dung chương (30–60 s, xóa khi sửa).
 - [ ] A6. 429: server gửi `Retry-After`; frontend báo "thao tác hơi nhanh, thử lại sau N giây", GET thử lại 1 lần.
@@ -32,4 +33,5 @@ Mỗi mục một nhánh + PR. Đo lại sau mỗi mục và ghi số.
 |---|---|---|---|
 | Trước | 27 request (12 API) | 16 (7 API) | |
 | A1 | 11 (11 API, 0 tải trước) | | rê chuột lên chương: tải trước, bấm → 41 ms |
+| A3 | | | /ws: đổi truyện A→B→A→B: 1 request (trước 4); mở chương qua lại 4 lần: 1; tab Chat mở 3 lần: 1 |
 | A2+A4 | 10 API, 0 trùng | 7 API | Khám phá: mở 1 request (trước 2); 6 lần bấm lọc → 1 request (trước 4) |

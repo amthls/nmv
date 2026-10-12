@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from '@/components/common/Link';
 import { useParams } from 'next/navigation';
 import { 
@@ -208,17 +208,26 @@ export default function GroupDetailPage() {
     } catch (e) {}
   };
 
+  // Back to the chat tab: the messages already loaded stay, they are fetched again only if one was pushed meanwhile
+  // (Plan/load.md A3)
+  const chatStale = useRef(true);
   useEffect(() => {
     if (activeTab === 'chat' && group?.id && canSeeInternal) {
-      fetchMessages();
+      if (chatStale.current) {
+        chatStale.current = false;
+        fetchMessages();
+      }
       const interval = setInterval(fetchMessages, 30000); // fallback; new messages are pushed
       return () => clearInterval(interval);
     }
   }, [activeTab, group?.id, canSeeInternal]);
+  useEffect(() => { chatStale.current = true; }, [group?.id]);
 
   useRealtime('group_message', (data) => {
     // no groupId: the socket just reconnected, anything may have changed
-    if ((!data?.groupId || data.groupId === group?.id) && activeTab === 'chat') fetchMessages();
+    if (data?.groupId && data.groupId !== group?.id) return;
+    if (activeTab === 'chat') fetchMessages();
+    else chatStale.current = true;
   });
 
   const handleSendMessage = async (e: React.FormEvent) => {
