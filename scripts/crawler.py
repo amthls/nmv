@@ -13,9 +13,7 @@ is already reached.
 Sources (one worker thread each, so different hosts are fetched in parallel):
     mangadex   manga  official API (https://api.mangadex.org/docs/), Vietnamese chapters
     toptruyen  manga  www.toptruyenzone12.com
-    nettruyen  manga  nettruyen.gg
     valvrare   novel  valvrareteam.net (free chapters only)
-    truyenyy   novel  truyenyy.co (free chapters only)
 ln.hako.vn is not included: it answers every automated request with a Cloudflare bot challenge.
 
 Politeness: robots.txt is honoured, requests to one host are spaced out, only 1-2 chapters per
@@ -23,7 +21,7 @@ story are taken, and a source that starts answering with bot challenges is dropp
 (challenges are never bypassed). Every imported story keeps its source link for credit.
 
 Images go to uploads/manga/<story-slug>/ (created if missing) and are re-encoded to WebP by the
-backend container (sharp); rows are written with psql inside the postgres container, so only the
+media container (sharp); rows are written with psql inside the postgres container, so only the
 Python standard library is needed on the host.
 """
 import argparse
@@ -133,6 +131,7 @@ class Http:
 
     def __init__(self):
         self.last = {}
+        self.min_interval = 0.0  # --delay: floor for the gap between two requests to one host
         self.robots = {}
         self.lock = threading.Lock()
 
@@ -168,6 +167,7 @@ class Http:
         headers = {"User-Agent": API_UA if api else BROWSER_UA, "Accept-Language": "vi,en;q=0.8"}
         if referer:
             headers["Referer"] = referer
+        interval = max(interval, self.min_interval)
         for attempt in range(tries):
             self._wait(host, interval)
             try:
@@ -474,56 +474,6 @@ class TopTruyen:
         return {"images": [absolute(u, self.BASE) for u in imgs]}
 
 
-class NetTruyen:
-    name, label, story_type = "nettruyen", "NetTruyen", "manga"
-    BASE = "https://nettruyen.gg"
-
-    def __init__(self, args):
-        self.args = args
-
-    def candidates(self):
-        html = HTTP.fetch(self.BASE + "/trang-chu")
-        found = re.findall(r'href="(?:https://nettruyen\.gg)?(/truyen-tranh/[a-z0-9-]+)"', html)
-        for path in dict.fromkeys(found):
-            yield {"source_id": path.rsplit("/", 1)[-1], "url": self.BASE + path}
-
-    def story(self, cand):
-        page = HTTP.fetch(cand["url"])
-        title = re.sub(r"\s*-\s*NetTruyen.*$", "", meta(page, "og:title") or "").strip()
-        h1 = re.search(r'<h1[^>]*class="[^"]*title-detail[^"]*"[^>]*>(.*?)</h1>', page, re.S)
-        title = text_of(h1.group(1)) if h1 else title
-        plain = text_of(page)
-        author = re.search(r"Tác giả\s+(.{1,80}?)\s+Tình trạng", plain)
-        author = author.group(1).strip() if author else None
-        status_m = re.search(r"Tình trạng\s+(.{1,40}?)\s+Thể loại", plain)
-        kinds = re.search(r'class="kind[^"]*"(.*?)</(?:li|p)>', page, re.S)
-        tags = [text_of(t) for t in re.findall(r"<a[^>]*>(.*?)</a>", kinds.group(1), re.S)] if kinds else []
-        detail = re.search(r'class="[^"]*detail-content[^"]*"(.*?)</div>', page, re.S)
-        synopsis = text_of(re.sub(r"^[^>]*>", "", detail.group(1))) if detail else None
-        if synopsis:
-            synopsis = re.sub(r"^Nội dung truyện.*?NetTruyen\s*", "", synopsis)
-            if "NetTruyen" in synopsis[:200]:  # site boilerplate rather than a real summary
-                synopsis = None
-        chapter_urls = dict.fromkeys(re.findall(rf'href="(?:{re.escape(self.BASE)})?({re.escape(cand["url"].replace(self.BASE, ""))}/chuong-[0-9-]+)"', page))
-        chapters = sorted(
-            ({"number": chapter_number(u), "title": "", "group": None, "ref": self.BASE + u} for u in chapter_urls if chapter_number(u) is not None),
-            key=lambda c: c["number"],
-        )
-        return {
-            "source_id": cand["source_id"], "url": cand["url"], "title": title, "original_title": None,
-            "synopsis": synopsis, "author": None if not author or "cập nhật" in author.lower() else author, "artist": None,
-            "cover": absolute(meta(page, "og:image"), self.BASE), "status": status_of(status_m.group(1) if status_m else ""),
-            "year": None, "tags": [t for t in tags if t and t != "Tất cả"], "follows": None,
-            "original_language": "zh" if "Manhua" in tags else "ko" if "Manhwa" in tags else "ja",
-            "story_type": "manga", "referer": self.BASE + "/", "chapters": chapters, "all_titles": [title],
-        }
-
-    def chapter(self, story, ch):
-        page = HTTP.fetch(ch["ref"])
-        imgs = re.findall(r"<div class=['\"]page-chapter['\"][^>]*>\s*<img[^>]*data-src=['\"]([^'\"]+)['\"]", page)
-        return {"images": [absolute(u, self.BASE) for u in imgs]}
-
-
 class Valvrare:
     name, label, story_type = "valvrare", "Valvrareteam", "novel"
     BASE = "https://valvrareteam.net"
@@ -576,58 +526,7 @@ class Valvrare:
         return {"paragraphs": paragraphs, "title": text_of(heading.group(1)) if heading else ""}
 
 
-class TruyenYY:
-    name, label, story_type = "truyenyy", "TruyenYY", "novel"
-    BASE = "https://truyenyy.co"
-
-    def __init__(self, args):
-        self.args = args
-
-    def candidates(self):
-        html = HTTP.fetch(self.BASE + "/")
-        for path in dict.fromkeys(re.findall(r'href="(/truyen/[a-z0-9-]+)/?"', html)):
-            yield {"source_id": path.rsplit("/", 1)[-1], "url": self.BASE + path}
-
-    def story(self, cand):
-        page = HTTP.fetch(cand["url"])
-        path = cand["url"].replace(self.BASE, "")
-        title = re.sub(r"^\[[^\]]*\]\s*", "", meta(page, "og:title") or "").strip()  # drop the "[Dịch]" prefix
-        plain = text_of(page)
-        genre = re.search(r"Thể loại\s+(.{1,80}?)\s+Trạng thái", plain)
-        status = re.search(r"Trạng thái\s+(.{1,30}?)\s+Số chương", plain)
-        author = re.search(r'\\?"authorName\\?":\s*\\?"([^"\\]+)', page) or re.search(r'Tác giả\s*:?\s*</[^>]+>\s*<[^>]+>([^<]{2,60})<', page)
-        first = re.search(rf'href="({re.escape(path)}/chuong-1(?:-[^"]*)?)"', page)
-        chapters = [{"number": 1.0, "title": "", "group": "TruyenYY", "ref": self.BASE + first.group(1)}] if first else []
-        st = status.group(1).lower() if status else ""
-        return {
-            "source_id": cand["source_id"], "url": cand["url"], "title": title, "original_title": None,
-            "synopsis": meta(page, "description"), "author": author.group(1).strip() if author else None, "artist": None,
-            "cover": absolute(meta(page, "og:image"), self.BASE),
-            "status": "completed" if ("hoàn" in st or "full" in st) else "ongoing",
-            "year": None, "tags": [t.strip() for t in genre.group(1).split(",")] if genre else [],
-            "follows": None, "original_language": "zh",
-            "story_type": "novel", "referer": self.BASE + "/", "chapters": chapters, "all_titles": [title],
-        }
-
-    def chapter(self, story, ch):
-        page = HTTP.fetch(ch["ref"])
-        path = story["url"].replace(self.BASE, "")
-        # the next chapter is only linked from this one: queue it so the importer can take it too
-        nxt = re.search(rf'href="({re.escape(path)}/chuong-{int(ch["number"]) + 1}(?:-[^"]*)?)"', page)
-        if nxt and not any(c["number"] == ch["number"] + 1 for c in story["chapters"]):
-            story["chapters"].append({"number": ch["number"] + 1, "title": "", "group": "TruyenYY", "ref": self.BASE + nxt.group(1)})
-        parser = ParagraphParser("font-[Lora]")
-        parser.feed(page)
-        heading = re.search(r"<h1[^>]*>(.*?)</h1>", page, re.S)
-        paragraphs = [p for p in parser.paragraphs if "VIP" not in p]
-        if paragraphs and re.match(r"(?i)^chương\s*\d+", paragraphs[0]) and len(paragraphs[0]) < 200:
-            paragraphs = paragraphs[1:]  # the chapter heading repeated as the first line
-        if sum(len(p) for p in paragraphs) < 500:  # VIP / locked chapter
-            return {"paragraphs": []}
-        return {"paragraphs": paragraphs, "title": text_of(heading.group(1)) if heading else ""}
-
-
-SOURCES = {cls.name: cls for cls in (MangaDex, TopTruyen, NetTruyen, Valvrare, TruyenYY)}
+SOURCES = {cls.name: cls for cls in (MangaDex, TopTruyen, Valvrare)}
 
 
 # ----------------------------------------------------------------------------- image re-encoding
@@ -964,6 +863,7 @@ class Importer:
                 except Exception as e:
                     log(f"[{source.name}] error: {e}")
                 self.release(bool(ok), source.name)
+                time.sleep(self.args.delay * random.uniform(1, 2))  # rest between two stories
 
                 # Circuit breaker: a source that keeps failing is dropped for this run
                 if ok is None:
@@ -1041,6 +941,8 @@ def main():
     p.add_argument("--max-chapters", type=int, default=2, help="chapters per story (default 2)")
     p.add_argument("--max-pages", type=int, default=45, help="skip manga chapters longer than this (default 45 pages)")
     p.add_argument("--sources", default=",".join(SOURCES), help=f"comma-separated, from: {', '.join(SOURCES)}")
+    p.add_argument("--delay", type=float, default=2.0,
+                   help="seconds between two requests to the same site, and a longer rest between stories (default 2)")
     p.add_argument("--max-failures", type=int, default=8, help="drop a source after this many failed imports in a row (default 8)")
     p.add_argument("--dry-run", action="store_true", help="list what would be imported, write nothing")
     p.add_argument("--no-reindex", action="store_true", help="don't restart catalog to refresh search afterwards")
@@ -1048,6 +950,7 @@ def main():
                    help="after crawling, allow EPUB/PDF downloads on this share of imported stories, picked at random (default 0.3, 0 = off)")
     args = p.parse_args()
 
+    HTTP.min_interval = args.delay
     if not acquire_lock():
         log("another crawler is already running (logs/crawler.lock); exiting")
         return
@@ -1058,6 +961,10 @@ def main():
                 enable_random_downloads(args.download_ratio)
             except Exception as e:  # e.g. migration 007 not applied yet
                 log(f"could not enable random downloads: {e}")
+        if imported and not args.dry_run:
+            # Chapter content lives in the workspace service: give the new chapters their version 1 (safe to re-run)
+            res = subprocess.run(["docker", "compose", "run", "--rm", "workspace", "import"], cwd=ROOT, capture_output=True)
+            log("new chapters imported into the workspace" if res.returncode == 0 else "workspace import failed: run `docker compose run --rm workspace import`")
         if imported and not args.dry_run and not args.no_reindex:
             subprocess.run(["docker", "compose", "restart", "catalog"], cwd=ROOT, capture_output=True)
             log("catalog restarted to refresh the search index")

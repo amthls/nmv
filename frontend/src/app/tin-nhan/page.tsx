@@ -12,6 +12,8 @@ import LabelManager from '@/components/messages/LabelManager';
 import DraftCard from '@/components/workspace/DraftCard';
 import { DmLabel, labelStyle } from '@/components/messages/labels';
 import { useAuth } from '@/context/AuthContext';
+import SearchInput from '@/components/common/SearchInput';
+import { useDebounced } from '@/lib/useDebounced';
 import { useRealtime } from '@/lib/realtime';
 import { apiJson, MESSAGING_URL } from '@/lib/apiJson';
 
@@ -79,16 +81,23 @@ function MessagesInner() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const labelMenuRef = useRef<HTMLDivElement>(null);
 
+  const inFlight = useRef<AbortController | null>(null);
+  const [listLoading, setListLoading] = useState(false);
   const api = (path: string, init?: RequestInit & { json?: unknown }) => apiJson(authFetch, path, init, MESSAGING_URL);
 
   const fetchConversations = async () => {
     const params = new URLSearchParams();
     if (activeLabel) params.set('label', activeLabel);
     if (query) params.set('q', query);
+    inFlight.current?.abort(); // a newer list (search typed on, a push) replaces the one still loading
+    const ctrl = new AbortController();
+    inFlight.current = ctrl;
+    setListLoading(true);
     try {
-      const { ok, json } = await api(`/messages${params.toString() ? `?${params}` : ''}`);
-      if (ok) setConversations(json.data.conversations || []);
+      const { ok, json } = await api(`/messages${params.toString() ? `?${params}` : ''}`, { signal: ctrl.signal });
+      if (ok && !ctrl.signal.aborted) setConversations(json.data.conversations || []);
     } catch (e) {}
+    if (!ctrl.signal.aborted) setListLoading(false);
   };
 
   const fetchLabels = async () => {
@@ -116,10 +125,9 @@ function MessagesInner() {
     } catch (e) {}
   };
 
-  useEffect(() => {
-    const t = setTimeout(() => setQuery(search.trim()), 300);
-    return () => clearTimeout(t);
-  }, [search]);
+  // one request when typing stops (Plan/load-and-layout.md)
+  const [settledSearch, typing] = useDebounced(search);
+  useEffect(() => { setQuery(settledSearch.trim()); }, [settledSearch]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -280,21 +288,14 @@ function MessagesInner() {
                 <Settings2 className="w-3.5 h-3.5" /> Nhãn
               </button>
             </div>
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={activeLabel ? 'Tìm trong nhãn này...' : 'Tìm người hoặc nội dung tin nhắn...'}
-                aria-label="Tìm tin nhắn"
-                className="w-full h-8 pl-8 pr-7 rounded-lg bg-white/5 border border-white/10 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-500"
-              />
-              {search && (
-                <button onClick={() => setSearch('')} aria-label="Xóa tìm kiếm" className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
+            <SearchInput
+              value={search}
+              onChange={setSearch}
+              loading={typing || (listLoading && !!query)}
+              placeholder={activeLabel ? 'Tìm trong nhãn này...' : 'Tìm người hoặc nội dung tin nhắn...'}
+              ariaLabel="Tìm tin nhắn"
+              inputClassName="!h-9 !text-xs !rounded-lg"
+            />
             <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none -mx-1 px-1">
               <button onClick={() => setActiveLabel(null)} className={chip(!activeLabel)}>Tất cả</button>
               {labels.map((l) => (

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, BookOpen, X, Check, Loader2 } from 'lucide-react';
+import { SEARCH_DELAY_MS } from '@/components/SearchBox';
 import SmartImage from '@/components/common/SmartImage';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
@@ -42,17 +43,20 @@ export default function SmartStorySearch({
     }
   }, [initialStory, selectedStoryId]);
 
-  // Debounced live search
+  // Live search to the site standard (Plan/load-and-layout.md): from the first character, one request when typing
+  // stops, the previous one aborted, spinner from the first keystroke
   useEffect(() => {
     if (!query.trim()) {
       setSuggestions([]);
+      setIsLoading(false);
       return;
     }
 
+    const ctrl = new AbortController();
+    setIsLoading(true);
     const timer = setTimeout(async () => {
-      setIsLoading(true);
       try {
-        const res = await fetch(`${API_BASE_URL}/stories/explore?q=${encodeURIComponent(query.trim())}&limit=6`);
+        const res = await fetch(`${API_BASE_URL}/stories/explore?q=${encodeURIComponent(query.trim())}&limit=6`, { signal: ctrl.signal });
         if (res.ok) {
           const json = await res.json();
           if (json.success) {
@@ -60,14 +64,14 @@ export default function SmartStorySearch({
             setIsOpen(true);
           }
         }
-      } catch (e) {
-        console.error('Failed to search stories:', e);
+      } catch (e: any) {
+        if (e?.name !== 'AbortError') console.error('Failed to search stories:', e);
       } finally {
-        setIsLoading(false);
+        if (!ctrl.signal.aborted) setIsLoading(false);
       }
-    }, 250);
+    }, SEARCH_DELAY_MS);
 
-    return () => clearTimeout(timer);
+    return () => { clearTimeout(timer); ctrl.abort(); };
   }, [query]);
 
   // Click outside to close dropdown

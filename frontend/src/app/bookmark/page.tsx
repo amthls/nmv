@@ -225,7 +225,7 @@ export default function BookmarkPage() {
       <div className="max-w-6xl mx-auto px-4 py-16 space-y-6 animate-pulse">
         <div className="h-36 rounded-3xl bg-white/5" />
         <div className="h-12 w-1/3 bg-white/5 rounded-2xl" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(300px,100%),1fr))] gap-6">
           <div className="h-64 rounded-3xl bg-white/5" />
           <div className="h-64 rounded-3xl bg-white/5" />
           <div className="h-64 rounded-3xl bg-white/5" />
@@ -319,7 +319,7 @@ export default function BookmarkPage() {
           )}
 
           {isLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(min(300px,100%),1fr))] gap-6 animate-pulse">
               <div className="h-64 rounded-3xl bg-white/5" />
               <div className="h-64 rounded-3xl bg-white/5" />
               <div className="h-64 rounded-3xl bg-white/5" />
@@ -367,7 +367,7 @@ export default function BookmarkPage() {
                       <Lock className="w-3.5 h-3.5" /> Riêng tư tất cả
                     </button>
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(min(150px,calc(50%_-_8px)),1fr))] gap-4">
                     {albums.map((album) => (
                       <AlbumCard
                         key={album.id}
@@ -400,7 +400,7 @@ export default function BookmarkPage() {
                     </p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(min(150px,calc(50%_-_8px)),1fr))] gap-4">
                     {savedAlbums.map((album) => (
                       <AlbumCard
                         key={album.id}
@@ -432,7 +432,7 @@ export default function BookmarkPage() {
                     </p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(min(300px,100%),1fr))] gap-6">
                     {favorites.map((fav) => (
                       <div
                         key={fav.id}

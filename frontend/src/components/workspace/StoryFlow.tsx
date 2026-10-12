@@ -41,7 +41,10 @@ export default function StoryFlow({
 
   // a picked chapter's versions open below the streams: bring them into view
   useEffect(() => {
-    if (chapterId && story) versionsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    const el = versionsRef.current;
+    if (!chapterId || !story || !el) return;
+    const { top } = el.getBoundingClientRect();
+    if (top > window.innerHeight - 120) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); // only when it is below the fold
   }, [chapterId, story]);
 
   if (error) return <p className="text-sm text-rose-300">{error}</p>;
@@ -109,8 +112,8 @@ export default function StoryFlow({
                     onClick={() => onPickChapter(on ? '' : ch.id)}
                     aria-pressed={on}
                     title={on ? 'Bấm lần nữa để đóng' : 'Xem các phiên bản'}
-                    className={`relative h-24 w-36 sm:w-40 shrink-0 rounded-2xl border p-3 text-left backdrop-blur-md transition duration-300 ${
-                      on ? 'scale-105 border-sky-300 bg-sky-500/25 shadow-xl shadow-sky-500/30' : 'border-white/10 bg-surface-2/80 hover:-translate-y-1 hover:border-sky-400/50'
+                    className={`relative h-24 w-36 sm:w-40 shrink-0 rounded-2xl border p-3 text-left backdrop-blur-md transition-colors duration-300 ${
+                      on ? 'border-sky-300 bg-sky-500/25 shadow-xl shadow-sky-500/30' : 'border-white/10 bg-surface-2/80 hover:border-sky-400/50'
                     }`}
                   >
                     <div className="text-[11px] font-bold text-sky-300">Chương {Number(ch.chapter_number)}</div>
@@ -126,7 +129,7 @@ export default function StoryFlow({
 
       <div ref={versionsRef} className="scroll-mt-24">
         {chosen ? (
-          <ChapterVersions story={story} chapter={chosen} draft={drafts.find((d) => d.chapter_id === chosen.id)} isManga={isManga} />
+          <ChapterVersions key={chosen.id} story={story} chapter={chosen} draft={drafts.find((d) => d.chapter_id === chosen.id)} isManga={isManga} />
         ) : (
           categories.length > 0 && <p className="text-xs text-gray-400">Bấm một chương trên dòng để xem các phiên bản của nó.</p>
         )}
@@ -144,9 +147,6 @@ function ChapterVersions({ story, chapter, draft, isManga }: { story: any; chapt
   const [n, setN] = useState(0);
 
   useEffect(() => {
-    setRevs(null);
-    setMsg(null);
-    setAsking(null);
     authFetch(`${WS_URL}/chapters/${chapter.id}/revisions`).then((r) => r.json())
       .then((j) => (j.data ? setRevs(j.data) : setMsg(j.message || 'Không tải được phiên bản.')))
       .catch(() => setMsg('Không tải được phiên bản.'));
@@ -166,7 +166,7 @@ function ChapterVersions({ story, chapter, draft, isManga }: { story: any; chapt
 
   const versions = (revs || []).filter((r) => !r.deleted);
   return (
-    <section className="space-y-3 rounded-3xl border border-sky-400/20 bg-sky-500/5 p-4 sm:p-5">
+    <section className="min-h-[15rem] space-y-3 rounded-3xl border border-sky-400/20 bg-sky-500/5 p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h3 className="text-base font-bold text-white">Chương {Number(chapter.chapter_number)}: {shortTitle(chapter.title)}</h3>

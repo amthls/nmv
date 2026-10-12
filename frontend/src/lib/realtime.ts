@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { coalesce } from './coalesce';
 import { refreshSession } from './session';
 
 /**
@@ -99,16 +100,26 @@ export function disconnectRealtime() {
   socket = null;
 }
 
-/** Calls the latest `handler` whenever the server pushes `event` (and once after each reconnect). */
+/** A burst of pushes runs the handler at most once per this many ms (Plan/load-and-layout.md D1). */
+export const REALTIME_COALESCE_MS = 1500;
+
+/**
+ * Calls the latest `handler` whenever the server pushes `event` (and once after each reconnect). Handlers reload a
+ * list, so a burst (100 notifications at once, a busy group chat) is coalesced: the first push runs right away, the
+ * rest of the window becomes one trailing call; when several pushes were folded into it, it gets no data
+ * (= "anything may have changed, reload").
+ */
 export function useRealtime(event: string, handler: Handler) {
   const ref = useRef(handler);
   ref.current = handler;
   useEffect(() => {
-    const fn: Handler = (data) => ref.current(data);
+    const burst = coalesce<any>((data) => ref.current(data), REALTIME_COALESCE_MS);
+    const fn: Handler = (data) => burst.push(data);
     if (!listeners.has(event)) listeners.set(event, new Set());
     listeners.get(event)!.add(fn);
     return () => {
       listeners.get(event)?.delete(fn);
+      burst.cancel();
     };
   }, [event]);
 }

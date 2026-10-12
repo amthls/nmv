@@ -123,6 +123,9 @@ async function assertGroupNameFree(name: string, exceptGroupId?: string) {
 export const getGroups = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { q, filter_status } = req.query;
+    // paged (Plan/load-and-layout.md D2): 24 a page, at most 100
+    const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 24));
+    const page = Math.max(1, Number(req.query.page) || 1);
 
     const params: any[] = [];
     let conditions = 'WHERE 1=1';
@@ -154,29 +157,19 @@ export const getGroups = async (req: AuthenticatedRequest, res: Response) => {
         ) as leader,
         (SELECT COUNT(*) FROM group_members WHERE group_id = g.id) as member_count,
         (SELECT COUNT(*) FROM stories WHERE group_id = g.id AND approval_status = 'approved') as story_count,
-        (
-          SELECT json_agg(
-            json_build_object(
-              'user_id', gm.user_id,
-              'username', mu.username,
-              'display_name', mu.display_name,
-              'avatar_url', mu.avatar_url,
-              'role', gm.role
-            )
-          )
-          FROM group_members gm
-          JOIN users mu ON gm.user_id = mu.id
-          WHERE gm.group_id = g.id
-        ) as members
+        COUNT(*) OVER () AS total_count
       FROM translation_groups g
       JOIN users u ON g.created_by = u.id
       ${conditions}
-      ORDER BY g.created_at DESC;
-    `, params);
+      ORDER BY g.created_at DESC
+      LIMIT $${params.length + 1} OFFSET $${params.length + 2};
+    `, [...params, limit, (page - 1) * limit]);
 
+    const total = Number(result.rows[0]?.total_count || 0);
     res.json({
       success: true,
-      data: result.rows,
+      data: result.rows.map(({ total_count, ...g }) => g),
+      pagination: { page, limit, total, totalPages: Math.max(1, Math.ceil(total / limit)), hasNextPage: page * limit < total },
     });
   } catch (error: any) {
     sendError(res, error);
@@ -192,7 +185,8 @@ export const getGroupBySlug = async (req: AuthenticatedRequest, res: Response) =
         g.*,
         u.username as creator_username,
         u.display_name as creator_name,
-        u.avatar_url as creator_avatar
+        u.avatar_url as creator_avatar,
+        (SELECT COUNT(*)::int FROM stories WHERE group_id = g.id AND approval_status = 'approved') AS story_count
       FROM translation_groups g
       JOIN users u ON g.created_by = u.id
       WHERE g.slug = $1;
@@ -244,7 +238,8 @@ export const getGroupBySlug = async (req: AuthenticatedRequest, res: Response) =
         s.last_chapter_at, s.author_name
       FROM stories s
       WHERE s.group_id = $1 AND s.approval_status = 'approved'
-      ORDER BY s.last_chapter_at DESC NULLS LAST, s.created_at DESC;
+      ORDER BY s.last_chapter_at DESC NULLS LAST, s.created_at DESC
+      LIMIT 200; -- shortcut: a group page lists its 200 most recently updated stories; page it when a group has more
     `, [group.id]);
 
     group.stories = storiesRes.rows;
