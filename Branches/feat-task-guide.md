@@ -3,7 +3,7 @@
 - **Mục tiêu:** Giao việc dễ hiểu + trang hướng dẫn có ảnh; bỏ hướng dẫn ở trang chủ; kiểm tra thông báo/tin nhắn của ws
 - **Tạo từ:** `origin/main` @ afe2ed2, ngày 2026-10-12
 - **Trạng thái:** xong
-- **PR:** (điền sau khi mở)
+- **PR:** https://github.com/amthls/nmv/pull/95
 - **Plan:** Plan/ui-overhaul.md (B7)
 
 ## Thay đổi
