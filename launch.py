@@ -21,7 +21,7 @@ Options for "up": --no-build (reuse existing images), --timeout SECONDS (default
                   --download-ratio R (default 0.3: after crawling, EPUB/PDF downloads are turned on
                   for a random 30% of the imported stories; 0 = off).
 After a successful start, scripts/crawler.py runs in the background (log: logs/crawler.log) and
-imports stories (MangaDex, TopTruyen, NetTruyen, Valvrare) until the site has --crawl-target stories; it exits at once
+imports stories (MangaDex, TopTruyen, Valvrare) until the site has --crawl-target stories; it exits at once
 when there are already enough.
 By default the seeders run only when the database has no stories yet (fresh install).
 Sample accounts (password123) are created by `identity seed-demo`, only into an empty identity_db.
