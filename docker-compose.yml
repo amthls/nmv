@@ -177,7 +177,7 @@ services:
   # 2. catalog: stories, chapters, groups, views (Node.js / Express), formerly `backend` (Plan/catalog.md)
   # ============================================================================
   catalog:
-    # Local: built from source. CI/CD: pulled from the registry (IMAGE_REGISTRY / IMAGE_TAG), see .github/workflows
+    # Local: built from source. A server may pull prebuilt images instead (IMAGE_REGISTRY / IMAGE_TAG)
     image: ${IMAGE_REGISTRY:-local}/nmv-catalog:${IMAGE_TAG:-latest}
     build:
       context: ./catalog

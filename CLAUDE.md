@@ -18,14 +18,15 @@ Service chính `catalog` (thư mục `catalog/`, trước đây tên `backend`; 
    Script tự fetch, tạo nhánh (không track `main`) và tạo file thông tin nhánh. Thay đổi chưa commit được mang theo.
 2. **Mỗi nhánh có file `Branches/<tên-nhánh với / đổi thành ->.md`** (ví dụ `Branches/feat-forgot-password.md`).
    Cập nhật trong cùng commit với code: mục tiêu, trạng thái, danh sách thay đổi, migration/biến môi trường mới,
-   đã kiểm tra những gì, link PR, plan liên quan. CI (job `branch-info`) báo đỏ nếu PR thiếu file này.
+   đã kiểm tra những gì, link PR, plan liên quan. Không có CI kiểm file này: tự nhớ thêm trước khi mở PR.
 3. **PR đã merge thì nhánh đó coi như đóng.** Việc tiếp theo, kể cả sửa nhỏ cho PR vừa merge, phải tạo nhánh mới
    bằng script. Trước khi push, kiểm tra: `git fetch && git log origin/main..HEAD` chỉ chứa commit của việc hiện tại.
-4. Làm xong và đã kiểm tra trên máy (test, `scripts/*-smoke.py`, trình duyệt; CI không còn job smoke) thì **tự commit, push, mở PR vào `main` và tự merge** (squash),
-   không cần chờ chủ dự án duyệt (chủ dự án quyết định 2026-10-10). Không merge khi CI có check đỏ. Không xếp chồng PR
+4. Làm xong và đã kiểm tra trên máy thì **tự commit, push, mở PR vào `main` và tự merge** (squash, `gh pr merge --squash --delete-branch`),
+   không cần chờ chủ dự án duyệt (chủ dự án quyết định 2026-10-10). **Không còn GitHub Actions** (chủ dự án gỡ 2026-10-12 vì tốn tiền):
+   trước khi merge tự chạy typecheck + test của phần đã sửa (bảng lệnh dưới), `scripts/*-smoke.py` và trình duyệt khi đụng UI. Không xếp chồng PR
    (PR nhắm vào nhánh khác `main`): mỗi việc một PR thẳng vào `main`. Commit kết thúc bằng dòng Co-Authored-By.
 5. Không bao giờ commit `.env` hay token. Token bị dán vào chat coi như đã lộ: nhắc chủ dự án thu hồi.
-6. PR của Dependabot: bản vá/nhỏ CI xanh thì merge được; bản lớn (major) như Postgres, Prisma, Next, Tailwind,
+6. PR của Dependabot (không còn tự merge): bản vá/nhỏ chạy typecheck + test trên máy xanh thì merge được; bản lớn (major) như Postgres, Prisma, Next, Tailwind,
    RabbitMQ, Node lẻ phải làm thành việc riêng có plan. **Postgres đổi major là volume cũ không chạy được.**
 
 ## Kế hoạch (Plan/)
