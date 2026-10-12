@@ -10,7 +10,7 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import PageLoader from '@/components/common/PageLoader';
 import UploadModeSwitch from '@/components/story/UploadModeSwitch';
-import { CHOSEN_PARAM, chapterUploadHref } from '@/lib/chapterUpload';
+import { chapterUploadHref } from '@/lib/chapterUpload';
 import MangaReader from '@/components/reader/MangaReader';
 import {
   CollectResult, RejectedFile, UploadError, UploadedPage, filesFromDataTransfer, filesFromInput, formatBytes,
@@ -64,7 +64,6 @@ function MangaUploadContent() {
   // ?story_id= preselects a story, ?group_id= (from a group page) narrows the list to that group
   const initialStoryId = searchParams?.get('story_id') || '';
   const groupId = searchParams?.get('group_id') || '';
-  const modeChosen = searchParams?.get(CHOSEN_PARAM) === '1';
 
   const [stories, setStories] = useState<MangaStory[]>([]);
   const [storyId, setStoryId] = useState('');
@@ -95,21 +94,15 @@ function MangaUploadContent() {
       .then((r) => r.json())
       .then((json) => {
         const all: any[] = json.data || [];
-        // A novel is written in the text editor, not uploaded as pages: switch uploader
+        // A novel is written in the text editor (its own route): say so, do not jump there
         const wanted = all.find((s) => s.id === initialStoryId);
         if (wanted && wanted.story_type !== 'manga') {
-          router.replace(chapterUploadHref({ storyType: wanted.story_type, storyId: wanted.id, groupId }));
-          return;
+          setNotice({ kind: 'error', text: `“${wanted.title}” là truyện chữ, hãy dùng trang Đăng chương truyện chữ (tab bên trên).` });
         }
         const inScope = all.filter((s) => !groupId || s.group_id === groupId);
         const list = inScope.filter((s) => s.story_type === 'manga');
-        // Only novels to choose from: the text editor is the right place
-        if (!modeChosen && !wanted && list.length === 0 && inScope.length > 0) {
-          router.replace(chapterUploadHref({ storyType: 'novel', groupId }));
-          return;
-        }
         setStories(list);
-        if (wanted) setStoryId(wanted.id);
+        if (wanted?.story_type === 'manga') setStoryId(wanted.id);
         else if (list.length === 1) setStoryId(list[0].id);
       })
       .catch(() => setNotice({ kind: 'error', text: 'Không tải được danh sách truyện bạn quản lý.' }));

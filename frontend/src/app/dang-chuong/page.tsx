@@ -33,7 +33,7 @@ import { useAuth } from '@/context/AuthContext';
 import { csrfToken } from '@/lib/session';
 import PageLoader from '@/components/common/PageLoader';
 import UploadModeSwitch from '@/components/story/UploadModeSwitch';
-import { CHOSEN_PARAM, chapterUploadHref } from '@/lib/chapterUpload';
+import { chapterUploadHref } from '@/lib/chapterUpload';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 const WS_URL = '/api/ws';
@@ -51,7 +51,6 @@ function ChapterEditorContent() {
   const initialStoryId = searchParams?.get('story_id') || '';
   // ?group_id=<id> (from a group page) narrows the story list to that group
   const groupId = searchParams?.get('group_id') || '';
-  const modeChosen = searchParams?.get(CHOSEN_PARAM) === '1';
   // ?edit=<chapterId>: a novel chapter opens (or reopens) the caller's draft of it and moves to ?draft=;
   // a manga chapter stays here to edit its title / number / volume
   const editId = searchParams?.get('edit') || '';
@@ -308,35 +307,13 @@ function ChapterEditorContent() {
   const novelStories = shownStories.filter((s) => s.story_type !== 'manga');
   const mangaStories = shownStories.filter((s) => s.story_type === 'manga');
 
-  // A manga is uploaded as page images, not written here: hand it to the manga uploader
-  const openMangaUploader = (storyId: string, replace = false) => {
-    const href = chapterUploadHref({ storyType: 'manga', storyId, groupId });
-    if (replace) router.replace(href);
-    else router.push(href);
-  };
+  const pickStory = (storyId: string) => setSelectedStoryId(storyId);
 
-  const pickStory = (storyId: string) => {
-    const story = stories.find((s) => s.id === storyId);
-    if (story?.story_type === 'manga') {
-      if ((chapterTitle.trim() || bodyHtml.trim()) && !window.confirm('Đây là truyện tranh, sẽ chuyển sang trình đăng truyện tranh và bỏ nội dung đang soạn. Tiếp tục?')) return;
-      openMangaUploader(storyId);
-      return;
-    }
-    setSelectedStoryId(storyId);
-  };
+  // A manga is uploaded as page images in its own route; say so instead of jumping there
+  const wrongTypeStory = !isEditMode && !draft ? mangaStories.find((s) => s.id === selectedStoryId) : undefined;
 
-  // Pick the uploader automatically: a ?story_id= of a manga (old links, bookmarks), or only manga to choose from
-  useEffect(() => {
-    if (isEditMode || isLoadingStories) return;
-    if (initialStoryId) {
-      const story = stories.find((s) => s.id === initialStoryId);
-      if (story?.story_type === 'manga') openMangaUploader(initialStoryId, true);
-      return;
-    }
-    if (!modeChosen && novelStories.length === 0 && mangaStories.length > 0) {
-      router.replace(chapterUploadHref({ storyType: 'manga', groupId }));
-    }
-  }, [stories, isLoadingStories]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Back goes where the user came from (workspace, group page, story page...), not to a fixed page
+  const goBack = () => (window.history.length > 1 ? router.back() : router.push('/ws'));
 
   // When story changes, load story detail (volumes & latest chapter number)
   useEffect(() => {
@@ -576,7 +553,7 @@ function ChapterEditorContent() {
           setTimeout(() => {
             const storySlug = editJson.data?.story_slug || selectedStory?.slug;
             const chapterSlug = editJson.data?.slug;
-            router.push(storySlug && chapterSlug ? `/truyen/${storySlug}/${chapterSlug}` : '/nhom-dich');
+            router.push(storySlug && chapterSlug ? `/truyen/${storySlug}/${chapterSlug}` : '/ws');
           }, 1200);
         } else {
           setErrorMsg(editJson.message || 'Cập nhật chương thất bại.');
@@ -742,13 +719,14 @@ function ChapterEditorContent() {
 
       {/* Back Button */}
       <div>
-        <Link
-          href={draftParam || draft ? '/ws' : '/nhom-dich'}
+        <button
+          type="button"
+          onClick={goBack}
           className="inline-flex items-center gap-2 text-xs font-semibold text-gray-400 hover:text-white transition"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>{draftParam || draft ? 'Về Workspace (nháp của tôi)' : 'Quay lại Quản Lý Nhóm Dịch'}</span>
-        </Link>
+          <span>Quay lại</span>
+        </button>
       </div>
 
       {!isEditMode && !draft && !draftParam && <UploadModeSwitch mode="novel" groupId={groupId} />}
@@ -998,13 +976,6 @@ function ChapterEditorContent() {
                   ))}
                 </optgroup>
               )}
-              {!isEditMode && mangaStories.length > 0 && (
-                <optgroup label="Truyện tranh (mở trình đăng truyện tranh)">
-                  {mangaStories.map((s) => (
-                    <option key={s.id} value={s.id}>{s.title}{s.group_name ? ` (${s.group_name})` : ''}</option>
-                  ))}
-                </optgroup>
-              )}
               {(isEditMode || draft) && selectedStoryId && !novelStories.some((s) => s.id === selectedStoryId) && (
                 <option value={selectedStoryId}>{selectedStory?.title || 'Truyện của bản nháp'}</option>
               )}
@@ -1016,6 +987,12 @@ function ChapterEditorContent() {
             ) : shownStories.length === 0 && (
               <p className="text-[10px] text-amber-400 mt-1">
                 Bạn chưa sở hữu, chưa là thành viên nhóm dịch, hoặc chưa là cộng tác viên của bộ truyện nào. Hãy <Link href="/dang-truyen" className="underline">Đăng truyện mới</Link> trước.
+              </p>
+            )}
+            {wrongTypeStory && (
+              <p className="text-[11px] text-amber-400 mt-1">
+                “{wrongTypeStory.title}” là truyện tranh, chương của nó đăng bằng trang riêng:{' '}
+                <Link href={chapterUploadHref({ storyType: 'manga', storyId: wrongTypeStory.id, groupId })} className="underline font-semibold">mở trình đăng truyện tranh</Link>
               </p>
             )}
             {!isEditMode && groupId && (

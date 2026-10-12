@@ -7,10 +7,10 @@ Làm theo thứ tự, xong mục nào đổi `[x]`. Mỗi cụm là một PR và
 - [x] A2. Thêm "Hướng dẫn quy trình làm chương" mở/đóng được (`components/home/WorkflowGuide.tsx`)
 
 ## B. Đăng chương + workspace (nhánh feat/ws-flow)
-- [ ] B1. `/dang-chuong` không tự chuyển về nhóm dịch: nút quay lại theo `history`/nguồn vào, không cứng `/nhom-dich`
-- [ ] B2. Truyện chữ / truyện tranh: bỏ cách "tự nhảy theo truyện đã chọn", dùng hai route thật (`/dang-chuong` và `/dang-truyen-tranh`) với tab điều hướng thật; chọn truyện sai loại thì hiện gợi ý, không tự chuyển trang
-- [ ] B3. `/ws` thiết kế lại: danh sách truyện của nhóm → bấm ra dải chảy ngang (kiểu màn hình chủ PS5) theo danh mục (tập) → chương → phiên bản (xem, dùng bản đó)
-- [ ] B4. Giao diện nhóm dịch `/nhom-dich` đơn giản, nút rõ việc
+- [x] B1. `/dang-chuong` không tự chuyển về nhóm dịch: nút quay lại theo `history`/nguồn vào, không cứng `/nhom-dich`
+- [x] B2. Truyện chữ / truyện tranh: bỏ cách "tự nhảy theo truyện đã chọn", dùng hai route thật (`/dang-chuong` và `/dang-truyen-tranh`) với tab điều hướng thật; chọn truyện sai loại thì hiện gợi ý, không tự chuyển trang
+- [x] B3. `/ws` thiết kế lại: danh sách truyện của nhóm → bấm ra dải chảy ngang (kiểu màn hình chủ PS5) theo danh mục (tập) → chương → phiên bản (xem, dùng bản đó)
+- [ ] B4. (hoãn) Giao diện nhóm dịch `/nhom-dich` đơn giản hơn: chưa làm
 
 ## C. Trình đọc (nhánh feat/reader-responsive)
 - [ ] C1. Cài đặt đọc truyện chữ co giãn theo màn hình, cuộn được khi thiếu chỗ

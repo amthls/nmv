@@ -8,7 +8,6 @@ import { draftLabel } from '@/components/workspace/DraftRow';
 import { useAuth } from '@/context/AuthContext';
 import PageLoader from '@/components/common/PageLoader';
 import { DraftRow } from '@/components/workspace/DraftRow';
-import { CHOSEN_PARAM } from '@/lib/chapterUpload';
 import TaskCard from '@/components/workspace/TaskCard';
 import AssignForm from '@/components/workspace/AssignForm';
 
@@ -99,7 +98,7 @@ export default function StoryWorkspacePage() {
         </div>
         {story.story_type !== 'manga' && (
           <Link
-            href={`/dang-chuong?story_id=${story.id}&${CHOSEN_PARAM}=1`}
+            href={`/dang-chuong?story_id=${story.id}`}
             className="shrink-0 px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow text-xs font-bold flex items-center gap-1.5 w-fit"
           >
             <Plus className="w-4 h-4" /> Chương mới
