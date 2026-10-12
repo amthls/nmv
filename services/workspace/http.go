@@ -57,6 +57,7 @@ type server struct {
 	db    *pgxpool.Pool
 	now   func() time.Time
 	perms *permCache
+	quota *writeQuota // nil: no write quotas (tests)
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

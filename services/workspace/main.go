@@ -48,7 +48,7 @@ func main() {
 		logError(ctx, "migrate: "+err.Error())
 		os.Exit(1)
 	}
-	s := &server{cfg: cfg, db: db, now: time.Now, perms: &permCache{m: map[string]permEntry{}}}
+	s := &server{cfg: cfg, db: db, now: time.Now, perms: &permCache{m: map[string]permEntry{}}, quota: newWriteQuota()}
 
 	if cmd == "republish" {
 		if err := republish(ctx, db, strings.Join(os.Args[2:], "")); err != nil {
@@ -69,7 +69,7 @@ func main() {
 	go s.scheduleLoop(ctx)
 	srv := &http.Server{
 		Addr:              ":" + cfg.Port,
-		Handler:           withRequestLog(s.routes()),
+		Handler:           withRequestLog(s.limitWrites(s.routes())),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       30 * time.Second,
 		WriteTimeout:      30 * time.Second,
