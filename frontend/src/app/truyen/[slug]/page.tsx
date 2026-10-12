@@ -265,18 +265,17 @@ export default function StoryDetailPage() {
           </span>
         </Link>
 
-        <div className="flex items-center gap-4 text-[11px] text-gray-400 shrink-0 ml-3">
-          {ch.word_count > 0 && (
-            <span className="hidden sm:inline">{ch.word_count.toLocaleString()} chữ</span>
-          )}
-          <span className="flex items-center gap-1">
+        <div className="flex items-center gap-4 text-[11px] text-gray-400 shrink-0 ml-3 tabular-nums">
+          {/* fixed-width columns so word count, views and the link line up from row to row */}
+          <span className="hidden sm:inline w-20 text-right">{ch.word_count > 0 ? `${ch.word_count.toLocaleString()} chữ` : ''}</span>
+          <span className="flex items-center justify-end gap-1 w-14">
             <Eye className="w-3 h-3 text-cyan-400" />
             {typeof ch.total_views === 'number' ? ch.total_views.toLocaleString() : ch.total_views || 0}
           </span>
           
           <Link
             href={`/truyen/${story.slug}/${ch.slug}`}
-            className="text-brand-400 font-medium group-hover:translate-x-1 transition-transform"
+            className="text-brand-400 font-medium w-16 text-right hover:text-brand-300 transition-colors"
           >
             Đọc ngay
           </Link>

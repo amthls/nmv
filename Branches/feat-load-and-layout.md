@@ -14,6 +14,7 @@
 - `/fandom` khung `max-w-7xl`, `/nhom-dich` lưới `auto-fill`
 - `/thong-bao`: ô tìm (`GET /notifications?q=`), trễ 400 ms, mờ khi tải
 - Lưới thẻ tự co giãn (`auto-fill`) ở bookmark, album, hồ sơ người dùng, trang nhóm, workspace nhóm
+- Danh sách chương ở trang truyện: cột số chữ, lượt xem, "Đọc ngay" rộng cố định nên thẳng hàng giữa các chương
 - Tải EPUB/PDF: nghỉ 15 giây giữa hai lần tạo tệp (nút đếm ngược, giữ cả khi đóng mở lại hộp thoại)
 - `scripts/crawler.py`: bỏ hai nguồn không cào được (NetTruyen, TruyenYY), còn MangaDex, TopTruyen, Valvrare
 - `scripts/crawler.py`: thêm `--delay` (mặc định 2 giây giữa hai yêu cầu cùng một trang, nghỉ thêm giữa hai truyện); sau khi nhập truyện chạy `workspace import` để chương mới có phiên bản 1 trong workspace
