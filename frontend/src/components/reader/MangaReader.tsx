@@ -335,9 +335,11 @@ function PageImage({ page, local, eager, style }: { page: MangaPage; local: bool
     setState('loading');
   }, [wanted, attempt]);
 
-  const ratio = page.width && page.height ? `${page.width} / ${page.height}` : '3 / 4';
+  const known = Boolean(page.width && page.height);
+  const ratio = known ? `${page.width} / ${page.height}` : '3 / 4';
+  // a page of known size waits in a box of its real height (thin strip slices too), so nothing jumps when it arrives
   return (
-    <div className="relative" style={state === 'ok' ? { display: 'contents' } : { width: '100%', aspectRatio: ratio, minHeight: 240 }}>
+    <div className="relative" style={state === 'ok' ? { display: 'contents' } : { width: '100%', aspectRatio: ratio, minHeight: known ? undefined : 240 }}>
       <img
         key={attempt}
         src={src}

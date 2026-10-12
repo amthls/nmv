@@ -90,6 +90,8 @@ export async function resizeUploadedImage(req: Request, res: Response, next: Nex
     const key = crypto.createHash('sha1').update(`${source}:${stat.mtimeMs}:${width}`).digest('hex');
     const target = path.join(CACHE_DIR, `${key}.webp`);
     if (!fs.existsSync(target)) await buildVariant(source, target, width);
+    // a page barely wider than the target (820px for 800) can come out heavier as WebP: then the original is better
+    if (fs.statSync(target).size >= stat.size) return next();
 
     res.set('Cache-Control', 'public, max-age=31536000, immutable');
     res.type('image/webp');

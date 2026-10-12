@@ -171,9 +171,15 @@ function ExplorePageContent() {
     return () => clearTimeout(timer);
   }, [fetchStories]);
 
-  const handleFilterChange = (newFilters: FilterState) => {
-    setFilters(newFilters);
+  // The sidebar edits a draft; nothing is sent until "Tìm" (Plan/load.md, like MangaDex's Search button). One-click
+  // actions (Đặt lại, removing a chip, sort, page) still apply at once: one request each.
+  const [draft, setDraft] = useState<FilterState>(filters);
+  useEffect(() => { setDraft(filters); }, [filters]);
+  const dirty = JSON.stringify(draft) !== JSON.stringify(filters);
+  const applyDraft = () => {
+    setFilters(draft);
     setCurrentPage(1);
+    setIsMobileFilterOpen(false);
   };
 
   const handleResetFilters = () => {
@@ -255,9 +261,11 @@ function ExplorePageContent() {
         {/* Left Filter Sidebar */}
         <FilterSidebar
           categories={categories}
-          filters={filters}
-          onFilterChange={handleFilterChange}
+          filters={draft}
+          onFilterChange={setDraft}
           onReset={handleResetFilters}
+          onApply={applyDraft}
+          dirty={dirty}
           isOpenMobile={isMobileFilterOpen}
           onCloseMobile={() => setIsMobileFilterOpen(false)}
         />
