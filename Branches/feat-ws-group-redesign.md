@@ -3,7 +3,7 @@
 - **Mục tiêu:** Thiết kế lại /ws (dòng chảy kiểu PS5) và giao diện nhóm dịch cho trực quan
 - **Tạo từ:** `origin/main` @ 079fd40, ngày 2026-10-12
 - **Trạng thái:** xong
-- **PR:** (điền sau khi mở)
+- **PR:** https://github.com/amthls/nmv/pull/92
 - **Plan:** Plan/ui-overhaul.md (B4)
 
 ## Thay đổi
