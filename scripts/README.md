@@ -3,8 +3,6 @@
 | File | What it does |
 |:---|:---|
 | `launch.py` | **Main script.** Starts the whole NovelHub project with Docker, adds sample data and checks that everything works. |
-| `writer.py` | Old helper: decodes base64 from stdin and writes it to a file (`python writer.py <path>`). Not needed to run the project. |
-| `update_backend.py`, `update_all_backend.py` | Old Windows helpers that only print a hard-coded `C:\Users\...` path. They do nothing useful. |
 
 The rest of this guide is about `launch.py`.
 
