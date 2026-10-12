@@ -10,7 +10,6 @@ import {
   User, 
   ShieldCheck, 
   Layers, 
-  ChevronRight, 
   MessageSquare,
   Sparkles,
   AlertCircle,
@@ -27,6 +26,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 import SmartImage from '@/components/common/SmartImage';
+import { goBack } from '@/lib/nav';
 import CommentSection from '@/components/comments/CommentSection';
 import ReportButton from '@/components/common/ReportButton';
 import DownloadModal from '@/components/story/DownloadModal';
@@ -218,7 +218,7 @@ export default function StoryDetailPage() {
       const json = await res.json();
       if (res.ok && json.success) {
         alert('Đã xóa bộ truyện thành công.');
-        router.push('/kham-pha');
+        goBack(router, '/');
       } else {
         alert(json.message || 'Xóa truyện thất bại.');
       }
@@ -404,15 +404,6 @@ export default function StoryDetailPage() {
 
         {/* header content always uses the dark palette: white text on the darkened art */}
         <div className="dark relative px-5 sm:px-8 lg:px-10 pt-6 pb-8 md:pt-8 md:pb-10 [text-shadow:0_1px_8px_rgba(0,0,0,0.45)]">
-          
-          {/* Breadcrumbs */}
-          <div className="flex items-center gap-2 text-xs text-gray-400 mb-6">
-            <Link href="/" className="hover:text-white transition">Trang chủ</Link>
-            <ChevronRight className="w-3.5 h-3.5 text-gray-600" />
-            <Link href="/kham-pha" className="hover:text-white transition">Khám phá</Link>
-            <ChevronRight className="w-3.5 h-3.5 text-gray-600" />
-            <span className="text-gray-200 font-medium truncate max-w-xs">{story.title}</span>
-          </div>
 
           {isRemoved && (
             <div className="mb-6 p-4 rounded-2xl border text-xs flex flex-col sm:flex-row sm:items-center gap-3 [text-shadow:none] bg-rose-500/20 border-rose-500/30 text-rose-200">

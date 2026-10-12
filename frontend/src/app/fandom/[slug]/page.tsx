@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import BackLink from '@/components/common/BackLink';
+import { goBack } from '@/lib/nav';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import {
@@ -106,7 +107,7 @@ export default function PostDetailPage() {
 
   const handleDelete = () => {
     if (!confirm('Xóa bài viết này? Không thể hoàn tác.')) return;
-    action('', { method: 'DELETE' }, () => router.push('/fandom'));
+    action('', { method: 'DELETE' }, () => goBack(router, '/fandom'));
   };
   const handleHide = () => {
     const reason = prompt('Lý do gỡ bài viết (người đăng sẽ thấy, có thể để trống):');

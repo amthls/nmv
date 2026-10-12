@@ -29,6 +29,14 @@ Service chính `catalog` (thư mục `catalog/`, trước đây tên `backend`; 
 6. PR của Dependabot (không còn tự merge): bản vá/nhỏ chạy typecheck + test trên máy xanh thì merge được; bản lớn (major) như Postgres, Prisma, Next, Tailwind,
    RabbitMQ, Node lẻ phải làm thành việc riêng có plan. **Postgres đổi major là volume cũ không chạy được.**
 
+## Điều hướng "quay lại" (Plan/navigation.md)
+
+- **Không breadcrumb**, không link ghi cứng giả làm nút quay lại (kiểu `Trang chủ > Khám phá` bất kể người dùng đến từ đâu).
+- Chỉ 3 cách, đều dựa trên `frontend/src/lib/nav.ts` (ngăn xếp trang trong site của từng tab):
+  `<BackLink href="/x">` đến **đúng trang X** như nhãn (lùi lại chỉ khi trang trước đúng là X);
+  `<BackButton fallback>` "Quay lại" về trang trước trong site, không có thì về fallback; `goBack(router, fallback)` sau một thao tác.
+- Cấm `router.back()`, `window.history.back/length` ở chỗ khác. Chạy `sh scripts/check-nav.sh` trước khi merge thay đổi frontend.
+
 ## Kế hoạch (Plan/)
 
 Việc nhiều bước: **viết `Plan/<tên>.md` có checklist `[ ]` trước khi sửa code**, ghi cả bẫy phát hiện được.

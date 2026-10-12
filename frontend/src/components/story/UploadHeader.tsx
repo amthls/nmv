@@ -1,8 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useRouter } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
+import { BackButton } from '@/components/common/BackLink';
 import UploadModeSwitch from './UploadModeSwitch';
 import { UploadMode } from '@/lib/chapterUpload';
 
@@ -21,16 +20,9 @@ export default function UploadHeader({
   description: React.ReactNode;
   aside?: React.ReactNode;
 }) {
-  const router = useRouter();
   return (
     <div className="space-y-4">
-      <button
-        type="button"
-        onClick={() => (window.history.length > 1 ? router.back() : router.push('/ws'))}
-        className="inline-flex items-center gap-2 text-xs font-semibold text-gray-400 hover:text-white transition"
-      >
-        <ArrowLeft className="w-4 h-4" /> Quay lại
-      </button>
+      <BackButton fallback="/ws" />
       {showSwitch && <UploadModeSwitch mode={mode} groupId={groupId} />}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div className="space-y-1">

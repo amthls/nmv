@@ -1,10 +1,10 @@
 'use client';
 
 import React, { Suspense } from 'react';
-import BackLink from '@/components/common/BackLink';
+import { BackButton } from '@/components/common/BackLink';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { BookOpen, ArrowLeft, Lock, LogIn } from 'lucide-react';
+import { BookOpen, Lock, LogIn } from 'lucide-react';
 import StoryForm from '@/components/story/StoryForm';
 import { useAuth } from '@/context/AuthContext';
 import PageLoader from '@/components/common/PageLoader';
@@ -45,13 +45,7 @@ function CreateStoryContent() {
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-8 pb-24">
 
       <div>
-        <BackLink
-          href="/nhom-dich"
-          className="inline-flex items-center gap-2 text-xs font-semibold text-gray-400 hover:text-white transition"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Quay lại Nhóm Dịch</span>
-        </BackLink>
+        <BackButton fallback="/nhom-dich" />
       </div>
 
       <div className="p-6 sm:p-8 rounded-3xl border border-brand-500/20 bg-glass bg-gradient-to-r from-brand-950/60 via-surface-2 to-surface space-y-2 shadow-xl">
