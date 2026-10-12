@@ -7,7 +7,7 @@
 - **Plan:** không có
 
 ## Thay đổi
-- `frontend/src/app/truyen/[slug]/page.tsx`: ô lượt xem mỗi chương đổi `justify-end` thành `justify-between`, icon mắt luôn ở lề trái ô, số lượt xem căn phải. Trước đây cả cụm icon+số dồn phải nên icon lệch theo độ dài số.
+- `frontend/src/app/truyen/[slug]/page.tsx`: ô lượt xem mỗi chương đổi thứ tự thành số trước, icon mắt sau (căn phải), nên icon mắt luôn thẳng hàng ở mép phải. Trước đây icon đứng trước số nên lệch theo độ dài số.
 
 ## Migration / biến môi trường mới
 - Không có

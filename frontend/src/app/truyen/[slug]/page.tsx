@@ -270,9 +270,9 @@ export default function StoryDetailPage() {
           canManage ? 'grid-cols-[4.25rem_3.5rem_3.5rem] sm:grid-cols-[4.5rem_4.25rem_3.5rem_3.5rem]' : 'grid-cols-[4.25rem_3.5rem] sm:grid-cols-[4.5rem_4.25rem_3.5rem]'
         }`}>
           <span className="hidden sm:block text-right">{ch.word_count > 0 ? `${ch.word_count.toLocaleString()} chữ` : ''}</span>
-          <span className="flex items-center justify-between gap-1">
-            <Eye className="w-3 h-3 text-cyan-400 shrink-0" />
+          <span className="flex items-center justify-end gap-1">
             {typeof ch.total_views === 'number' ? ch.total_views.toLocaleString() : ch.total_views || 0}
+            <Eye className="w-3 h-3 text-cyan-400 shrink-0" />
           </span>
           
           <Link
