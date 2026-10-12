@@ -2,6 +2,7 @@ import { pool } from '../config/db';
 import { callCommunity } from './communityClient';
 import { purgeLibrary } from './libraryClient';
 import { removeStoryFromIndex } from './search.service';
+import { bumpPublicCache } from '../middlewares/cache';
 
 /**
  * Delete a story for good: its rows here in one transaction, then its search entry, its comments (community) and its
@@ -38,6 +39,7 @@ export async function purgeStory(id: string, removedDays?: number): Promise<bool
     const gone = await client.query(`DELETE FROM stories WHERE id = $1`, [id]);
     await client.query('COMMIT');
     if (gone.rowCount === 0) return false;
+    await bumpPublicCache(); // the 60-day purge runs on a timer, not as a request
   } catch (txErr) {
     await client.query('ROLLBACK');
     throw txErr;
