@@ -2,7 +2,7 @@
 
 import React, { Suspense } from 'react';
 import { BackButton } from '@/components/common/BackLink';
-import Link from 'next/link';
+import Link from '@/components/common/Link';
 import { useSearchParams } from 'next/navigation';
 import { BookOpen, Lock, LogIn } from 'lucide-react';
 import StoryForm from '@/components/story/StoryForm';

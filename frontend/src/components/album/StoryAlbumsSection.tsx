@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/common/Link';
 import { ChevronLeft, ChevronRight, Library, Plus, Shuffle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { AlbumSummary, albumPath, readJson } from '@/lib/albums';

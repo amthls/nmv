@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
+import Link from '@/components/common/Link';
 import { GitMerge } from 'lucide-react';
 
 /** One of my open drafts (workspace pages): where it stands against the official version. */

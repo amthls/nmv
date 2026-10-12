@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/common/Link';
 import { useParams, useRouter } from 'next/navigation';
 import { Hash } from 'lucide-react';
 import PageLoader from '@/components/common/PageLoader';

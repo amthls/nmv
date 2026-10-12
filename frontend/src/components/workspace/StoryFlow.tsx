@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/common/Link';
 import { BookOpen, FileText, GitMerge, History, Loader2, Pencil, Plus, RotateCcw, Users } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { chapterUploadHref } from '@/lib/chapterUpload';

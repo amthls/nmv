@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import Link from '@/components/common/Link';
 import { FileText, Images } from 'lucide-react';
 import { UploadMode, chapterUploadHref } from '@/lib/chapterUpload';
 

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import Link from 'next/link';
+import Link from '@/components/common/Link';
 import { usePathname, useRouter } from 'next/navigation';
 import { 
   Search, 

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
+import Link from '@/components/common/Link';
 import { Eye, BookOpen, Heart } from 'lucide-react';
 import { Story, formatCount, formatTimeAgo } from './StoryCardGrid';
 import SmartImage from '@/components/common/SmartImage';

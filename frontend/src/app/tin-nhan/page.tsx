@@ -1,7 +1,7 @@
 'use client';
 
 import React, { Suspense, useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/common/Link';
 import { useSearchParams } from 'next/navigation';
 import {
   ArrowLeft, Ban, Check, ChevronDown, LogIn, MessageCircle, Pin, PinOff, Search, Send, Settings2, Tag, X,

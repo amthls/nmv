@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import BackLink from '@/components/common/BackLink';
-import Link from 'next/link';
+import Link from '@/components/common/Link';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Check, GitCompare, GitMerge, MessageSquare, Pencil, Undo2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';

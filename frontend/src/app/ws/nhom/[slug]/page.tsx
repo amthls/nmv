@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import BackLink from '@/components/common/BackLink';
-import Link from 'next/link';
+import Link from '@/components/common/Link';
 import { useParams } from 'next/navigation';
 import { Activity, ArrowLeft, BookOpen, GitMerge, MessageCircle, Settings, Users } from 'lucide-react';
 import SmartImage from '@/components/common/SmartImage';

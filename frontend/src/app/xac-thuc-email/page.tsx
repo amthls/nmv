@@ -1,7 +1,7 @@
 'use client';
 
 import React, { Suspense, useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/common/Link';
 import { useSearchParams } from 'next/navigation';
 import { MailCheck } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';

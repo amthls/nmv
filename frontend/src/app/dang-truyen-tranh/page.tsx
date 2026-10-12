@@ -1,7 +1,7 @@
 'use client';
 
 import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/common/Link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   AlertTriangle, ArrowDownAZ, BookOpenCheck, ChevronDown, Download, ArrowLeft, ArrowLeftRight, ArrowRight, CheckCircle2, ClipboardPaste, Eye,

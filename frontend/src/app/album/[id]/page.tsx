@@ -1,7 +1,7 @@
 'use client';
 
 import React, { Suspense, useEffect, useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/common/Link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
   AlertCircle,

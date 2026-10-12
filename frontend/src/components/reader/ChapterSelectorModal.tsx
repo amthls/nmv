@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/common/Link';
 import { List, X, Search, Check, BookOpen, Layers } from 'lucide-react';
 
 interface ChapterItem {
