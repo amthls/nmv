@@ -23,6 +23,10 @@ story are taken, and a source that starts answering with bot challenges is dropp
 Images go to uploads/manga/<story-slug>/ (created if missing) and are re-encoded to WebP by the
 media container (sharp); rows are written with psql inside the postgres container, so only the
 Python standard library is needed on the host.
+
+Owners: imported stories are spread round-robin over every translator/author account, once per
+translation group they belong to (no group = independent), so groups and accounts have stories to
+work on. Stories an older crawl left on the admin account are spread the same way on each run.
 """
 import argparse
 import html as htmllib
@@ -635,10 +639,42 @@ class Importer:
         if not rows:
             raise RuntimeError("no admin account found (run the seeders first)")
         self.admin_id = rows[0][0]
-        self.tags = {r[0].lower(): r[1] for r in psql("SELECT name, id FROM tags;")}
+        # who "uploads" imported stories: every translator/author, once per group they are in (no group = independent)
+        self.owners = [(r[0], r[1] or None) for r in psql(f"""
+            SELECT DISTINCT u.id, gm.group_id FROM users u
+              JOIN user_roles r ON r.user_id = u.id AND r.role IN ('translator', 'author')
+              LEFT JOIN group_members gm ON gm.user_id = u.id
+             ORDER BY 1, 2;""")] or [(self.admin_id, None)]
+        self.next_owner = 0
+        self.tags ={r[0].lower(): r[1] for r in psql("SELECT name, id FROM tags;")}
         self.slugs = [r[0] for r in psql("SELECT slug FROM stories;")]
         self.done = {(r[0], r[1]) for r in psql("SELECT source_name, source_id FROM stories WHERE source_id IS NOT NULL;")}
         return count
+
+    def owner(self):
+        with self.lock:
+            o = self.owners[self.next_owner % len(self.owners)]
+            self.next_owner += 1
+            return o
+
+    def reassign_admin_imports(self):
+        """Older crawls put every story on the admin account: spread those over the owners too (once; idempotent)."""
+        if self.owners == [(self.admin_id, None)]:
+            return
+        values = ", ".join(f"({i}, {q(u)}::uuid, {q(g)}::uuid)" for i, (u, g) in enumerate(self.owners))
+        rows = psql(f"""
+            BEGIN;
+            WITH o(i, user_id, group_id) AS (VALUES {values}),
+                 s AS (SELECT id, (row_number() OVER (ORDER BY created_at, id) - 1) % {len(self.owners)} AS i FROM stories
+                        WHERE source_name IS NOT NULL AND group_id IS NULL AND uploader_id = {q(self.admin_id)})
+            UPDATE stories st SET uploader_id = o.user_id, group_id = o.group_id FROM s JOIN o USING (i)
+             WHERE st.id = s.id RETURNING st.id;
+            UPDATE chapters c SET uploader_id = st.uploader_id, group_id = st.group_id FROM stories st
+             WHERE c.story_id = st.id AND st.source_name IS NOT NULL AND c.uploader_id = {q(self.admin_id)}
+               AND st.uploader_id <> {q(self.admin_id)};
+            COMMIT;""")
+        if rows:
+            log(f"reassigned {len(rows)} imported stories from admin to {len(self.owners)} translator/group slots")
 
     # quota shared by all workers
     def reserve(self):
@@ -791,15 +827,16 @@ class Importer:
             key = TAG_ALIASES.get(key, key)
             if key and key in self.tags:
                 tag_ids.add(self.tags[key])
+        uploader, group = self.owner()
         sql = ["BEGIN;", f"""
             INSERT INTO stories (title, slug, original_title, synopsis, cover_image_url, story_type, status,
-                approval_status, approved_by, approved_at, uploader_id, original_language, translated_language,
+                approval_status, approved_by, approved_at, uploader_id, group_id, original_language, translated_language,
                 author_name, artist_name, year_published, total_chapters, total_favorites,
                 total_views, last_chapter_at, source_name, source_id, source_url)
             VALUES ({q(story['title'][:500])}, {q(slug)}, {q((story.get('original_title') or '')[:500] or None)},
                 {q((story.get('synopsis') or '')[:4000] or None)},
                 {q(f'/uploads/manga/{slug}/{cover_file}' if cover_file else None)}, {q(story['story_type'])},
-                {q(story.get('status') or 'ongoing')}, 'approved', {q(self.admin_id)}, NOW(), {q(self.admin_id)},
+                {q(story.get('status') or 'ongoing')}, 'approved', {q(self.admin_id)}, NOW(), {q(uploader)}, {q(group)},
                 {q((story.get('original_language') or 'ja')[:10])}, 'vi', {q((story.get('author') or '')[:200] or None)},
                 {q((story.get('artist') or '')[:200] or None)}, {q(story.get('year'))}, {len(fetched)},
                 {q(int(story.get('follows') or 0))},
@@ -828,9 +865,9 @@ class Importer:
                 words = len(content.split())
             sql.append(f"""
                 INSERT INTO chapters (story_id, title, chapter_number, slug, content, content_blocks, word_count,
-                    is_published, approval_status, uploader_id, published_at, source_group)
+                    is_published, approval_status, uploader_id, group_id, published_at, source_group)
                 VALUES ({sid}, {q(name[:500])}, {number}, {q(ch_slug[:500])}, {q(content)}, {q(json.dumps(blocks, ensure_ascii=False))}::jsonb,
-                    {words}, TRUE, 'approved', {q(self.admin_id)}, NOW(), {q((ch.get('group') or source.label)[:200])});""")
+                    {words}, TRUE, 'approved', {q(uploader)}, {q(group)}, NOW(), {q((ch.get('group') or source.label)[:200])});""")
             if "pages" in body:
                 cid = f"(SELECT id FROM chapters WHERE story_id = {sid} AND chapter_number = {number})"
                 for i, (u, p) in enumerate(zip(urls, body["pages"]), 1):
@@ -886,6 +923,7 @@ class Importer:
         count = self.prepare()
         if not self.args.dry_run:
             give_views_to_unviewed()
+            self.reassign_admin_imports()
         if self.missing <= 0:
             log(f"site already has {count} stories (target {self.args.target}), nothing to do")
             return 0
