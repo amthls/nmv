@@ -5,7 +5,7 @@ import crypto from 'crypto';
 import { RedisStore } from 'rate-limit-redis';
 import { IS_PROD } from '../config/env';
 import { redis } from '../config/redis';
-import type { AuthenticatedRequest } from './auth.middleware';
+import { identityFromHeaders, type AuthenticatedRequest } from './auth.middleware';
 import { currentRequestId } from '../utils/logger';
 
 /**
@@ -67,12 +67,31 @@ export const globalApiLimiter = limiter({
   skip: (req) => req.path === '/health',
 });
 
+const isRead = (req: Request) => req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS';
+// Writes are counted per account when signed in (Plan/load.md B2, like GitHub), so people sharing one network do not
+// use up each other's allowance; guests per address. The signed identity headers are checked here (cheap HMAC)
+// because this runs before the routes' auth.
+const accountOrIpKey = (req: Request) => {
+  const who = identityFromHeaders(req.headers);
+  return who ? `u:${who.id}` : ipKey(req);
+};
+
 /** Anything that changes data. */
 export const writeLimiter = limiter({
   windowMs: 60_000,
   limit: 120,
   message: 'Bạn thao tác quá nhanh. Vui lòng chậm lại một chút.',
-  skip: (req) => req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS',
+  keyGenerator: accountOrIpKey,
+  skip: isRead,
+});
+
+/** Hourly ceiling on writes; draft autosaves (every few seconds while typing) are not counted here. */
+export const writeHourLimiter = limiter({
+  windowMs: 60 * 60_000,
+  limit: 600,
+  message: 'Bạn đã thao tác rất nhiều trong một giờ. Vui lòng thử lại sau.',
+  keyGenerator: accountOrIpKey,
+  skip: (req) => isRead(req) || (req.method === 'PUT' && /^\/drafts\/[^/]+$/.test(req.path)),
 });
 
 /** Login: counts failures only, keyed by address + account so one attacker cannot lock others out. */
