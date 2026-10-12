@@ -6,6 +6,7 @@ import { AuthProvider } from '@/context/AuthContext';
 import { ReadingSessionProvider } from '@/context/ReadingSessionContext';
 import NavigationProgress from '@/components/common/NavigationProgress';
 import NavTracker from '@/components/common/NavTracker';
+import RateLimitNotice from '@/components/common/RateLimitNotice';
 import ContinueReadingMiniplayer from '@/components/reader/ContinueReadingMiniplayer';
 import { THEME_INIT_SCRIPT } from '@/lib/themeScript';
 
@@ -30,6 +31,7 @@ export default function RootLayout({
           <ReadingSessionProvider>
             <NavigationProgress />
             <NavTracker />
+            <RateLimitNotice />
             <Navbar />
             <main className="flex-1">
               {children}

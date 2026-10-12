@@ -59,7 +59,13 @@ function limiter(windowMs: number, limit: number, message: string) {
     standardHeaders: 'draft-7',
     legacyHeaders: false,
     keyGenerator: (req) => userFromHeaders(req)?.id || req.get('x-real-ip') || req.socket.remoteAddress || 'unknown',
-    handler: (_req, res) => res.status(429).json({ success: false, message }),
+    handler: (req, res) => {
+      // how long to wait, so the page can count down instead of failing (Plan/load.md A6)
+      const resetTime: Date | undefined = (req as any).rateLimit?.resetTime;
+      const retryAfter = Math.max(1, Math.ceil((resetTime ? resetTime.getTime() - Date.now() : windowMs) / 1000));
+      res.setHeader('Retry-After', String(retryAfter));
+      res.status(429).json({ success: false, message, retry_after_seconds: retryAfter });
+    },
   });
 }
 // shortcut: in-memory counters, fine for one community container; move to Redis when running several
