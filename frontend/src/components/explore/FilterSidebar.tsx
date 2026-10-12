@@ -9,7 +9,8 @@ import {
   X, 
   Check, 
   Minus,
-  Sparkles 
+  Search,
+  Sparkles
 } from 'lucide-react';
 
 export interface TagCategoryItem {
@@ -38,6 +39,10 @@ interface FilterSidebarProps {
   filters: FilterState;
   onFilterChange: (newFilters: FilterState) => void;
   onReset: () => void;
+  /** Choices only change the form; this sends them (one request, like MangaDex's Search button). */
+  onApply: () => void;
+  /** The form differs from the results on screen. */
+  dirty: boolean;
   isOpenMobile: boolean;
   onCloseMobile: () => void;
 }
@@ -47,6 +52,8 @@ export default function FilterSidebar({
   filters,
   onFilterChange,
   onReset,
+  onApply,
+  dirty,
   isOpenMobile,
   onCloseMobile,
 }: FilterSidebarProps) {
@@ -118,6 +125,17 @@ export default function FilterSidebar({
           <span>Đặt lại</span>
         </button>
       </div>
+
+      <button
+        type="button"
+        onClick={onApply}
+        disabled={!dirty}
+        className={`w-full h-10 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition ${
+          dirty ? 'bg-brand-600 hover:bg-brand-500 text-snow shadow-lg shadow-brand-500/25' : 'bg-white/5 text-gray-500 cursor-default'
+        }`}
+      >
+        <Search className="w-4 h-4" /> {dirty ? 'Tìm với bộ lọc này' : 'Đang hiện theo bộ lọc này'}
+      </button>
 
       {/* 1. Loại Truyện (Story Type) */}
       <div className="space-y-2.5">

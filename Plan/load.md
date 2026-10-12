@@ -23,6 +23,13 @@ Mỗi mục một nhánh + PR. Đo lại sau mỗi mục và ghi số.
 - [x] A6. 429: catalog đã có `Retry-After`; thêm cho nginx (`@too_many`, 2 s) và community. `RateLimitNotice` (layout) bắt mọi 429 cùng
   origin: thông báo đếm ngược; GET chờ ≤ 5 s thì gửi lại 1 lần, thao tác ghi không bao giờ tự gửi lại.
 
+## C. Theo yêu cầu thêm (2026-10-12)
+- [x] C1. Khám phá: nút "Tìm" như MangaDex (đo MangaDex: bấm lọc 3 lần = 0 request, bấm Search = 1). Của mình sau sửa: 4 lần bấm lọc = 0, "Tìm" = 1.
+- [x] C2. Trình đọc truyện tranh: khung chờ ảnh đã biết kích thước cao đúng ảnh thật (lát 700×3 trước 240 px → 3 px), không giật.
+- [x] C3. media `?w=`: bản WebP nặng hơn ảnh gốc thì trả ảnh gốc (trang 820 px: 56 KB → 38 KB). Đã xóa cache ảnh của nginx (bản cũ HIT 1 năm).
+- Không tải trước cả chương như MangaDex (chủ dự án không cho, để tránh quá tải); giữ lazy + 2 trang kế ở chế độ lật trang.
+- Kiểm tra truyện tranh crawler: 1956 ảnh (trang + bìa) đều có file; 3 nguồn mở đúng; 28 bìa Khám phá tải đủ; 8 ảnh < 2 KB là lát mỏng thật.
+
 ## B. Hạn mức ghi (kiểu GitHub)
 - [x] B1. Service workspace (`quota.go`): theo người dùng, trong bộ nhớ (1 container; ghi chú `shortcut:`): ghi thường 60/phút + 600/giờ;
   dùng bản cũ / kéo bản mới / nhận đề xuất / lấy lại nháp 10/phút + 100/giờ; sao chép nháp 20/giờ; khóa nháp (nhịp 30 s) không tính.
