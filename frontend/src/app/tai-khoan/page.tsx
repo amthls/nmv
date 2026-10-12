@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import ImageQualityPicker from '@/components/common/ImageQualityPicker';
+import { useMiniplayerEnabled } from '@/lib/miniplayerPref';
 import {
   User,
   BookOpen,
@@ -141,6 +142,7 @@ export default function UserProfilePage() {
 
   const [profile, setProfile] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [miniplayerOn, setMiniplayerOn] = useMiniplayerEnabled();
   const [isLoading, setIsLoading] = useState(true);
 
   // Edit Profile Form State
@@ -730,6 +732,15 @@ export default function UserProfilePage() {
         <form onSubmit={handleSaveSettings} className="space-y-6">
           <div className="glass-panel p-6 rounded-3xl border border-white/10 bg-glass space-y-6">
             <h3 className="text-lg font-bold text-white">Cấu hình trải nghiệm đọc</h3>
+            <div>
+              <label className="flex cursor-pointer items-center justify-between gap-4 text-xs font-semibold text-gray-300">
+                <span>
+                  Popup đọc tiếp truyện
+                  <span className="block mt-1 text-[10.5px] font-normal text-gray-500">Khung nhỏ nhắc bạn chương đang đọc dở khi bạn chuyển trang. Lưu ngay trên trình duyệt này.</span>
+                </span>
+                <input type="checkbox" role="switch" checked={miniplayerOn} onChange={(e) => setMiniplayerOn(e.target.checked)} className="h-5 w-10 shrink-0 cursor-pointer accent-brand-500" />
+              </label>
+            </div>
             <div>
               <label className="block text-xs font-semibold text-gray-300 mb-3">Độ phân giải ảnh khi đọc truyện tranh</label>
               <ImageQualityPicker />

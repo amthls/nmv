@@ -23,8 +23,8 @@ Làm theo thứ tự, xong mục nào đổi `[x]`. Mỗi cụm là một PR và
 - [ ] D2. Bố cục riêng cho điện thoại (thanh điều hướng dưới, trình đọc, ws)
 
 ## E. Popup truyện (nhánh feat/popup-toggle)
-- [ ] E1. Popup có icon nhỏ, bấm ra thanh bật/tắt popup
-- [ ] E2. Công tắc popup cũng nằm trong Cài đặt
+- [x] E1. Popup có icon nhỏ, bấm ra thanh bật/tắt popup
+- [x] E2. Công tắc popup cũng nằm trong Cài đặt
 
 ## F. Elasticsearch
 - [ ] F1. Rà mọi chức năng tìm kiếm, nêu cái nào chưa dùng ES (chỉ báo, không tự đổi kiến trúc nếu lớn)
