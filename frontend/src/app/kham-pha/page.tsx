@@ -32,6 +32,7 @@ export default function ExplorePage() {
 }
 
 const BASE_PAGE_SIZE = 24;
+const FILTER_DELAY_MS = 150;
 const SORT_VALUES = ['relevance', 'updated', 'views', 'favorites', 'newest', 'title_asc', 'title_desc'];
 
 function ExplorePageContent() {
@@ -163,8 +164,11 @@ function ExplorePageContent() {
     }
   }, [debouncedQuery, filters, sortBy, currentPage, pageSize]);
 
+  // One request per burst of changes (Plan/load.md A2/A4): quick filter clicks, and the column count measured right
+  // after the first render (it changes the page size) used to send a request each
   useEffect(() => {
-    fetchStories();
+    const timer = setTimeout(fetchStories, FILTER_DELAY_MS);
+    return () => clearTimeout(timer);
   }, [fetchStories]);
 
   const handleFilterChange = (newFilters: FilterState) => {

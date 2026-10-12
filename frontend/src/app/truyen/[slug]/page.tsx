@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from '@/components/common/Link';
 import { useParams, useRouter } from 'next/navigation';
 import { 
@@ -40,6 +40,7 @@ import { getGuestHistory, positionHash } from '@/lib/readingHistory';
 import { chapterUploadHref } from '@/lib/chapterUpload';
 import CodeBadge from '@/components/common/CodeBadge';
 import { LIBRARY_URL } from '@/lib/apiJson';
+import { apiFetch } from '@/lib/session';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -47,7 +48,7 @@ export default function StoryDetailPage() {
   const params = useParams();
   const router = useRouter();
   const slug = params?.slug as string;
-  const { user, hasRole, authFetch, isAuthenticated, openAuthModal } = useAuth();
+  const { user, hasRole, authFetch, isAuthenticated, isLoading: authLoading, openAuthModal } = useAuth();
 
   const [story, setStory] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -69,8 +70,8 @@ export default function StoryDetailPage() {
     if (!slug) return;
     setIsLoading(true);
     try {
-      const fetcher = isAuthenticated ? authFetch : fetch;
-      const res = await fetcher(`${API_BASE_URL}/stories/${slug}`, { credentials: 'include' });
+      // the session cookie goes along either way, so the first answer is already right for a signed-in reader
+      const res = await apiFetch(`${API_BASE_URL}/stories/${slug}`);
       if (res.ok) {
         const json = await res.json();
         if (json.success && json.data) {
@@ -88,10 +89,18 @@ export default function StoryDetailPage() {
 
   useEffect(() => {
     fetchStory();
-  }, [slug, isAuthenticated]);
+  }, [slug]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reload only on a real sign-in / sign-out (follow state changes), not when the cached session appears on first render
+  const signedIn = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (authLoading) return;
+    if (signedIn.current !== null && signedIn.current !== isAuthenticated) fetchStory();
+    signedIn.current = isAuthenticated;
+  }, [authLoading, isAuthenticated]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!slug) return;
+    if (!slug || !story?.id || authLoading) return; // once, when both the story and the session are known
     const checkHistory = async () => {
       let found: any = null;
       if (!isAuthenticated) {
@@ -119,7 +128,7 @@ export default function StoryDetailPage() {
       }
     };
     checkHistory();
-  }, [slug, story?.id, isAuthenticated, authFetch]);
+  }, [slug, story?.id, isAuthenticated, authLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleToggleFollow = async (e?: React.MouseEvent) => {
     if (e) {
