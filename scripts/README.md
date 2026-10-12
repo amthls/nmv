@@ -79,6 +79,8 @@ The script exits with code `0` if all checks pass and `1` if any fail, so you ca
 - **Stories:** `scripts/crawler.py` runs in the background after start (log: `logs/crawler.log`) and imports stories with real
   chapters until the site has `--crawl-target` (100). They are spread over the translator/author accounts and their groups.
   Run it in the foreground with `python launch.py crawl`.
+  Progress and errors: `python scripts/crawler.py --status` (reads `logs/crawler-status.json`). Starting a crawler while another one
+  is still running stops the old one and takes over (`--dry-run` never does).
 
 ## 5. What the checks mean
 
