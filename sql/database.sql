@@ -317,10 +317,14 @@ CREATE TABLE stories (
     total_bookmarks     BIGINT DEFAULT 0,
     total_comments      BIGINT DEFAULT 0,
     last_chapter_at     TIMESTAMPTZ,
+    source_name         VARCHAR(50),    -- where an imported story came from (scripts/crawler.py)
+    source_id           VARCHAR(100),
+    source_url          TEXT,
     created_at          TIMESTAMPTZ DEFAULT NOW(),
     updated_at          TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE UNIQUE INDEX uq_stories_source ON stories(source_name, source_id) WHERE source_id IS NOT NULL;
 CREATE INDEX idx_stories_slug ON stories(slug);
 CREATE INDEX idx_stories_uploader ON stories(uploader_id);
 CREATE INDEX idx_stories_group ON stories(group_id);
@@ -392,6 +396,7 @@ CREATE TABLE chapters (
     translator_notes    JSONB,
     intro_note          TEXT,           -- translator message before the chapter (sanitized rich text)
     outro_note          TEXT,           -- ...and after it
+    source_group        VARCHAR(200),   -- scanlation group credited on an imported chapter
     total_views         BIGINT DEFAULT 0,
     total_comments      BIGINT DEFAULT 0,
     published_at        TIMESTAMPTZ DEFAULT NOW(),
