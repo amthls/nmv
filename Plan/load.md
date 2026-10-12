@@ -30,6 +30,11 @@ Mỗi mục một nhánh + PR. Đo lại sau mỗi mục và ghi số.
 - Không tải trước cả chương như MangaDex (chủ dự án không cho, để tránh quá tải); giữ lazy + 2 trang kế ở chế độ lật trang.
 - Kiểm tra truyện tranh crawler: 1956 ảnh (trang + bìa) đều có file; 3 nguồn mở đúng; 28 bìa Khám phá tải đủ; 8 ảnh < 2 KB là lát mỏng thật.
 
+- [x] C4. Nút "Tìm": kết quả hiện sau tối thiểu 1 s, nút khóa lúc chờ (đo: server 17 ms, hiện sau 1034 ms; bấm thêm 2 lần = vẫn 1 request).
+- [x] C5. Che chắn Elasticsearch: cache id theo từ khóa 60 s (Redis), gộp truy vấn trùng, tối đa 4 đồng thời (chờ > 1 s → SQL),
+  cầu dao 30 s, `timeout: 1s` trong ES. Đo: 20 tổ hợp lọc/trang/sắp xếp cùng từ khóa = 1 truy vấn ES; 40 từ khóa cùng lúc: 200 hết,
+  chậm nhất 231 ms; tắt ES: lần đầu 3 s, sau đó 15–21 ms bằng SQL.
+
 ## B. Hạn mức ghi (kiểu GitHub)
 - [x] B1. Service workspace (`quota.go`): theo người dùng, trong bộ nhớ (1 container; ghi chú `shortcut:`): ghi thường 60/phút + 600/giờ;
   dùng bản cũ / kéo bản mới / nhận đề xuất / lấy lại nháp 10/phút + 100/giờ; sao chép nháp 20/giờ; khóa nháp (nhịp 30 s) không tính.

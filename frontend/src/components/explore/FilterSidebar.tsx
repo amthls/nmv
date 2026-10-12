@@ -10,6 +10,7 @@ import {
   Check, 
   Minus,
   Search,
+  Loader2,
   Sparkles
 } from 'lucide-react';
 
@@ -43,6 +44,8 @@ interface FilterSidebarProps {
   onApply: () => void;
   /** The form differs from the results on screen. */
   dirty: boolean;
+  /** A search is loading: the button stays locked until it is shown. */
+  busy?: boolean;
   isOpenMobile: boolean;
   onCloseMobile: () => void;
 }
@@ -54,6 +57,7 @@ export default function FilterSidebar({
   onReset,
   onApply,
   dirty,
+  busy = false,
   isOpenMobile,
   onCloseMobile,
 }: FilterSidebarProps) {
@@ -129,12 +133,14 @@ export default function FilterSidebar({
       <button
         type="button"
         onClick={onApply}
-        disabled={!dirty}
+        disabled={!dirty || busy}
+        aria-busy={busy}
         className={`w-full h-10 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition ${
-          dirty ? 'bg-brand-600 hover:bg-brand-500 text-snow shadow-lg shadow-brand-500/25' : 'bg-white/5 text-gray-500 cursor-default'
+          dirty && !busy ? 'bg-brand-600 hover:bg-brand-500 text-snow shadow-lg shadow-brand-500/25' : 'bg-white/5 text-gray-500 cursor-default'
         }`}
       >
-        <Search className="w-4 h-4" /> {dirty ? 'Tìm với bộ lọc này' : 'Đang hiện theo bộ lọc này'}
+        {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+        {busy ? 'Đang tìm...' : dirty ? 'Tìm với bộ lọc này' : 'Đang hiện theo bộ lọc này'}
       </button>
 
       {/* 1. Loại Truyện (Story Type) */}
