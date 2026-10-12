@@ -29,14 +29,19 @@ export default function StoryFlow({
   const { authFetch } = useAuth();
   const [story, setStory] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
   const versionsRef = useRef<HTMLDivElement>(null);
 
+  // keep the previous story on screen (dimmed) while the next one loads, so the page does not collapse and jump
   useEffect(() => {
-    setStory(null);
+    let stale = false;
+    setLoading(true);
     setError(null);
     authFetch(`${API_BASE_URL}/stories/${slug}`).then((r) => r.json())
-      .then((j) => (j.success ? setStory(j.data) : setError(j.message || 'Không tải được truyện.')))
-      .catch((e) => setError(e.message));
+      .then((j) => { if (!stale) (j.success ? setStory(j.data) : setError(j.message || 'Không tải được truyện.')); })
+      .catch((e) => { if (!stale) setError(e.message); })
+      .finally(() => { if (!stale) setLoading(false); });
+    return () => { stale = true; };
   }, [slug, authFetch]);
 
   // a picked chapter's versions open below the streams: bring them into view
@@ -61,7 +66,7 @@ export default function StoryFlow({
   const btn = 'px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition';
 
   return (
-    <div className="space-y-6">
+    <div aria-busy={loading} className={`space-y-6 transition-opacity duration-200 ${loading ? 'pointer-events-none opacity-50' : ''}`}>
       <div className="space-y-3">
         <div>
           <h2 className="text-2xl sm:text-3xl font-extrabold text-white leading-tight">{story.title}</h2>
@@ -129,9 +134,14 @@ export default function StoryFlow({
 
       <div ref={versionsRef} className="scroll-mt-24">
         {chosen ? (
-          <ChapterVersions key={chosen.id} story={story} chapter={chosen} draft={drafts.find((d) => d.chapter_id === chosen.id)} isManga={isManga} />
+          <ChapterVersions story={story} chapter={chosen} draft={drafts.find((d) => d.chapter_id === chosen.id)} isManga={isManga} />
         ) : (
-          categories.length > 0 && <p className="text-xs text-gray-400">Bấm một chương trên dòng để xem các phiên bản của nó.</p>
+          // same height as the versions panel, so closing a chapter does not shrink the page
+          categories.length > 0 && (
+            <p className="grid min-h-[15rem] place-items-center rounded-3xl border border-dashed border-white/10 p-4 text-center text-xs text-gray-400">
+              Bấm một chương trên dòng để xem các phiên bản của nó.
+            </p>
+          )
         )}
       </div>
     </div>
@@ -145,11 +155,22 @@ function ChapterVersions({ story, chapter, draft, isManga }: { story: any; chapt
   const [busy, setBusy] = useState(false);
   const [asking, setAsking] = useState<number | null>(null); // version waiting for a second click
   const [n, setN] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setMsg(null);
+    setAsking(null);
+  }, [chapter.id]);
+
+  // the previous chapter's versions stay (dimmed) until these arrive: no empty flash, no height jump
+  useEffect(() => {
+    let stale = false;
+    setLoading(true);
     authFetch(`${WS_URL}/chapters/${chapter.id}/revisions`).then((r) => r.json())
-      .then((j) => (j.data ? setRevs(j.data) : setMsg(j.message || 'Không tải được phiên bản.')))
-      .catch(() => setMsg('Không tải được phiên bản.'));
+      .then((j) => { if (!stale) (j.data ? setRevs(j.data) : setMsg(j.message || 'Không tải được phiên bản.')); })
+      .catch(() => { if (!stale) setMsg('Không tải được phiên bản.'); })
+      .finally(() => { if (!stale) setLoading(false); });
+    return () => { stale = true; };
   }, [chapter.id, authFetch, n]);
 
   const useVersion = async (v: number) => {
@@ -188,7 +209,7 @@ function ChapterVersions({ story, chapter, draft, isManga }: { story: any; chapt
       {msg && <p className="text-xs text-amber-300">{msg}</p>}
       {!revs && !msg && <Loader2 className="w-4 h-4 animate-spin text-gray-400" />}
       {revs && (
-        <div className="-mx-4 overflow-x-auto px-4 sm:-mx-5 sm:px-5" style={{ scrollbarWidth: 'thin' }}>
+        <div aria-busy={loading} className={`-mx-4 overflow-x-auto px-4 sm:-mx-5 sm:px-5 transition-opacity duration-200 ${loading ? 'pointer-events-none opacity-40' : ''}`} style={{ scrollbarWidth: 'thin' }}>
           <ol className="ws-stream flex w-max min-w-full gap-3 py-3 pr-8">
             {versions.map((r, i) => (
               <li
