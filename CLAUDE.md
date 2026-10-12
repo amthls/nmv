@@ -35,6 +35,7 @@ Service chính `catalog` (thư mục `catalog/`, trước đây tên `backend`; 
 - Chỉ 3 cách, đều dựa trên `frontend/src/lib/nav.ts` (ngăn xếp trang trong site của từng tab):
   `<BackLink href="/x">` đến **đúng trang X** như nhãn (lùi lại chỉ khi trang trước đúng là X);
   `<BackButton fallback>` "Quay lại" về trang trước trong site, không có thì về fallback; `goBack(router, fallback)` sau một thao tác.
+- Link luôn import từ `@/components/common/Link` (chỉ tải trước khi rê chuột/chạm, Plan/load.md A1), không import `next/link` thẳng.
 - Cấm `router.back()`, `window.history.back/length` ở chỗ khác. Chạy `sh scripts/check-nav.sh` trước khi merge thay đổi frontend.
 
 ## Kế hoạch (Plan/)

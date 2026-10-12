@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/common/Link';
 import { ChevronLeft, ImageOff, Loader2, RotateCw, SlidersHorizontal, X } from 'lucide-react';
 import { imageUrlForQuality, useImageQuality } from '@/lib/imageQuality';
 

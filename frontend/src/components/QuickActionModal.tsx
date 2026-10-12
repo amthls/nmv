@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import Link from 'next/link';
+import Link from '@/components/common/Link';
 import { History, Bookmark, UploadCloud, ShieldCheck, MessageSquare, FileText, LayoutGrid, X } from 'lucide-react';
 
 interface QuickActionModalProps {

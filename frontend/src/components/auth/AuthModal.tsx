@@ -17,7 +17,7 @@ import {
   KeyRound,
   Users
 } from 'lucide-react';
-import Link from 'next/link';
+import Link from '@/components/common/Link';
 import { useAuth } from '@/context/AuthContext';
 import Turnstile, { TURNSTILE_SITE_KEY } from '@/components/auth/Turnstile';
 

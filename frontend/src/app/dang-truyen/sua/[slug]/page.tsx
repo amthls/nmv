@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import BackLink from '@/components/common/BackLink';
-import Link from 'next/link';
+import Link from '@/components/common/Link';
 import { useParams } from 'next/navigation';
 import { Pencil, ArrowLeft, Lock, LogIn, ShieldAlert } from 'lucide-react';
 import StoryForm, { StoryFormInitialValues } from '@/components/story/StoryForm';

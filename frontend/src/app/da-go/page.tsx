@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import Link from 'next/link';
+import Link from '@/components/common/Link';
 import { EyeOff, Lock, ExternalLink, RotateCcw, Search } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import SearchInput from '@/components/common/SearchInput';

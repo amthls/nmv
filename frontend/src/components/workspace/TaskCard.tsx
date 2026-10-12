@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/common/Link';
 import { useRouter } from 'next/navigation';
 import { Clock } from 'lucide-react';
 

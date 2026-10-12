@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import BackLink from '@/components/common/BackLink';
 import { goBack } from '@/lib/nav';
-import Link from 'next/link';
+import Link from '@/components/common/Link';
 import { useParams, useRouter } from 'next/navigation';
 import {
   ArrowLeft,

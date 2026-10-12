@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import Link from '@/components/common/Link';
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   MessageSquare, 

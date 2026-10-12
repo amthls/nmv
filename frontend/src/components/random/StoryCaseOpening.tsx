@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
+import Link from '@/components/common/Link';
 import { X, Dices, Volume2, VolumeX, BookOpen, RotateCcw, Eye } from 'lucide-react';
 import SmartImage from '@/components/common/SmartImage';
 import { Story, formatCount } from '@/components/explore/StoryCardGrid';
