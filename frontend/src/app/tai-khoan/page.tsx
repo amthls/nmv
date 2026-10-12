@@ -242,8 +242,11 @@ export default function UserProfilePage() {
     }
   }, [isAuthenticated]);
 
+  // the list loads the first time the tab opens; back to the tab later keeps it (Plan/load.md A3)
+  const adminListLoaded = useRef(false);
   useEffect(() => {
-    if (isAdmin && activeTab === 'admin_roles') {
+    if (isAdmin && activeTab === 'admin_roles' && !adminListLoaded.current) {
+      adminListLoaded.current = true;
       fetchAdminUsers(adminSearch);
     }
   }, [isAdmin, activeTab]);

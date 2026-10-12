@@ -5,6 +5,7 @@ import Link from '@/components/common/Link';
 import { BookOpen, FileText, GitMerge, History, Loader2, Pencil, Plus, RotateCcw, Users } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { chapterUploadHref } from '@/lib/chapterUpload';
+import { forget, remembered } from '@/lib/memo';
 
 /**
  * The "flow" of one story in the workspace: each category (volume) is a stream of water flowing sideways with its
@@ -37,8 +38,10 @@ export default function StoryFlow({
     let stale = false;
     setLoading(true);
     setError(null);
-    authFetch(`${API_BASE_URL}/stories/${slug}`).then((r) => r.json())
-      .then((j) => { if (!stale) (j.success ? setStory(j.data) : setError(j.message || 'Không tải được truyện.')); })
+    // back to a story seen in the last minute: shown at once, no request (Plan/load.md A3)
+    remembered(`ws:story:${slug}`, 60_000, () => authFetch(`${API_BASE_URL}/stories/${slug}`).then((r) => r.json())
+      .then((j) => { if (!j.success) throw new Error(j.message || 'Không tải được truyện.'); return j.data; }))
+      .then((data) => { if (!stale) setStory(data); })
       .catch((e) => { if (!stale) setError(e.message); })
       .finally(() => { if (!stale) setLoading(false); });
     return () => { stale = true; };
@@ -166,9 +169,10 @@ function ChapterVersions({ story, chapter, draft, isManga }: { story: any; chapt
   useEffect(() => {
     let stale = false;
     setLoading(true);
-    authFetch(`${WS_URL}/chapters/${chapter.id}/revisions`).then((r) => r.json())
-      .then((j) => { if (!stale) (j.data ? setRevs(j.data) : setMsg(j.message || 'Không tải được phiên bản.')); })
-      .catch(() => { if (!stale) setMsg('Không tải được phiên bản.'); })
+    remembered(`ws:revs:${chapter.id}`, 60_000, () => authFetch(`${WS_URL}/chapters/${chapter.id}/revisions`).then((r) => r.json())
+      .then((j) => { if (!j.data) throw new Error(j.message || 'Không tải được phiên bản.'); return j.data as Rev[]; }))
+      .then((data) => { if (!stale) setRevs(data); })
+      .catch((e) => { if (!stale) setMsg(e.message || 'Không tải được phiên bản.'); })
       .finally(() => { if (!stale) setLoading(false); });
     return () => { stale = true; };
   }, [chapter.id, authFetch, n]);
@@ -181,7 +185,10 @@ function ChapterVersions({ story, chapter, draft, isManga }: { story: any; chapt
     const json = await res.json().catch(() => ({}));
     setBusy(false);
     setAsking(null);
-    if (res.ok) setN((x) => x + 1);
+    if (res.ok) {
+      forget(`ws:revs:${chapter.id}`); // the list changed: ask the server again
+      setN((x) => x + 1);
+    }
     setMsg(res.ok ? `Đã tạo phiên bản ${json.data.version} từ phiên bản ${v}.` : json.message || 'Không dùng được bản này (chỉ người giữ truyện).');
   };
 
