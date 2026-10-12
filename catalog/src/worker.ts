@@ -6,6 +6,7 @@ import { startIdentityConsumer } from './services/identitySync';
 import { startWorkspaceConsumer } from './services/workspaceSync';
 import { scheduleReconcile } from './services/reconcile';
 import { scheduleHotShelf } from './services/hotShelf';
+import { scheduleRemovedPurge } from './services/storyPurge';
 
 /**
  * Background worker: `node dist/worker.js` (its own container in docker-compose, same image as the API).
@@ -46,6 +47,8 @@ async function main() {
   scheduleReconcile();
   // "Đang hot" shelf precomputed into Redis every 2 minutes
   scheduleHotShelf();
+  // Stories taken down by Admin/Mod and not restored within 60 days are deleted for good
+  scheduleRemovedPurge();
 
   console.log('[Worker] running');
 

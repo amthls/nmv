@@ -22,7 +22,7 @@ Bẫy:
 - [x] Gỡ container + image trên máy; build, smoke; PR, merge
 
 ## Nhánh 2: `feat/purge-removed-stories`
-- [ ] Tách phần xóa truyện thành hàm dùng chung (`deleteStory` + job)
-- [ ] Worker: mỗi ngày (và lúc khởi động) xóa truyện gỡ quá 60 ngày (`REMOVED_PURGE_DAYS`), ghi log
-- [ ] Hiện hạn xóa cho chủ truyện / Admin (trang `/da-go`, thông báo gỡ)
-- [ ] Thử: truyện gỡ giả `removed_at` 61 ngày trước bị xóa ở mọi service; truyện gỡ 10 ngày còn; README; PR, merge
+- [x] Tách phần xóa truyện thành hàm dùng chung (`deleteStory` + job)
+- [x] Worker: mỗi ngày (và lúc khởi động) xóa truyện gỡ quá 60 ngày (`REMOVED_PURGE_DAYS`), ghi log
+- [x] Hiện hạn xóa cho chủ truyện / Admin (trang `/da-go`, thông báo gỡ)
+- [x] Thử: truyện gỡ giả `removed_at` 61 ngày trước bị xóa ở mọi service; truyện gỡ 10 ngày còn; README; PR, merge

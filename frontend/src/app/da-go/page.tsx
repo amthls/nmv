@@ -182,6 +182,11 @@ export default function RemovedContentPage() {
                   Người đăng: <Link href={`/nguoi-dung/${item.author_username}`} className="text-gray-300 hover:text-brand-300">{item.author_name || item.author_username}</Link>
                 </div>
                 {item.reason && <p className="text-xs text-rose-200/80 break-words">Lý do: {item.reason}</p>}
+                {item.purge_at && (
+                  <p className="text-xs text-amber-300/90">
+                    Tự xóa hẳn vào {new Date(item.purge_at).toLocaleDateString('vi-VN')} nếu không được khôi phục
+                  </p>
+                )}
               </div>
               <div className="shrink-0 self-center">
                 <button
