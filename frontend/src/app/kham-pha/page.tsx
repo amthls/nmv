@@ -34,6 +34,7 @@ export default function ExplorePage() {
 const BASE_PAGE_SIZE = 24;
 const FILTER_DELAY_MS = 150;
 const MIN_SEARCH_MS = 1000;
+const EMPTY_FILTERS: FilterState = { type: 'all', status: 'all', language: 'all', min_chapters: '0', tags: [], exclude_tags: [] };
 const SORT_VALUES = ['relevance', 'updated', 'views', 'favorites', 'newest', 'title_asc', 'title_desc'];
 
 function ExplorePageContent() {
@@ -192,14 +193,7 @@ function ExplorePageContent() {
   };
 
   const handleResetFilters = () => {
-    setFilters({
-      type: 'all',
-      status: 'all',
-      language: 'all',
-      min_chapters: '0',
-      tags: [],
-      exclude_tags: [],
-    });
+    setFilters(EMPTY_FILTERS);
     setSearchQuery('');
     setCurrentPage(1);
   };
@@ -243,7 +237,8 @@ function ExplorePageContent() {
         <div className="w-full md:w-80 relative">
           <input
             type="text"
-            placeholder="Tìm theo tên truyện, tác giả..."
+            // with filters applied the box searches inside them only; say so
+            placeholder={activeFiltersCount > 0 ? `Tìm trong ${activeFiltersCount} bộ lọc đang áp dụng...` : 'Tìm theo tên truyện, tác giả...'}
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
@@ -414,9 +409,19 @@ function ExplorePageContent() {
               <div>
                 <h3 className="text-base font-bold text-white">Không tìm thấy bộ truyện nào phù hợp</h3>
                 <p className="text-xs text-gray-400 mt-1 max-w-sm mx-auto">
-                  Hãy thử nới lỏng các tiêu chí lọc hoặc tìm kiếm bằng từ khóa khác.
+                  {debouncedQuery.trim() && activeFiltersCount > 0
+                    ? `Không có truyện khớp "${debouncedQuery.trim()}" trong ${activeFiltersCount} bộ lọc đang áp dụng.`
+                    : 'Hãy thử nới lỏng các tiêu chí lọc hoặc tìm kiếm bằng từ khóa khác.'}
                 </p>
               </div>
+              {debouncedQuery.trim() && activeFiltersCount > 0 && (
+                <button
+                  onClick={() => { setFilters(EMPTY_FILTERS); setCurrentPage(1); }}
+                  className="mr-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition"
+                >
+                  Tìm "{debouncedQuery.trim()}" trên toàn bộ truyện
+                </button>
+              )}
               <button
                 onClick={handleResetFilters}
                 className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow text-xs font-semibold transition"

@@ -30,6 +30,7 @@ export default function StoryWorkspacePage() {
   const [proposals, setProposals] = useState<any[]>([]);
   const [orphans, setOrphans] = useState<any[]>([]); // keepers: drafts of people who left the story
   const [error, setError] = useState<string | null>(null);
+  const [reclaiming, setReclaiming] = useState<string | null>(null);
   // Stage 4b: the story's tasks (board), whether I keep it, the team to assign to
   const [board, setBoard] = useState<{ tasks: any[]; keeper: boolean } | null>(null);
   const [team, setTeam] = useState<{ id: string; name: string }[]>([]);
@@ -129,15 +130,21 @@ export default function StoryWorkspacePage() {
               </div>
               <button
                 type="button"
+                disabled={reclaiming === o.id}
                 onClick={async () => {
+                  if (reclaiming) return; // one at a time, no double click (Plan/load.md B3)
+                  setReclaiming(o.id);
                   const res = await authFetch(`${WS_URL}/drafts/${o.id}/reclaim`, { method: 'POST' });
                   const json = await res.json().catch(() => ({}));
                   if (res.ok && json.success) router.push(`/dang-chuong?draft=${o.id}`);
-                  else setError(json.message || 'Không nhận lại được.');
+                  else {
+                    setReclaiming(null);
+                    setError(json.message || 'Không nhận lại được.');
+                  }
                 }}
-                className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-ink text-[11px] font-bold"
+                className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-ink text-[11px] font-bold disabled:opacity-50"
               >
-                Nhận lại
+                {reclaiming === o.id ? 'Đang nhận...' : 'Nhận lại'}
               </button>
             </div>
           ))}
