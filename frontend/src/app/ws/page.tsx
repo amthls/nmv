@@ -2,7 +2,7 @@
 
 import React, { Suspense, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { ChevronLeft, ChevronRight, FileText, Handshake, Plus, User, Users } from 'lucide-react';
 import SmartImage from '@/components/common/SmartImage';
 import StoryFlow from '@/components/workspace/StoryFlow';
@@ -20,11 +20,11 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/a
 const WS_URL = '/api/ws';
 
 function WorkspaceContent() {
-  const router = useRouter();
   const search = useSearchParams();
   const storySlug = search?.get('truyen') || '';
   const chapterId = search?.get('chuong') || '';
-  const open = (truyen: string, chuong = '') => router.replace(`/ws?truyen=${truyen}${chuong ? `&chuong=${chuong}` : ''}`, { scroll: false });
+  // only the URL changes: router.replace would refetch the page and show app/loading.tsx, which threw the page to the top
+  const open = (truyen: string, chuong = '') => window.history.replaceState(null, '', `/ws?truyen=${truyen}${chuong ? `&chuong=${chuong}` : ''}`);
   const { user, isAuthenticated, isLoading, openAuthModal, authFetch } = useAuth();
   const [drafts, setDrafts] = useState<any[] | null>(null);
   const [stories, setStories] = useState<any[] | null>(null);
@@ -60,7 +60,7 @@ function WorkspaceContent() {
 
   // nothing picked yet: open the first story so the streams show right away
   useEffect(() => {
-    if (!storySlug && shelf.length) router.replace(`/ws?truyen=${shelf[0].slug}`, { scroll: false });
+    if (!storySlug && shelf.length) open(shelf[0].slug);
   }, [storySlug, shelf.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // keep the picked cover in view on the shelf
