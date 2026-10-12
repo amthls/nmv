@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import BackLink from '@/components/common/BackLink';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, FileText, GitMerge, History, Pencil, Plus } from 'lucide-react';
@@ -84,9 +85,9 @@ export default function StoryWorkspacePage() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-      <Link href="/ws" className="inline-flex items-center gap-2 text-xs font-semibold text-gray-400 hover:text-white transition">
+      <BackLink href="/ws" className="inline-flex items-center gap-2 text-xs font-semibold text-gray-400 hover:text-white transition">
         <ArrowLeft className="w-4 h-4" /> Workspace của tôi
-      </Link>
+      </BackLink>
 
       <div className="rounded-3xl p-6 glass-panel border border-white/10 bg-glass shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="min-w-0">

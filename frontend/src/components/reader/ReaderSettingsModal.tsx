@@ -89,9 +89,10 @@ export default function ReaderSettingsModal({
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm animate-in fade-in"
+      onClick={onClose}>
       <div 
-        className="w-full max-w-md bg-glass border border-white/10 rounded-2xl p-5 shadow-2xl space-y-5"
+        className="w-full max-w-md max-h-[92dvh] overflow-y-auto overscroll-contain bg-glass border border-white/10 rounded-t-2xl sm:rounded-2xl p-4 sm:p-5 shadow-2xl space-y-4 sm:space-y-5"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -300,7 +301,7 @@ export default function ReaderSettingsModal({
         </div>
 
         {/* Footer */}
-        <div className="pt-2 border-t border-white/10">
+        <div className="sticky bottom-0 -mx-4 sm:-mx-5 -mb-4 sm:-mb-5 px-4 sm:px-5 py-3 bg-glass border-t border-white/10">
           <button
             onClick={onClose}
             className="w-full py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow text-xs font-semibold shadow-md transition"

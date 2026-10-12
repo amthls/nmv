@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import BackLink from '@/components/common/BackLink';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import {
@@ -165,9 +166,9 @@ export default function PostDetailPage() {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 space-y-5">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-xs text-gray-400 min-w-0">
-        <Link href="/fandom" className="inline-flex items-center gap-1.5 font-semibold hover:text-white shrink-0">
+        <BackLink href="/fandom" className="inline-flex items-center gap-1.5 font-semibold hover:text-white shrink-0">
           <ArrowLeft className="w-4 h-4" /> Fandom
-        </Link>
+        </BackLink>
         <span>/</span>
         <Link href={`/fandom?category=${category.id}`} className="hover:text-white shrink-0">{category.label}</Link>
         <span className="hidden sm:inline">/</span>

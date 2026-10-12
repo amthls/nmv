@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import BackLink from '@/components/common/BackLink';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { 
@@ -489,13 +490,13 @@ export default function ChapterReaderPage() {
           
           {/* Left: Back to Story & Title */}
           <div className="flex items-center gap-3 truncate">
-            <Link
+            <BackLink
               href={`/truyen/${storySlug}`}
               className="p-1.5 rounded-lg hover:bg-white/10 transition"
               title="Quay lại mục lục truyện"
             >
               <ArrowLeft className="w-5 h-5" />
-            </Link>
+            </BackLink>
             <div className="truncate">
               <h2 className="text-xs font-bold truncate opacity-80">{chapterData.story?.title}</h2>
               <h1 className="text-sm font-extrabold truncate">{chapterData.title}</h1>
