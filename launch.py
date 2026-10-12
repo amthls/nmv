@@ -16,14 +16,12 @@ disk and report when the running images are older than the code. "update" first 
 commits (fast-forward only, skipped when there are local changes) and rebuilds only when needed.
 
 Options for "up": --no-build (reuse existing images), --timeout SECONDS (default 600),
-                  --seed (always run the sample-data seeders), --no-seed (never run them),
                   --crawl-target N (default 100), --no-crawl (don't start scripts/crawler.py),
                   --download-ratio R (default 0.3: after crawling, EPUB/PDF downloads are turned on
                   for a random 30% of the imported stories; 0 = off).
 After a successful start, scripts/crawler.py runs in the background (log: logs/crawler.log) and
 imports stories (MangaDex, TopTruyen, Valvrare) until the site has --crawl-target stories; it exits at once
-when there are already enough.
-By default the seeders run only when the database has no stories yet (fresh install).
+when there are already enough; it is the only source of sample stories, spread over the translator accounts and groups.
 Sample accounts (password123) are created by `identity seed-demo`, only into an empty identity_db.
 Only the Python standard library is used.
 """
@@ -421,41 +419,6 @@ def seed_accounts():
     return res.returncode == 0, summary
 
 
-# Sample-data seeders from catalog/scripts, run in order inside a one-off catalog container.
-SEEDERS = [
-    ("sample stories, volumes, chapters", ["npx", "tsx", "scripts/seed-stories.ts"]),
-]
-
-
-def story_count(env):
-    res = subprocess.run(
-        ["docker", "compose", "exec", "-T", "postgres", "psql", "-tA",
-         "-U", env.get("POSTGRES_USER", "postgres"), "-d", env.get("POSTGRES_DB", "novel_platform"),
-         "-c", "SELECT count(*) FROM stories"],
-        cwd=ROOT, capture_output=True, text=True,
-    )
-    return int(res.stdout.strip()) if res.returncode == 0 and res.stdout.strip().isdigit() else None
-
-
-def run_seeders():
-    """The runtime image only ships dist/, so mount the scripts."""
-    catalog = os.path.join(ROOT, "catalog")
-    all_ok = True
-    for desc, cmd in SEEDERS:
-        res = subprocess.run(
-            ["docker", "compose", "run", "--rm", "--no-deps", "-T",
-             "-v", f"{catalog}/scripts:/app/scripts:ro",
-             "catalog", *cmd],
-            cwd=ROOT, capture_output=True, text=True,
-        )
-        if res.returncode == 0:
-            ok(f"seed {desc}")
-        else:
-            all_ok = False
-            fail(f"seed {desc}: {(res.stderr or res.stdout).strip()[-400:]}")
-    # novelsearch is fully re-synced only when catalog starts
-    compose("restart", "catalog", capture=True, check=False)
-    return all_ok
 
 
 # ------------------------------------------------------------------------- http
@@ -490,7 +453,7 @@ def wait_until(desc, fn, timeout):
 
 # ----------------------------------------------------------------------- checks
 
-def run_checks(env, timeout, seed=None):
+def run_checks(env, timeout):
     # 127.0.0.1, not localhost: the gateway listens on IPv4 loopback only, and Python tries ::1 first (seconds lost per call)
     gw = f"http://127.0.0.1:{env.get('GATEWAY_PORT', 3000)}"
     be = f"http://127.0.0.1:{env.get('PORT', 5000)}"
@@ -542,15 +505,6 @@ def run_checks(env, timeout, seed=None):
     if st.get("postgres", ("",))[0] == "running":
         info("Applying idempotent SQL migrations...")
         record("database migrations", apply_migrations(env))
-
-        count = story_count(env)
-        if seed is True or (seed is None and count == 0):
-            info(f"Seeding sample data ({count} stories in DB)...")
-            record("sample data seeded", run_seeders())
-            passed, detail = wait_until("catalog restart", backend_up, timeout)
-            record("catalog  healthy after seeding", passed, "" if passed else detail)
-        elif seed is None:
-            info(f"Database already has {count} stories, skipping seeders (use --seed to force)")
 
         passed, detail = seed_accounts()
         record("accounts in identity (seed-demo)", passed, detail)
@@ -617,7 +571,7 @@ def run_checks(env, timeout, seed=None):
             pass
     record("api      GET /api/v1/stories (DB read)", code == 200, f"({code}, {count} stories)" if count is not None else f"({code})")
     if count == 0:
-        record("sample data", False, "no stories in DB (sql/database.sql seeds none; see catalog/scripts/seed-stories.ts)", soft=True)
+        record("sample data", False, "no stories in DB yet (scripts/crawler.py imports them after start; see logs/crawler.log)", soft=True)
 
     code, body = http("GET", f"{gw}/api/v1/stories/explore?q=a")
     record("api      GET /api/v1/stories/explore?q=a (search)", code == 200, f"({code})")
@@ -687,10 +641,6 @@ def main():
     p.add_argument("command", nargs="?", default="up", choices=["up", "update", "check", "status", "logs", "down", "crawl"])
     p.add_argument("service", nargs="?", help="service name for 'logs'")
     p.add_argument("--no-build", action="store_true", help="don't rebuild images on 'up'")
-    g = p.add_mutually_exclusive_group()
-    g.add_argument("--seed", dest="seed", action="store_true", default=None,
-                   help="run the sample-data seeders even if the DB already has stories (resets all passwords!)")
-    g.add_argument("--no-seed", dest="seed", action="store_false", help="never run the seeders")
     p.add_argument("--timeout", type=int, default=600, help="seconds to wait for services (default 600)")
     p.add_argument("--crawl-target", type=int, default=100, help="import manga until the site has this many stories")
     p.add_argument("--no-crawl", action="store_true", help="don't start the MangaDex importer after 'up'")
@@ -745,9 +695,7 @@ def main():
         if state == "old":
             warn(f"Running an old build: {reason}. Run 'python launch.py update' to update")
 
-    # Seeding only happens when starting; "check" stays read-only apart from the idempotent migrations
-    seed = a.seed if starting else False
-    passed = run_checks(env, a.timeout, seed)
+    passed = run_checks(env, a.timeout)
     if passed and starting and not a.no_crawl:
         start_crawler(a.crawl_target, download_ratio=a.download_ratio)
     sys.exit(0 if passed else 1)
