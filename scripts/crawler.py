@@ -616,6 +616,19 @@ def enable_random_downloads(ratio):
     log(f"downloads enabled on {total[0]}/{total[1]} imported stories (target {round(ratio * 100)}%)")
 
 
+def fill_missing_covers():
+    """Imported manga whose cover could not be fetched (older runs) get their first page as cover. Idempotent."""
+    rows = psql("""
+        UPDATE stories s SET cover_image_url = (
+            SELECT p.image_url FROM chapters c JOIN chapter_pages p ON p.chapter_id = c.id
+             WHERE c.story_id = s.id ORDER BY c.chapter_number, p.page_number LIMIT 1)
+         WHERE s.source_name IS NOT NULL AND s.story_type = 'manga' AND s.cover_image_url IS NULL
+           AND EXISTS (SELECT 1 FROM chapters c JOIN chapter_pages p ON p.chapter_id = c.id WHERE c.story_id = s.id)
+        RETURNING s.title;""")
+    if rows:
+        log(f"first page used as cover for {len(rows)} imported manga: {', '.join(r[0] for r in rows[:5])}")
+
+
 # ----------------------------------------------------------------------------- importer
 
 class Importer:
@@ -704,9 +717,11 @@ class Importer:
         base = slugify(title) or "truyen"
         with self.lock:
             slug, n = base, 2
-            while slug in self.slugs or os.path.exists(os.path.join(MANGA_DIR, slug)):
+            while slug in self.slugs:
                 slug, n = f"{base}-{n}", n + 1
             self.slugs.append(slug)
+            # a folder no story uses is what an interrupted run left behind: clear it instead of taking "<slug>-2"
+            shutil.rmtree(os.path.join(MANGA_DIR, slug), ignore_errors=True)
             os.makedirs(os.path.join(MANGA_DIR, slug), exist_ok=True)
         return slug
 
@@ -791,6 +806,12 @@ class Importer:
                     log(f"[{source.name}] '{title}' chương {ch['number']:g} skipped: {e}")
             if not fetched:
                 raise RuntimeError("no chapter content")
+            if not cover_file and story["story_type"] == "manga":
+                # the source's cover could not be fetched: the first page stands in, so the story never shows a blank tile
+                first = fetched[0][1]["pages"][0]["file"]
+                cover_file = "cover" + os.path.splitext(first)[1]
+                shutil.copyfile(os.path.join(folder, first), os.path.join(folder, cover_file))
+                log(f"[{source.name}] '{title}': first page used as cover")
 
             # Smaller files and exact sizes from the backend's sharp (keeps originals if that fails)
             if story["story_type"] == "manga" or cover_file:
@@ -924,6 +945,7 @@ class Importer:
         if not self.args.dry_run:
             give_views_to_unviewed()
             self.reassign_admin_imports()
+            fill_missing_covers()
         if self.missing <= 0:
             log(f"site already has {count} stories (target {self.args.target}), nothing to do")
             return 0
