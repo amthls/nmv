@@ -35,15 +35,19 @@ Mỗi mục một nhánh + PR. Đo lại sau mỗi mục và ghi số.
   cầu dao 30 s, `timeout: 1s` trong ES. Đo: 20 tổ hợp lọc/trang/sắp xếp cùng từ khóa = 1 truy vấn ES; 40 từ khóa cùng lúc: 200 hết,
   chậm nhất 231 ms; tắt ES: lần đầu 3 s, sau đó 15–21 ms bằng SQL.
 
+- [x] C6. Ô tìm của Khám phá tìm trong bộ lọc đã áp dụng (đã đúng từ trước); giờ ghi rõ "Tìm trong N bộ lọc đang áp dụng" và khi
+  không có kết quả có nút "Tìm … trên toàn bộ truyện".
+
 ## B. Hạn mức ghi (kiểu GitHub)
 - [x] B1. Service workspace (`quota.go`): theo người dùng, trong bộ nhớ (1 container; ghi chú `shortcut:`): ghi thường 60/phút + 600/giờ;
   dùng bản cũ / kéo bản mới / nhận đề xuất / lấy lại nháp 10/phút + 100/giờ; sao chép nháp 20/giờ; khóa nháp (nhịp 30 s) không tính.
   Đăng / lên lịch đi qua catalog (`/internal`) → B2. 429 + `Retry-After`.
 - [x] B2. Catalog: ghi theo tài khoản (khách theo IP) 120/phút + 600/giờ (tự lưu nháp `PUT /drafts/:id` không tính vào giờ).
   Đã thử: tài khoản A lần 121 → 429 (Retry-After 59), tài khoản B cùng IP vẫn ghi.
-- [ ] B3. Khóa nút khi đang xử lý ở mọi nút ghi trong ws / đăng truyện.
+- [x] B3. Khóa nút khi đang gửi: rà mọi nút ghi ở ws / đăng truyện; thêm cho Nhận lại nháp, Tạo bản sao (DraftCard), và 6 thao tác nháp ở
+  /dang-chuong (`once`: sao chép, gửi chủ nháp, từ chối bản sao, hủy hẹn, rút đề xuất, bỏ nháp). Đăng / gửi đề xuất / TaskCard đã có.
 - [x] B4. UI 429: đếm ngược, không tự thử lại thao tác ghi (cùng PR với A6; khóa nút khi đang gửi: B3).
-- [ ] B5. Tab ẩn lâu: ngừng gia hạn khóa nháp mỗi 30 s, gia hạn lại khi quay về.
+- [x] B5. Đã có sẵn: khóa nháp chỉ gia hạn khi đã gõ trong 2 phút gần nhất (tab ẩn = không gõ = ngừng gửi, khóa hết hạn sau 2 phút). Không sửa.
 
 ## Kết quả đo
 | Bước | Trang truyện | Trình đọc | Ghi chú |

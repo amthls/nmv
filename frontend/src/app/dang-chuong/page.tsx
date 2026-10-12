@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, useRef, Suspense } from 'react';
 import Link from '@/components/common/Link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -87,6 +87,21 @@ function ChapterEditorContent() {
 
   const [activeTab, setActiveTab] = useState<'editor' | 'preview'>('editor');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // One draft action at a time (copy, offer, unschedule, withdraw, discard, decline): a second click while the first
+  // is on its way would copy twice or act on a draft that already changed (Plan/load.md B3)
+  const [acting, setActing] = useState(false);
+  const actingRef = useRef(false);
+  const once = <A extends unknown[]>(fn: (...args: A) => Promise<unknown>) => async (...args: A) => {
+    if (actingRef.current) return;
+    actingRef.current = true;
+    setActing(true);
+    try {
+      await fn(...args);
+    } finally {
+      actingRef.current = false;
+      setActing(false);
+    }
+  };
   const [feedback, setFeedback] = useState<string | null>(null);
   const [editLoadState, setEditLoadState] = useState<'idle' | 'loading' | 'ready' | 'error'>(isEditMode || draftParam ? 'loading' : 'idle');
   // Version of the chapter this edit started from: the server refuses the save if someone saved in between
@@ -622,38 +637,38 @@ function ChapterEditorContent() {
   };
 
   // Someone the draft is shared with: their own copy to edit and send back
-  const makeCopy = async () => {
+  const makeCopy = once(async () => {
     const res = await authFetch(`${WS_URL}/drafts/${draftRef.current.id}/copy`, { method: 'POST' });
     const json = await res.json().catch(() => ({}));
     if (!res.ok || !json.success) return setErrorMsg(json.message || 'Không tạo được bản sao.');
     router.push(`/dang-chuong?draft=${json.data.id}`);
-  };
+  });
 
-  const offerCopy = async () => {
+  const offerCopy = once(async () => {
     if (!(await saveDraftNow()) || !draftRef.current) return;
     const res = await authFetch(`${API_BASE_URL}/drafts/${draftRef.current.id}/offer`, { method: 'POST' });
     const json = await res.json().catch(() => ({}));
     if (!res.ok || !json.success) return setErrorMsg(json.message || 'Không gửi được.');
     setFeedback(json.message || 'Đã gửi cho chủ nháp.');
     loadDraft(draftRef.current.id);
-  };
+  });
 
-  const declineOffer = async (copyId: string) => {
+  const declineOffer = once(async (copyId: string) => {
     await authFetch(`${WS_URL}/drafts/${draftRef.current.id}/offers/${copyId}`, { method: 'DELETE' });
     setOfferShown(null);
     loadDraft(draftRef.current.id);
-  };
+  });
 
-  const unschedule = async () => {
+  const unschedule = once(async () => {
     const d = draftRef.current;
     const res = await authFetch(`${WS_URL}/drafts/${d.id}/schedule`, { method: 'DELETE' });
     const json = await res.json().catch(() => ({}));
     if (!res.ok || !json.success) return setErrorMsg(json.message || 'Không hủy được hẹn đăng.');
     setFeedback('Đã hủy hẹn đăng.');
     showDraft(json.data);
-  };
+  });
 
-  const withdrawProposal = async () => {
+  const withdrawProposal = once(async () => {
     const d = draftRef.current;
     if (!d) return;
     const res = await authFetch(`${API_BASE_URL}/drafts/${d.id}/withdraw`, { method: 'POST' });
@@ -664,9 +679,9 @@ function ChapterEditorContent() {
     }
     setFeedback(json.message || 'Đã rút đề xuất.');
     showDraft({ ...json.data, can_merge: d.can_merge });
-  };
+  });
 
-  const discardDraft = async () => {
+  const discardDraft = once(async () => {
     const d = draftRef.current;
     if (!d || !window.confirm('Bỏ bản nháp này? Nội dung chưa đăng sẽ không còn trong danh sách nháp của bạn.')) return;
     const res = await authFetch(`${WS_URL}/drafts/${d.id}`, { method: 'DELETE' });
@@ -678,7 +693,7 @@ function ChapterEditorContent() {
     stopSaving.current = true;
     lastSaved.current = snapshot;
     goBack(router, '/ws');
-  };
+  });
 
   // Before pulling, the draft on the server must hold what is on screen
   const openPull = async () => {
@@ -780,7 +795,7 @@ function ChapterEditorContent() {
                 </button>
               )}
               {draft.status === 'open' && (
-                <button type="button" onClick={discardDraft} className="text-[11px] font-bold text-gray-400 hover:text-rose-300 flex items-center gap-1 transition">
+                <button type="button" onClick={discardDraft} disabled={acting} className="disabled:opacity-50 text-[11px] font-bold text-gray-400 hover:text-rose-300 flex items-center gap-1 transition">
                   <Trash2 className="w-3.5 h-3.5" /> Bỏ nháp
                 </button>
               )}
@@ -825,7 +840,7 @@ function ChapterEditorContent() {
         <div className="p-4 rounded-2xl bg-sky-500/10 border border-sky-500/30 text-sky-100 text-xs font-semibold flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <span>Bản nháp của {draft.owner_name || 'người khác'} chia sẻ cho bạn (chỉ xem). Muốn sửa giúp: tạo bản sao của bạn, sửa rồi gửi lại cho họ.</span>
           {draft.status === 'open' || draft.status === 'submitted' ? (
-            <button type="button" onClick={makeCopy} className="px-3 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-ink font-bold text-[11px] shrink-0 flex items-center gap-1"><Copy className="w-3.5 h-3.5" /> Tạo bản sao của tôi</button>
+            <button type="button" onClick={makeCopy} disabled={acting} className="disabled:opacity-50 px-3 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-ink font-bold text-[11px] shrink-0 flex items-center gap-1"><Copy className="w-3.5 h-3.5" /> Tạo bản sao của tôi</button>
           ) : null}
         </div>
       )}
@@ -833,7 +848,7 @@ function ChapterEditorContent() {
       {draft?.access === 'editor' && (
         <div className="px-4 py-3 rounded-2xl bg-sky-500/10 border border-sky-500/30 text-sky-100 text-xs font-semibold flex flex-wrap items-center justify-between gap-2">
           <span>Bạn đang sửa bản nháp của {draft.owner_name || 'người khác'} (được chia sẻ quyền sửa). Chỉ chủ nháp đăng, gửi đề xuất hay giao nháp.</span>
-          <button type="button" onClick={makeCopy} className="text-[11px] text-sky-200 hover:text-white underline">Hoặc tạo bản sao riêng</button>
+          <button type="button" onClick={makeCopy} disabled={acting} className="disabled:opacity-50 text-[11px] text-sky-200 hover:text-white underline">Hoặc tạo bản sao riêng</button>
         </div>
       )}
 
@@ -851,7 +866,7 @@ function ChapterEditorContent() {
               : draft.status === 'accepted' ? 'Chủ nháp đã nhận bản sửa này.' : 'Đây là bản sao của bạn từ nháp của người khác. Sửa xong thì gửi lại cho chủ nháp.'}
           </span>
           {draft.status === 'open' && (
-            <button type="button" onClick={offerCopy} className="px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-500 text-snow font-bold text-[11px] shrink-0">Gửi cho chủ nháp</button>
+            <button type="button" onClick={offerCopy} disabled={acting} className="disabled:opacity-50 px-3 py-1.5 rounded-lg bg-brand-600 hover:bg-brand-500 text-snow font-bold text-[11px] shrink-0">Gửi cho chủ nháp</button>
           )}
         </div>
       )}
@@ -891,7 +906,7 @@ function ChapterEditorContent() {
             {draft.scheduled_name ? ` (hẹn bởi ${draft.scheduled_name})` : ''}. Bản nháp bị khóa tới khi đăng.
           </span>
           {draft.can_merge && (
-            <button type="button" onClick={unschedule} className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white font-bold text-[11px] shrink-0">Hủy hẹn</button>
+            <button type="button" onClick={unschedule} disabled={acting} className="disabled:opacity-50 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white font-bold text-[11px] shrink-0">Hủy hẹn</button>
           )}
         </div>
       )}
@@ -907,7 +922,7 @@ function ChapterEditorContent() {
           <span>Đã gửi đề xuất (lần {draft.last_round}), đang chờ người giữ truyện duyệt. Nháp bị khóa: muốn sửa tiếp thì rút lại.</span>
           <div className="flex items-center gap-2 shrink-0">
             <Link href={`/ws/de-xuat/${draft.id}`} className="px-3 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-ink font-bold text-[11px]">Xem đề xuất</Link>
-            <button type="button" onClick={withdrawProposal} className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white font-bold text-[11px]">Rút lại để sửa</button>
+            <button type="button" onClick={withdrawProposal} disabled={acting} className="disabled:opacity-50 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-white font-bold text-[11px]">Rút lại để sửa</button>
           </div>
         </div>
       )}
