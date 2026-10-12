@@ -23,7 +23,7 @@ story are taken, and a source that starts answering with bot challenges is dropp
 (challenges are never bypassed). Every imported story keeps its source link for credit.
 
 Images go to uploads/manga/<story-slug>/ (created if missing) and are re-encoded to WebP by the
-backend container (sharp); rows are written with psql inside the postgres container, so only the
+media container (sharp); rows are written with psql inside the postgres container, so only the
 Python standard library is needed on the host.
 """
 import argparse
@@ -1058,6 +1058,10 @@ def main():
                 enable_random_downloads(args.download_ratio)
             except Exception as e:  # e.g. migration 007 not applied yet
                 log(f"could not enable random downloads: {e}")
+        if imported and not args.dry_run:
+            # Chapter content lives in the workspace service: give the new chapters their version 1 (safe to re-run)
+            res = subprocess.run(["docker", "compose", "run", "--rm", "workspace", "import"], cwd=ROOT, capture_output=True)
+            log("new chapters imported into the workspace" if res.returncode == 0 else "workspace import failed: run `docker compose run --rm workspace import`")
         if imported and not args.dry_run and not args.no_reindex:
             subprocess.run(["docker", "compose", "restart", "catalog"], cwd=ROOT, capture_output=True)
             log("catalog restarted to refresh the search index")
