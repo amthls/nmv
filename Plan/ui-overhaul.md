@@ -31,6 +31,9 @@ Làm theo thứ tự, xong mục nào đổi `[x]`. Mỗi cụm là một PR và
       trang `/ws/truyen/[slug]` chia 1 Giao việc · 2 Việc đang chạy · 3 Bản dịch chờ duyệt; trang `/huong-dan/lam-chuong` có ảnh thật,
       link từ khung giao việc, trang nhóm (khung làm việc + tab quy trình), workspace nhóm; smoke ws kiểm thêm thông báo trả lại/gộp/gửi lại bản sửa/chuyển nháp
 
+- [x] B8. (nhánh feat/home-lists-search) Trang riêng /moi-cap-nhat, /nhieu-nguoi-xem (thay link sang /kham-pha); trang hướng dẫn nền đặc;
+      menu thả xuống của thanh trên nổi trên header trang đọc (z-50 khi mở); ô tìm kiếm gợi ý khi gõ (`components/SearchBox.tsx`): 6 truyện, Hiện thêm (+6, tối đa 24), Xem tất cả → /kham-pha?q=
+
 ## C. Trình đọc (nhánh feat/reader-responsive)
 - [x] C1. Cài đặt đọc truyện chữ co giãn theo màn hình, cuộn được khi thiếu chỗ
 - [x] C2. Bỏ lựa chọn "tự động độ phân giải", để người dùng tự chọn

@@ -23,7 +23,7 @@ export default function Footer() {
           <ul className="space-y-2 text-xs">
             <li><Link href="/kham-pha?type=novel&sort=updated" className="hover:text-brand-400 transition">Light Novel mới</Link></li>
             <li><Link href="/kham-pha?type=manga&sort=views" className="hover:text-brand-400 transition">Manga hot</Link></li>
-            <li><Link href="/kham-pha?sort=views" className="hover:text-brand-400 transition">Bảng xếp hạng</Link></li>
+            <li><Link href="/nhieu-nguoi-xem" className="hover:text-brand-400 transition">Bảng xếp hạng</Link></li>
             <li><Link href="/kham-pha" className="hover:text-brand-400 transition">Tất cả thể loại</Link></li>
           </ul>
         </div>

@@ -475,6 +475,7 @@ Các trang danh sách/chi tiết vẫn giữ khung xám nhấp nháy (skeleton) 
 | Đường dẫn | Chức năng |
 |:---|:---|
 | `/` | Trang chủ: truyện thịnh hành, mới cập nhật, đề xuất cho bạn |
+| `/moi-cap-nhat`, `/nhieu-nguoi-xem` | Trang riêng của hai hàng ở trang chủ (`components/explore/SortedStoriesPage.tsx`): mọi truyện theo chương mới nhất / tổng lượt xem (có số hạng), lọc truyện chữ/tranh, phân trang; `?loai=&trang=` trên URL |
 | `/huong-dan/lam-chuong` | Hướng dẫn làm chương theo nhóm từng bước, có ảnh chụp màn hình (`public/huong-dan/*.webp`): vai trò, quy trình, giao việc, nhận việc, gửi bản dịch, duyệt, phiên bản, thông báo và tin nhắn. Link từ khung giao việc, trang nhóm, workspace nhóm |
 | `/kham-pha` | Khám phá: tìm kiếm, lọc (loại, tình trạng, ngôn ngữ, số chương, thể loại gồm/loại trừ), sắp xếp, xem lưới/danh sách, phân trang |
 | `/truyen/[slug]` | Chi tiết truyện: danh sách tập/chương (kèm mục "Chưa phân tập"), banner (thống kê lượt xem, người theo dõi, chương; đọc tiếp/đọc từ đầu/chương mới nhất; thanh công cụ theo dõi, lưu vào album, thảo luận Fandom, tải xuống, báo cáo vi phạm), thanh Quản lý dưới banner cho nhóm truyện/Admin/Mod, tag thể loại rồi đến tóm tắt, bình luận; người quản lý được sửa/xóa chương, đổi tên/xóa/sắp xếp lại tập |

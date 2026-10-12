@@ -56,8 +56,8 @@ export default function HomePage() {
 
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 mt-10 space-y-12">
         {/* 2. Rows */}
-        <StoryRail title="Mới cập nhật" href="/kham-pha?sort=updated" stories={recentlyUpdated} meta="updated" />
-        <StoryRail title="Nhiều người xem" href="/kham-pha?sort=views" stories={trendingStories} meta="views" ranked />
+        <StoryRail title="Mới cập nhật" href="/moi-cap-nhat" stories={recentlyUpdated} meta="updated" />
+        <StoryRail title="Nhiều người xem" href="/nhieu-nguoi-xem" stories={trendingStories} meta="views" ranked />
         <RecommendationRail
           title="Đề xuất cho bạn"
           subtitle="Truyện bạn đang đọc dở và truyện bạn có khả năng thích cao nhất"

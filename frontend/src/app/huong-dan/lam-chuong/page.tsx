@@ -85,13 +85,15 @@ const SECTIONS: Section[] = [
 
 export default function ChapterWorkflowGuide() {
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-8 pb-24">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 pb-24">
+      {/* solid panel: the starry page background makes long text hard to read */}
+      <div className="rounded-3xl bg-surface border border-white/10 shadow-2xl p-4 sm:p-8 space-y-8">
       <header className="space-y-2">
         <h1 className="text-2xl sm:text-3xl font-extrabold text-white">Hướng dẫn làm chương theo nhóm</h1>
-        <p className="text-sm text-gray-400">Từ lúc giao việc tới lúc chương lên trang, kèm ảnh chụp từng màn hình.</p>
+        <p className="text-sm text-gray-300">Từ lúc giao việc tới lúc chương lên trang, kèm ảnh chụp từng màn hình.</p>
         <nav aria-label="Mục lục" className="flex flex-wrap gap-2 pt-2">
           {SECTIONS.map((s, i) => (
-            <a key={s.id} href={`#${s.id}`} className="px-3 py-1.5 rounded-full border border-white/10 bg-white/5 text-xs text-gray-200 hover:border-brand-400/60">
+            <a key={s.id} href={`#${s.id}`} className="px-3 py-1.5 rounded-full border border-white/10 bg-surface-3 text-xs font-semibold text-gray-100 hover:border-brand-400/60">
               {i + 1}. {s.title}
             </a>
           ))}
@@ -99,14 +101,14 @@ export default function ChapterWorkflowGuide() {
       </header>
 
       {SECTIONS.map((s, i) => (
-        <section key={s.id} id={s.id} className="scroll-mt-24 rounded-3xl border border-white/10 bg-white/[0.03] p-5 sm:p-6 space-y-4">
+        <section key={s.id} id={s.id} className="scroll-mt-24 rounded-2xl border border-white/10 bg-surface-2 p-5 sm:p-6 space-y-4">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="text-lg font-bold text-white">{i + 1}. {s.title}</h2>
             <span className="rounded-full bg-brand-500/15 px-2.5 py-0.5 text-[11px] font-bold text-brand-300">{s.who}</span>
           </div>
           <ol className="space-y-2">
             {s.steps.map((step, j) => (
-              <li key={j} className="flex gap-3 text-sm text-gray-200 leading-relaxed">
+              <li key={j} className="flex gap-3 text-[15px] text-gray-100 leading-relaxed">
                 <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-brand-600 text-[11px] font-bold text-snow">{j + 1}</span>
                 <span>{step}</span>
               </li>
@@ -118,7 +120,7 @@ export default function ChapterWorkflowGuide() {
               {s.images.map(([src, alt]) => (
                 <figure key={src} className="space-y-1.5">
                   <img src={src} alt={alt} loading="lazy" className="w-full rounded-2xl border border-white/10" />
-                  <figcaption className="text-[11px] text-gray-500">Ảnh: {alt}</figcaption>
+                  <figcaption className="text-xs text-gray-400">Ảnh: {alt}</figcaption>
                 </figure>
               ))}
             </div>
@@ -129,6 +131,7 @@ export default function ChapterWorkflowGuide() {
       <p className="text-center text-sm">
         <Link href="/ws" className="text-brand-300 hover:text-brand-200 font-semibold">Mở Workspace của tôi →</Link>
       </p>
+      </div>
     </div>
   );
 }
