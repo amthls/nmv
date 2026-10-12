@@ -170,7 +170,7 @@ export const getManageableStories = async (req: AuthenticatedRequest, res: Respo
 
     const result = await pool.query(`
       SELECT DISTINCT
-        s.id, s.title, s.slug, s.story_type, s.status, s.total_chapters,
+        s.id, s.title, s.slug, s.cover_image_url, s.story_type, s.status, s.total_chapters,
         s.uploader_id, s.group_id, g.name as group_name
       FROM stories s
       LEFT JOIN translation_groups g ON s.group_id = g.id
