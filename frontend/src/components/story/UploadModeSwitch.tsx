@@ -10,8 +10,8 @@ const MODES: { mode: UploadMode; label: string; hint: string; Icon: typeof FileT
 ];
 
 /**
- * Picks between the two chapter uploaders. Choosing a story already switches automatically;
- * this lets the user see which one they are in and jump to the other (keeping the group filter).
+ * Picks between the two chapter uploaders (keeping the group filter). The jump replaces the history entry, so Back
+ * leaves the uploader instead of bouncing between the two.
  */
 export default function UploadModeSwitch({ mode, groupId }: { mode: UploadMode; groupId?: string | null }) {
   return (
@@ -33,7 +33,7 @@ export default function UploadModeSwitch({ mode, groupId }: { mode: UploadMode; 
         return active ? (
           <div key={m} role="tab" aria-selected className={cls}>{body}</div>
         ) : (
-          <Link key={m} role="tab" aria-selected={false} href={chapterUploadHref({ storyType: m, groupId, chosen: true })} className={cls}>{body}</Link>
+          <Link key={m} role="tab" aria-selected={false} replace href={chapterUploadHref({ storyType: m, groupId, chosen: true })} className={cls}>{body}</Link>
         );
       })}
     </div>

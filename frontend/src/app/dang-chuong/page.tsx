@@ -10,7 +10,6 @@ import {
   Eye,
   Pencil,
   Check,
-  ArrowLeft,
   Plus,
   X,
   Lock,
@@ -32,7 +31,7 @@ import { rewriteHtmlImages, useImageQuality } from '@/lib/imageQuality';
 import { useAuth } from '@/context/AuthContext';
 import { csrfToken } from '@/lib/session';
 import PageLoader from '@/components/common/PageLoader';
-import UploadModeSwitch from '@/components/story/UploadModeSwitch';
+import UploadHeader from '@/components/story/UploadHeader';
 import { chapterUploadHref } from '@/lib/chapterUpload';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
@@ -313,7 +312,6 @@ function ChapterEditorContent() {
   const wrongTypeStory = !isEditMode && !draft ? mangaStories.find((s) => s.id === selectedStoryId) : undefined;
 
   // Back goes where the user came from (workspace, group page, story page...), not to a fixed page
-  const goBack = () => (window.history.length > 1 ? router.back() : router.push('/ws'));
 
   // When story changes, load story detail (volumes & latest chapter number)
   useEffect(() => {
@@ -715,39 +713,18 @@ function ChapterEditorContent() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6 pb-32">
-
-      {/* Back Button */}
-      <div>
-        <button
-          type="button"
-          onClick={goBack}
-          className="inline-flex items-center gap-2 text-xs font-semibold text-gray-400 hover:text-white transition"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Quay lại</span>
-        </button>
-      </div>
-
-      {!isEditMode && !draft && !draftParam && <UploadModeSwitch mode="novel" groupId={groupId} />}
-
-      {/* Header */}
-      <div className="rounded-3xl p-6 sm:p-7 glass-panel border border-white/10 bg-glass shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-        <div className="space-y-1.5">
-          <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-wide flex items-center gap-2">
-            <Pencil className="w-5 h-5 text-brand-400" />
-            {isEditMode || draft?.chapter_id ? 'Sửa Chương' : 'Đăng Chương Mới'}
-          </h1>
-          <p className="text-xs sm:text-sm text-gray-400">
-            {isMangaEdit
-              ? 'Chương truyện tranh: sửa tiêu đề, số chương hoặc tập. Các trang ảnh được giữ nguyên.'
-              : draft?.chapter_id
-              ? 'Bạn đang sửa trên bản nháp riêng, tự lưu khi gõ. Độc giả chỉ thấy thay đổi khi bạn bấm Đăng (thành phiên bản mới, không gửi lại thông báo).'
-              : 'Soạn chương như trong Word: tiêu đề, in đậm, căn lề, tô màu chữ, ngắt cảnh, chèn ảnh minh họa. Dán từ Word / Google Docs vẫn giữ định dạng.'}
-          </p>
-        </div>
-
-        {!isMangaEdit && (
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6 pb-32">
+      <UploadHeader
+        mode="novel"
+        groupId={groupId}
+        showSwitch={!isEditMode && !draft && !draftParam}
+        title={isEditMode || draft?.chapter_id ? 'Sửa chương' : 'Đăng chương mới'}
+        description={isMangaEdit
+          ? 'Chương truyện tranh: sửa tiêu đề, số chương hoặc tập. Các trang ảnh được giữ nguyên.'
+          : draft?.chapter_id
+          ? 'Bạn đang sửa trên bản nháp riêng, tự lưu khi gõ. Độc giả chỉ thấy thay đổi khi bạn bấm Đăng (thành phiên bản mới, không gửi lại thông báo).'
+          : 'Soạn chương như trong Word: tiêu đề, in đậm, căn lề, tô màu chữ, ngắt cảnh, chèn ảnh minh họa. Dán từ Word / Google Docs vẫn giữ định dạng.'}
+        aside={!isMangaEdit && (
         <div className="p-3.5 rounded-2xl bg-black/40 border border-white/10 flex items-center gap-4 text-xs shrink-0">
           <div>
             <div className="text-gray-400 text-[10px] uppercase font-bold">Số Từ</div>
@@ -760,7 +737,7 @@ function ChapterEditorContent() {
           </div>
         </div>
         )}
-      </div>
+      />
 
       {feedback && (
         <div className="p-4 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-bold flex items-center gap-2 animate-in fade-in">

@@ -96,6 +96,10 @@ export default function StoryWorkspacePage() {
             {story.group_name || 'Độc lập'} · {story.total_chapters} chương đã đăng ·{' '}
             <Link href={`/truyen/${story.slug}`} className="underline hover:text-white">trang đọc</Link>
           </p>
+          <p className="text-xs text-gray-300 mt-2 max-w-2xl">
+            Giao việc & duyệt bản dịch: giao từng bước (dịch, biên tập…) của một chương cho thành viên, rồi duyệt bản dịch họ gửi lên
+            (“đề xuất”) để gộp vào bản chính thức.
+          </p>
         </div>
         {story.story_type !== 'manga' && (
           <Link
@@ -110,7 +114,7 @@ export default function StoryWorkspacePage() {
       {proposals.length > 0 && (
         <section className="p-5 rounded-3xl glass-panel border border-sky-500/20 bg-glass space-y-3">
           <h2 className="text-xs font-bold text-sky-300 uppercase tracking-wider flex items-center gap-1.5">
-            <GitMerge className="w-4 h-4" /> Đề xuất chờ gộp ({proposals.length})
+            <GitMerge className="w-4 h-4" /> Bản dịch chờ duyệt ({proposals.length})
           </h2>
           {proposals.map((p) => (
             <Link key={p.id} href={`/ws/de-xuat/${p.id}`} className="block p-3.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 transition">
@@ -153,7 +157,7 @@ export default function StoryWorkspacePage() {
 
       {board && (
         <section className="p-5 rounded-3xl glass-panel border border-white/10 bg-glass space-y-3">
-          <h2 className="text-xs font-bold text-brand-400 uppercase tracking-wider">Việc của truyện</h2>
+          <h2 className="text-xs font-bold text-brand-400 uppercase tracking-wider">Giao việc cho chương</h2>
           <AssignForm
             storyId={story.id}
             chapters={groups.flatMap((g) => g.chapters)}

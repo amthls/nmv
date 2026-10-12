@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import PageLoader from '@/components/common/PageLoader';
-import UploadModeSwitch from '@/components/story/UploadModeSwitch';
+import UploadHeader from '@/components/story/UploadHeader';
 import { chapterUploadHref } from '@/lib/chapterUpload';
 import MangaReader from '@/components/reader/MangaReader';
 import {
@@ -450,7 +450,7 @@ function MangaUploadContent() {
 
   return (
     <div
-      className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-32"
+      className="max-w-5xl mx-auto px-4 sm:px-6 py-8 pb-32"
       onDragOver={(e) => { if (dragIndex === null && storyId) { e.preventDefault(); setDragOver(true); } }}
       onDragLeave={(e) => { if (e.currentTarget === e.target) setDragOver(false); }}
       onDrop={storyId ? onDrop : undefined}
@@ -469,17 +469,13 @@ function MangaUploadContent() {
         </div>
       )}
 
-      <div className="mb-6 max-w-2xl">
-        <UploadModeSwitch mode="manga" groupId={groupId} />
-      </div>
-
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">Đăng chương mới</h1>
-          <p className="mt-1 text-sm text-gray-400">Kéo thả cả chương (ảnh, thư mục, ZIP/CBZ). Trang tự xếp theo tên file, ảnh được nén và thu nhỏ trên máy chủ.</p>
-        </div>
-        <Link href="/dang-truyen" className="text-xs font-semibold text-brand-500 hover:underline">+ Tạo bộ truyện tranh mới</Link>
-      </div>
+      <UploadHeader
+        mode="manga"
+        groupId={groupId}
+        title="Đăng chương mới"
+        description="Kéo thả cả chương (ảnh, thư mục, ZIP/CBZ). Trang tự xếp theo tên file, ảnh được nén và thu nhỏ trên máy chủ."
+        aside={<Link href="/dang-truyen" className="text-xs font-semibold text-brand-500 hover:underline">+ Tạo bộ truyện tranh mới</Link>}
+      />
 
       {/* Story */}
       <div className="mt-6 glass-panel rounded-xl p-4 flex flex-wrap items-center gap-3">

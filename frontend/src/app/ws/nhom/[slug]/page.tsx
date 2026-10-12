@@ -112,11 +112,11 @@ export default function GroupWorkspacePage() {
 
       <div className="flex flex-wrap items-center gap-2">
         <select value={storyFilter} onChange={(e) => setStoryFilter(e.target.value)} className={select} aria-label="Lọc theo truyện">
-          <option value="">Mọi truyện</option>
+          <option value="">Tất cả truyện</option>
           {(group.stories || []).map((s: any) => <option key={s.id} value={s.id}>{s.title}</option>)}
         </select>
         <select value={personFilter} onChange={(e) => setPersonFilter(e.target.value)} className={select} aria-label="Lọc theo người">
-          <option value="">Mọi người</option>
+          <option value="">Tất cả thành viên</option>
           {members.map((m: any) => <option key={m.id} value={m.id}>{m.name}</option>)}
         </select>
         <div className="ml-auto flex flex-wrap gap-2 text-xs font-bold">
@@ -128,7 +128,7 @@ export default function GroupWorkspacePage() {
 
       {board.tasks.length === 0 && board.proposals.length === 0 && (
         <p className="p-4 rounded-2xl border border-dashed border-white/15 text-xs text-gray-300">
-          Chưa có việc nào. Người giữ truyện mở việc cho từng chương ở trang <b className="text-white">Việc & đề xuất</b> của truyện:{' '}
+          Chưa có việc nào. Người giữ truyện mở việc cho từng chương ở trang <b className="text-white">Giao việc & duyệt bản dịch</b> của truyện:{' '}
           {(group.stories || []).map((s: any, i: number) => (
             <React.Fragment key={s.id}>{i > 0 && ', '}<Link href={`/ws/truyen/${s.slug}`} className="text-brand-300 underline hover:text-brand-200">{s.title}</Link></React.Fragment>
           ))}

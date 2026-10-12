@@ -18,6 +18,11 @@ Làm theo thứ tự, xong mục nào đổi `[x]`. Mỗi cụm là một PR và
         Workspace nhóm, Đăng chương, Đăng truyện), thẻ truyện có nút Workspace + Đăng chương; tab tên dễ hiểu
   - [x] B4c. `/ws/nhom/[slug]`: dải quy trình đếm việc từng bước (bấm để lọc), hướng dẫn ngắn
   - [x] B4d. Thử trên trình duyệt (rộng + hẹp), README, PR, merge
+
+- [x] B5. Góp ý lần 3 (nhánh fix/upload-ws-clarity): lọc "Mọi truyện/Mọi người" → "Tất cả truyện/thành viên";
+      "Việc & đề xuất" → "Giao việc & duyệt bản dịch" + câu giải thích ở trang truyện; đổi truyện/chương ở `/ws` thay mục lịch sử
+      (Quay lại rời /ws); `/dang-chuong` và `/dang-truyen-tranh` dùng chung `UploadHeader` (Quay lại, công tắc, tiêu đề, cùng bề rộng),
+      công tắc thay mục lịch sử nên Quay lại về trang trước khi vào đăng chương
 
 ## C. Trình đọc (nhánh feat/reader-responsive)
 - [x] C1. Cài đặt đọc truyện chữ co giãn theo màn hình, cuộn được khi thiếu chỗ

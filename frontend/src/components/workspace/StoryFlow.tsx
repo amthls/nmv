@@ -72,7 +72,7 @@ export default function StoryFlow({
             <Plus className="w-4 h-4" /> Chương mới
           </Link>
           <Link href={`/ws/truyen/${story.slug}`} className={`${btn} bg-white/10 hover:bg-white/15 text-gray-100`}>
-            <GitMerge className="w-4 h-4" /> Việc & đề xuất
+            <GitMerge className="w-4 h-4" /> Giao việc & duyệt bản dịch
           </Link>
           {story.group_slug && (
             <Link href={`/ws/nhom/${story.group_slug}`} className={`${btn} bg-white/10 hover:bg-white/15 text-gray-100`}>

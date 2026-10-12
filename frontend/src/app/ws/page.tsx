@@ -24,7 +24,7 @@ function WorkspaceContent() {
   const search = useSearchParams();
   const storySlug = search?.get('truyen') || '';
   const chapterId = search?.get('chuong') || '';
-  const open = (truyen: string, chuong = '') => router.push(`/ws?truyen=${truyen}${chuong ? `&chuong=${chuong}` : ''}`, { scroll: false });
+  const open = (truyen: string, chuong = '') => router.replace(`/ws?truyen=${truyen}${chuong ? `&chuong=${chuong}` : ''}`, { scroll: false });
   const { user, isAuthenticated, isLoading, openAuthModal, authFetch } = useAuth();
   const [drafts, setDrafts] = useState<any[] | null>(null);
   const [stories, setStories] = useState<any[] | null>(null);
