@@ -34,7 +34,8 @@ Mỗi mục một nhánh + PR. Đo lại sau mỗi mục và ghi số.
 - [x] B1. Service workspace (`quota.go`): theo người dùng, trong bộ nhớ (1 container; ghi chú `shortcut:`): ghi thường 60/phút + 600/giờ;
   dùng bản cũ / kéo bản mới / nhận đề xuất / lấy lại nháp 10/phút + 100/giờ; sao chép nháp 20/giờ; khóa nháp (nhịp 30 s) không tính.
   Đăng / lên lịch đi qua catalog (`/internal`) → B2. 429 + `Retry-After`.
-- [ ] B2. Catalog: hạn mức ghi theo người dùng (giữ theo IP làm lớp ngoài).
+- [x] B2. Catalog: ghi theo tài khoản (khách theo IP) 120/phút + 600/giờ (tự lưu nháp `PUT /drafts/:id` không tính vào giờ).
+  Đã thử: tài khoản A lần 121 → 429 (Retry-After 59), tài khoản B cùng IP vẫn ghi.
 - [ ] B3. Khóa nút khi đang xử lý ở mọi nút ghi trong ws / đăng truyện.
 - [x] B4. UI 429: đếm ngược, không tự thử lại thao tác ghi (cùng PR với A6; khóa nút khi đang gửi: B3).
 - [ ] B5. Tab ẩn lâu: ngừng gia hạn khóa nháp mỗi 30 s, gia hạn lại khi quay về.
