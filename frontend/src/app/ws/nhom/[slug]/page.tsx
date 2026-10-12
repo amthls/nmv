@@ -11,6 +11,8 @@ import PageLoader from '@/components/common/PageLoader';
 import TaskCard, { STEP_LABEL, dueState } from '@/components/workspace/TaskCard';
 import { draftLabel } from '@/components/workspace/DraftRow';
 import WorkflowSteps from '@/components/workspace/WorkflowSteps';
+import { TASK_GUIDE_HREF } from '@/components/workspace/AssignForm';
+import { CircleHelp } from 'lucide-react';
 
 /**
  * A translation group's workspace (Plan/chapter-workspace.md, stage 4b). The group keeps no content of its own: this is
@@ -128,7 +130,10 @@ export default function GroupWorkspacePage() {
       </div>
 
       <section className="space-y-2" aria-label="Truyện của nhóm">
-        <h2 className="text-xs font-bold text-emerald-300 uppercase tracking-wider flex items-center gap-1.5"><BookOpen className="w-4 h-4" /> Truyện của nhóm</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-xs font-bold text-emerald-300 uppercase tracking-wider flex items-center gap-1.5"><BookOpen className="w-4 h-4" /> Truyện của nhóm</h2>
+          <span className="text-[11px] text-gray-400">“Giao việc & duyệt”: giao chương cho thành viên, duyệt bản dịch họ gửi. <Link href={`${TASK_GUIDE_HREF}#giao-viec`} className="inline-flex items-center gap-1 text-xs font-semibold text-brand-300 hover:text-brand-200"><CircleHelp className="w-3.5 h-3.5" /> Xem hướng dẫn</Link></span>
+        </div>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {(group.stories || []).map((s: any) => {
             const open = board.tasks.filter((t: any) => t.story_id === s.id && (t.status === 'open' || t.status === 'claimed')).length;
@@ -159,6 +164,7 @@ export default function GroupWorkspacePage() {
           Chương đi từ trái sang phải. Bấm một bước để chỉ xem việc của bước đó. Việc <b className="text-gray-200">Chưa nhận</b>: bấm “Nhận việc” để làm;
           xong thì bấm “Xong bước”, bước sau tự mở. Bước <b className="text-emerald-300">GỘP</b> là các đề xuất ở cột “Chờ duyệt”.
         </p>
+        <Link href={`${TASK_GUIDE_HREF}#nhan-viec`} className="inline-flex items-center gap-1 text-xs font-semibold text-brand-300 hover:text-brand-200"><CircleHelp className="w-3.5 h-3.5" /> Hướng dẫn có ảnh: nhận việc, gửi bản dịch, duyệt</Link>
         <WorkflowSteps workflow={group.workflow} counts={stepCounts} active={stepFilter} onPick={setStepFilter} />
       </section>
 

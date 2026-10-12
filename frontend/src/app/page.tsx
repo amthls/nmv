@@ -5,7 +5,6 @@ import { Story } from '@/components/explore/StoryCardGrid';
 import FeaturedCarousel from '@/components/home/FeaturedCarousel';
 import StoryRail from '@/components/home/StoryRail';
 import RecommendationRail from '@/components/home/RecommendationRail';
-import WorkflowGuide from '@/components/home/WorkflowGuide';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -65,8 +64,6 @@ export default function HomePage() {
           endpoint="/home"
           source="home_rec"
         />
-
-        <WorkflowGuide />
       </div>
     </div>
   );

@@ -4,7 +4,7 @@ Làm theo thứ tự, xong mục nào đổi `[x]`. Mỗi cụm là một PR và
 
 ## A. Trang chủ + quy trình (nhánh feat/ui-overhaul)
 - [x] A1. Xóa hàng "Ảnh minh họa mới" ở `/` (giữ ảnh nền của carousel)
-- [x] A2. Thêm "Hướng dẫn quy trình làm chương" mở/đóng được (`components/home/WorkflowGuide.tsx`)
+- [x] A2. Thêm "Hướng dẫn quy trình làm chương" mở/đóng được (đã bỏ lại ở B7 theo yêu cầu, thay bằng trang `/huong-dan/lam-chuong`)
 
 ## B. Đăng chương + workspace (nhánh feat/ws-flow)
 - [x] B1. `/dang-chuong` không tự chuyển về nhóm dịch: nút quay lại theo `history`/nguồn vào, không cứng `/nhom-dich`
@@ -26,6 +26,10 @@ Làm theo thứ tự, xong mục nào đổi `[x]`. Mỗi cụm là một PR và
 
 - [x] B6. Tách rõ workspace của tôi / workspace nhóm (nhánh feat/ws-personal-vs-group): `/ws` chia tab theo chủ truyện
       (của tôi / nhóm / cộng tác) + dải nhắc sang workspace nhóm; `/ws/nhom` có đầu trang của nhóm (ảnh, thành viên, xanh lá) và danh sách truyện của nhóm
+
+- [x] B7. (nhánh feat/task-guide) Bỏ hướng dẫn ở trang chủ; khung giao việc thiết kế lại thành 3 câu hỏi đánh số + câu tóm tắt;
+      trang `/ws/truyen/[slug]` chia 1 Giao việc · 2 Việc đang chạy · 3 Bản dịch chờ duyệt; trang `/huong-dan/lam-chuong` có ảnh thật,
+      link từ khung giao việc, trang nhóm (khung làm việc + tab quy trình), workspace nhóm; smoke ws kiểm thêm thông báo trả lại/gộp/gửi lại bản sửa/chuyển nháp
 
 ## C. Trình đọc (nhánh feat/reader-responsive)
 - [x] C1. Cài đặt đọc truyện chữ co giãn theo màn hình, cuộn được khi thiếu chỗ

@@ -55,6 +55,12 @@ class Client:
                 return e.code, {}
 
 
+def has_notification(client, typ, link):
+    """The bell of `client` has a notification of this type opening this link (messaging service)."""
+    return lambda: any(n.get("type") == typ and n.get("link") == link
+                       for n in client.req("GET", "/api/msg/notifications")[1].get("data", {}).get("notifications", []))
+
+
 def eventually(fn, seconds=5):
     end = time.time() + seconds
     while time.time() < end:
@@ -227,6 +233,7 @@ st, _ = k.req("POST", f"/api/ws/drafts/{pid}/comments", {"body": "Thêm dấu ch
 check("keeper comments on the paragraph", st == 201, str(st))
 st, js = k.req("POST", f"/api/v1/drafts/{pid}/return", {"note": "Xem góp ý"})
 check("keeper returns it", st == 200 and js["data"]["status"] == "open", f"{st} {js.get('message')}")
+check("the writer is notified of the return (opens the proposal)", eventually(has_notification(outsider, "draft_returned", f"/ws/de-xuat/{pid}"), 8))
 st, js = outsider.req("PUT", f"/api/v1/drafts/{pid}", {**base, "content_blocks": blocks + [{"type": "paragraph", "text": prop + "."}], "expected_version": 2})
 st, js = outsider.req("POST", f"/api/v1/drafts/{pid}/submit")
 st, rv = k.req("GET", f"/api/ws/drafts/{pid}/review")
@@ -235,6 +242,7 @@ st, js = k.req("POST", f"/api/v1/drafts/{pid}/publish")
 check("keeper merges -> new official version", st == 200 and js["data"]["version"] == vbase + 1, f"{st} {js.get('message')}")
 st, rd = reader()
 check("readers see the merged proposal", prop + "." in json.dumps(rd, ensure_ascii=False))
+check("the writer is notified of the merge", eventually(has_notification(outsider, "draft_merged", f"/ws/de-xuat/{pid}"), 8))
 k.req("POST", f"/api/ws/chapters/{cid}/rewind", {"to_version": vbase})
 
 # Working together (stage 4a): share through a direct message, helper's copy taken in, shared editing with a lock, hand-over
@@ -263,6 +271,7 @@ outsider.req("PUT", f"/api/v1/drafts/{hc}", {**base, "content_blocks": blocks + 
 st, js = outsider.req("POST", f"/api/v1/drafts/{hc}/offer")
 check("...and sends it back", st == 200 and js["data"]["status"] == "offered", f"{st} {js.get('message')}")
 st, js = k.req("GET", f"/api/ws/drafts/{kd}")
+check("the owner is notified of the offer (opens their draft)", eventually(has_notification(k, "draft_offered", f"/dang-chuong?draft={kd}"), 8))
 check("the owner sees the offer", st == 200 and any(o["id"] == hc for o in js["data"].get("offers") or []), str(st))
 st, js = k.req("GET", f"/api/ws/drafts/{kd}/offers/{hc}")
 choices = {c["conflict"]["id"]: "theirs" for c in js["data"]["plan"]["chunks"] if c.get("conflict")}
@@ -279,6 +288,7 @@ check("the owner waits while the helper holds the edit lock", st == 409 and "đa
 outsider.req("DELETE", f"/api/ws/drafts/{kd}/lock")
 st, js = k.req("POST", f"/api/v1/drafts/{kd}/transfer", {"username": name})
 check("hand the draft over", st == 200 and js["data"]["owner_id"] == helper_id, f"{st} {js.get('message')}")
+check("the new owner is notified (opens the draft)", eventually(has_notification(outsider, "draft_transferred", f"/dang-chuong?draft={kd}"), 8))
 st, js = outsider.req("DELETE", f"/api/ws/drafts/{kd}")
 check("the new owner can discard it", st == 200, str(st))
 # Tasks (stage 4b): the keeper assigns chapter 1 to the collaborator; done -> proposal; returned -> step reopens; merged
@@ -291,6 +301,7 @@ st, js = k.req("POST", "/api/ws/tasks", {"story_id": sid, "chapter_id": cid})
 check("a chapter with an active task cannot get another", st == 409, str(st))
 tnotified = lambda: any(n.get("type") == "task_opened" for n in outsider.req("GET", "/api/msg/notifications")[1].get("data", {}).get("notifications", []))
 check("the assignee is notified (event -> queue)", eventually(tnotified, 8))
+check("...and it opens the story's workspace", eventually(has_notification(outsider, "task_opened", f"/ws/truyen/{args.story}"), 8))
 st, js = outsider.req("GET", "/api/ws/tasks?mine=1")
 check("it is in the assignee's tasks", st == 200 and any(t["id"] == tid for t in js["data"]), str(st))
 st, js = outsider.req("POST", f"/api/ws/tasks/{tid}/start")

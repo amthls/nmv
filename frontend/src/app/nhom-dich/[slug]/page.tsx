@@ -27,6 +27,8 @@ import {
   PenLine
 } from 'lucide-react';
 import WorkflowSteps from '@/components/workspace/WorkflowSteps';
+import { TASK_GUIDE_HREF } from '@/components/workspace/AssignForm';
+import { CircleHelp } from 'lucide-react';
 import SmartImage from '@/components/common/SmartImage';
 import { useAuth } from '@/context/AuthContext';
 import RichContent from '@/components/common/RichContent';
@@ -523,6 +525,7 @@ export default function GroupDetailPage() {
                 <p className="text-xs text-gray-400 mt-0.5">
                   Mỗi chương đi qua các bước dưới đây. Xong một bước thì bước sau tự mở cho người đúng vai trò; bước cuối người giữ truyện gộp và đăng.
                 </p>
+                <div className="mt-1"><Link href={`${TASK_GUIDE_HREF}`} className="inline-flex items-center gap-1 text-xs font-semibold text-brand-300 hover:text-brand-200"><CircleHelp className="w-3.5 h-3.5" /> Hướng dẫn từng bước có ảnh</Link></div>
               </div>
               <WorkflowSteps workflow={group.workflow} />
               <div className="grid gap-3 sm:grid-cols-3">
@@ -869,7 +872,10 @@ export default function GroupDetailPage() {
       {/* TAB 5: RULES & INFO */}
       {activeTab === 'info' && (
         <div id="quy-trinh" className="p-6 rounded-3xl glass-panel border border-white/10 bg-glass space-y-3 max-w-3xl">
-          <h2 className="text-base font-bold text-white">Quy trình làm chương</h2>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-base font-bold text-white">Quy trình làm chương</h2>
+            <Link href={`${TASK_GUIDE_HREF}#quy-trinh`} className="inline-flex items-center gap-1 text-xs font-semibold text-brand-300 hover:text-brand-200"><CircleHelp className="w-3.5 h-3.5" /> Hướng dẫn có ảnh</Link>
+          </div>
           <p className="text-xs text-gray-400">
             Mỗi chương đi qua các bước theo thứ tự, mỗi bước là một việc cho đúng vai trò (Trưởng nhóm/Mod nhóm và thành viên thường nhận được mọi bước),
             xong bước thì bước sau tự mở; cuối cùng là đề xuất để người giữ truyện gộp.
