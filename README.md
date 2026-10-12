@@ -419,6 +419,7 @@ Tìm kiếm truyện dùng **Elasticsearch 9** (container `search`, image chính
 - PostgreSQL vẫn là nguồn dữ liệu chính. Elasticsearch chỉ xử lý ô tìm kiếm chữ (`q`) của `GET /stories/explore`: trả về danh sách id truyện xếp theo độ liên quan (BM25), còn mọi bộ lọc khác (loại, tình trạng, thể loại, số chương, sắp xếp...) vẫn chạy bằng SQL.
 - **Trường được tìm:** tên truyện (ưu tiên cao nhất), tên gốc, tác giả, họa sĩ, thể loại, tên nhóm dịch, tóm tắt.
 - **Tiếng Việt:** analyzer `vi_fold` (`lowercase` + `asciifolding`) bỏ dấu khi so khớp (`nguoi cua` tìm ra "Người Cưa", `đ` ↔ `d`), chịu sai chính tả nhẹ (`fuzziness: AUTO`, chỉ trên tên/tác giả), gõ dở từ đầu (`chain`) nhờ sub-field `title.prefix` dùng edge-ngram 2-15 ký tự. Index được catalog tự tạo với cấu hình này.
+- **Gợi ý khi gõ:** ô tìm kiếm ở thanh trên (`frontend/src/components/SearchBox.tsx`) gọi cùng API này khi gõ từ 2 ký tự (chờ 250 ms), hiện 6 truyện, "Hiện thêm" thêm 6 (tối đa 24), "Xem tất cả" mở trang Khám phá với từ khóa.
 - **Sắp xếp:** khi có từ khóa, mặc định `sort=relevance` (theo độ liên quan). Frontend trang Khám phá có mục "Liên quan / Mới cập nhật".
 - **Đồng bộ:** tự index lại toàn bộ khi catalog khởi động (thử lại nền tối đa ~5 phút nếu Elasticsearch chưa sẵn sàng); tự cập nhật khi tạo, sửa (kể cả thể loại) hoặc xóa truyện.
 - **Dự phòng:** Elasticsearch tắt hoặc lỗi thì tự quay về `ILIKE` trên SQL, API vẫn trả kết quả.
@@ -475,6 +476,7 @@ Các trang danh sách/chi tiết vẫn giữ khung xám nhấp nháy (skeleton) 
 | Đường dẫn | Chức năng |
 |:---|:---|
 | `/` | Trang chủ: truyện thịnh hành, mới cập nhật, đề xuất cho bạn |
+| `/moi-cap-nhat`, `/nhieu-nguoi-xem` | Trang riêng của hai hàng ở trang chủ (`components/explore/SortedStoriesPage.tsx`): mọi truyện theo chương mới nhất / tổng lượt xem (có số hạng), lọc truyện chữ/tranh, phân trang; `?loai=&trang=` trên URL |
 | `/huong-dan/lam-chuong` | Hướng dẫn làm chương theo nhóm từng bước, có ảnh chụp màn hình (`public/huong-dan/*.webp`): vai trò, quy trình, giao việc, nhận việc, gửi bản dịch, duyệt, phiên bản, thông báo và tin nhắn. Link từ khung giao việc, trang nhóm, workspace nhóm |
 | `/kham-pha` | Khám phá: tìm kiếm, lọc (loại, tình trạng, ngôn ngữ, số chương, thể loại gồm/loại trừ), sắp xếp, xem lưới/danh sách, phân trang |
 | `/truyen/[slug]` | Chi tiết truyện: danh sách tập/chương (kèm mục "Chưa phân tập"), banner (thống kê lượt xem, người theo dõi, chương; đọc tiếp/đọc từ đầu/chương mới nhất; thanh công cụ theo dõi, lưu vào album, thảo luận Fandom, tải xuống, báo cáo vi phạm), thanh Quản lý dưới banner cho nhóm truyện/Admin/Mod, tag thể loại rồi đến tóm tắt, bình luận; người quản lý được sửa/xóa chương, đổi tên/xóa/sắp xếp lại tập |
