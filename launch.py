@@ -99,6 +99,17 @@ def read_env(path):
     return values
 
 
+# Random 32-byte secrets compose refuses to start without (every ${X:?} in docker-compose.yml)
+RANDOM_KEYS = (
+    "IDENTITY_DB_PASSWORD", "IDENTITY_JWT_SECRET", "WORKSPACE_DB_PASSWORD", "MEDIA_DB_PASSWORD", "MESSAGING_DB_PASSWORD",
+    "COMMUNITY_DB_PASSWORD", "LIBRARY_DB_PASSWORD", "RECOMMENDER_DB_PASSWORD",
+    "USER_SIG_KEY_CATALOG", "USER_SIG_KEY_WORKSPACE", "USER_SIG_KEY_MEDIA", "USER_SIG_KEY_MESSAGING",
+    "USER_SIG_KEY_COMMUNITY", "USER_SIG_KEY_LIBRARY", "USER_SIG_KEY_RECOMMENDER",
+    "INTERNAL_KEY_CATALOG", "INTERNAL_KEY_IDENTITY", "INTERNAL_KEY_WORKSPACE", "INTERNAL_KEY_MESSAGING",
+    "INTERNAL_KEY_COMMUNITY", "INTERNAL_KEY_LIBRARY",
+)
+
+
 def ensure_env():
     """Create .env from .env.example with random secrets (compose refuses to start without them)."""
     if os.path.exists(ENV_FILE):
@@ -113,10 +124,7 @@ def ensure_env():
             info("Added a random REDIS_PASSWORD to .env")
             env = read_env(ENV_FILE)
         # identity service secrets: added to older .env files instead of refusing to start
-        added = {k: secrets.token_hex(32) for k in ("IDENTITY_DB_PASSWORD", "IDENTITY_JWT_SECRET", "WORKSPACE_DB_PASSWORD", "MEDIA_DB_PASSWORD", "MESSAGING_DB_PASSWORD", "COMMUNITY_DB_PASSWORD", "LIBRARY_DB_PASSWORD", "RECOMMENDER_DB_PASSWORD",
-                                                         "USER_SIG_KEY_CATALOG", "USER_SIG_KEY_WORKSPACE", "USER_SIG_KEY_MEDIA", "USER_SIG_KEY_MESSAGING", "USER_SIG_KEY_COMMUNITY", "USER_SIG_KEY_LIBRARY", "USER_SIG_KEY_RECOMMENDER",
-                                                         "INTERNAL_KEY_CATALOG", "INTERNAL_KEY_IDENTITY", "INTERNAL_KEY_WORKSPACE", "INTERNAL_KEY_MESSAGING", "INTERNAL_KEY_COMMUNITY", "INTERNAL_KEY_LIBRARY")
-                 if not env.get(k) or env[k] == "change-me"}
+        added = {k: secrets.token_hex(32) for k in RANDOM_KEYS if not env.get(k) or env[k] == "change-me"}
         if added:
             set_env_values(added)
             info(f"Added random {', '.join(added)} to .env")
@@ -149,24 +157,7 @@ def ensure_env():
         "RABBITMQ_URL": f"amqp://novel:{rabbit_pw}@localhost:5672",
         "REDIS_PASSWORD": secrets.token_hex(24),
         "ELASTIC_PASSWORD": secrets.token_hex(24),
-        "IDENTITY_DB_PASSWORD": secrets.token_hex(32),
-        "IDENTITY_JWT_SECRET": secrets.token_hex(32),
-        "USER_SIG_KEY_CATALOG": secrets.token_hex(32),
-        "USER_SIG_KEY_WORKSPACE": secrets.token_hex(32),
-        "USER_SIG_KEY_MEDIA": secrets.token_hex(32),
-        "USER_SIG_KEY_MESSAGING": secrets.token_hex(32),
-        "INTERNAL_KEY_CATALOG": secrets.token_hex(32),
-        "INTERNAL_KEY_IDENTITY": secrets.token_hex(32),
-        "INTERNAL_KEY_WORKSPACE": secrets.token_hex(32),
-        "INTERNAL_KEY_MESSAGING": secrets.token_hex(32),
-        "INTERNAL_KEY_COMMUNITY": secrets.token_hex(32),
-        "INTERNAL_KEY_LIBRARY": secrets.token_hex(32),
-        "WORKSPACE_DB_PASSWORD": secrets.token_hex(32),
-        "MEDIA_DB_PASSWORD": secrets.token_hex(32),
-        "MESSAGING_DB_PASSWORD": secrets.token_hex(32),
-        "COMMUNITY_DB_PASSWORD": secrets.token_hex(32),
-        "LIBRARY_DB_PASSWORD": secrets.token_hex(32),
-        "RECOMMENDER_DB_PASSWORD": secrets.token_hex(32),
+        **{k: secrets.token_hex(32) for k in RANDOM_KEYS},
         "POSTGRES_PASSWORD": pg_pw,
         "DATABASE_URL": f"postgresql://postgres:{pg_pw}@localhost:5432/novel_platform?schema=public",
         "PGADMIN_DEFAULT_PASSWORD": secrets.token_hex(16),
@@ -183,6 +174,7 @@ def ensure_env():
                 out.append(f"{key}={overrides[key]}\n")
             else:
                 out.append(line)
+    out += [f"{k}={v}\n" for k, v in overrides.items() if k not in seen]  # not listed in .env.example
     with open(ENV_FILE, "w", encoding="utf-8") as f:
         f.writelines(out)
     os.chmod(ENV_FILE, 0o600)
@@ -380,26 +372,44 @@ def pull_latest():
 
 
 def apply_migrations(env):
-    """Migrations are idempotent; run them so an older Postgres volume gets the new columns too."""
+    """Run the migrations that are not recorded in schema_migrations yet (the same table scripts/migrate.sh uses).
+
+    No table yet: a database that no longer has the legacy `posts` table already includes every migration
+    (fresh install from sql/database.sql, or 027 ran), so they are only recorded. Older databases run them all,
+    they are idempotent."""
     if not os.path.isdir(MIGRATIONS_DIR):
         return True
     user = env.get("POSTGRES_USER", "postgres")
     db = env.get("POSTGRES_DB", "novel_platform")
+    psql = ["docker", "compose", "exec", "-T", "postgres", "psql", "-v", "ON_ERROR_STOP=1", "-q", "-tA", "-U", user, "-d", db]
+
+    def query(sql):
+        res = subprocess.run(psql + ["-c", sql], cwd=ROOT, capture_output=True, text=True)
+        return res.stdout.strip() if res.returncode == 0 else None
+
+    names = sorted(n for n in os.listdir(MIGRATIONS_DIR) if n.endswith(".sql"))
+    if query("SELECT to_regclass('public.schema_migrations') IS NOT NULL") != "t":
+        baseline = query("SELECT to_regclass('public.posts') IS NULL") == "t"
+        query("CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ DEFAULT NOW())")
+        if baseline:
+            query("INSERT INTO schema_migrations (name) VALUES " + ", ".join(f"('{n}')" for n in names) + " ON CONFLICT DO NOTHING")
+            ok(f"migrations: recorded {len(names)} existing ones as applied")
+            return True
+    done = set((query("SELECT name FROM schema_migrations") or "").split())
     all_ok = True
-    for name in sorted(os.listdir(MIGRATIONS_DIR)):
-        if not name.endswith(".sql"):
+    for name in names:
+        if name in done:
             continue
         with open(os.path.join(MIGRATIONS_DIR, name), "rb") as f:
-            res = subprocess.run(
-                ["docker", "compose", "exec", "-T", "postgres", "psql", "-v", "ON_ERROR_STOP=1", "-q",
-                 "-U", user, "-d", db],
-                cwd=ROOT, stdin=f, capture_output=True,
-            )
+            res = subprocess.run(psql, cwd=ROOT, stdin=f, capture_output=True)
         if res.returncode == 0:
+            query(f"INSERT INTO schema_migrations (name) VALUES ('{name}') ON CONFLICT DO NOTHING")
             ok(f"migration {name}")
         else:
             all_ok = False
             fail(f"migration {name}: {res.stderr.decode(errors='replace').strip()[:300]}")
+    if all_ok and not set(names) - done:
+        ok("migrations: nothing new")
     return all_ok
 
 
