@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import PageLoader from '@/components/common/PageLoader';
+import { SEARCH_DELAY_MS } from '@/components/SearchBox';
 import { 
   Search, 
   LayoutGrid, 
@@ -124,7 +125,7 @@ function ExplorePageContent() {
   }, [urlQuery]);
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedQuery(searchQuery), 300);
+    const timer = setTimeout(() => setDebouncedQuery(searchQuery), SEARCH_DELAY_MS);
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
@@ -137,8 +138,12 @@ function ExplorePageContent() {
   }, [debouncedQuery]);
 
   // 2. Fetch stories with query params
+  const inFlight = useRef<AbortController | null>(null);
   const fetchStories = useCallback(async () => {
     const requestId = ++latestRequest.current;
+    inFlight.current?.abort(); // a newer search replaces the one still running: the server stops working on it too
+    const ctrl = new AbortController();
+    inFlight.current = ctrl;
     setIsLoading(true);
     try {
       const params = new URLSearchParams();
@@ -153,7 +158,7 @@ function ExplorePageContent() {
       params.append('page', currentPage.toString());
       params.append('limit', String(pageSize));
 
-      const res = await fetch(`${API_BASE_URL}/stories/explore?${params.toString()}`);
+      const res = await fetch(`${API_BASE_URL}/stories/explore?${params.toString()}`, { signal: ctrl.signal });
       // A newer search started while this one was in flight: drop the stale result
       if (requestId !== latestRequest.current) return;
       if (res.ok) {
@@ -164,8 +169,8 @@ function ExplorePageContent() {
           setPagination(json.pagination || { page: 1, limit: 24, total: 0, totalPages: 1 });
         }
       }
-    } catch (err) {
-      console.error('Failed to fetch stories:', err);
+    } catch (err: any) {
+      if (err?.name !== 'AbortError') console.error('Failed to fetch stories:', err);
     } finally {
       if (requestId === latestRequest.current) setIsLoading(false);
     }
@@ -241,6 +246,7 @@ function ExplorePageContent() {
             className="w-full h-10 pl-10 pr-4 rounded-xl bg-white/5 border border-white/[0.04] text-sm text-white placeholder-gray-400 focus:outline-none focus:border-brand-500 transition"
           />
           <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          {(isLoading || searchQuery !== debouncedQuery) && <div className="nh-loadbar -bottom-1.5 rounded-full" role="progressbar" aria-label="Đang tìm" />}
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}

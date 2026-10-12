@@ -96,7 +96,8 @@ router.get('/tags', cacheJson(600), getTags);
 
 // Stories
 router.get('/stories', searchLimiter, getStories);
-router.get('/stories/explore', searchLimiter, exploreStories);
+// same answer for everyone: popular queries (and the search-as-you-type suggestions) hit Redis, not Elasticsearch
+router.get('/stories/explore', searchLimiter, cacheJson(30), exploreStories);
 router.get('/stories/trending', cacheJson(120), getTrendingStories);
 router.get('/stories/recently-updated', cacheJson(60), getRecentlyUpdatedStories);
 router.get('/stories/illustrations', cacheJson(300), getFeaturedIllustrations);
