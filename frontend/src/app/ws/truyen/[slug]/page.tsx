@@ -10,7 +10,8 @@ import { useAuth } from '@/context/AuthContext';
 import PageLoader from '@/components/common/PageLoader';
 import { DraftRow } from '@/components/workspace/DraftRow';
 import TaskCard from '@/components/workspace/TaskCard';
-import AssignForm from '@/components/workspace/AssignForm';
+import AssignForm, { TASK_GUIDE_HREF } from '@/components/workspace/AssignForm';
+import { CircleHelp } from 'lucide-react';
 
 /**
  * Workspace of one story (Plan/chapter-workspace.md, stage 2): its official chapters with their history, and my
@@ -96,10 +97,15 @@ export default function StoryWorkspacePage() {
             {story.group_name || 'Độc lập'} · {story.total_chapters} chương đã đăng ·{' '}
             <Link href={`/truyen/${story.slug}`} className="underline hover:text-white">trang đọc</Link>
           </p>
-          <p className="text-xs text-gray-300 mt-2 max-w-2xl">
-            Giao việc & duyệt bản dịch: giao từng bước (dịch, biên tập…) của một chương cho thành viên, rồi duyệt bản dịch họ gửi lên
-            (“đề xuất”) để gộp vào bản chính thức.
-          </p>
+          <ol className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-300">
+            {['Giao việc cho chương', 'Thành viên làm rồi gửi bản dịch', 'Bạn duyệt và gộp vào bản chính'].map((t, i) => (
+              <li key={t} className="flex items-center gap-1.5">
+                {i > 0 && <span className="text-gray-500">→</span>}
+                <span className="grid h-5 w-5 place-items-center rounded-full bg-brand-600 text-[11px] font-bold text-snow">{i + 1}</span>{t}
+              </li>
+            ))}
+            <li><Link href={TASK_GUIDE_HREF} className="ml-1 inline-flex items-center gap-1 font-semibold text-brand-300 hover:text-brand-200"><CircleHelp className="w-3.5 h-3.5" /> Hướng dẫn có ảnh</Link></li>
+          </ol>
         </div>
         {story.story_type !== 'manga' && (
           <Link
@@ -110,23 +116,6 @@ export default function StoryWorkspacePage() {
           </Link>
         )}
       </div>
-
-      {proposals.length > 0 && (
-        <section className="p-5 rounded-3xl glass-panel border border-sky-500/20 bg-glass space-y-3">
-          <h2 className="text-xs font-bold text-sky-300 uppercase tracking-wider flex items-center gap-1.5">
-            <GitMerge className="w-4 h-4" /> Bản dịch chờ duyệt ({proposals.length})
-          </h2>
-          {proposals.map((p) => (
-            <Link key={p.id} href={`/ws/de-xuat/${p.id}`} className="block p-3.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 transition">
-              <div className="text-sm font-bold text-white truncate">{draftLabel(p)}</div>
-              <div className="text-[11px] text-gray-400">
-                {p.owner_name || 'Người viết'} · lần {p.last_round} · gửi {new Date(p.submitted_at).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}
-                {p.note ? ` · “${p.note.slice(0, 80)}”` : ''}
-              </div>
-            </Link>
-          ))}
-        </section>
-      )}
 
       {orphans.length > 0 && (
         <section className="p-5 rounded-3xl glass-panel border border-amber-500/20 bg-glass space-y-3">
@@ -157,7 +146,7 @@ export default function StoryWorkspacePage() {
 
       {board && (
         <section className="p-5 rounded-3xl glass-panel border border-white/10 bg-glass space-y-3">
-          <h2 className="text-xs font-bold text-brand-400 uppercase tracking-wider">Giao việc cho chương</h2>
+          <h2 className="text-xs font-bold text-brand-400 uppercase tracking-wider">1 · {board.keeper ? 'Giao việc cho chương' : 'Nhận chương để làm'}</h2>
           <AssignForm
             storyId={story.id}
             chapters={groups.flatMap((g) => g.chapters)}
@@ -166,14 +155,33 @@ export default function StoryWorkspacePage() {
             authFetch={authFetch}
             onDone={() => setReload((n) => n + 1)}
           />
+          <h2 className="pt-2 text-xs font-bold text-brand-400 uppercase tracking-wider">2 · Việc đang chạy ({board.tasks.filter((t) => t.status === 'open' || t.status === 'claimed').length})</h2>
           {board.tasks.filter((t) => t.status === 'open' || t.status === 'claimed').length === 0 && (
-            <p className="text-xs text-gray-500">Không có việc nào đang mở.</p>
+            <p className="text-xs text-gray-500">Chưa có việc nào. Giao việc ở trên, người làm sẽ thấy nó ở workspace và trong thông báo.</p>
           )}
           <div className="grid gap-2 md:grid-cols-2">
             {board.tasks.filter((t) => t.status === 'open' || t.status === 'claimed').map((t) => (
               <TaskCard key={t.id} t={t} me={user?.id} keeper={board.keeper} members={team} authFetch={authFetch} onChanged={() => setReload((n) => n + 1)} />
             ))}
           </div>
+        </section>
+      )}
+
+      {board && (
+        <section className="p-5 rounded-3xl glass-panel border border-sky-500/20 bg-glass space-y-3">
+          <h2 className="text-xs font-bold text-sky-300 uppercase tracking-wider flex items-center gap-1.5">
+            <GitMerge className="w-4 h-4" /> 3 · Bản dịch chờ bạn duyệt ({proposals.length})
+          </h2>
+          {proposals.length === 0 && <p className="text-xs text-gray-500">Chưa có bản dịch nào gửi lên. Khi thành viên làm xong bước cuối, bản của họ hiện ở đây: bấm vào để xem thay đổi rồi Gộp hoặc Trả lại.</p>}
+          {proposals.map((p) => (
+            <Link key={p.id} href={`/ws/de-xuat/${p.id}`} className="block p-3.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 transition">
+              <div className="text-sm font-bold text-white truncate">{draftLabel(p)}</div>
+              <div className="text-[11px] text-gray-400">
+                {p.owner_name || 'Người viết'} · lần {p.last_round} · gửi {new Date(p.submitted_at).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}
+                {p.note ? ` · “${p.note.slice(0, 80)}”` : ''}
+              </div>
+            </Link>
+          ))}
         </section>
       )}
 
