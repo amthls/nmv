@@ -301,7 +301,7 @@ export default function UserProfilePage() {
       {profile.groups.length > 0 && (
         <div className="space-y-3">
           <h2 className="text-sm font-bold text-white flex items-center gap-2"><Users className="w-4 h-4 text-indigo-400" /> Nhóm dịch</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(min(300px,100%),1fr))] gap-3">
             {profile.groups.map((g: any) => (
               <Link key={g.slug} href={`/nhom-dich/${g.slug}`} className="p-3 rounded-2xl glass-panel border border-white/10 hover:border-brand-500/40 bg-glass flex items-center gap-3 transition">
                 <div className="w-10 h-10 rounded-xl overflow-hidden bg-gray-900 shrink-0">
@@ -323,7 +323,7 @@ export default function UserProfilePage() {
         {profile.stories.length === 0 ? (
           <p className="text-xs text-gray-400">Chưa đăng truyện nào.</p>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(min(150px,calc(50%_-_8px)),1fr))] gap-3">
             {profile.stories.map((s: any) => (
               <Link key={s.id} href={`/truyen/${s.slug}`} className="group space-y-1.5">
                 <div className="aspect-[3/4] rounded-xl overflow-hidden bg-gray-900 border border-white/10">

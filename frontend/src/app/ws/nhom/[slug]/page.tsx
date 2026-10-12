@@ -134,7 +134,7 @@ export default function GroupWorkspacePage() {
           <h2 className="text-xs font-bold text-emerald-300 uppercase tracking-wider flex items-center gap-1.5"><BookOpen className="w-4 h-4" /> Truyện của nhóm</h2>
           <span className="text-[11px] text-gray-400">“Giao việc & duyệt”: giao chương cho thành viên, duyệt bản dịch họ gửi. <Link href={`${TASK_GUIDE_HREF}#giao-viec`} className="inline-flex items-center gap-1 text-xs font-semibold text-brand-300 hover:text-brand-200"><CircleHelp className="w-3.5 h-3.5" /> Xem hướng dẫn</Link></span>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 grid-cols-[repeat(auto-fill,minmax(min(300px,100%),1fr))]">
           {(group.stories || []).map((s: any) => {
             const open = board.tasks.filter((t: any) => t.story_id === s.id && (t.status === 'open' || t.status === 'claimed')).length;
             const waiting = board.proposals.filter((p: any) => p.story_id === s.id).length;

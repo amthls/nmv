@@ -146,7 +146,7 @@ export default function GroupsPage() {
 
       {/* 3. Group Grid */}
       {isLoading ? (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-6 animate-pulse">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(300px,100%),1fr))] gap-6 animate-pulse">
           {[...Array(6)].map((_, i) => (
             <div key={i} className="h-64 rounded-3xl bg-white/5 border border-white/10" />
           ))}
@@ -168,7 +168,7 @@ export default function GroupsPage() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(300px,1fr))] gap-6">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(300px,100%),1fr))] gap-6">
           {groups.map((group) => (
             <div 
               key={group.id}

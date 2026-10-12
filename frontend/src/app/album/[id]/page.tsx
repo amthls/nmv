@@ -306,7 +306,7 @@ function AlbumPageInner() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(150px,calc(50%_-_8px)),1fr))] gap-4">
           {album.stories.map((s) => (
             <div key={s.id} className="group relative rounded-2xl overflow-hidden glass-panel border border-white/10 hover:border-brand-500/40 transition">
               <Link href={`/truyen/${s.slug}`} className="block">

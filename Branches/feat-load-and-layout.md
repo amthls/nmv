@@ -13,6 +13,7 @@
 - `/ws`: thẻ chương hết nhảy (bỏ scale/translate, chỉ cuộn khi khung phiên bản ngoài màn hình, khung phiên bản giữ chiều cao)
 - `/fandom` khung `max-w-7xl`, `/nhom-dich` lưới `auto-fill`
 - `/thong-bao`: ô tìm (`GET /notifications?q=`), trễ 400 ms, mờ khi tải
+- Lưới thẻ tự co giãn (`auto-fill`) ở bookmark, album, hồ sơ người dùng, trang nhóm, workspace nhóm
 - Messaging: tự xóa tin nhắn cũ hơn 7 tháng (trừ tin ghim)
 - Catalog giới hạn/phân trang: `/groups`, `/stories/manageable`, trang nhóm, hồ sơ người dùng
 
