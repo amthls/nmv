@@ -271,8 +271,8 @@ export default function StoryDetailPage() {
         }`}>
           <span className="hidden sm:block text-right">{ch.word_count > 0 ? `${ch.word_count.toLocaleString()} chữ` : ''}</span>
           <span className="flex items-center justify-end gap-1">
-            <Eye className="w-3 h-3 text-cyan-400" />
             {typeof ch.total_views === 'number' ? ch.total_views.toLocaleString() : ch.total_views || 0}
+            <Eye className="w-3 h-3 text-cyan-400 shrink-0" />
           </span>
           
           <Link
