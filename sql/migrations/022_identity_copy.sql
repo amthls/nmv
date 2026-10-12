@@ -5,8 +5,17 @@
 -- and auth_tokens.
 
 -- New accounts arrive from identity without these
-ALTER TABLE users ALTER COLUMN email DROP NOT NULL;
-ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
+-- Skipped once 026 has dropped the columns (launch.py re-runs every migration)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+             WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'email') THEN
+    ALTER TABLE users ALTER COLUMN email DROP NOT NULL;
+    ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
+    COMMENT ON COLUMN users.email IS 'Deprecated (identity owns it). Not read or written since the identity switch; to be dropped.';
+    COMMENT ON COLUMN users.password_hash IS 'Deprecated (identity owns it). Not read or written since the identity switch; to be dropped.';
+  END IF;
+END $$;
 
 -- Version of the identity snapshot this row reflects: older or repeated events are ignored
 ALTER TABLE users ADD COLUMN IF NOT EXISTS identity_version BIGINT NOT NULL DEFAULT 0;
@@ -18,6 +27,3 @@ CREATE TABLE IF NOT EXISTS processed_events (
     processed_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_processed_events_time ON processed_events(processed_at);
-
-COMMENT ON COLUMN users.email IS 'Deprecated (identity owns it). Not read or written since the identity switch; to be dropped.';
-COMMENT ON COLUMN users.password_hash IS 'Deprecated (identity owns it). Not read or written since the identity switch; to be dropped.';
