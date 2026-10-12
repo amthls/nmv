@@ -16,7 +16,7 @@ Nền tảng đọc **Light Novel (truyện chữ)** và **Manga (truyện tranh
 2. [Cấu trúc thư mục](#-cấu-trúc-thư-mục)
 3. [Khởi chạy](#-khởi-chạy)
 4. [Biến môi trường](#-biến-môi-trường)
-5. [Chống lạm dụng & DDoS](#-chống-lạm-dụng--ddos) · [Hiệu năng & mở rộng](#-hiệu-năng--mở-rộng-redis-realtime-pgbouncer) · [CI/CD & migration](#-cicd--migration) · [Service identity](#-service-identity) · [Service workspace](#-service-workspace-lịch-sử-chương) · [Sự kiện giữa các service](#-sự-kiện-giữa-các-service) · [Service media](#-service-media-ảnh-epubpdf) · [Service community](#-service-community-fandom-bình-luận-báo-cáo) · [Service library](#-service-library-theo-dõi-bookmark-lịch-sử-đọc-album) · [Service recommender](#-service-recommender-gợi-ý-truyện) · [Sao lưu](#-sao-lưu) · [Lộ trình bảo mật](#-lộ-trình-bảo-mật)
+5. [Chống lạm dụng & DDoS](#-chống-lạm-dụng--ddos) · [Hiệu năng & mở rộng](#-hiệu-năng--mở-rộng-redis-realtime-pgbouncer) · [Kiểm tra & migration](#-kiểm-tra--migration) · [Service identity](#-service-identity) · [Service workspace](#-service-workspace-lịch-sử-chương) · [Sự kiện giữa các service](#-sự-kiện-giữa-các-service) · [Service media](#-service-media-ảnh-epubpdf) · [Service community](#-service-community-fandom-bình-luận-báo-cáo) · [Service library](#-service-library-theo-dõi-bookmark-lịch-sử-đọc-album) · [Service recommender](#-service-recommender-gợi-ý-truyện) · [Sao lưu](#-sao-lưu) · [Lộ trình bảo mật](#-lộ-trình-bảo-mật)
 6. [Hàng đợi thông báo (RabbitMQ)](#-hàng-đợi-thông-báo-rabbitmq)
 7. [Tìm kiếm với Elasticsearch](#-tìm-kiếm-với-elasticsearch)
 8. [Trình soạn thảo rich text](#️-trình-soạn-thảo-rich-text-ckeditor-5) · [Độ phân giải ảnh](#-độ-phân-giải-ảnh-cho-người-đọc) · [Hiệu ứng tải trang](#-hiệu-ứng-tải-trang)
@@ -54,7 +54,7 @@ Một cổng vào (nginx), một frontend Next.js và **8 service**, mỗi servi
 | Hàng đợi | RabbitMQ 3.13: sự kiện giữa các service (outbox), job thông báo (messaging nhận) |
 | Cache / realtime | Redis 7.4: cache API công khai, đếm lượt xem, rate limit dùng chung, kênh `rt:events` → messaging đẩy WebSocket |
 | Cổng vào | nginx 1.27: giới hạn tần suất, IP thật, cache ảnh, WebSocket; hỏi identity (`auth_request`) cho mọi request API |
-| Hạ tầng | Docker Compose (2 mạng: `edge`, `data`), GitHub Actions (CI/CD), image trên GHCR |
+| Hạ tầng | Docker Compose (2 mạng: `edge`, `data`), kiểm tra trên máy (không CI) |
 
 ```
                          (duy nhất cổng 3000 mở ra ngoài)
@@ -139,7 +139,7 @@ Trình duyệt gọi `/api/v1/...` và `/uploads/...` cùng origin; qua gateway 
 ```bash
 cp .env.example .env         # BẮT BUỘC đặt POSTGRES_PASSWORD, IDENTITY_DB_PASSWORD, IDENTITY_JWT_SECRET, USER_SIG_KEY_*, INTERNAL_KEY_*, ELASTIC_PASSWORD, RABBITMQ_PASSWORD, REDIS_PASSWORD, PGADMIN_DEFAULT_PASSWORD (openssl rand -hex 24); compose không chạy nếu thiếu
 docker compose up -d --build # toàn bộ container
-sh scripts/migrate.sh        # chạy các migration mới (xem mục CI/CD & migration)
+sh scripts/migrate.sh        # chạy các migration mới (xem mục Kiểm tra & migration)
 ```
 `python3 launch.py` làm tất cả các bước trên (tự sinh `.env` với mật khẩu ngẫu nhiên; `.env` cũ còn mật khẩu mặc định `postgres`/`admin` thì tự đổi sang mật khẩu ngẫu nhiên và áp luôn vào volume Postgres đang có bằng `ALTER USER`).
 
@@ -186,7 +186,7 @@ Chạy không qua Docker (cần Postgres sẵn): `yarn dev:local` (catalog + fro
 | `DB_POOL_MAX` | `50` | Số kết nối tối đa của mỗi tiến trình Node tới Postgres/PgBouncer |
 | `PGBOUNCER_MAX_CLIENT_CONN` / `PGBOUNCER_POOL_SIZE` / `PGBOUNCER_MAX_DB_CONN` | `1000` / `20` / `60` | Kết nối từ app vào PgBouncer / kết nối thật tới Postgres |
 | `VIEW_FLUSH_MS` | `60000` | Chu kỳ worker ghi lượt xem từ Redis xuống Postgres |
-| `IMAGE_REGISTRY` / `IMAGE_TAG` | `local` / `latest` | Tên image; trên server deploy đặt `IMAGE_REGISTRY=ghcr.io/<owner>` để kéo image do CI build |
+| `IMAGE_REGISTRY` / `IMAGE_TAG` | `local` / `latest` | Tên image; server có thể đặt registry riêng để kéo image build sẵn (không còn CI tự build) |
 | `PGADMIN_*` | | Chỉ dùng với profile `tools` |
 
 ## 🛡 Chống lạm dụng & DDoS
@@ -231,13 +231,13 @@ Mục tiêu: chịu được vài nghìn đến vài chục nghìn người onli
 - **PgBouncer chế độ transaction** không giữ trạng thái theo phiên: không dùng advisory lock theo phiên, `SET` không `LOCAL`, `LISTEN`, prepared statement có tên, hay nhiều lệnh SQL có tham số trong một `query`. Service recommender nối thẳng Postgres (không qua PgBouncer) nên khóa huấn luyện là advisory lock theo phiên.
 - **Thêm bản catalog:** bỏ `container_name` của `catalog`, rồi `docker compose up -d --scale catalog=3` (nginx tự phân giải tên `catalog` qua DNS của Docker).
 
-## 🔁 CI/CD & migration
+## 🔁 Kiểm tra & migration
 
 - **Migration:** `sh scripts/migrate.sh` chạy các file mới trong `sql/migrations/` theo thứ tự tên, mỗi file một transaction, ghi vào bảng `schema_migrations`; file lỗi được rollback và script dừng với mã lỗi. Lần chạy đầu (chưa có bảng) chỉ **ghi nhận** các file hiện có là đã chạy (vì `sql/database.sql` và các DB cũ đã có chúng). `python launch.py` dùng cùng bảng này: chỉ chạy file chưa ghi nhận; DB chưa có bảng mà đã mất bảng `posts` (cài mới hoặc đã qua migration 027) thì chỉ ghi nhận, DB cũ hơn thì chạy hết rồi ghi nhận. Thêm migration mới: tạo file số tiếp theo, đồng thời thêm nội dung tương ứng vào `sql/database.sql` cho cài đặt mới.
 - **Đo độ trễ** (mốc so sánh khi tách service): `node scripts/bench.mjs [http://localhost:3000] [100]`: p50/p95/max của trang truyện, đọc chương và API chính, chạy ~15 yêu cầu/giây (dưới giới hạn theo IP). Mốc 2026-10-10 (máy dev, có cache): API 3–7 ms, trang truyện/chương 9 ms p50, ≤ 15 ms p95.
-- **CI** (`.github/workflows/ci.yml`, mọi push/PR): typecheck catalog + frontend, test catalog (`yarn test`: `tsx --test src/**/*.test.ts`) , typecheck + test từng service (Go, media, community, recommender). **Không** còn chạy cả stack Docker hay quét image Trivy trong CI (chủ dự án bỏ 2026-10-11 vì quá chậm): chạy stack và `scripts/*-smoke.py` trên máy trước khi push.
-- **CD** (`.github/workflows/deploy.yml`, push lên `main`): build và đẩy `ghcr.io/<owner>/nmv-catalog` và `nmv-frontend` (tag = commit SHA và `latest`). Bước deploy qua SSH **chỉ chạy khi** biến repo `DEPLOY_ENABLED=true` và có secrets `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_PATH`: `git pull` → `docker compose pull` → `migrate.sh` → `up -d` → kiểm tra health. Server cần `IMAGE_REGISTRY=ghcr.io/<owner>` trong `.env` và đã `docker login ghcr.io`.
-- **Dependabot** (`.github/dependabot.yml`): mỗi tuần mở PR cập nhật npm, Docker và GitHub Actions; CI chạy trên từng PR.
+- **Không có CI/CD** (GitHub Actions gỡ 2026-10-12 vì tốn tiền). Trước khi merge, chạy trên máy phần đã sửa: `npx tsc --noEmit` + `yarn test` (catalog, media, community), `npx tsc --noEmit` (frontend), `gofmt -l . && go vet ./... && go test ./...` (service Go), `python -m pytest -q tests` (recommender), stack Docker + `scripts/*-smoke.py` khi đụng luồng chính.
+- **Deploy:** thủ công trên server: `git pull` → `docker compose up -d --build` → `sh scripts/migrate.sh`.
+- **Dependabot** (`.github/dependabot.yml`, miễn phí): mỗi tuần mở PR cập nhật npm và Docker (bản vá/nhỏ); kiểm tra trên máy rồi mới merge.
 
 ## 🔑 Service identity
 
@@ -252,7 +252,7 @@ Service đầu tiên tách khỏi catalog (`Plan/microservices.md`, chi tiết `
 - **Sự kiện** qua outbox (ghi cùng transaction) → exchange topic `novelhub.events` (có xác nhận của RabbitMQ): `identity.user.created|updated|deleted` (ảnh chụp công khai, **không email**), `identity.alert`. Schema ở `events/`; test hợp đồng kiểm mọi sự kiện identity ghi ra.
 - **Mail** nằm trong `mail_outbox` (ghi cùng transaction với token), gửi lại chờ tăng dần ~1 giờ, hỏng hẳn → `identity.alert`. Không có `SMTP_URL` thì không gửi; đọc link bằng: `docker compose exec postgres psql -U identity -d identity_db -c "SELECT to_addr, body_text FROM mail_outbox ORDER BY id DESC LIMIT 1"` (link không bao giờ ghi vào log).
 - Tài khoản mẫu: `identity seed-demo` tạo 12 tài khoản mẫu (UUID giống seed của `sql/database.sql`, mật khẩu `password123`) **chỉ khi `identity_db` chưa có tài khoản nào** (bản cài mới); `scripts/migrate.sh` và `launch.py` gọi nó mỗi lần. DB catalog không còn email, mật khẩu, token tài khoản (migration 026).
-- Test: `cd services/identity && go test ./...` (test đơn vị); thêm `IDENTITY_TEST_DATABASE_URL=postgres://…/identity_test` (+ `IDENTITY_TEST_REDIS_URL`) để chạy test tích hợp (**xóa sạch database đó**). CI chạy cả hai với Postgres/Redis riêng.
+- Test: `cd services/identity && go test ./...` (test đơn vị); thêm `IDENTITY_TEST_DATABASE_URL=postgres://…/identity_test` (+ `IDENTITY_TEST_REDIS_URL`) để chạy test tích hợp (**xóa sạch database đó**).
 - Biến môi trường (launch.py tự sinh): `IDENTITY_DB_PASSWORD`, `IDENTITY_JWT_SECRET`, `USER_SIG_KEY_CATALOG`, `USER_SIG_KEY_WORKSPACE`, `INTERNAL_KEY_IDENTITY`.
 
 ## 📝 Service workspace (lịch sử chương)
@@ -275,14 +275,14 @@ Service thứ hai tách khỏi catalog (`Plan/chapter-workspace.md`, giai đoạ
 - **Quyền** hỏi catalog `GET /internal/permissions?user=&story=` (cache 30 giây trong workspace): *người đóng góp* (chủ truyện, thành viên nhóm, cộng tác viên) xem lịch sử và so sánh; *người giữ truyện* (chủ truyện, Trưởng nhóm và các vai trò nhóm chọn ở `translation_groups.mergers`, mặc định Mod nhóm; migration `028`) gộp, khôi phục bản cũ. Truyện đang bị gỡ thì không khôi phục được (409).
 - **Chuyển dữ liệu:** `workspace import` đọc `GET catalog /internal/chapters/export` (phân trang), mỗi chương chưa có thành v1 (`source=import`); `scripts/migrate.sh` và `launch.py` chạy mỗi lần (an toàn khi chạy lại, cần catalog đang chạy).
 - Giao diện: `/ws` (nháp của tôi, truyện tôi tham gia), `/ws/truyen/[slug]` (chương chính thức + Lịch sử + Sửa, nháp của tôi trong truyện), trình soạn thảo `/dang-chuong?draft=<id>`, trang `/truyen/[slug]/lich-su/[chapterId]` (nút **Lịch sử** ở trang đọc cho người đóng góp). Thử nhanh: `python scripts/workspace-smoke.py`.
-- Test: `cd services/workspace && go test ./...`; thêm `WORKSPACE_TEST_DATABASE_URL=postgres://…/workspace_test` để chạy test tích hợp (**xóa sạch database đó**). CI chạy cả hai.
+- Test: `cd services/workspace && go test ./...`; thêm `WORKSPACE_TEST_DATABASE_URL=postgres://…/workspace_test` để chạy test tích hợp (**xóa sạch database đó**).
 
 ## 🔄 Sự kiện giữa các service
 
 - **Đường đi:** service ghi thay đổi + dòng `outbox` trong **cùng một transaction** → tiến trình đẩy gửi lên exchange topic `novelhub.events` (có xác nhận của RabbitMQ) rồi mới đánh dấu đã gửi. Giao **ít nhất một lần**, có thể đảo thứ tự: bên nhận bỏ trùng theo `event_id` (`processed_events`) và chỉ áp dụng `version` mới hơn bản đang có. Mỗi bên nhận một hàng riêng (`backend.identity`, `backend.workspace`), lỗi thì thử lại 10 giây/lần, 5 lần vẫn lỗi → hàng cách ly `<hàng>.dlq`.
 - **Sự kiện hành vi không qua outbox:** catalog gửi thẳng `catalog.story.viewed`, `catalog.chapter.read` (mọi lần mở trang truyện/chương, cả khách theo cookie `nh_vid`) lên exchange; RabbitMQ hỏng thì mất, chấp nhận được vì chỉ là số liệu cho gợi ý.
 - **Tên sự kiện:** `<service>.<thực thể>.<việc>` (`identity.user.updated`, `workspace.revision.merged`). Vỏ chung `{event_id, type, version, occurred_at, request_id, data}` (`events/envelope.v1.json`).
-- **Đổi schema** (`events/<tên>.v1.json`): chỉ được **thêm trường** (bên nhận bỏ qua trường lạ). Đổi nghĩa, đổi kiểu hay bỏ trường là phá vỡ → sự kiện mới `….v2.json` với tên mới, phát song song bản cũ cho tới khi mọi bên nhận đã chuyển. Test của mỗi service kiểm mọi sự kiện nó ghi ra khớp schema (CI).
+- **Đổi schema** (`events/<tên>.v1.json`): chỉ được **thêm trường** (bên nhận bỏ qua trường lạ). Đổi nghĩa, đổi kiểu hay bỏ trường là phá vỡ → sự kiện mới `….v2.json` với tên mới, phát song song bản cũ cho tới khi mọi bên nhận đã chuyển. Test của mỗi service kiểm mọi sự kiện nó ghi ra khớp schema.
 - **Phát lại (dựng lại bản sao):** `docker compose run --rm identity republish [user-id]`, `docker compose run --rm workspace republish [chapter-id]` gửi lại ảnh chụp hiện tại (không tăng version): bản sao thiếu hoặc cũ thì nhận, bản đã đúng bỏ qua. Bản sao bị sửa tay mà cùng version thì phải đặt `users.identity_version = 0` / xóa dòng `ws_chapter_versions` trước khi phát lại.
 - **Đối soát** (worker catalog, 5 phút sau khi khởi động rồi 6 giờ/lần, `catalog/src/services/reconcile.ts`): so `GET /internal/stats` của identity, workspace (số dòng + tổng version) với bản sao (`users` có `identity_version > 0`, `ws_chapter_versions`); outbox chưa gửi quá 10 phút; hàng `.dlq` có tin. Có vấn đề → **thông báo cho Admin** (mỗi loại một lần/ngày) kèm lệnh sửa.
 
@@ -382,7 +382,7 @@ Thư mục `./backups` (kho restic cũ, nếu còn) không còn được dùng, 
 
 ## 🔐 Lộ trình bảo mật
 
-Đã có: một cổng vào duy nhất, 2 mạng Docker tách tầng, `no-new-privileges`, **container app chạy bằng user `node`** (catalog khởi động bằng root chỉ để sửa quyền thư mục `uploads`/`exports`/`.cache` khi cần rồi hạ quyền, xem `catalog/docker-entrypoint.sh`), mật khẩu ngẫu nhiên bắt buộc cho Postgres/RabbitMQ/Redis/pgAdmin, rate limit dùng chung, lỗi 5xx bị che ở production (`maskServerErrors`: chỉ trả câu chung kèm mã tra log), **phiên theo thiết bị ở service identity** (cookie `httpOnly`, token truy cập 15 phút, làm mới xoay vòng có phát hiện dùng lại, CSRF, thu hồi tức thì; không token nào trong `localStorage`), **Content-Security-Policy** (`frontend/next.config.mjs`), cookie tự `Secure` + HSTS khi truy cập qua HTTPS, quét lỗ hổng image trong CI, Dependabot.
+Đã có: một cổng vào duy nhất, 2 mạng Docker tách tầng, `no-new-privileges`, **container app chạy bằng user `node`** (catalog khởi động bằng root chỉ để sửa quyền thư mục `uploads`/`exports`/`.cache` khi cần rồi hạ quyền, xem `catalog/docker-entrypoint.sh`), mật khẩu ngẫu nhiên bắt buộc cho Postgres/RabbitMQ/Redis/pgAdmin, rate limit dùng chung, lỗi 5xx bị che ở production (`maskServerErrors`: chỉ trả câu chung kèm mã tra log), **phiên theo thiết bị ở service identity** (cookie `httpOnly`, token truy cập 15 phút, làm mới xoay vòng có phát hiện dùng lại, CSRF, thu hồi tức thì; không token nào trong `localStorage`), **Content-Security-Policy** (`frontend/next.config.mjs`), cookie tự `Secure` + HSTS khi truy cập qua HTTPS, Dependabot.
 
 1. **Bật HTTPS khi đưa lên mạng**: tạo tunnel trong Cloudflare Zero Trust, trỏ hostname về `http://gateway:8080`, đặt `CLOUDFLARE_TUNNEL_TOKEN` và `SITE_URL=https://<tên miền>` trong `.env`, rồi `docker compose --profile tunnel up -d`. Không cần mở cổng nào trên router.
 2. Cấu hình `SMTP_URL` để mail quên mật khẩu/xác thực email gửi thật (chưa cấu hình thì link chỉ nằm trong log catalog).
@@ -546,7 +546,7 @@ Các bảng cũ đã chuyển sang service khác (tin nhắn, thông báo, Fando
 không có bài Fandom, bình luận, thông báo hay lượt theo dõi mẫu. **Nâng cấp máy chạy bản cũ hơn PR #77:** cập nhật lên #77 và chạy
 `scripts/migrate.sh` trước (để chép xong), rồi mới lên bản này; nếu lỡ, dữ liệu cũ mất (không còn sao lưu).
 
-**Migration cho DB đã tồn tại:** `sql/database.sql` chỉ chạy khi tạo volume mới. Với DB đang chạy: `sh scripts/migrate.sh` (xem [CI/CD & migration](#-cicd--migration)); bảng `schema_migrations` ghi lại file nào đã chạy. Lượt xem nằm ở `stories.total_views`, `chapters.total_views` và `story_views_daily` (theo ngày); bảng `story_views` (từng lượt) không còn được ghi.
+**Migration cho DB đã tồn tại:** `sql/database.sql` chỉ chạy khi tạo volume mới. Với DB đang chạy: `sh scripts/migrate.sh` (xem [Kiểm tra & migration](#-kiểm-tra--migration)); bảng `schema_migrations` ghi lại file nào đã chạy. Lượt xem nằm ở `stories.total_views`, `chapters.total_views` và `story_views_daily` (theo ngày); bảng `story_views` (từng lượt) không còn được ghi.
 
 **Mã thông minh** (migration `017_smart_codes.sql`): `users`, `translation_groups`, `stories` (bài viết, báo cáo: community; album: library) có cột `code_no` (số cố định, duy nhất, cấp theo thứ tự tạo) và `code` (mã hiển thị). UUID vẫn là khóa chính. Trigger trong DB tự cấp và cập nhật mã; phần thông tin tự đổi khi dữ liệu đổi, còn số thì không, nên tra mã chỉ dựa vào số (mã cũ vẫn tra được).
 
