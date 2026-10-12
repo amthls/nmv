@@ -74,7 +74,7 @@ mạng "data": mọi service, postgres, pgbouncer, redis, rabbitmq, search, work
 ```
 
 **Container** (`docker compose ps`): hạ tầng `postgres`, `pgbouncer`, `redis`, `rabbitmq`, `search` (+ `db-init` chạy một lần);
-`gateway`, `frontend`; service `catalog` (+ `worker` cùng image: sự kiện identity/workspace, gộp lượt xem, đối soát, kệ "Đang hot"),
+`gateway`, `frontend`; service `catalog` (+ `worker` cùng image: sự kiện identity/workspace, gộp lượt xem, đối soát, kệ "Đang hot", xóa truyện gỡ quá 60 ngày),
 `identity`, `workspace`, `messaging`, `community`, `library`, `recommender`, `media`. Profile `tools` thêm `pgadmin`, profile `tunnel` thêm
 `cloudflared`. Chỉ `gateway` (cổng 3000) mở ra mạng; catalog, Postgres, Redis, Elasticsearch và trang quản trị RabbitMQ chỉ nghe trên
 `127.0.0.1`. Gateway và frontend **không** nằm trong mạng `data`.
@@ -502,6 +502,8 @@ Các trang danh sách/chi tiết vẫn giữ khung xám nhấp nháy (skeleton) 
 **Không có khâu duyệt nội dung** (từ migration `019_no_approval.sql`): truyện, chương, bài Fandom và nhóm dịch đăng là hiện ngay.
 Admin/Mod **không sửa, không xóa hẳn** nội dung của người khác: họ chỉ **gỡ** (xóa mềm, kèm lý do) truyện và bài viết vi phạm.
 Mọi thứ bị gỡ nằm ở trang `/da-go` (chỉ Admin/Mod), tìm được theo mã, tên, nội dung, người đăng và khôi phục được.
+Truyện bị gỡ mà **không được khôi phục trong 60 ngày** (`REMOVED_PURGE_DAYS`) bị worker xóa hẳn (mỗi ngày + lúc khởi động, như chủ truyện tự xóa:
+chương, bình luận ở community, lịch sử/đánh dấu/theo dõi ở library, chỉ mục tìm kiếm); `/da-go` và thông báo gỡ cho chủ truyện ghi hạn này.
 Admin/Mod cũng không có quyền gì đặc biệt trong nhóm dịch (sửa nhóm, quản lý thành viên, chat, duyệt người xin vào): chỉ Trưởng nhóm/Mod nhóm.
 
 - Vai trò người dùng nằm ở bảng `user_roles` (một người có nhiều vai trò): `admin`, `mod`, `translator`, `author`, `reader`. Đăng ký mới mặc định là `reader`.

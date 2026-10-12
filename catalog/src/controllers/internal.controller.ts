@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { pool } from '../config/db';
 import { isUuid } from '../utils/validation';
+import { REMOVED_PURGE_DAYS } from '../services/storyPurge';
 import { listExportableChapters, loadBook, storyFingerprint } from '../services/exportSource';
 
 // Service-to-service endpoints (X-Internal-Auth, mounted under /internal in server.ts; the gateway answers 404
@@ -159,7 +160,7 @@ export const storiesBrief = async (req: Request, res: Response) => {
 };
 
 /**
- * GET /internal/stories/removed?q=&limit= -> {total, rows}: stories taken down by Admin/Mod, newest first, in the row
+ * GET /internal/stories/removed?q=&limit= -> {total, rows}: stories taken down by Admin/Mod (purge_at: deleted for good then), newest first, in the row
  * shape of the "Đã gỡ" page (community merges them with removed posts). `q` matches code, titles, author, synopsis, uploader.
  */
 export const removedStories = async (req: Request, res: Response) => {
@@ -174,10 +175,10 @@ export const removedStories = async (req: Request, res: Response) => {
     pool.query(`
       SELECT 'story' AS type, s.id, s.code, s.title, s.slug, s.cover_image_url AS image,
              u.username AS author_username, u.display_name AS author_name,
-             s.rejection_reason AS reason, s.removed_at,
+             s.rejection_reason AS reason, s.removed_at, s.removed_at + make_interval(days => $3) AS purge_at,
              r.username AS removed_by_username, r.display_name AS removed_by_name
       FROM stories s JOIN users u ON u.id = s.uploader_id LEFT JOIN users r ON r.id = s.removed_by
-      WHERE ${where} ORDER BY s.removed_at DESC NULLS LAST LIMIT $2`, [pattern, limit]),
+      WHERE ${where} ORDER BY s.removed_at DESC NULLS LAST LIMIT $2`, [pattern, limit, REMOVED_PURGE_DAYS]),
   ]);
   res.json({ success: true, data: { total: total.rows[0].n, rows: rows.rows } });
 };

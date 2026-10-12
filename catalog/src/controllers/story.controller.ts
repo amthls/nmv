@@ -3,13 +3,13 @@ import { pool } from '../config/db';
 import { recordView } from '../services/viewCounter';
 import { publishBehavior, visitorIdOf } from '../services/behaviorEvents';
 import { AuthenticatedRequest, internalAuthHeader } from '../middlewares/auth.middleware';
-import { searchStoryIds, indexStory, removeStoryFromIndex } from '../services/search.service';
+import { searchStoryIds, indexStory } from '../services/search.service';
 import { sanitizeRichText } from '../utils/richText';
 import { InputError, isUuid, optionalEnum, optionalText, optionalUrl, requiredText } from '../utils/validation';
 import { clientDbError } from '../utils/dbErrors';
 import { enqueueNotificationJob } from '../services/queue.service';
-import { callCommunity } from '../services/communityClient';
-import { callLibrary, libraryData, purgeLibrary } from '../services/libraryClient';
+import { callLibrary, libraryData } from '../services/libraryClient';
+import { purgeStory, REMOVED_PURGE_DAYS } from '../services/storyPurge';
 import { trendingStories } from '../services/hotShelf';
 
 function slugify(text: string) {
@@ -833,44 +833,7 @@ export const deleteStory = async (req: AuthenticatedRequest, res: Response) => {
       });
     }
 
-    // Use a transaction for safe cascade deletion
-    let purgeComments = async () => {};
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-
-      // 1. Views, tags, collaborators (reading history, bookmarks, follows: the library service, after the commit)
-      await client.query(`DELETE FROM story_views WHERE story_id = $1`, [id]);
-      await client.query(`DELETE FROM story_tags WHERE story_id = $1`, [id]);
-      await client.query(`DELETE FROM story_collaborators WHERE story_id = $1`, [id]);
-
-      // 2. Delete chapter pages, chapter submissions, chapters
-      await client.query(`
-        DELETE FROM chapter_pages WHERE chapter_id IN (SELECT id FROM chapters WHERE story_id = $1)
-      `, [id]);
-      await client.query(`DELETE FROM chapter_submissions WHERE story_id = $1`, [id]);
-      const chapterIds = (await client.query(`DELETE FROM chapters WHERE story_id = $1 RETURNING id`, [id])).rows.map((r: any) => r.id);
-      purgeComments = () => callCommunity('POST', '/internal/comments/purge', { story_id: id, chapter_ids: chapterIds })
-        .then((r) => { if (r.status !== 200) throw new Error(`HTTP ${r.status}`); })
-        .catch((err) => console.error(`[stories] comments of deleted story ${id} not purged in community: ${err.message}`));
-
-      // 3. Delete volumes
-      await client.query(`DELETE FROM volumes WHERE story_id = $1`, [id]);
-
-      // 4. The story record (its comments and the posts about it: community, after the commit)
-      await client.query(`DELETE FROM stories WHERE id = $1`, [id]);
-
-      await client.query('COMMIT');
-    } catch (txErr) {
-      await client.query('ROLLBACK');
-      throw txErr;
-    } finally {
-      client.release();
-    }
-
-    await removeStoryFromIndex(id);
-    await purgeComments();
-    await purgeLibrary({ story_ids: [id] });
+    await purgeStory(id);
 
     res.json({
       success: true,
@@ -1015,7 +978,8 @@ const setStoryRemoved = (remove: boolean) => async (req: AuthenticatedRequest, r
       enqueueNotificationJob({ kind: 'notify', items: [{
         userId: story.uploader_id, type: remove ? 'story_removed' : 'story_restored',
         title: remove ? 'Truyện của bạn đã bị Ban quản trị gỡ' : 'Truyện của bạn đã được khôi phục',
-        message: `"${story.title}"${reason ? ` · Lý do: ${reason}` : ''}`,
+        message: `"${story.title}"${reason ? ` · Lý do: ${reason}` : ''}`
+          + (remove ? ` · Truyện sẽ bị xóa hẳn sau ${REMOVED_PURGE_DAYS} ngày nếu không được khôi phục.` : ''),
         referenceType: 'story', referenceId: story.id, senderId: req.user!.id,
         dedupeKey: `story-${remove ? 'removed' : 'restored'}:${story.id}:${Date.now()}`,
       }] }).catch((err: any) => console.error('[Stories] remove notification failed:', err.message));
