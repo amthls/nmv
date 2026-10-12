@@ -1,9 +1,9 @@
 'use client';
 
-import React, { Suspense, useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { BookOpen, FileText, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FileText, Plus } from 'lucide-react';
 import SmartImage from '@/components/common/SmartImage';
 import StoryFlow from '@/components/workspace/StoryFlow';
 import { DraftRow } from '@/components/workspace/DraftRow';
@@ -12,8 +12,8 @@ import { useAuth } from '@/context/AuthContext';
 import PageLoader from '@/components/common/PageLoader';
 
 /**
- * Personal workspace (Plan/chapter-workspace.md, stage 2): my open chapter drafts across every story, and the
- * stories I take part in (each with its own workspace page).
+ * Personal workspace (Plan/chapter-workspace.md, stage 2; layout Plan/ui-overhaul.md B4a): a shelf of the stories I take
+ * part in (filtered by group, ←/→ to move) over the picked story's cover, its chapter streams (StoryFlow), then my tasks and drafts.
  */
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
@@ -32,6 +32,8 @@ function WorkspaceContent() {
   const [myTasks, setMyTasks] = useState<any[]>([]); // workflow steps I took, in every group
   const [reload, setReload] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [groupFilter, setGroupFilter] = useState<string | null>(null); // null = every group
+  const shelfRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -47,6 +49,26 @@ function WorkspaceContent() {
       .catch(() => setStories([]));
   }, [isAuthenticated, authFetch, reload]);
 
+  const groupOf = (s: any) => s.group_name || 'Độc lập';
+  const shelf = (stories || []).filter((s) => groupFilter === null || groupOf(s) === groupFilter);
+  const picked = (stories || []).find((s) => s.slug === storySlug);
+
+  // nothing picked yet: open the first story so the streams show right away
+  useEffect(() => {
+    if (!storySlug && shelf.length) router.replace(`/ws?truyen=${shelf[0].slug}`, { scroll: false });
+  }, [storySlug, shelf.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // keep the picked cover in view on the shelf
+  useEffect(() => {
+    shelfRef.current?.querySelector('[aria-pressed="true"]')?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  }, [storySlug, groupFilter, stories]);
+
+  const step = (dir: number) => {
+    if (!shelf.length) return;
+    const i = shelf.findIndex((s) => s.slug === storySlug);
+    open(shelf[Math.min(shelf.length - 1, Math.max(0, (i < 0 ? 0 : i) + dir))].slug);
+  };
+
   if (isLoading) return <PageLoader label="Đang mở workspace..." />;
   if (!isAuthenticated) {
     return (
@@ -60,73 +82,94 @@ function WorkspaceContent() {
   }
 
   const storyTitle = (id: string) => stories?.find((s) => s.id === id)?.title;
-  const byGroup = (stories || []).reduce((m: Record<string, any[]>, s) => {
-    (m[s.group_name || 'Độc lập'] ||= []).push(s);
-    return m;
-  }, {});
+  const groupNames = Array.from(new Set((stories || []).map(groupOf)));
+  const chip = (on: boolean) => `shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border transition ${on ? 'bg-brand-600 text-snow border-brand-500' : 'border-white/15 text-gray-300 hover:text-white hover:border-white/40'}`;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-      <div className="rounded-3xl p-6 glass-panel border border-white/10 bg-glass shadow-xl space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="relative">
+      {/* the picked story's cover, blurred, behind the top of the page (fades out downwards) */}
+      {picked?.cover_image_url && (
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[560px] overflow-hidden" style={{ maskImage: 'linear-gradient(to bottom, black 30%, transparent)' }}>
+          <SmartImage key={picked.id} src={picked.cover_image_url} alt="" className="h-full w-full scale-110 object-cover opacity-35 blur-2xl" />
+        </div>
+      )}
+      <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
           <div>
             <h1 className="text-xl sm:text-2xl font-extrabold text-white">Workspace</h1>
-            <p className="text-xs sm:text-sm text-gray-400 mt-1">Nơi làm chương của bạn và của nhóm. Bản nháp tự lưu, chỉ mình bạn thấy cho tới khi đăng.</p>
+            <ol className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-300">
+              {['Chọn truyện trên kệ', 'Bấm chương trên dòng chảy', 'Xem phiên bản, sửa hoặc dùng bản cũ'].map((t, i) => (
+                <li key={t} className="flex items-center gap-1.5">
+                  <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-brand-600 text-[11px] font-bold text-snow">{i + 1}</span>{t}
+                </li>
+              ))}
+            </ol>
           </div>
           <Link href="/dang-chuong" className="shrink-0 px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow text-xs font-bold flex items-center gap-1.5 w-fit">
             <Plus className="w-4 h-4" /> Chương mới
           </Link>
         </div>
-        <ol className="grid gap-2 sm:grid-cols-3 text-xs">
-          {['Chọn một bộ truyện bên dưới', 'Chọn chương trong dải danh mục', 'Xem phiên bản, sửa hoặc dùng bản cũ'].map((t, i) => (
-            <li key={t} className="flex items-center gap-2 rounded-xl bg-white/5 px-3 py-2 text-gray-300">
-              <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-brand-600 text-[11px] font-bold text-snow">{i + 1}</span>{t}
-            </li>
-          ))}
-        </ol>
-      </div>
 
-      {error && <div className="p-4 rounded-2xl bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-bold">{error}</div>}
+        {error && <div className="p-4 rounded-2xl bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-bold">{error}</div>}
 
-      <section className="space-y-4" aria-label="Truyện của tôi">
-        <h2 className="text-xs font-bold text-brand-400 uppercase tracking-wider flex items-center gap-1.5">
-          <BookOpen className="w-4 h-4" /> Truyện của tôi
-        </h2>
-        {stories === null ? (
-          <p className="text-xs text-gray-500">Đang tải...</p>
-        ) : stories.length === 0 ? (
-          <p className="text-xs text-gray-500">Bạn chưa đăng, chưa ở nhóm dịch nào, hoặc chưa là cộng tác viên của truyện nào. <Link href="/dang-truyen" className="underline">Đăng truyện mới</Link></p>
-        ) : (
-          Object.entries(byGroup).map(([group, list]) => (
-            <div key={group}>
-              <div className="mb-2 text-[11px] font-bold text-gray-400">{group}</div>
-              <div className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
-                {list.map((s) => (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => open(s.slug)}
-                    aria-pressed={s.slug === storySlug}
-                    className={`w-28 shrink-0 snap-start text-left transition duration-200 hover:-translate-y-1 ${s.slug === storySlug ? 'opacity-100' : 'opacity-80 hover:opacity-100'}`}
-                  >
-                    <div className={`aspect-[3/4] overflow-hidden rounded-xl border-2 bg-white/5 ${s.slug === storySlug ? 'border-brand-400 shadow-lg shadow-brand-500/30' : 'border-transparent'}`}>
-                      {s.cover_image_url ? <SmartImage src={s.cover_image_url} alt={s.title} className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center p-2 text-center text-xs text-gray-400">{s.title}</div>}
-                    </div>
-                    <div className="mt-1.5 line-clamp-2 text-xs font-semibold text-white">{s.title}</div>
-                    <div className="text-[10px] text-gray-500">{drafts?.filter((d) => d.story_id === s.id).length || 0} nháp của tôi</div>
-                  </button>
-                ))}
+        <section className="space-y-3" aria-label="Truyện của tôi">
+          {stories === null ? (
+            <p className="text-xs text-gray-400">Đang tải...</p>
+          ) : stories.length === 0 ? (
+            <p className="text-xs text-gray-400">Bạn chưa đăng, chưa ở nhóm dịch nào, hoặc chưa là cộng tác viên của truyện nào. <Link href="/dang-truyen" className="underline">Đăng truyện mới</Link></p>
+          ) : (
+            <>
+              {groupNames.length > 1 && (
+                <div className="-mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:px-0" role="group" aria-label="Lọc theo nhóm">
+                  <button type="button" onClick={() => setGroupFilter(null)} className={chip(groupFilter === null)}>Tất cả ({stories.length})</button>
+                  {groupNames.map((g) => (
+                    <button key={g} type="button" onClick={() => setGroupFilter(g)} className={chip(groupFilter === g)}>
+                      {g} ({stories.filter((s) => groupOf(s) === g).length})
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => step(-1)} aria-label="Truyện trước" className="hidden sm:grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/10 hover:bg-white/20 text-white"><ChevronLeft className="w-5 h-5" /></button>
+                <div
+                  ref={shelfRef}
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); step(e.key === 'ArrowLeft' ? -1 : 1); } }}
+                  aria-label="Kệ truyện (phím ← → để đổi truyện)"
+                  className="-mx-4 flex min-w-0 flex-1 items-end gap-3 overflow-x-auto px-4 py-3 outline-none focus-visible:ring-2 focus-visible:ring-brand-400 rounded-xl sm:mx-0 sm:px-1"
+                  style={{ scrollbarWidth: 'none' }}
+                >
+                  {shelf.map((s) => {
+                    const on = s.slug === storySlug;
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        tabIndex={-1}
+                        onClick={() => open(s.slug)}
+                        aria-pressed={on}
+                        title={s.title}
+                        className={`shrink-0 text-left transition-all duration-300 ${on ? 'w-32 sm:w-40' : 'w-20 sm:w-24 opacity-70 hover:opacity-100'}`}
+                      >
+                        <div className={`aspect-[3/4] overflow-hidden rounded-xl bg-white/5 transition-all duration-300 ${on ? 'ring-2 ring-brand-300 shadow-2xl shadow-black/50' : ''}`}>
+                          {s.cover_image_url ? <SmartImage src={s.cover_image_url} alt={s.title} className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center p-2 text-center text-[11px] text-gray-400">{s.title}</div>}
+                        </div>
+                        <div className={`mt-1.5 line-clamp-2 text-[11px] leading-tight ${on ? 'font-bold text-white' : 'text-gray-400'}`}>{s.title}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+                <button type="button" onClick={() => step(1)} aria-label="Truyện sau" className="hidden sm:grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/10 hover:bg-white/20 text-white"><ChevronRight className="w-5 h-5" /></button>
               </div>
-            </div>
-          ))
-        )}
-      </section>
-
-      {storySlug && (
-        <section className="rounded-3xl border border-white/10 bg-glass p-4 sm:p-5">
-          <StoryFlow slug={storySlug} drafts={drafts || []} chapterId={chapterId} onPickChapter={(id) => open(storySlug, id)} />
+            </>
+          )}
         </section>
-      )}
+
+        {storySlug && (
+          <section className="rounded-3xl border border-white/10 bg-surface/60 p-4 sm:p-5 backdrop-blur-sm">
+            <StoryFlow slug={storySlug} drafts={drafts || []} chapterId={chapterId} onPickChapter={(id) => open(storySlug, id)} />
+          </section>
+        )}
 
       <section className="p-5 rounded-3xl glass-panel border border-white/10 bg-glass space-y-3">
         {myTasks.length > 0 && (
@@ -156,6 +199,7 @@ function WorkspaceContent() {
           </>
         )}
       </section>
+      </div>
     </div>
   );
 }

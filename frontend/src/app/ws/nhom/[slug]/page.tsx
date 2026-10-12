@@ -9,6 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 import PageLoader from '@/components/common/PageLoader';
 import TaskCard, { STEP_LABEL, dueState } from '@/components/workspace/TaskCard';
 import { draftLabel } from '@/components/workspace/DraftRow';
+import WorkflowSteps from '@/components/workspace/WorkflowSteps';
 
 /**
  * A translation group's workspace (Plan/chapter-workspace.md, stage 4b). The group keeps no content of its own: this is
@@ -32,6 +33,7 @@ export default function GroupWorkspacePage() {
   const [error, setError] = useState<string | null>(null);
   const [storyFilter, setStoryFilter] = useState('');
   const [personFilter, setPersonFilter] = useState('');
+  const [stepFilter, setStepFilter] = useState(''); // a workflow step picked on the steps strip
   const [reload, setReload] = useState(0);
 
   useEffect(() => {
@@ -65,7 +67,7 @@ export default function GroupWorkspacePage() {
   }
   const manager = myRole === 'leader' || myRole === 'mod';
 
-  const show = (t: any) => (!storyFilter || t.story_id === storyFilter) && (!personFilter || t.assignee_id === personFilter);
+  const show = (t: any) => (!storyFilter || t.story_id === storyFilter) && (!personFilter || t.assignee_id === personFilter) && (!stepFilter || t.kind === stepFilter);
   const tasks: any[] = board.tasks.filter(show);
   const keeperOf = new Set(board.keeper_of);
   const proposals: any[] = board.proposals.filter((p: any) => (!storyFilter || p.story_id === storyFilter) && (!personFilter || p.owner_id === personFilter));
@@ -75,6 +77,9 @@ export default function GroupWorkspacePage() {
     { key: 'claimed', title: 'Đang làm', items: tasks.filter((t) => t.status === 'claimed') },
   ];
   const late = board.tasks.filter((t: any) => dueState(t) !== null);
+  const stepCounts: Record<string, number> = {};
+  for (const t of board.tasks) if (t.status === 'open' || t.status === 'claimed') stepCounts[t.kind] = (stepCounts[t.kind] || 0) + 1;
+  stepCounts.merge = board.proposals.length;
 
   const select = 'h-9 px-3 rounded-xl bg-surface-3 border border-white/10 text-xs text-white';
   return (
@@ -87,7 +92,7 @@ export default function GroupWorkspacePage() {
         <div>
           <h1 className="text-xl sm:text-2xl font-extrabold text-white">Workspace nhóm {group.name}</h1>
           <p className="text-xs text-gray-400 mt-1">
-            Quy trình: {[...(group.workflow || ['translate']).map((s: string) => STEP_LABEL[s] || s), 'GỘP'].join(' → ')} · {group.stories?.length || 0} truyện
+            {group.stories?.length || 0} truyện · {group.members?.length || 0} thành viên
           </p>
         </div>
         <div className="grid grid-cols-3 gap-2 text-center">
@@ -96,6 +101,14 @@ export default function GroupWorkspacePage() {
           <div className="px-4 py-2 rounded-2xl bg-white/5 border border-white/10"><div className={`text-lg font-extrabold ${late.length ? 'text-rose-300' : 'text-gray-300'}`}>{late.length}</div><div className="text-[10px] text-gray-400 uppercase font-bold">Sắp / đã trễ hạn</div></div>
         </div>
       </div>
+
+      <section className="p-4 rounded-3xl border border-white/10 bg-white/[0.03] space-y-2">
+        <p className="text-xs text-gray-400">
+          Chương đi từ trái sang phải. Bấm một bước để chỉ xem việc của bước đó. Việc <b className="text-gray-200">Chưa nhận</b>: bấm “Nhận việc” để làm;
+          xong thì bấm “Xong bước”, bước sau tự mở. Bước <b className="text-emerald-300">GỘP</b> là các đề xuất ở cột “Chờ duyệt”.
+        </p>
+        <WorkflowSteps workflow={group.workflow} counts={stepCounts} active={stepFilter} onPick={setStepFilter} />
+      </section>
 
       <div className="flex flex-wrap items-center gap-2">
         <select value={storyFilter} onChange={(e) => setStoryFilter(e.target.value)} className={select} aria-label="Lọc theo truyện">
@@ -112,6 +125,15 @@ export default function GroupWorkspacePage() {
           {manager && <Link href={`/nhom-dich/${group.slug}#quy-trinh`} className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-200 flex items-center gap-1.5"><Settings className="w-3.5 h-3.5" /> Quy trình</Link>}
         </div>
       </div>
+
+      {board.tasks.length === 0 && board.proposals.length === 0 && (
+        <p className="p-4 rounded-2xl border border-dashed border-white/15 text-xs text-gray-300">
+          Chưa có việc nào. Người giữ truyện mở việc cho từng chương ở trang <b className="text-white">Việc & đề xuất</b> của truyện:{' '}
+          {(group.stories || []).map((s: any, i: number) => (
+            <React.Fragment key={s.id}>{i > 0 && ', '}<Link href={`/ws/truyen/${s.slug}`} className="text-brand-300 underline hover:text-brand-200">{s.title}</Link></React.Fragment>
+          ))}
+        </p>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {columns.map((c) => (
