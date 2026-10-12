@@ -8,13 +8,17 @@ import SmartImage from '@/components/common/SmartImage';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 const STEP = 6; // suggestions shown at first and added per "Hiện thêm"
 const MAX = 24;
+/** Wait this long after the last keystroke before asking the server (also used by /kham-pha). */
+export const SEARCH_DELAY_MS = 400;
 
 type Hit = { id: string; slug: string; title: string; cover_image_url?: string; story_type: string; author_name?: string; total_chapters?: number };
 
 /**
  * The navbar search field with live suggestions: typing (2+ characters) lists matching stories underneath
- * (/stories/explore, Elasticsearch with SQL fallback), "Hiện thêm" grows the list in place, the last row opens
- * every result on /kham-pha. ↑/↓ pick a row, Enter opens it (or the full results), Esc closes.
+ * (/stories/explore, Elasticsearch with SQL fallback, cached 30 s in Redis), "Hiện thêm" grows the list in place, the
+ * last row opens every result on /kham-pha. ↑/↓ pick a row, Enter opens it (or the full results), Esc closes.
+ * Load: one request SEARCH_DELAY_MS after typing stops, the one in flight is aborted when the query changes; a loading
+ * bar runs from the first keystroke and the previous rows stay (dimmed) until the new ones arrive.
  */
 export default function SearchBox({
   inputRef, className = '', inputClassName = '', placeholder = 'Tìm truyện, tác giả...', hint, onOpenChange, onNavigate,
@@ -48,22 +52,23 @@ export default function SearchBox({
     if (q.length < 2) {
       setHits([]);
       setTotal(0);
+      setLoading(false);
       return;
     }
-    let stale = false;
+    const ctrl = new AbortController();
     setLoading(true);
     const timer = setTimeout(() => {
-      fetch(`${API_BASE_URL}/stories/explore?${new URLSearchParams({ q, sort: 'relevance', limit: String(limit), page: '1' })}`)
+      fetch(`${API_BASE_URL}/stories/explore?${new URLSearchParams({ q, sort: 'relevance', limit: String(limit), page: '1' })}`, { signal: ctrl.signal })
         .then((r) => r.json())
         .then((j) => {
-          if (stale || !j.success) return;
+          if (!j.success) return;
           setHits(j.data || []);
           setTotal(j.pagination?.total ?? (j.data || []).length);
         })
         .catch(() => {})
-        .finally(() => !stale && setLoading(false));
-    }, 250);
-    return () => { stale = true; clearTimeout(timer); };
+        .finally(() => !ctrl.signal.aborted && setLoading(false));
+    }, SEARCH_DELAY_MS);
+    return () => { clearTimeout(timer); ctrl.abort(); };
   }, [q, limit]);
 
   // close when clicking anywhere else
@@ -114,14 +119,17 @@ export default function SearchBox({
         onKeyDown={onKeyDown}
         className={inputClassName}
       />
-      {hint}
+      {loading && open && q.length >= 2
+        ? <Loader2 className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-brand-400" aria-label="Đang tìm" />
+        : hint}
 
       {showList && (
-        <div className="absolute left-0 right-0 top-full mt-2 z-50 rounded-2xl glass-menu overflow-hidden shadow-2xl">
+        <div className="absolute left-0 right-0 top-full mt-2 z-50 rounded-2xl glass-menu overflow-hidden shadow-2xl" aria-busy={loading}>
+          {loading && <div className="nh-loadbar top-0" role="progressbar" aria-label="Đang tìm" />}
           {hits.length === 0 ? (
             <p className="px-4 py-3 text-xs text-gray-400">{loading ? 'Đang tìm...' : `Không thấy truyện nào khớp “${q}”.`}</p>
           ) : (
-            <ul id={listId} role="listbox" className="max-h-[60vh] overflow-y-auto py-1.5">
+            <ul id={listId} role="listbox" className={`max-h-[60vh] overflow-y-auto py-1.5 transition-opacity ${loading ? 'opacity-60' : ''}`}>
               {hits.map((h, i) => (
                 <li key={h.id} id={`${listId}-${i}`} role="option" aria-selected={i === active}>
                   <button

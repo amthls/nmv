@@ -300,10 +300,13 @@ body::before {
   animation: nh-indeterminate 1.2s ease-in-out infinite;
 }
 @keyframes nh-indeterminate { 0% { transform: translateX(-100%); } 100% { transform: translateX(250%); } }
+/* the same bar inside a box (search suggestions, explore search): put it in a relative parent */
+.nh-loadbar { position: absolute; left: 0; right: 0; height: 2px; overflow: hidden; pointer-events: none; }
+.nh-loadbar::before { content: ''; position: absolute; inset: 0; width: 40%; background: linear-gradient(90deg, transparent, #5aaff8, #22d3ee, transparent); animation: nh-indeterminate 1.2s ease-in-out infinite; }
 
 @media (prefers-reduced-motion: reduce) {
   .nh-book__page { animation: nh-soft-pulse 1.6s ease-in-out infinite; transform: rotateY(-40deg); }
-  .nh-progress::before { animation: nh-soft-pulse 1.6s ease-in-out infinite; width: 100%; }
+  .nh-progress::before, .nh-loadbar::before { animation: nh-soft-pulse 1.6s ease-in-out infinite; width: 100%; }
   @keyframes nh-soft-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
   body::before, .hero-kenburns, .ws-stream::before { animation: none; }
   .hero-slide, .hero-layer-near, .tile, .tile__img, .reveal-up, .hero-slide .rise { transition-duration: 0.01ms !important; }

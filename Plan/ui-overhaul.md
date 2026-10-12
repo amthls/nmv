@@ -34,6 +34,8 @@ Làm theo thứ tự, xong mục nào đổi `[x]`. Mỗi cụm là một PR và
 - [x] B8. (nhánh feat/home-lists-search) Trang riêng /moi-cap-nhat, /nhieu-nguoi-xem (thay link sang /kham-pha); trang hướng dẫn nền đặc;
       menu thả xuống của thanh trên nổi trên header trang đọc (z-50 khi mở); ô tìm kiếm gợi ý khi gõ (`components/SearchBox.tsx`): 6 truyện, Hiện thêm (+6, tối đa 24), Xem tất cả → /kham-pha?q=
 
+- [x] B9. (nhánh feat/search-debounce-cache) Tìm kiếm chịu tải: chờ 400 ms sau khi gõ, hủy yêu cầu cũ, thanh tải; cache Redis 30 s cho /stories/explore
+
 ## C. Trình đọc (nhánh feat/reader-responsive)
 - [x] C1. Cài đặt đọc truyện chữ co giãn theo màn hình, cuộn được khi thiếu chỗ
 - [x] C2. Bỏ lựa chọn "tự động độ phân giải", để người dùng tự chọn
