@@ -84,11 +84,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
    */
   const refreshProfile = async () => {
     try {
-      const idRes = await apiFetch(`${IDENTITY_URL}/me`);
+      // both at once: the profile no longer waits for the account answer (one round trip instead of two)
+      const [idRes, profRes] = await Promise.all([apiFetch(`${IDENTITY_URL}/me`), apiFetch(`${API_BASE_URL}/auth/me`)]);
       if (idRes.status === 401 || idRes.status === 403) return clearLocalSession();
       if (!idRes.ok) return;
       const account = (await idRes.json()).data;
-      const profRes = await apiFetch(`${API_BASE_URL}/auth/me`);
       const profile = profRes.ok ? (await profRes.json()).data : null;
       const merged: UserProfile = { ...account, ...(profile || {}), email: account.email, email_verified: account.email_verified };
       setUser(merged);
