@@ -33,6 +33,7 @@ export default function ExplorePage() {
 
 const BASE_PAGE_SIZE = 24;
 const FILTER_DELAY_MS = 150;
+const MIN_SEARCH_MS = 1000;
 const SORT_VALUES = ['relevance', 'updated', 'views', 'favorites', 'newest', 'title_asc', 'title_desc'];
 
 function ExplorePageContent() {
@@ -127,6 +128,7 @@ function ExplorePageContent() {
 
   // 2. Fetch stories with query params
   const inFlight = useRef<AbortController | null>(null);
+  const searchShownAt = useRef(0); // results of a "Tìm" are not shown before this time
   const fetchStories = useCallback(async () => {
     const requestId = ++latestRequest.current;
     inFlight.current?.abort(); // a newer search replaces the one still running: the server stops working on it too
@@ -151,6 +153,10 @@ function ExplorePageContent() {
       if (requestId !== latestRequest.current) return;
       if (res.ok) {
         const json = await res.json();
+        // after "Tìm" the loading screen stays at least MIN_SEARCH_MS (the button is locked meanwhile), so one
+        // person sends at most about one filtered search a second
+        const wait = searchShownAt.current - Date.now();
+        if (wait > 0) await new Promise((r) => setTimeout(r, wait));
         if (requestId !== latestRequest.current) return;
         if (json.success) {
           setStories(json.data || []);
@@ -177,6 +183,9 @@ function ExplorePageContent() {
   useEffect(() => { setDraft(filters); }, [filters]);
   const dirty = JSON.stringify(draft) !== JSON.stringify(filters);
   const applyDraft = () => {
+    if (isLoading) return;
+    searchShownAt.current = Date.now() + MIN_SEARCH_MS;
+    setIsLoading(true);
     setFilters(draft);
     setCurrentPage(1);
     setIsMobileFilterOpen(false);
@@ -266,6 +275,7 @@ function ExplorePageContent() {
           onReset={handleResetFilters}
           onApply={applyDraft}
           dirty={dirty}
+          busy={isLoading}
           isOpenMobile={isMobileFilterOpen}
           onCloseMobile={() => setIsMobileFilterOpen(false)}
         />

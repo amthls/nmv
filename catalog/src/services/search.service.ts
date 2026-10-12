@@ -1,5 +1,6 @@
 import { pool } from '../config/db';
 import { richTextToPlain } from '../utils/richText';
+import { redis, redisReady } from '../config/redis';
 
 /**
  * Search integration for stories, backed by Elasticsearch.
@@ -176,15 +177,81 @@ export async function removeStoryFromIndex(storyId: string): Promise<void> {
   }
 }
 
+/*
+ * Elasticsearch is a single small node (256 MB heap, 2 CPUs) and every story search goes through it, so it is shielded
+ * (Plan/load.md):
+ *  1. answers kept in Redis per query for 60 s: other filters, pages or sort orders on the same words never reach it;
+ *  2. the same query asked by many people at once runs once (shared promise);
+ *  3. at most MAX_ES_SEARCHES run at a time; a search waiting longer than QUEUE_WAIT_MS takes the SQL path instead of
+ *     piling more work on ES;
+ *  4. after a failure or a timeout ES is left alone for BREAKER_MS (SQL meanwhile), instead of every search waiting 3 s;
+ *  5. ES itself stops a search after 1 s.
+ */
+const ID_CACHE_TTL_S = 60;
+const MAX_ES_SEARCHES = 4;
+const QUEUE_WAIT_MS = 1000;
+const BREAKER_MS = 30_000;
+let esSearches = 0;
+const esQueue: Array<() => void> = [];
+let esPausedUntil = 0;
+const sharedSearches = new Map<string, Promise<string[] | null>>();
+
+async function esSlot(): Promise<boolean> {
+  if (esSearches < MAX_ES_SEARCHES) {
+    esSearches += 1;
+    return true;
+  }
+  return new Promise((resolve) => {
+    const take = () => { clearTimeout(timer); esSearches += 1; resolve(true); };
+    const timer = setTimeout(() => {
+      const i = esQueue.indexOf(take);
+      if (i >= 0) esQueue.splice(i, 1);
+      resolve(false);
+    }, QUEUE_WAIT_MS);
+    esQueue.push(take);
+  });
+}
+
+function releaseEsSlot() {
+  esSearches -= 1;
+  esQueue.shift()?.();
+}
+
 /**
  * Resolve a free-text query into story ids ordered by relevance.
- * Returns null when Elasticsearch is disabled or fails, so the caller can fall back to SQL.
+ * Returns null when Elasticsearch is disabled, busy or failing, so the caller falls back to SQL.
  */
 export async function searchStoryIds(query: string, size = 1000): Promise<string[] | null> {
-  if (!isSearchEnabled()) return null;
+  if (!isSearchEnabled() || Date.now() < esPausedUntil) return null;
+  const key = `search:ids:${size}:${query.toLowerCase().replace(/\s+/g, ' ')}`;
+  try {
+    const hit = redis && redisReady() ? await redis.get(key) : null;
+    if (hit) return JSON.parse(hit);
+  } catch { /* no cache: ask ES */ }
+  const shared = sharedSearches.get(key);
+  if (shared) return shared;
+  const run = (async () => {
+    if (!(await esSlot())) {
+      console.warn('[Search] Elasticsearch busy, using SQL search for this query');
+      return null;
+    }
+    try {
+      const ids = await runEsSearch(query, size);
+      if (ids && redis && redisReady()) redis.set(key, JSON.stringify(ids), 'EX', ID_CACHE_TTL_S).catch(() => {});
+      return ids;
+    } finally {
+      releaseEsSlot();
+    }
+  })().finally(() => sharedSearches.delete(key));
+  sharedSearches.set(key, run);
+  return run;
+}
+
+async function runEsSearch(query: string, size: number): Promise<string[] | null> {
   try {
     const result = await es('POST', `/${ES_INDEX}/_search`, {
       size,
+      timeout: '1s',
       _source: false,
       query: {
         bool: {
@@ -227,9 +294,11 @@ export async function searchStoryIds(query: string, size = 1000): Promise<string
         },
       },
     });
+    if (result.timed_out) throw new Error('search timed out (partial results)');
     return (result.hits?.hits ?? []).map((h: any) => h._id as string);
   } catch (err: any) {
-    console.error('[Search] Query failed, falling back to SQL search:', err.message);
+    esPausedUntil = Date.now() + BREAKER_MS;
+    console.error(`[Search] Query failed, SQL search for the next ${BREAKER_MS / 1000}s:`, err.message);
     return null;
   }
 }
