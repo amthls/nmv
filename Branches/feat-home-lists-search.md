@@ -3,7 +3,7 @@
 - **Mục tiêu:** Trang riêng Mới cập nhật/Nhiều người xem, hướng dẫn nền rõ, header trang đọc, gợi ý tìm kiếm
 - **Tạo từ:** `origin/main` @ 733a34a, ngày 2026-10-12
 - **Trạng thái:** xong
-- **PR:** (điền sau khi mở)
+- **PR:** https://github.com/amthls/nmv/pull/96
 - **Plan:** Plan/ui-overhaul.md (B8)
 
 ## Thay đổi
