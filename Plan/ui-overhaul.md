@@ -24,6 +24,9 @@ Làm theo thứ tự, xong mục nào đổi `[x]`. Mỗi cụm là một PR và
       (Quay lại rời /ws); `/dang-chuong` và `/dang-truyen-tranh` dùng chung `UploadHeader` (Quay lại, công tắc, tiêu đề, cùng bề rộng),
       công tắc thay mục lịch sử nên Quay lại về trang trước khi vào đăng chương
 
+- [x] B6. Tách rõ workspace của tôi / workspace nhóm (nhánh feat/ws-personal-vs-group): `/ws` chia tab theo chủ truyện
+      (của tôi / nhóm / cộng tác) + dải nhắc sang workspace nhóm; `/ws/nhom` có đầu trang của nhóm (ảnh, thành viên, xanh lá) và danh sách truyện của nhóm
+
 ## C. Trình đọc (nhánh feat/reader-responsive)
 - [x] C1. Cài đặt đọc truyện chữ co giãn theo màn hình, cuộn được khi thiếu chỗ
 - [x] C2. Bỏ lựa chọn "tự động độ phân giải", để người dùng tự chọn

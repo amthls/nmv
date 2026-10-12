@@ -3,7 +3,7 @@
 import React, { Suspense, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ChevronLeft, ChevronRight, FileText, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, FileText, Handshake, Plus, User, Users } from 'lucide-react';
 import SmartImage from '@/components/common/SmartImage';
 import StoryFlow from '@/components/workspace/StoryFlow';
 import { DraftRow } from '@/components/workspace/DraftRow';
@@ -32,7 +32,7 @@ function WorkspaceContent() {
   const [myTasks, setMyTasks] = useState<any[]>([]); // workflow steps I took, in every group
   const [reload, setReload] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [groupFilter, setGroupFilter] = useState<string | null>(null); // null = every group
+  const [scope, setScope] = useState<string | null>(null); // shelf tab: 'mine' | 'collab' | 'g:<group slug>'; null = the picked story's
   const shelfRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -49,9 +49,14 @@ function WorkspaceContent() {
       .catch(() => setStories([]));
   }, [isAuthenticated, authFetch, reload]);
 
-  const groupOf = (s: any) => s.group_name || 'Độc lập';
-  const shelf = (stories || []).filter((s) => groupFilter === null || groupOf(s) === groupFilter);
+  // whose story: a group's (worked on together, also in that group's workspace), mine alone, or someone's I help on
+  const scopeOf = (s: any) => (s.group_id ? `g:${s.group_slug}` : s.uploader_id === user?.id ? 'mine' : 'collab');
   const picked = (stories || []).find((s) => s.slug === storySlug);
+  const scopes = Array.from(new Set((stories || []).map(scopeOf)))
+    .sort((a, b) => (a === 'mine' ? -1 : b === 'mine' ? 1 : a === 'collab' ? 1 : b === 'collab' ? -1 : 0));
+  const activeScope = scope ?? (picked ? scopeOf(picked) : scopes[0]);
+  const shelf = (stories || []).filter((s) => scopeOf(s) === activeScope);
+  const groupOfScope = (sc: string) => (stories || []).find((s) => scopeOf(s) === sc);
 
   // nothing picked yet: open the first story so the streams show right away
   useEffect(() => {
@@ -61,7 +66,7 @@ function WorkspaceContent() {
   // keep the picked cover in view on the shelf
   useEffect(() => {
     shelfRef.current?.querySelector('[aria-pressed="true"]')?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-  }, [storySlug, groupFilter, stories]);
+  }, [storySlug, activeScope, stories]);
 
   const step = (dir: number) => {
     if (!shelf.length) return;
@@ -82,8 +87,14 @@ function WorkspaceContent() {
   }
 
   const storyTitle = (id: string) => stories?.find((s) => s.id === id)?.title;
-  const groupNames = Array.from(new Set((stories || []).map(groupOf)));
-  const chip = (on: boolean) => `shrink-0 px-3 py-1.5 rounded-full text-xs font-bold border transition ${on ? 'bg-brand-600 text-snow border-brand-500' : 'border-white/15 text-gray-300 hover:text-white hover:border-white/40'}`;
+  const pickScope = (sc: string) => {
+    setScope(sc);
+    const first = (stories || []).find((s) => scopeOf(s) === sc);
+    if (first) open(first.slug);
+  };
+  const scopeLabel = (sc: string) => (sc === 'mine' ? 'Truyện của tôi' : sc === 'collab' ? 'Tôi cộng tác' : `Nhóm ${groupOfScope(sc)?.group_name}`);
+  const ScopeIcon = (sc: string) => (sc === 'mine' ? User : sc === 'collab' ? Handshake : Users);
+  const activeGroup = activeScope?.startsWith('g:') ? groupOfScope(activeScope) : null;
 
   return (
     <div className="relative">
@@ -96,7 +107,8 @@ function WorkspaceContent() {
       <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
           <div>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-white">Workspace</h1>
+            <h1 className="text-xl sm:text-2xl font-extrabold text-white">Workspace của tôi</h1>
+            <p className="mt-1 text-xs text-gray-400">Bàn làm việc riêng của bạn: chương, nháp và việc bạn nhận. Mỗi nhóm dịch có workspace nhóm riêng.</p>
             <ol className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-300">
               {['Chọn truyện trên kệ', 'Bấm chương trên dòng chảy', 'Xem phiên bản, sửa hoặc dùng bản cũ'].map((t, i) => (
                 <li key={t} className="flex items-center gap-1.5">
@@ -119,15 +131,38 @@ function WorkspaceContent() {
             <p className="text-xs text-gray-400">Bạn chưa đăng, chưa ở nhóm dịch nào, hoặc chưa là cộng tác viên của truyện nào. <Link href="/dang-truyen" className="underline">Đăng truyện mới</Link></p>
           ) : (
             <>
-              {groupNames.length > 1 && (
-                <div className="-mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:px-0" role="group" aria-label="Lọc theo nhóm">
-                  <button type="button" onClick={() => setGroupFilter(null)} className={chip(groupFilter === null)}>Tất cả ({stories.length})</button>
-                  {groupNames.map((g) => (
-                    <button key={g} type="button" onClick={() => setGroupFilter(g)} className={chip(groupFilter === g)}>
-                      {g} ({stories.filter((s) => groupOf(s) === g).length})
+              <div className="-mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:px-0" role="tablist" aria-label="Truyện theo chủ sở hữu">
+                {scopes.map((sc) => {
+                  const Icon = ScopeIcon(sc);
+                  const on = sc === activeScope;
+                  const group = sc.startsWith('g:');
+                  return (
+                    <button
+                      key={sc}
+                      type="button"
+                      role="tab"
+                      aria-selected={on}
+                      onClick={() => pickScope(sc)}
+                      className={`shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold border transition ${
+                        on ? (group ? 'bg-emerald-600 border-emerald-500 text-snow' : 'bg-brand-600 border-brand-500 text-snow') : 'border-white/15 text-gray-300 hover:text-white hover:border-white/40'
+                      }`}
+                    >
+                      <Icon className="w-3.5 h-3.5" /> {scopeLabel(sc)} ({stories.filter((s) => scopeOf(s) === sc).length})
                     </button>
-                  ))}
+                  );
+                })}
+              </div>
+              {activeGroup ? (
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-xs text-emerald-100">
+                  <span>Truyện của <b>nhóm {activeGroup.group_name}</b>: bạn làm chương của mình ở đây. Việc chung, bản dịch chờ duyệt và hoạt động của cả nhóm nằm ở workspace nhóm.</span>
+                  <Link href={`/ws/nhom/${activeGroup.group_slug}`} className="shrink-0 flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 font-bold text-snow hover:bg-emerald-500">
+                    <Users className="w-3.5 h-3.5" /> Mở workspace nhóm
+                  </Link>
                 </div>
+              ) : (
+                <p className="text-xs text-gray-400">
+                  {activeScope === 'mine' ? 'Truyện bạn tự đăng, không thuộc nhóm nào: chỉ bạn và cộng tác viên bạn mời làm ở đây.' : 'Truyện của người khác mời bạn cộng tác.'}
+                </p>
               )}
               <div className="flex items-center gap-2">
                 <button type="button" onClick={() => step(-1)} aria-label="Truyện trước" className="hidden sm:grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/10 hover:bg-white/20 text-white"><ChevronLeft className="w-5 h-5" /></button>
