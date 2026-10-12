@@ -265,23 +265,26 @@ export default function StoryDetailPage() {
           </span>
         </Link>
 
-        <div className="flex items-center gap-4 text-[11px] text-gray-400 shrink-0 ml-3 tabular-nums">
-          {/* fixed-width columns so word count, views and the link line up from row to row */}
-          <span className="hidden sm:inline w-20 text-right">{ch.word_count > 0 ? `${ch.word_count.toLocaleString()} chữ` : ''}</span>
-          <span className="flex items-center justify-end gap-1 w-14">
+        {/* same column widths in every row (word count | views | read | edit+delete), so nothing drifts from row to row */}
+        <div className={`grid items-center gap-x-2 text-[11px] text-gray-400 shrink-0 ml-3 tabular-nums ${
+          canManage ? 'grid-cols-[4.25rem_3.5rem_3.5rem] sm:grid-cols-[4.5rem_4.25rem_3.5rem_3.5rem]' : 'grid-cols-[4.25rem_3.5rem] sm:grid-cols-[4.5rem_4.25rem_3.5rem]'
+        }`}>
+          <span className="hidden sm:block text-right">{ch.word_count > 0 ? `${ch.word_count.toLocaleString()} chữ` : ''}</span>
+          <span className="flex items-center justify-end gap-1">
             <Eye className="w-3 h-3 text-cyan-400" />
             {typeof ch.total_views === 'number' ? ch.total_views.toLocaleString() : ch.total_views || 0}
           </span>
           
           <Link
             href={`/truyen/${story.slug}/${ch.slug}`}
-            className="text-brand-400 font-medium w-16 text-right hover:text-brand-300 transition-colors"
+            className="text-right text-brand-400 font-medium hover:text-brand-300 transition-colors"
           >
             Đọc ngay
           </Link>
 
           {/* Edit / delete chapter: the story's team */}
           {canManage && (
+            <span className="flex items-center justify-end">
             <Link
               href={`/dang-chuong?edit=${ch.id}`}
               onClick={(e) => e.stopPropagation()}
@@ -290,8 +293,6 @@ export default function StoryDetailPage() {
             >
               <Pencil className="w-3.5 h-3.5" />
             </Link>
-          )}
-          {canManage && (
             <button
               type="button"
               onClick={(e) => handleDeleteChapter(ch.id, ch.title, e)}
@@ -300,6 +301,7 @@ export default function StoryDetailPage() {
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
+            </span>
           )}
         </div>
       </div>
