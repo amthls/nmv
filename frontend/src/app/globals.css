@@ -177,6 +177,13 @@ body::before {
 @keyframes nh-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 .hero-paused .hero-progress { animation-play-state: paused; }
 
+/* Workspace (/ws): each category is a stream of water flowing behind its chapter tiles (put on a w-max row, so it spans the scroll width) */
+.ws-stream { position: relative; }
+.ws-stream::before { content: ''; position: absolute; inset: 50% 0 auto; height: 8px; margin-top: -4px; border-radius: 9999px; filter: blur(1.5px);
+  background: linear-gradient(90deg, rgb(56 189 248 / 0.25), rgb(56 189 248 / 0.85), rgb(129 140 248 / 0.45), rgb(56 189 248 / 0.85), rgb(56 189 248 / 0.25)) 0 0 / 50% 100% repeat-x;
+  animation: ws-flow 4s linear infinite; }
+@keyframes ws-flow { to { background-position: 100% 0; } }
+
 /* Text of a newly active slide rises in */
 .hero-slide .rise { opacity: 0; transform: translateY(18px); transition: opacity 0.7s ease, transform 0.9s cubic-bezier(0.22, 1, 0.36, 1); }
 .hero-slide.is-active .rise { opacity: 1; transform: none; }
@@ -298,7 +305,7 @@ body::before {
   .nh-book__page { animation: nh-soft-pulse 1.6s ease-in-out infinite; transform: rotateY(-40deg); }
   .nh-progress::before { animation: nh-soft-pulse 1.6s ease-in-out infinite; width: 100%; }
   @keyframes nh-soft-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
-  body::before, .hero-kenburns { animation: none; }
+  body::before, .hero-kenburns, .ws-stream::before { animation: none; }
   .hero-slide, .hero-layer-near, .tile, .tile__img, .reveal-up, .hero-slide .rise { transition-duration: 0.01ms !important; }
 }
 

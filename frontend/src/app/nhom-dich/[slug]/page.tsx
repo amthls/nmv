@@ -22,8 +22,11 @@ import {
   FileText,
   XCircle,
   Lock,
-  LogIn
+  LogIn,
+  LayoutDashboard,
+  PenLine
 } from 'lucide-react';
+import WorkflowSteps from '@/components/workspace/WorkflowSteps';
 import SmartImage from '@/components/common/SmartImage';
 import { useAuth } from '@/context/AuthContext';
 import RichContent from '@/components/common/RichContent';
@@ -444,31 +447,15 @@ export default function GroupDetailPage() {
               )
             )}
 
-            {isMember && (<>
-            <Link
-              href={`/dang-truyen?group_id=${group.id}`}
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-snow font-bold text-xs shadow-lg shadow-brand-500/25 flex items-center gap-2 transition hover:scale-105"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Đăng Bộ Truyện Mới</span>
-            </Link>
-
-            <Link
-              href={`/dang-chuong?group_id=${group.id}`}
-              className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs border border-white/15 flex items-center gap-2 transition"
-            >
-              <FileText className="w-4 h-4 text-brand-400" />
-              <span>Đăng Chương Mới</span>
-            </Link>
-
-            <Link
-              href={`/ws/nhom/${group.slug}`}
-              className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs border border-white/15 flex items-center gap-2 transition"
-            >
-              <Users className="w-4 h-4 text-emerald-400" />
-              <span>Workspace nhóm</span>
-            </Link>
-            </>)}
+            {isMember && (
+              <Link
+                href={`/ws/nhom/${group.slug}`}
+                className="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow font-bold text-xs shadow-lg shadow-brand-500/25 flex items-center gap-2 transition"
+              >
+                <LayoutDashboard className="w-4 h-4" />
+                <span>Vào workspace nhóm</span>
+              </Link>
+            )}
           </div>
 
         </div>
@@ -483,7 +470,7 @@ export default function GroupDetailPage() {
             }`}
           >
             <BookOpen className="w-4 h-4" />
-            <span>Tác Phẩm ({group.stories?.length || 0})</span>
+            <span>Truyện ({group.stories?.length || 0})</span>
           </button>
 
           <button
@@ -493,7 +480,7 @@ export default function GroupDetailPage() {
             }`}
           >
             <MessageSquare className="w-4 h-4 text-cyan-400" />
-            <span>Chatroom Nội Bộ</span>
+            <span>Chat nhóm</span>
           </button>
 
           <button
@@ -503,7 +490,7 @@ export default function GroupDetailPage() {
             }`}
           >
             <Users className="w-4 h-4 text-indigo-400" />
-            <span>Thành Viên ({group.members?.length || 0})</span>
+            <span>Thành viên ({group.members?.length || 0})</span>
             {isLeaderOrMod && joinRequests.length > 0 && (
               <span className="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500 text-ink" title="Yêu cầu gia nhập đang chờ duyệt">
                 {joinRequests.length}
@@ -517,7 +504,7 @@ export default function GroupDetailPage() {
               activeTab === 'info' ? 'border-brand-500 text-brand-400' : 'border-transparent text-gray-400 hover:text-white'
             }`}
           >
-            <span>Nội Quy & Thông Tin</span>
+            <span>Quy trình & nội quy</span>
           </button>
 
         </div>
@@ -529,17 +516,37 @@ export default function GroupDetailPage() {
       {/* TAB 1: STORIES */}
       {activeTab === 'stories' && (
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-white">Danh Sách Truyện Của Nhóm</h2>
-            {isMember && (
-            <Link
-              href={`/dang-truyen?group_id=${group.id}`}
-              className="text-xs text-brand-400 hover:underline font-semibold flex items-center gap-1"
-            >
-              <Plus className="w-3.5 h-3.5" /> Thêm truyện mới vào nhóm
-            </Link>
-            )}
-          </div>
+          {isMember && (
+            <section className="p-5 sm:p-6 rounded-3xl border border-brand-500/25 bg-brand-500/5 space-y-4" aria-label="Làm việc với nhóm">
+              <div>
+                <h2 className="text-base font-bold text-white">Làm việc với nhóm</h2>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Mỗi chương đi qua các bước dưới đây. Xong một bước thì bước sau tự mở cho người đúng vai trò; bước cuối người giữ truyện gộp và đăng.
+                </p>
+              </div>
+              <WorkflowSteps workflow={group.workflow} />
+              <div className="grid gap-3 sm:grid-cols-3">
+                {[
+                  { href: `/ws/nhom/${group.slug}`, icon: LayoutDashboard, title: 'Workspace nhóm', text: 'Nhận việc, xem ai đang làm gì, duyệt đề xuất chờ gộp', main: true },
+                  { href: `/dang-chuong?group_id=${group.id}`, icon: PenLine, title: 'Đăng chương mới', text: 'Viết hoặc dán chương, lưu nháp rồi gửi cho nhóm' },
+                  { href: `/dang-truyen?group_id=${group.id}`, icon: Plus, title: 'Đăng truyện mới', text: 'Thêm một bộ truyện chữ hoặc truyện tranh vào nhóm' },
+                ].map((a) => (
+                  <Link
+                    key={a.title}
+                    href={a.href}
+                    className={`group flex items-start gap-3 p-4 rounded-2xl border transition ${a.main ? 'border-brand-500/50 bg-brand-600/20 hover:bg-brand-600/30' : 'border-white/10 bg-white/5 hover:bg-white/10'}`}
+                  >
+                    <a.icon className={`w-5 h-5 shrink-0 mt-0.5 ${a.main ? 'text-brand-300' : 'text-gray-300'}`} />
+                    <span>
+                      <span className="block text-sm font-bold text-white">{a.title}</span>
+                      <span className="block text-[11px] text-gray-400 mt-0.5">{a.text}</span>
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+          <h2 className="text-lg font-bold text-white">Truyện của nhóm</h2>
 
           {group.stories && group.stories.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -562,9 +569,14 @@ export default function GroupDetailPage() {
                     <div className="flex items-center justify-between text-[11px] text-gray-400 pt-2 border-t border-white/5">
                       <span className="text-brand-300 font-semibold">{story.total_chapters || 0} chương</span>
                       {isMember && (
-                        <Link href={chapterUploadHref({ storyType: story.story_type, storyId: story.id, groupId: group.id })} className="text-cyan-400 hover:underline text-[10px] font-bold">
-                          + Đăng chương
-                        </Link>
+                        <span className="flex items-center gap-1.5">
+                          <Link href={`/ws?truyen=${story.slug}`} className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-gray-100 text-[10px] font-bold">
+                            Chương & phiên bản
+                          </Link>
+                          <Link href={chapterUploadHref({ storyType: story.story_type, storyId: story.id, groupId: group.id, chosen: true })} className="px-2 py-1 rounded-lg bg-brand-600 hover:bg-brand-500 text-snow text-[10px] font-bold">
+                            + Chương
+                          </Link>
+                        </span>
                       )}
                     </div>
                   </div>

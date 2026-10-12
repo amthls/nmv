@@ -10,7 +10,14 @@ Làm theo thứ tự, xong mục nào đổi `[x]`. Mỗi cụm là một PR và
 - [x] B1. `/dang-chuong` không tự chuyển về nhóm dịch: nút quay lại theo `history`/nguồn vào, không cứng `/nhom-dich`
 - [x] B2. Truyện chữ / truyện tranh: bỏ cách "tự nhảy theo truyện đã chọn", dùng hai route thật (`/dang-chuong` và `/dang-truyen-tranh`) với tab điều hướng thật; chọn truyện sai loại thì hiện gợi ý, không tự chuyển trang
 - [x] B3. `/ws` thiết kế lại: danh sách truyện của nhóm → bấm ra dải chảy ngang (kiểu màn hình chủ PS5) theo danh mục (tập) → chương → phiên bản (xem, dùng bản đó)
-- [ ] B4. (hoãn) Giao diện nhóm dịch `/nhom-dich` đơn giản hơn: chưa làm
+- [x] B4. Nhóm dịch + ws trực quan hơn (nhánh feat/ws-group-redesign, yêu cầu lần 2 ngày 2026-10-12):
+  - [x] B4a. `/ws`: nền là bìa truyện đang chọn (mờ), chip lọc theo nhóm, kệ bìa (←/→ đổi truyện, tự chọn truyện đầu),
+        đầu truyện to với nút rõ (Chương mới, Việc & đề xuất, Workspace nhóm, Đọc), mỗi tập là một "dòng nước" chảy ngang
+        có các chương nằm trên dòng; chọn chương → dòng phiên bản (đang dùng / dùng bản này / so sánh). API `/stories/manageable` trả thêm `group_slug`
+  - [x] B4b. `/nhom-dich/[slug]`: thành viên thấy khung "Làm việc với nhóm" (quy trình dạng các bước có mũi tên, 3 nút lớn:
+        Workspace nhóm, Đăng chương, Đăng truyện), thẻ truyện có nút Workspace + Đăng chương; tab tên dễ hiểu
+  - [x] B4c. `/ws/nhom/[slug]`: dải quy trình đếm việc từng bước (bấm để lọc), hướng dẫn ngắn
+  - [x] B4d. Thử trên trình duyệt (rộng + hẹp), README, PR, merge
 
 ## C. Trình đọc (nhánh feat/reader-responsive)
 - [x] C1. Cài đặt đọc truyện chữ co giãn theo màn hình, cuộn được khi thiếu chỗ
