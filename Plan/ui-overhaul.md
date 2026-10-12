@@ -13,10 +13,10 @@ Làm theo thứ tự, xong mục nào đổi `[x]`. Mỗi cụm là một PR và
 - [ ] B4. (hoãn) Giao diện nhóm dịch `/nhom-dich` đơn giản hơn: chưa làm
 
 ## C. Trình đọc (nhánh feat/reader-responsive)
-- [ ] C1. Cài đặt đọc truyện chữ co giãn theo màn hình, cuộn được khi thiếu chỗ
-- [ ] C2. Bỏ lựa chọn "tự động độ phân giải", để người dùng tự chọn
-- [ ] C3. Truyện tranh: mỗi ảnh có trạng thái đang tải, lỗi thì báo ở đúng ảnh + nút thử lại
-- [ ] C4. Sửa route khi bấm quay lại (không bị đẩy sai trang)
+- [x] C1. Cài đặt đọc truyện chữ co giãn theo màn hình, cuộn được khi thiếu chỗ
+- [x] C2. Bỏ lựa chọn "tự động độ phân giải", để người dùng tự chọn
+- [x] C3. Truyện tranh: mỗi ảnh có trạng thái đang tải, lỗi thì báo ở đúng ảnh + nút thử lại
+- [x] C4. Sửa route khi bấm quay lại (không bị đẩy sai trang)
 
 ## D. Điện thoại (nhánh feat/mobile-ui)
 - [ ] D1. Rà các trang chính ở 360/390/430/768 px: không tràn ngang, nút đủ lớn

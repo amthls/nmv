@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
+import BackLink from '@/components/common/BackLink';
 import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { ArrowLeft, GitCompare, History, Loader2, RotateCcw, Trash2 } from 'lucide-react';
@@ -91,9 +92,9 @@ export default function ChapterHistoryPage() {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-6 pb-24">
       <div className="flex items-center gap-3">
-        <Link href={`/truyen/${storySlug}`} className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300" title="Về trang truyện">
+        <BackLink href={`/truyen/${storySlug}`} className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-300" title="Về trang truyện">
           <ArrowLeft className="w-4 h-4" />
-        </Link>
+        </BackLink>
         <div className="min-w-0">
           <h1 className="text-lg font-bold text-white flex items-center gap-2"><History className="w-5 h-5 text-brand-400" /> Lịch sử chương</h1>
           {head && <p className="text-xs text-gray-400 truncate">Chương {head.chapter_number}: {head.title}{isDeleted && <span className="ml-2 text-rose-300">(đã xóa)</span>}</p>}

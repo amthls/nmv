@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
+import BackLink from '@/components/common/BackLink';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Check, GitCompare, GitMerge, MessageSquare, Pencil, Undo2 } from 'lucide-react';
@@ -132,9 +133,9 @@ export default function ProposalPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-5 pb-24">
-      <Link href="/ws" className="inline-flex items-center gap-2 text-xs font-semibold text-gray-400 hover:text-white transition">
+      <BackLink href="/ws" className="inline-flex items-center gap-2 text-xs font-semibold text-gray-400 hover:text-white transition">
         <ArrowLeft className="w-4 h-4" /> Workspace của tôi
-      </Link>
+      </BackLink>
 
       <div className="rounded-3xl p-6 glass-panel border border-white/10 bg-glass shadow-xl space-y-3">
         <div className="flex flex-wrap items-start justify-between gap-3">

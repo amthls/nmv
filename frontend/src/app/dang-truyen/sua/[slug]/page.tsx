@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import BackLink from '@/components/common/BackLink';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Pencil, ArrowLeft, Lock, LogIn, ShieldAlert } from 'lucide-react';
@@ -98,13 +99,13 @@ export default function EditStoryPage() {
         <p className="text-sm text-gray-400 mb-6">
           Chỉ chủ thầu, thành viên nhóm dịch phụ trách, cộng tác viên được chỉ định, hoặc Admin/Mod mới có thể chỉnh sửa truyện này.
         </p>
-        <Link
+        <BackLink
           href={`/truyen/${slug}`}
           className="px-6 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold text-sm transition inline-flex items-center justify-center gap-2 mx-auto"
         >
           <ArrowLeft className="w-4 h-4" />
           Quay lại trang truyện
-        </Link>
+        </BackLink>
       </div>
     );
   }
@@ -112,13 +113,13 @@ export default function EditStoryPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-8 pb-24">
       <div>
-        <Link
+        <BackLink
           href={`/truyen/${slug}`}
           className="inline-flex items-center gap-2 text-xs font-semibold text-gray-400 hover:text-white transition"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Quay lại trang truyện</span>
-        </Link>
+        </BackLink>
       </div>
 
       <div className="p-6 sm:p-8 rounded-3xl border border-brand-500/20 bg-glass bg-gradient-to-r from-brand-950/60 via-surface-2 to-surface space-y-2 shadow-xl">

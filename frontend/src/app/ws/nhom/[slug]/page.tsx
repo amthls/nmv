@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import BackLink from '@/components/common/BackLink';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { Activity, ArrowLeft, MessageCircle, Settings, Users } from 'lucide-react';
@@ -78,9 +79,9 @@ export default function GroupWorkspacePage() {
   const select = 'h-9 px-3 rounded-xl bg-surface-3 border border-white/10 text-xs text-white';
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-5 pb-24">
-      <Link href="/ws" className="inline-flex items-center gap-2 text-xs font-semibold text-gray-400 hover:text-white transition">
+      <BackLink href="/ws" className="inline-flex items-center gap-2 text-xs font-semibold text-gray-400 hover:text-white transition">
         <ArrowLeft className="w-4 h-4" /> Workspace của tôi
-      </Link>
+      </BackLink>
 
       <div className="rounded-3xl p-6 glass-panel border border-white/10 bg-glass shadow-xl flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>

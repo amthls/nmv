@@ -2,8 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ChevronLeft, SlidersHorizontal, X } from 'lucide-react';
-import SmartImage from '@/components/common/SmartImage';
+import { ChevronLeft, ImageOff, Loader2, RotateCw, SlidersHorizontal, X } from 'lucide-react';
 import { imageUrlForQuality, useImageQuality } from '@/lib/imageQuality';
 
 /*
@@ -176,20 +175,7 @@ export default function MangaReader({ pages, nextHref, prevHref, local = false }
 
   const renderPage = (i: number, pair: boolean, eager: boolean) => {
     const p = pages[i];
-    return (
-      <SmartImage
-        key={`${p.page_number}-${i}`}
-        src={p.image_url}
-        adaptive={!local}
-        alt={`Trang ${p.page_number}`}
-        width={p.width || undefined}
-        height={p.height || undefined}
-        loading={eager ? 'eager' : 'lazy'}
-        draggable={false}
-        className="select-none"
-        style={imageStyle(s, paged, pair)}
-      />
-    );
+    return <PageImage key={`${p.page_number}-${i}`} page={p} local={local} eager={eager} style={imageStyle(s, paged, pair)} />;
   };
 
   if (pages.length === 0) return null;
@@ -333,5 +319,58 @@ function Chip({ on, onClick, title, children }: { on: boolean; onClick: () => vo
     >
       {children}
     </button>
+  );
+}
+
+/** One page: shows a spinner while it loads, and an error with a retry button on that page when it fails. */
+function PageImage({ page, local, eager, style }: { page: MangaPage; local: boolean; eager: boolean; style: React.CSSProperties }) {
+  const [quality] = useImageQuality();
+  const wanted = (local ? page.image_url : imageUrlForQuality(page.image_url, quality)) || page.image_url;
+  const [src, setSrc] = useState(wanted);
+  const [state, setState] = useState<'loading' | 'ok' | 'error'>('loading');
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    setSrc(wanted);
+    setState('loading');
+  }, [wanted, attempt]);
+
+  const ratio = page.width && page.height ? `${page.width} / ${page.height}` : '3 / 4';
+  return (
+    <div className="relative" style={state === 'ok' ? { display: 'contents' } : { width: '100%', aspectRatio: ratio, minHeight: 240 }}>
+      <img
+        key={attempt}
+        src={src}
+        alt={`Trang ${page.page_number}`}
+        width={page.width || undefined}
+        height={page.height || undefined}
+        loading={eager ? 'eager' : 'lazy'}
+        draggable={false}
+        className="select-none"
+        style={state === 'ok' ? style : { position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0 }}
+        onLoad={() => setState('ok')}
+        onError={() => {
+          // a failed resized copy falls back to the original file once, then the page is marked as failed
+          if (src !== page.image_url) setSrc(page.image_url);
+          else setState('error');
+        }}
+      />
+      {state === 'loading' && (
+        <div className="absolute inset-0 grid place-items-center rounded bg-white/5 text-xs text-gray-400" role="status">
+          <span className="flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Đang tải trang {page.page_number}...</span>
+        </div>
+      )}
+      {state === 'error' && (
+        <div className="absolute inset-0 grid place-items-center rounded border border-rose-500/30 bg-rose-500/10 p-3 text-center" role="alert">
+          <div className="space-y-2">
+            <ImageOff className="mx-auto w-6 h-6 text-rose-300" />
+            <p className="text-xs font-semibold text-rose-200">Trang {page.page_number} không tải được</p>
+            <button type="button" onClick={() => setAttempt((n) => n + 1)} className="inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-bold text-white hover:bg-white/15">
+              <RotateCw className="w-3.5 h-3.5" /> Thử lại
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
