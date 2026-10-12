@@ -26,3 +26,11 @@
 - [x] D2. Catalog trả danh sách không giới hạn: `GET /groups` (phân trang + "Tải thêm"), `/stories/manageable`, trang nhóm (truyện, thành viên), hồ sơ người dùng (truyện) → giới hạn số dòng
 - [x] D3. Rà các trang tải danh sách lớn còn thiếu chỉ báo tải
 - [x] D4. Build, thử trình duyệt, README, PR, merge
+
+## E. Vòng sửa 2 (yêu cầu 2026-10-12, cùng nhánh vì PR chưa merge)
+Bẫy tìm được: ở `/ws`, thẻ chương `scale-105` + `hover:-translate-y-1` làm thẻ nhảy dưới con trỏ (rìa thẻ nhấp nháy hover); bấm chương gọi `scrollIntoView` smooth xuống khung phiên bản; khung phiên bản co về trống (`setRevs(null)`) rồi mới phình ra mỗi lần đổi chương / bấm "Dùng bản này" → trang giật lên xuống.
+- [x] E1. `/ws` StoryFlow: bỏ scale/translate ở thẻ chương (chỉ đổi màu viền), chỉ cuộn khi khung phiên bản ngoài màn hình, khung phiên bản giữ chiều cao tối thiểu, tải lại sau "Dùng bản này" không làm khung co lại
+- [x] E2. `/fandom` và `/nhom-dich`: bớt phồng trên màn rộng (khung `max-w-7xl` cho Fandom, lưới nhóm `auto-fill` thêm cột thay vì kéo to thẻ)
+- [x] E3. `/thong-bao`: ô tìm kiếm (server, `q` theo tiêu đề + nội dung), chuẩn tìm kiếm chung (trễ 400 ms, hủy, vòng xoay), danh sách mờ đi khi đang tải thay vì nhảy
+- [x] E4. Messaging: tự xóa tin nhắn (riêng + chat nhóm) cũ hơn 7 tháng, trừ tin đã ghim; thêm vào `cleanupLoop`, README
+- [x] E5. Build, thử, cập nhật Branches/, push (PR chưa mở được: máy không có `gh`)

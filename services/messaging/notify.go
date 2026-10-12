@@ -378,7 +378,7 @@ func (s *server) handleDelivery(ctx context.Context, ch *amqp.Channel, d amqp.De
 	d.Ack(false)
 }
 
-// cleanupLoop keeps the inbox small: read > 30 days, unread > 60 days, dedupe keys > 60 days, announcements > 30 days.
+// cleanupLoop keeps the inbox small: read > 30 days, unread > 60 days, dedupe keys > 60 days, announcements > 30 days, chat messages > 7 months (pinned ones stay).
 func (s *server) cleanupLoop(ctx context.Context) {
 	for {
 		for _, q := range []string{
@@ -386,6 +386,7 @@ func (s *server) cleanupLoop(ctx context.Context) {
 			`DELETE FROM notifications WHERE read_at IS NULL AND updated_at < NOW() - INTERVAL '60 days'`,
 			`DELETE FROM notification_dedupe WHERE created_at < NOW() - INTERVAL '60 days'`,
 			`DELETE FROM broadcasts WHERE created_at < NOW() - INTERVAL '30 days'`,
+			`DELETE FROM messages WHERE created_at < NOW() - INTERVAL '7 months' AND pinned_at IS NULL`,
 		} {
 			if _, err := s.db.Exec(ctx, q); err != nil && ctx.Err() == nil {
 				logf(ctx, "warn", "notification cleanup: "+err.Error())

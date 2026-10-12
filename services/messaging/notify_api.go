@@ -70,7 +70,7 @@ func isAdmin(r *http.Request) bool { // X-User-Roles is covered by the signature
 
 const broadcastDays = "30 days"
 
-// GET /notifications?category=&unread=1&before=<updated_at RFC3339>&limit=30: newest first (own rows + live announcements),
+// GET /notifications?category=&unread=1&q=&before=<updated_at RFC3339>&limit=30: newest first (own rows + live announcements),
 // with unseen_count (the bell's number) and unread_count.
 func (s *server) handleNotifications(w http.ResponseWriter, r *http.Request, me string) {
 	q := r.URL.Query()
@@ -93,16 +93,23 @@ func (s *server) handleNotifications(w http.ResponseWriter, r *http.Request, me 
 		before = &t
 	}
 	unread := q.Get("unread") == "1"
+	pattern := ""
+	if v := strings.TrimSpace(q.Get("q")); v != "" {
+		if len(v) > 100 {
+			v = v[:100]
+		}
+		pattern = "%" + strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`).Replace(v) + "%"
+	}
 	rows, err := s.db.Query(r.Context(), `
 		SELECT id::text, type, category, title, message, link, image, actors, actor_count, count, data, seen_at IS NOT NULL, read_at, created_at, updated_at
 		FROM notifications WHERE user_id = $1 AND ($2 = '' OR category = $2) AND (NOT $3 OR read_at IS NULL)
-		  AND ($4::timestamptz IS NULL OR updated_at < $4)
+		  AND ($4::timestamptz IS NULL OR updated_at < $4) AND ($6 = '' OR title ILIKE $6 OR message ILIKE $6)
 		UNION ALL
 		SELECT b.id::text, 'broadcast', 'system', b.title, b.message, b.link, NULL, '[]', 0, 1, '{}', r.seen_at IS NOT NULL, r.read_at, b.created_at, b.created_at
 		FROM broadcasts b LEFT JOIN broadcast_reads r ON r.broadcast_id = b.id AND r.user_id = $1
 		WHERE b.created_at > NOW() - INTERVAL '`+broadcastDays+`' AND $2 IN ('', 'system') AND (NOT $3 OR r.read_at IS NULL)
-		  AND ($4::timestamptz IS NULL OR b.created_at < $4)
-		ORDER BY 15 DESC LIMIT $5`, me, cat, unread, before, limit)
+		  AND ($4::timestamptz IS NULL OR b.created_at < $4) AND ($6 = '' OR b.title ILIKE $6 OR b.message ILIKE $6)
+		ORDER BY 15 DESC LIMIT $5`, me, cat, unread, before, limit, pattern)
 	if err != nil {
 		internalError(w, r, err)
 		return

@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bell, CheckCheck, Loader2, LogIn, Megaphone, Settings2, Trash2 } from 'lucide-react';
 import PageLoader from '@/components/common/PageLoader';
+import SearchInput from '@/components/common/SearchInput';
 import NotificationItem, { Notification, NOTIFICATION_URL } from '@/components/notifications/NotificationItem';
 import { useAuth } from '@/context/AuthContext';
 import { useRealtime } from '@/lib/realtime';
+import { useDebounced } from '@/lib/useDebounced';
 import { apiJson, MESSAGING_URL } from '@/lib/apiJson';
 
 const FILTERS = [
@@ -37,6 +39,9 @@ export default function NotificationsPage() {
 
   const [category, setCategory] = useState('');
   const [unreadOnly, setUnreadOnly] = useState(false);
+  const [search, setSearch] = useState('');
+  const [query, typing] = useDebounced(search.trim());
+  const latest = useRef(0); // only the newest request may fill the list
   const [items, setItems] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [hasMore, setHasMore] = useState(false);
@@ -48,12 +53,15 @@ export default function NotificationsPage() {
   const isAdmin = hasRole('admin');
 
   const load = useCallback(async (append = false, before?: string) => {
+    const mine = ++latest.current;
     setLoading(true);
     const q = new URLSearchParams({ limit: '30' });
+    if (query) q.set('q', query);
     if (category) q.set('category', category);
     if (unreadOnly) q.set('unread', '1');
     if (before) q.set('before', before);
     const { ok, json } = await api(`/notifications?${q}`).catch(() => ({ ok: false, json: {} as any }));
+    if (mine !== latest.current) return;
     if (ok) {
       const list: Notification[] = json.data.notifications;
       setItems((prev) => (append ? [...prev, ...list] : list));
@@ -61,7 +69,7 @@ export default function NotificationsPage() {
       setHasMore(list.length === 30);
     }
     setLoading(false);
-  }, [category, unreadOnly, authFetch]);
+  }, [category, unreadOnly, query, authFetch]);
 
   useEffect(() => {
     if (isAuthenticated) load();
@@ -177,6 +185,7 @@ export default function NotificationsPage() {
 
       <div className="grid lg:grid-cols-[1fr_320px] gap-6 items-start">
         <section>
+          <SearchInput className="mb-3" value={search} onChange={setSearch} loading={typing || loading} placeholder="Tìm trong thông báo..." />
           <div className="flex gap-2 overflow-x-auto pb-3 -mx-1 px-1">
             {FILTERS.map((f) => (
               <button key={f.id} type="button" onClick={() => setCategory(f.id)} className={chip(category === f.id)} aria-pressed={category === f.id}>
@@ -189,12 +198,12 @@ export default function NotificationsPage() {
             </button>
           </div>
 
-          <div className="rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden divide-y divide-white/5">
+          <div className={`rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden divide-y divide-white/5 min-h-40 transition-opacity ${loading || typing ? 'opacity-60' : ''}`}>
             {items.length === 0 && !loading && (
               <div className="p-12 text-center">
                 <Bell className="w-8 h-8 mx-auto text-gray-600 mb-3" />
                 <p className="text-sm font-semibold text-white">Không có thông báo nào</p>
-                <p className="text-xs text-gray-400 mt-1">Thử chọn mục khác, hoặc bỏ lọc "Chưa đọc".</p>
+                <p className="text-xs text-gray-400 mt-1">{query ? 'Không có thông báo nào khớp từ khóa.' : 'Thử chọn mục khác, hoặc bỏ lọc "Chưa đọc".'}</p>
               </div>
             )}
             {items.map((n) => (
@@ -213,7 +222,7 @@ export default function NotificationsPage() {
                 )}
               </div>
             ))}
-            {loading && (
+            {loading && items.length === 0 && (
               <div className="p-6 flex justify-center text-gray-400">
                 <Loader2 className="w-5 h-5 animate-spin" />
               </div>

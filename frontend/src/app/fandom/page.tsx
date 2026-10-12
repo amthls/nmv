@@ -173,7 +173,7 @@ function FandomContent() {
   }[feed];
 
   return (
-    <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 pb-24">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 pb-24">
       {/* Header */}
       <div className="rounded-2xl glass-panel border border-white/10 p-5 sm:p-6 bg-gradient-to-r from-brand-900/30 via-indigo-900/20 to-transparent flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -434,7 +434,7 @@ function FandomContent() {
 
 export default function FandomPage() {
   return (
-    <Suspense fallback={<div className="max-w-[1600px] mx-auto px-4 py-8"><div className="h-28 rounded-2xl bg-white/5 animate-pulse" /></div>}>
+    <Suspense fallback={<div className="max-w-7xl mx-auto px-4 py-8"><div className="h-28 rounded-2xl bg-white/5 animate-pulse" /></div>}>
       <FandomContent />
     </Suspense>
   );

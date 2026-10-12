@@ -10,6 +10,10 @@
 - Ô tìm kiếm cùng chuẩn (`SearchInput`, `useDebounced`): 1 ký tự, trễ 400 ms, hủy yêu cầu cũ, vòng xoay + thanh tải
 - Thẻ truyện: tên 2 dòng, hàng chương thẳng hàng; lưới `auto-fill` không phình
 - `useRealtime` gom sự kiện dồn dập (`coalesce.ts` + test)
+- `/ws`: thẻ chương hết nhảy (bỏ scale/translate, chỉ cuộn khi khung phiên bản ngoài màn hình, khung phiên bản giữ chiều cao)
+- `/fandom` khung `max-w-7xl`, `/nhom-dich` lưới `auto-fill`
+- `/thong-bao`: ô tìm (`GET /notifications?q=`), trễ 400 ms, mờ khi tải
+- Messaging: tự xóa tin nhắn cũ hơn 7 tháng (trừ tin ghim)
 - Catalog giới hạn/phân trang: `/groups`, `/stories/manageable`, trang nhóm, hồ sơ người dùng
 
 ## Migration / biến môi trường mới
