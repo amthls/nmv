@@ -31,6 +31,7 @@ work on. Stories an older crawl left on the admin account are spread the same wa
 import argparse
 import html as htmllib
 import json
+import math
 import os
 import random
 import re
@@ -392,7 +393,7 @@ class MangaDex:
                 number = float(ca.get("chapter") or "")
             except ValueError:
                 continue
-            if number in seen or ca.get("externalUrl") or not (0 < (ca.get("pages") or 0) <= self.args.max_pages):
+            if not math.isfinite(number) or number in seen or ca.get("externalUrl") or not (0 < (ca.get("pages") or 0) <= self.args.max_pages):
                 continue
             seen.add(number)
             group = next((r["attributes"]["name"] for r in ch.get("relationships", [])
