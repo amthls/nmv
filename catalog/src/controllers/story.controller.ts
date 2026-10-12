@@ -11,6 +11,7 @@ import { enqueueNotificationJob } from '../services/queue.service';
 import { callLibrary, libraryData } from '../services/libraryClient';
 import { purgeStory, REMOVED_PURGE_DAYS } from '../services/storyPurge';
 import { trendingStories } from '../services/hotShelf';
+import { cachedPublic } from '../middlewares/cache';
 
 function slugify(text: string) {
   return text
@@ -477,101 +478,109 @@ export const getStories = async (req: Request, res: Response) => {
   return exploreStories(req, res);
 };
 
+/** What every reader of a story page sees the same: the story, its tags, volumes with chapters, collaborators. */
+async function loadPublicStory(slug: string): Promise<any | null> {
+  const result = await pool.query(`
+    SELECT 
+      s.*,
+      u.id as uploader_id,
+      u.username as uploader_username,
+      u.display_name as uploader_name,
+      u.avatar_url as uploader_avatar,
+      g.id as group_id,
+      g.name as group_name,
+      g.slug as group_slug,
+      g.avatar_url as group_avatar,
+      g.description as group_description,
+      COALESCE(
+        json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name, 'slug', t.slug, 'category_name', tc.name, 'category_label', tc.label))
+        FILTER (WHERE t.id IS NOT NULL), '[]'
+      ) as tags
+    FROM stories s
+    JOIN users u ON s.uploader_id = u.id
+    LEFT JOIN translation_groups g ON s.group_id = g.id
+    LEFT JOIN story_tags st ON s.id = st.story_id
+    LEFT JOIN tags t ON st.tag_id = t.id
+    LEFT JOIN tag_categories tc ON t.category_id = tc.id
+    WHERE s.slug = $1
+    GROUP BY s.id, u.id, g.id;
+  `, [slug]);
+
+  if (result.rows.length === 0) return null;
+  const story = result.rows[0];
+
+  const volumesRes = await pool.query(`
+    SELECT 
+      v.id, v.title, v.volume_number, v.cover_image_url, v.description,
+      COALESCE(
+        json_agg(
+          json_build_object(
+            'id', c.id,
+            'title', c.title,
+            'chapter_number', c.chapter_number,
+            'slug', c.slug,
+            'word_count', c.word_count,
+            'published_at', c.published_at,
+            'total_views', c.total_views,
+            'total_comments', c.total_comments
+          ) ORDER BY c.chapter_number ASC
+        ) FILTER (WHERE c.id IS NOT NULL), '[]'
+      ) as chapters
+    FROM volumes v
+    LEFT JOIN chapters c ON v.id = c.volume_id AND c.is_published = true
+    WHERE v.story_id = $1
+    GROUP BY v.id
+    ORDER BY v.volume_number ASC;
+  `, [story.id]);
+
+  story.volumes = volumesRes.rows;
+
+  // Published chapters that belong to no volume (posted without one, or their volume was deleted)
+  const looseRes = await pool.query(`
+    SELECT id, title, chapter_number, slug, word_count, published_at, total_views, total_comments
+    FROM chapters
+    WHERE story_id = $1 AND is_published = true AND volume_id IS NULL
+    ORDER BY chapter_number ASC;
+  `, [story.id]);
+  story.unassigned_chapters = looseRes.rows;
+
+  const firstChapterRes = await pool.query(`
+    SELECT id, slug, title, chapter_number 
+    FROM chapters 
+    WHERE story_id = $1 AND is_published = true 
+    ORDER BY chapter_number ASC LIMIT 1;
+  `, [story.id]);
+
+  const latestChapterRes = await pool.query(`
+    SELECT id, slug, title, chapter_number 
+    FROM chapters 
+    WHERE story_id = $1 AND is_published = true 
+    ORDER BY chapter_number DESC LIMIT 1;
+  `, [story.id]);
+
+  story.first_chapter = firstChapterRes.rows[0] || null;
+  const collabRes = await pool.query(`
+    SELECT sc.user_id, sc.role, u.username, u.display_name, u.avatar_url
+    FROM story_collaborators sc
+    JOIN users u ON sc.user_id = u.id
+    WHERE sc.story_id = $1
+  `, [story.id]);
+  story.collaborators = collabRes.rows;
+  
+  story.latest_chapter = latestChapterRes.rows[0] || null;
+  return story;
+}
+
 export const getStoryBySlug = async (req: Request, res: Response) => {
   try {
     const { slug } = req.params;
 
-    const result = await pool.query(`
-      SELECT 
-        s.*,
-        u.id as uploader_id,
-        u.username as uploader_username,
-        u.display_name as uploader_name,
-        u.avatar_url as uploader_avatar,
-        g.id as group_id,
-        g.name as group_name,
-        g.slug as group_slug,
-        g.avatar_url as group_avatar,
-        g.description as group_description,
-        COALESCE(
-          json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name, 'slug', t.slug, 'category_name', tc.name, 'category_label', tc.label))
-          FILTER (WHERE t.id IS NOT NULL), '[]'
-        ) as tags
-      FROM stories s
-      JOIN users u ON s.uploader_id = u.id
-      LEFT JOIN translation_groups g ON s.group_id = g.id
-      LEFT JOIN story_tags st ON s.id = st.story_id
-      LEFT JOIN tags t ON st.tag_id = t.id
-      LEFT JOIN tag_categories tc ON t.category_id = tc.id
-      WHERE s.slug = $1
-      GROUP BY s.id, u.id, g.id;
-    `, [slug]);
-
-    if (result.rows.length === 0) {
+    // the shared part comes from the cache (Plan/load.md A5); follow state, rights and the approval check below are
+    // worked out per request
+    const story: any = await cachedPublic(`story:${slug}`, 60, () => loadPublicStory(slug));
+    if (!story) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy truyện' });
     }
-
-    const story = result.rows[0];
-
-    const volumesRes = await pool.query(`
-      SELECT 
-        v.id, v.title, v.volume_number, v.cover_image_url, v.description,
-        COALESCE(
-          json_agg(
-            json_build_object(
-              'id', c.id,
-              'title', c.title,
-              'chapter_number', c.chapter_number,
-              'slug', c.slug,
-              'word_count', c.word_count,
-              'published_at', c.published_at,
-              'total_views', c.total_views,
-              'total_comments', c.total_comments
-            ) ORDER BY c.chapter_number ASC
-          ) FILTER (WHERE c.id IS NOT NULL), '[]'
-        ) as chapters
-      FROM volumes v
-      LEFT JOIN chapters c ON v.id = c.volume_id AND c.is_published = true
-      WHERE v.story_id = $1
-      GROUP BY v.id
-      ORDER BY v.volume_number ASC;
-    `, [story.id]);
-
-    story.volumes = volumesRes.rows;
-
-    // Published chapters that belong to no volume (posted without one, or their volume was deleted)
-    const looseRes = await pool.query(`
-      SELECT id, title, chapter_number, slug, word_count, published_at, total_views, total_comments
-      FROM chapters
-      WHERE story_id = $1 AND is_published = true AND volume_id IS NULL
-      ORDER BY chapter_number ASC;
-    `, [story.id]);
-    story.unassigned_chapters = looseRes.rows;
-
-    const firstChapterRes = await pool.query(`
-      SELECT id, slug, title, chapter_number 
-      FROM chapters 
-      WHERE story_id = $1 AND is_published = true 
-      ORDER BY chapter_number ASC LIMIT 1;
-    `, [story.id]);
-
-    const latestChapterRes = await pool.query(`
-      SELECT id, slug, title, chapter_number 
-      FROM chapters 
-      WHERE story_id = $1 AND is_published = true 
-      ORDER BY chapter_number DESC LIMIT 1;
-    `, [story.id]);
-
-    story.first_chapter = firstChapterRes.rows[0] || null;
-    const collabRes = await pool.query(`
-      SELECT sc.user_id, sc.role, u.username, u.display_name, u.avatar_url
-      FROM story_collaborators sc
-      JOIN users u ON sc.user_id = u.id
-      WHERE sc.story_id = $1
-    `, [story.id]);
-    story.collaborators = collabRes.rows;
-  
-    story.latest_chapter = latestChapterRes.rows[0] || null;
 
     const currentUserId = (req as any).user?.id;
     const currentUserRoles: string[] = (req as any).user?.roles || [];
@@ -604,84 +613,92 @@ export const getStoryBySlug = async (req: Request, res: Response) => {
   }
 };
 
+/** What every reader of a chapter sees the same: the chapter, its pages, neighbours and the chapter list. */
+async function loadPublicChapter(slug: string, chapterSlug: string): Promise<{ chapter?: any; missing?: string }> {
+  const storyRes = await pool.query(`
+    SELECT 
+      s.id, s.code, s.title, s.slug, s.story_type, s.cover_image_url, s.author_name, s.allow_download,
+      g.name as group_name, g.slug as group_slug
+    FROM stories s
+    LEFT JOIN translation_groups g ON s.group_id = g.id
+    WHERE s.slug = $1 AND s.approval_status = 'approved';
+  `, [slug]);
+
+  if (storyRes.rows.length === 0) return { missing: 'Không tìm thấy truyện' };
+
+  const story = storyRes.rows[0];
+
+  const chapterRes = await pool.query(`
+    SELECT 
+      c.*,
+      v.title as volume_title,
+      v.volume_number,
+      u.username as uploader_username,
+      u.display_name as uploader_name
+    FROM chapters c
+    LEFT JOIN volumes v ON c.volume_id = v.id
+    JOIN users u ON c.uploader_id = u.id
+    WHERE c.story_id = $1 AND c.slug = $2 AND c.is_published = true;
+  `, [story.id, chapterSlug]);
+
+  if (chapterRes.rows.length === 0) return { missing: 'Không tìm thấy chương' };
+
+  const chapter = chapterRes.rows[0];
+  chapter.code = `${story.code}-C${Number(chapter.chapter_number)}`; // LN-JA-G03-0042-C12 (C12.5 for half chapters)
+
+  if (story.story_type === 'manga') {
+    const pagesRes = await pool.query(`
+      SELECT page_number, image_url, width, height
+      FROM chapter_pages
+      WHERE chapter_id = $1
+      ORDER BY page_number ASC;
+    `, [chapter.id]);
+    chapter.pages = pagesRes.rows;
+  }
+
+  const prevRes = await pool.query(`
+    SELECT slug, title, chapter_number
+    FROM chapters
+    WHERE story_id = $1 AND chapter_number < $2 AND is_published = true
+    ORDER BY chapter_number DESC LIMIT 1;
+  `, [story.id, chapter.chapter_number]);
+
+  const nextRes = await pool.query(`
+    SELECT slug, title, chapter_number
+    FROM chapters
+    WHERE story_id = $1 AND chapter_number > $2 AND is_published = true
+    ORDER BY chapter_number ASC LIMIT 1;
+  `, [story.id, chapter.chapter_number]);
+
+  chapter.prev_chapter = prevRes.rows[0] || null;
+  chapter.next_chapter = nextRes.rows[0] || null;
+
+  const allChaptersRes = await pool.query(`
+    SELECT 
+      c.id, c.title, c.chapter_number, c.slug,
+      v.title as volume_title, v.volume_number
+    FROM chapters c
+    LEFT JOIN volumes v ON c.volume_id = v.id
+    WHERE c.story_id = $1 AND c.is_published = true
+    ORDER BY c.chapter_number ASC;
+  `, [story.id]);
+
+  chapter.all_chapters = allChaptersRes.rows;
+  chapter.story = story;
+  return { chapter };
+}
+
 export const getChapterBySlug = async (req: Request, res: Response) => {
   try {
     const { slug, chapterSlug } = req.params;
 
-    const storyRes = await pool.query(`
-      SELECT 
-        s.id, s.code, s.title, s.slug, s.story_type, s.cover_image_url, s.author_name, s.allow_download,
-        g.name as group_name, g.slug as group_slug
-      FROM stories s
-      LEFT JOIN translation_groups g ON s.group_id = g.id
-      WHERE s.slug = $1 AND s.approval_status = 'approved';
-    `, [slug]);
-
-    if (storyRes.rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy truyện' });
+    // the shared part comes from the cache (Plan/load.md A5); history, behaviour and the view count stay per request
+    const found = await cachedPublic(`chapter:${slug}:${chapterSlug}`, 60, () => loadPublicChapter(slug, chapterSlug));
+    if (!found?.chapter) {
+      return res.status(404).json({ success: false, message: found?.missing || 'Không tìm thấy chương' });
     }
-
-    const story = storyRes.rows[0];
-
-    const chapterRes = await pool.query(`
-      SELECT 
-        c.*,
-        v.title as volume_title,
-        v.volume_number,
-        u.username as uploader_username,
-        u.display_name as uploader_name
-      FROM chapters c
-      LEFT JOIN volumes v ON c.volume_id = v.id
-      JOIN users u ON c.uploader_id = u.id
-      WHERE c.story_id = $1 AND c.slug = $2 AND c.is_published = true;
-    `, [story.id, chapterSlug]);
-
-    if (chapterRes.rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Không tìm thấy chương' });
-    }
-
-    const chapter = chapterRes.rows[0];
-    chapter.code = `${story.code}-C${Number(chapter.chapter_number)}`; // LN-JA-G03-0042-C12 (C12.5 for half chapters)
-
-    if (story.story_type === 'manga') {
-      const pagesRes = await pool.query(`
-        SELECT page_number, image_url, width, height
-        FROM chapter_pages
-        WHERE chapter_id = $1
-        ORDER BY page_number ASC;
-      `, [chapter.id]);
-      chapter.pages = pagesRes.rows;
-    }
-
-    const prevRes = await pool.query(`
-      SELECT slug, title, chapter_number
-      FROM chapters
-      WHERE story_id = $1 AND chapter_number < $2 AND is_published = true
-      ORDER BY chapter_number DESC LIMIT 1;
-    `, [story.id, chapter.chapter_number]);
-
-    const nextRes = await pool.query(`
-      SELECT slug, title, chapter_number
-      FROM chapters
-      WHERE story_id = $1 AND chapter_number > $2 AND is_published = true
-      ORDER BY chapter_number ASC LIMIT 1;
-    `, [story.id, chapter.chapter_number]);
-
-    chapter.prev_chapter = prevRes.rows[0] || null;
-    chapter.next_chapter = nextRes.rows[0] || null;
-
-    const allChaptersRes = await pool.query(`
-      SELECT 
-        c.id, c.title, c.chapter_number, c.slug,
-        v.title as volume_title, v.volume_number
-      FROM chapters c
-      LEFT JOIN volumes v ON c.volume_id = v.id
-      WHERE c.story_id = $1 AND c.is_published = true
-      ORDER BY c.chapter_number ASC;
-    `, [story.id]);
-
-    chapter.all_chapters = allChaptersRes.rows;
-    chapter.story = story;
+    const chapter = found.chapter;
+    const story = chapter.story;
 
     // Tự động sinh bản ghi log đọc truyện nếu người dùng đã đăng nhập
     const currentUserId = (req as AuthenticatedRequest).user?.id;

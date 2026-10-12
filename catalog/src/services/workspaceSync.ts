@@ -1,5 +1,6 @@
 import { pool } from '../config/db';
 import { internalAuthHeader } from '../middlewares/auth.middleware';
+import { bumpPublicCache } from '../middlewares/cache';
 import { currentRequestId } from '../utils/logger';
 import { startEventConsumer } from './eventConsumer';
 import { enqueueNotificationJob } from './queue.service';
@@ -114,6 +115,7 @@ export async function applyRevisionNow(rev: Revision): Promise<{ applied: boolea
     await client.query('BEGIN');
     result = await applyRevision(client, rev);
     await client.query('COMMIT');
+    if (result.applied) await bumpPublicCache(); // rewinds from the workspace arrive only here, not as a request
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
     throw err;

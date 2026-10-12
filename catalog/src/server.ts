@@ -3,6 +3,7 @@ import cors from 'cors';
 import './config/env'; // loads .env and validates required secrets first
 import apiRoutes from './routes/api.routes';
 import { applySecurity, globalApiLimiter, writeLimiter } from './middlewares/security';
+import { bumpOnWrite } from './middlewares/cache';
 import { connectQueue } from './services/queue.service';
 import { startSearchSync } from './services/search.service';
 import { visitorCookie } from './services/behaviorEvents';
@@ -65,7 +66,7 @@ app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 // RESTful API V1
-app.use('/api/v1', globalApiLimiter, writeLimiter, apiRoutes);
+app.use('/api/v1', globalApiLimiter, writeLimiter, bumpOnWrite, apiRoutes);
 
 // Service-to-service calls (identity -> backend), signed like the gateway's headers. The gateway answers 404 for
 // /internal from outside, so only containers on the Docker networks reach these.
