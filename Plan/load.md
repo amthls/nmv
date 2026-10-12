@@ -24,7 +24,9 @@ Mỗi mục một nhánh + PR. Đo lại sau mỗi mục và ghi số.
   origin: thông báo đếm ngược; GET chờ ≤ 5 s thì gửi lại 1 lần, thao tác ghi không bao giờ tự gửi lại.
 
 ## B. Hạn mức ghi (kiểu GitHub)
-- [ ] B1. Service workspace: hạn mức theo người dùng (Redis): ghi thường 60/phút + 600/giờ; dùng bản cũ / đăng / lên lịch 10/phút + 100/giờ; sao chép nháp 20/giờ. 429 + `Retry-After`.
+- [x] B1. Service workspace (`quota.go`): theo người dùng, trong bộ nhớ (1 container; ghi chú `shortcut:`): ghi thường 60/phút + 600/giờ;
+  dùng bản cũ / kéo bản mới / nhận đề xuất / lấy lại nháp 10/phút + 100/giờ; sao chép nháp 20/giờ; khóa nháp (nhịp 30 s) không tính.
+  Đăng / lên lịch đi qua catalog (`/internal`) → B2. 429 + `Retry-After`.
 - [ ] B2. Catalog: hạn mức ghi theo người dùng (giữ theo IP làm lớp ngoài).
 - [ ] B3. Khóa nút khi đang xử lý ở mọi nút ghi trong ws / đăng truyện.
 - [x] B4. UI 429: đếm ngược, không tự thử lại thao tác ghi (cùng PR với A6; khóa nút khi đang gửi: B3).
