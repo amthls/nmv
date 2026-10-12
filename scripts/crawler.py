@@ -36,6 +36,7 @@ import os
 import random
 import re
 import shutil
+import signal
 import struct
 import subprocess
 import sys
@@ -53,6 +54,7 @@ UPLOADS = os.path.join(ROOT, "uploads")
 MANGA_DIR = os.path.join(UPLOADS, "manga")
 LOG_DIR = os.path.join(ROOT, "logs")
 LOCK_FILE = os.path.join(LOG_DIR, "crawler.lock")
+STATUS_FILE = os.path.join(LOG_DIR, "crawler-status.json")  # progress of the current/last run: python scripts/crawler.py --status
 
 BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36"
 API_UA = "NovelHub-local-demo/1.0 (educational project; low volume)"
@@ -643,7 +645,10 @@ class Importer:
         self.reserved = 0
         self.imported = 0
         self.missing = 0
-        self.per_source = {}
+        self.stats = {}      # source -> imported / skipped / failed
+        self.current = {}    # source -> title being imported right now
+        self.errors = []     # last few problems, shown by --status
+        self.started = time.strftime("%Y-%m-%d %H:%M:%S")
 
     def prepare(self):
         os.makedirs(MANGA_DIR, exist_ok=True)
@@ -698,12 +703,35 @@ class Importer:
             self.reserved += 1
             return True
 
-    def release(self, success, source):
+    def release(self, ok, source):
+        """ok: True imported, None skipped, False failed."""
         with self.lock:
             self.reserved -= 1
-            if success:
-                self.imported += 1
-                self.per_source[source] = self.per_source.get(source, 0) + 1
+            self.stats.setdefault(source, {"imported": 0, "skipped": 0, "failed": 0})["imported" if ok else "skipped" if ok is None else "failed"] += 1
+            self.imported += bool(ok)
+            self.current.pop(source, None)
+        if not self.args.dry_run:
+            self.write_status("running")
+            log(f"progress {self.imported}/{self.missing}: " + " | ".join(
+                f"{k} +{v['imported']} skip {v['skipped']} fail {v['failed']}" for k, v in sorted(self.stats.items())))
+
+    def problem(self, source, msg):
+        """Log a problem and keep it for --status (the last 8)."""
+        log(f"[{source}] {msg}")
+        with self.lock:
+            self.errors = (self.errors + [f"{time.strftime('%H:%M:%S')} [{source}] {msg}"[:300]])[-8:]
+
+    def write_status(self, state):
+        with self.lock:
+            st = {"state": state, "pid": os.getpid(), "started": self.started, "updated": time.strftime("%Y-%m-%d %H:%M:%S"),
+                  "target": self.args.target, "missing": self.missing, "imported": self.imported,
+                  "sources": self.stats, "current": self.current, "errors": self.errors}
+            try:
+                with open(STATUS_FILE + ".tmp", "w", encoding="utf-8") as f:
+                    json.dump(st, f, ensure_ascii=False)
+                os.replace(STATUS_FILE + ".tmp", STATUS_FILE)
+            except OSError:
+                pass  # progress report only: never stop the import for it
 
     def full(self):
         with self.lock:
@@ -753,6 +781,9 @@ class Importer:
 
         slug = self.claim_slug(title)
         folder = os.path.join(MANGA_DIR, slug)
+        with self.lock:
+            self.current[source.name] = title
+        self.write_status("running")
         try:
             cover_file = None
             if story.get("cover"):
@@ -761,7 +792,7 @@ class Importer:
                     self.download(story["cover"], os.path.join(folder, "cover" + ext), story.get("referer"))
                     cover_file = "cover" + ext
                 except Exception as e:
-                    log(f"[{source.name}] '{title}': cover failed ({e})")
+                    self.problem(source.name, f"'{title}': cover failed ({e})")
 
             # Walk the chapter list until enough usable chapters are found: chapter 0 (usually a
             # notice), chapters under 5 pages, oversized or locked chapters are passed over.
@@ -804,7 +835,7 @@ class Importer:
                     raise
                 except Exception as e:
                     shutil.rmtree(os.path.join(folder, sub), ignore_errors=True)
-                    log(f"[{source.name}] '{title}' chương {ch['number']:g} skipped: {e}")
+                    self.problem(source.name, f"'{title}' chương {ch['number']:g} skipped: {e}")
             if not fetched:
                 raise RuntimeError("no chapter content")
             if not cover_file and story["story_type"] == "manga":
@@ -839,7 +870,7 @@ class Importer:
             with self.lock:
                 if slug in self.slugs:
                     self.slugs.remove(slug)
-            log(f"[{source.name}] failed '{title}': {e}")
+            self.problem(source.name, f"failed '{title}': {e}")
             return False
 
     def insert(self, source, story, slug, cover_file, fetched):
@@ -913,15 +944,15 @@ class Importer:
                 try:
                     ok = self.import_one(source, cand)
                 except Blocked as b:
-                    log(f"[{source.name}] {b} now answers with a bot challenge, dropping this source")
+                    self.problem(source.name, f"{b} now answers with a bot challenge, dropping this source")
                     self.release(False, source.name)
                     return
                 except PermissionError as e:
                     log(f"[{source.name}] {e}")
                     ok = None
                 except Exception as e:
-                    log(f"[{source.name}] error: {e}")
-                self.release(bool(ok), source.name)
+                    self.problem(source.name, f"error: {e}")
+                self.release(ok, source.name)
                 time.sleep(self.args.delay * random.uniform(1, 2))  # rest between two stories
 
                 # Circuit breaker: a source that keeps failing is dropped for this run
@@ -934,12 +965,12 @@ class Importer:
                     failures += 1
                     streak += 1
                 if streak >= self.args.max_failures or (attempts >= 12 and failures / attempts > 0.6):
-                    log(f"[{source.name}] {failures}/{attempts} imports failed ({streak} in a row), dropping this source for this run")
+                    self.problem(source.name, f"{failures}/{attempts} imports failed ({streak} in a row), dropping this source for this run")
                     return
         except Blocked as b:
-            log(f"[{source.name}] {b} answers with a bot challenge, skipping this source")
+            self.problem(source.name, f"{b} answers with a bot challenge, skipping this source")
         except Exception as e:
-            log(f"[{source.name}] stopped: {e}")
+            self.problem(source.name, f"stopped: {e}")
 
     def run(self):
         count = self.prepare()
@@ -952,13 +983,17 @@ class Importer:
             return 0
         names = [n.strip() for n in self.args.sources.split(",") if n.strip() in SOURCES]
         log(f"site has {count} stories, importing up to {self.missing} from: {', '.join(names)}")
+        if not self.args.dry_run:
+            self.write_status("running")
         threads = [threading.Thread(target=self.worker, args=(SOURCES[n](self.args),), daemon=True) for n in names]
         for t in threads:
             t.start()
         for t in threads:
             t.join()
-        summary = ", ".join(f"{k}: {v}" for k, v in sorted(self.per_source.items())) or "none"
+        summary = ", ".join(f"{k}: {v['imported']}" for k, v in sorted(self.stats.items()) if v["imported"]) or "none"
         log(f"done: {self.imported} new stories ({summary})")
+        for e in self.errors:
+            log(f"problem: {e}")
         return self.imported
 
 
@@ -977,18 +1012,77 @@ def pid_alive(pid):
         return False
 
 
+def is_crawler(pid):
+    """True when the process is really a crawler run (a stale lock may hold a pid Windows has since reused)."""
+    if os.name == "nt":
+        cmd = ["powershell", "-NoProfile", "-Command", f"(Get-CimInstance Win32_Process -Filter 'ProcessId={pid}').CommandLine"]
+    else:
+        cmd = ["ps", "-o", "args=", "-p", str(pid)]
+    return "crawler.py" in subprocess.run(cmd, capture_output=True, text=True).stdout
+
+
+def stop_process(pid):
+    if os.name == "nt":
+        subprocess.run(["taskkill", "/PID", str(pid), "/T", "/F"], capture_output=True)
+    else:
+        os.kill(pid, signal.SIGTERM)
+    for _ in range(20):
+        if not pid_alive(pid):
+            return True
+        time.sleep(0.5)
+    return False
+
+
+def read_status():
+    try:
+        with open(STATUS_FILE, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return None
+
+
 def acquire_lock():
+    """Take the lock; a crawler that is still running from an earlier start is stopped first (only one may write)."""
     os.makedirs(LOG_DIR, exist_ok=True)
-    if os.path.exists(LOCK_FILE):
-        try:
-            with open(LOCK_FILE) as f:
-                if pid_alive(int(f.read().strip() or 0)):
-                    return False
-        except (OSError, ValueError):
-            pass  # unreadable or left behind by a killed run: take it over
+    try:
+        with open(LOCK_FILE) as f:
+            old = int(f.read().strip() or 0)
+    except (OSError, ValueError):
+        old = 0  # no lock, or unreadable
+    if old and old != os.getpid() and pid_alive(old) and is_crawler(old):
+        log(f"another crawler is running (pid {old}): stopping it and taking over")
+        if not stop_process(old):
+            return False
+        # what it was doing is lost: DB rows are written in one transaction, only a half-downloaded image folder stays
     with open(LOCK_FILE, "w") as f:
         f.write(str(os.getpid()))
     return True
+
+
+def release_lock():
+    try:
+        with open(LOCK_FILE) as f:
+            mine = f.read().strip() == str(os.getpid())
+        if mine:
+            os.remove(LOCK_FILE)
+    except OSError:
+        pass
+
+
+def print_status():
+    st = read_status()
+    if not st:
+        print("no crawler run recorded yet (logs/crawler-status.json)")
+        return
+    running = st.get("state") == "running" and pid_alive(st.get("pid", 0)) and is_crawler(st["pid"])
+    state = "RUNNING" if running else ("STOPPED (killed or crashed)" if st.get("state") == "running" else st.get("state", "?").upper())
+    print(f"{state}  pid {st.get('pid')}  started {st.get('started')}  updated {st.get('updated')}")
+    print(f"progress: {st.get('imported', 0)}/{st.get('missing', 0)} new stories (site target {st.get('target')})")
+    for name, s in sorted((st.get("sources") or {}).items()):
+        now = (st.get("current") or {}).get(name)
+        print(f"  {name:10} imported {s['imported']}  skipped {s['skipped']}  failed {s['failed']}" + (f"  | now: {now}" if now else ""))
+    for e in st.get("errors") or []:
+        print(f"  ! {e}")
 
 
 def main():
@@ -1006,17 +1100,24 @@ def main():
                    help="seconds between two requests to the same site, and a longer rest between stories (default 2)")
     p.add_argument("--max-failures", type=int, default=8, help="drop a source after this many failed imports in a row (default 8)")
     p.add_argument("--dry-run", action="store_true", help="list what would be imported, write nothing")
+    p.add_argument("--status", action="store_true", help="show the progress and errors of the running (or last) crawler and exit")
     p.add_argument("--no-reindex", action="store_true", help="don't restart catalog to refresh search afterwards")
     p.add_argument("--download-ratio", type=float, default=0.3,
                    help="after crawling, allow EPUB/PDF downloads on this share of imported stories, picked at random (default 0.3, 0 = off)")
     args = p.parse_args()
 
-    HTTP.min_interval = args.delay
-    if not acquire_lock():
-        log("another crawler is already running (logs/crawler.lock); exiting")
+    if args.status:
+        print_status()
         return
+    HTTP.min_interval = args.delay
+    # a dry run writes nothing, so it neither stops a running crawler nor takes the lock
+    if not args.dry_run and not acquire_lock():
+        log("could not stop the crawler that is already running (logs/crawler.lock); exiting")
+        return
+    importer = Importer(args)
+    state = "done"
     try:
-        imported = Importer(args).run()
+        imported = importer.run()
         if not args.dry_run:
             try:
                 enable_random_downloads(args.download_ratio)
@@ -1030,15 +1131,16 @@ def main():
             subprocess.run(["docker", "compose", "restart", "catalog"], cwd=ROOT, capture_output=True)
             log("catalog restarted to refresh the search index")
     except KeyboardInterrupt:
+        state = "interrupted"
         log("interrupted")
     except Exception as e:
-        log(f"error: {e}")
+        state = "failed"
+        importer.problem("crawler", f"error: {e}")
         sys.exit(1)
     finally:
-        try:
-            os.remove(LOCK_FILE)
-        except OSError:
-            pass
+        if not args.dry_run:
+            importer.write_status(state)
+            release_lock()
 
 
 if __name__ == "__main__":
