@@ -22,6 +22,10 @@ interface ExportJob {
   error: string | null;
 }
 
+/** Rest between two exports (building a file is heavy for the server); kept outside the component so closing the dialog does not skip it. */
+const COOLDOWN_MS = 15_000;
+let cooldownUntil = 0;
+
 function formatSize(bytes: number | null) {
   if (!bytes) return '';
   if (bytes >= 1048576) return `${(bytes / 1048576).toFixed(1)} MB`;
@@ -57,6 +61,18 @@ export default function DownloadModal({ isOpen, onClose, storySlug, story: story
   const autoDownloaded = useRef<string | null>(null);
   // Bumped whenever polling must stop (dialog closed, new request): stale responses are ignored
   const pollGen = useRef(0);
+  const [wait, setWait] = useState(0); // seconds left of the rest between exports
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const tick = () => setWait(Math.max(0, Math.ceil((cooldownUntil - Date.now()) / 1000)));
+    tick();
+    const t = setInterval(tick, 500);
+    return () => clearInterval(t);
+  }, [isOpen]);
+  useEffect(() => {
+    if (job?.status === 'ready' || job?.status === 'failed') cooldownUntil = Date.now() + COOLDOWN_MS;
+  }, [job?.status]);
 
   useEffect(() => {
     if (storyProp) setStory(storyProp);
@@ -143,7 +159,7 @@ export default function DownloadModal({ isOpen, onClose, storySlug, story: story
   };
 
   const submit = async () => {
-    if (selected.size === 0 || submitting) return;
+    if (selected.size === 0 || submitting || Date.now() < cooldownUntil) return;
     setSubmitting(true);
     setError(null);
     setJob(null);
@@ -165,6 +181,7 @@ export default function DownloadModal({ isOpen, onClose, storySlug, story: story
       else if (json.data.status !== 'failed') poll(json.data.id, gen);
     } catch (e: any) {
       setError(e.message || 'Không thể tạo tệp.');
+      cooldownUntil = Date.now() + COOLDOWN_MS;
     } finally {
       setSubmitting(false);
     }
@@ -362,11 +379,11 @@ export default function DownloadModal({ isOpen, onClose, storySlug, story: story
           <button
             type="button"
             onClick={submit}
-            disabled={selected.size === 0 || !!busy}
+            disabled={selected.size === 0 || !!busy || wait > 0}
             className="px-5 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow text-sm font-bold flex items-center gap-2 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-            {job?.status === 'failed' ? 'Thử lại' : 'Tạo tệp & tải'}
+            {wait > 0 ? `Chờ ${wait}s` : job?.status === 'failed' ? 'Thử lại' : 'Tạo tệp & tải'}
           </button>
         </div>
       </div>

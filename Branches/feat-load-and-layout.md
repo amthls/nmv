@@ -14,6 +14,7 @@
 - `/fandom` khung `max-w-7xl`, `/nhom-dich` lưới `auto-fill`
 - `/thong-bao`: ô tìm (`GET /notifications?q=`), trễ 400 ms, mờ khi tải
 - Lưới thẻ tự co giãn (`auto-fill`) ở bookmark, album, hồ sơ người dùng, trang nhóm, workspace nhóm
+- Tải EPUB/PDF: nghỉ 15 giây giữa hai lần tạo tệp (nút đếm ngược, giữ cả khi đóng mở lại hộp thoại)
 - `scripts/crawler.py`: thêm `--delay` (mặc định 2 giây giữa hai yêu cầu cùng một trang, nghỉ thêm giữa hai truyện); sau khi nhập truyện chạy `workspace import` để chương mới có phiên bản 1 trong workspace
 - Bỏ danh sách "Thiết bị đang đăng nhập" ở tab Bảo mật (giữ nút "Đăng xuất khỏi mọi thiết bị"; API `/sessions` của identity còn nguyên)
 - Messaging: tự xóa tin nhắn cũ hơn 7 tháng (trừ tin ghim)
