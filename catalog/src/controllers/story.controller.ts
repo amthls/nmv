@@ -178,7 +178,8 @@ export const getManageableStories = async (req: AuthenticatedRequest, res: Respo
       LEFT JOIN story_collaborators sc ON sc.story_id = s.id AND sc.user_id = $1
       WHERE s.approval_status = 'approved'
         AND (s.uploader_id = $1 OR gm.user_id IS NOT NULL OR sc.user_id IS NOT NULL)
-      ORDER BY s.title ASC;
+      ORDER BY s.title ASC
+      LIMIT 500; -- shortcut: the workspace shelf holds at most 500 stories; add search/paging if someone manages more
     `, [userId]);
 
     res.json({ success: true, data: result.rows });

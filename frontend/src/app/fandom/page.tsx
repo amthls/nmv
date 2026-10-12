@@ -1,11 +1,10 @@
 'use client';
 
-import React, { Suspense, useCallback, useEffect, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   MessageSquare,
-  Search,
   Plus,
   BookOpen,
   ShieldCheck,
@@ -22,6 +21,8 @@ import PostCard, { PostItem } from '@/components/fandom/PostCard';
 import CreatePostModal from '@/components/fandom/CreatePostModal';
 import SmartImage from '@/components/common/SmartImage';
 import { useAuth } from '@/context/AuthContext';
+import SearchInput from '@/components/common/SearchInput';
+import { useDebounced } from '@/lib/useDebounced';
 import { API_BASE_URL, CATEGORIES, ROLE_BADGES, readJson, topRole } from '@/lib/fandom';
 import { COMMUNITY_URL } from '@/lib/apiJson';
 
@@ -82,11 +83,10 @@ function FandomContent() {
       .catch(() => {});
   }, [searchParams]);
 
-  // search as you type (debounced)
-  useEffect(() => {
-    const t = setTimeout(() => setQuery(searchInput.trim()), 400);
-    return () => clearTimeout(t);
-  }, [searchInput]);
+  // search as you type: one request when typing stops (Plan/load-and-layout.md)
+  const [settledInput, typing] = useDebounced(searchInput);
+  useEffect(() => { setQuery(settledInput.trim()); }, [settledInput]);
+  const inFlight = useRef<AbortController | null>(null);
 
   const fetcher = isAuthenticated ? authFetch : fetch;
 
@@ -104,17 +104,22 @@ function FandomContent() {
   }, [isAuthenticated]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadPosts = useCallback(async () => {
+    inFlight.current?.abort(); // a newer search replaces the one still running
+    const ctrl = new AbortController();
+    inFlight.current = ctrl;
     setIsLoading(true);
     try {
-      const json = await readJson(await fetcher(buildUrl(1)));
+      const json = await readJson(await fetcher(buildUrl(1), { signal: ctrl.signal }));
+      if (ctrl.signal.aborted) return;
       setPosts(json.data || []);
       setPage(1);
       setTotalPages(json.pagination?.totalPages || 1);
     } catch (e: any) {
+      if (ctrl.signal.aborted) return;
       setPosts([]);
       showToast(e.message);
     } finally {
-      setIsLoading(false);
+      if (!ctrl.signal.aborted) setIsLoading(false);
     }
   }, [feed, sort, category, story?.id, query, isAuthenticated]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -275,16 +280,13 @@ function FandomContent() {
 
           {/* Search + sort */}
           <div className="flex flex-col sm:flex-row gap-2">
-            <div className="relative flex-1">
-              <Search className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="search"
-                placeholder="Tìm trong tiêu đề và nội dung bài viết..."
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                className="w-full h-10 pl-9 pr-3 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-500"
-              />
-            </div>
+            <SearchInput
+              className="flex-1"
+              value={searchInput}
+              onChange={setSearchInput}
+              loading={typing || (isLoading && !!query)}
+              placeholder="Tìm trong tiêu đề và nội dung bài viết..."
+            />
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value as Sort)}

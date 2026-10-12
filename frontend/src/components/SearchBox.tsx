@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useId, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Loader2, Search } from 'lucide-react';
 import SmartImage from '@/components/common/SmartImage';
 
@@ -14,7 +14,7 @@ export const SEARCH_DELAY_MS = 400;
 type Hit = { id: string; slug: string; title: string; cover_image_url?: string; story_type: string; author_name?: string; total_chapters?: number };
 
 /**
- * The navbar search field with live suggestions: typing (2+ characters) lists matching stories underneath
+ * The navbar search field with live suggestions: typing (1+ character) lists matching stories underneath
  * (/stories/explore, Elasticsearch with SQL fallback, cached 30 s in Redis), "Hiện thêm" grows the list in place, the
  * last row opens every result on /kham-pha. ↑/↓ pick a row, Enter opens it (or the full results), Esc closes.
  * Load: one request SEARCH_DELAY_MS after typing stops, the one in flight is aborted when the query changes; a loading
@@ -42,6 +42,10 @@ export default function SearchBox({
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const q = query.trim();
+  const pathname = usePathname();
+
+  // a new page (picked a suggestion, followed any link) closes the suggestions
+  useEffect(() => { setOpen(false); }, [pathname]);
 
   useEffect(() => { onOpenChange?.(open); }, [open, onOpenChange]);
 
@@ -49,7 +53,7 @@ export default function SearchBox({
   useEffect(() => { setLimit(STEP); setActive(-1); }, [q]);
 
   useEffect(() => {
-    if (q.length < 2) {
+    if (!q) {
       setHits([]);
       setTotal(0);
       setLoading(false);
@@ -93,7 +97,7 @@ export default function SearchBox({
     if (e.key === 'ArrowUp') { e.preventDefault(); setActive((i) => Math.max(-1, i - 1)); }
   };
 
-  const showList = open && q.length >= 2;
+  const showList = open && !!q;
   return (
     <form
       ref={box}
@@ -119,7 +123,7 @@ export default function SearchBox({
         onKeyDown={onKeyDown}
         className={inputClassName}
       />
-      {loading && open && q.length >= 2
+      {loading && open && q
         ? <Loader2 className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-brand-400" aria-label="Đang tìm" />
         : hint}
 

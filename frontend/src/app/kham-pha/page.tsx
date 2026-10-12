@@ -19,6 +19,7 @@ import FilterSidebar, { FilterState, TagCategoryItem } from '@/components/explor
 import StoryCardGrid, { Story } from '@/components/explore/StoryCardGrid';
 import StoryCardList from '@/components/explore/StoryCardList';
 import Pagination from '@/components/explore/Pagination';
+import { columnsStyle, useAutoColumns } from '@/lib/useAutoColumns';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -30,23 +31,8 @@ export default function ExplorePage() {
   );
 }
 
-// Must match the grid classes below: grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5
-const GRID_BREAKPOINTS: [string, number][] = [['(min-width: 1280px)', 5], ['(min-width: 1024px)', 4], ['(min-width: 640px)', 3]];
 const BASE_PAGE_SIZE = 24;
 const SORT_VALUES = ['relevance', 'updated', 'views', 'favorites', 'newest', 'title_asc', 'title_desc'];
-
-/** Columns the story grid currently shows, following the viewport. */
-function useGridColumns() {
-  const [columns, setColumns] = useState(5);
-  useEffect(() => {
-    const queries = GRID_BREAKPOINTS.map(([q, n]) => [window.matchMedia(q), n] as const);
-    const update = () => setColumns(queries.find(([mq]) => mq.matches)?.[1] ?? 2);
-    update();
-    queries.forEach(([mq]) => mq.addEventListener('change', update));
-    return () => queries.forEach(([mq]) => mq.removeEventListener('change', update));
-  }, []);
-  return columns;
-}
 
 function ExplorePageContent() {
   const router = useRouter();
@@ -66,7 +52,8 @@ function ExplorePageContent() {
   const [currentPage, setCurrentPage] = useState(1);
 
   // Whole rows only: the page size is a multiple of the visible column count (25 on 5 columns)
-  const columns = useGridColumns();
+  // columns follow the width of the results box (cards keep their size, a wider screen gets more of them)
+  const [gridBox, columns] = useAutoColumns();
   const pageSize = viewMode === 'grid' ? columns * Math.ceil(BASE_PAGE_SIZE / columns) : BASE_PAGE_SIZE;
   const previousPageSize = useRef(pageSize);
   useEffect(() => {
@@ -386,11 +373,12 @@ function ExplorePageContent() {
           )}
 
           {/* Stories Result List/Grid */}
+          <div ref={gridBox}>
           {isLoading ? (
-            <div className={`grid gap-4 ${viewMode === 'grid' ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-y-6' : 'grid-cols-1'}`}>
+            <div className={`grid gap-4 ${viewMode === 'grid' ? 'gap-y-6' : 'grid-cols-1'}`} style={viewMode === 'grid' ? columnsStyle(columns) : undefined}>
               {[...Array(viewMode === 'grid' ? columns * 2 : 4)].map((_, i) => (
-                <div key={i} className="rounded-2xl glass-panel border border-white/[0.03] p-4 animate-pulse space-y-3">
-                  <div className="aspect-[3/4] bg-white/5 rounded-xl w-full" />
+                <div key={i} className="animate-pulse space-y-2">
+                  <div className="aspect-[2/3] bg-white/5 rounded-xl w-full" />
                   <div className="h-4 bg-white/5 rounded w-3/4" />
                   <div className="h-3 bg-white/5 rounded w-1/2" />
                 </div>
@@ -415,11 +403,7 @@ function ExplorePageContent() {
               </button>
             </div>
           ) : (
-            <div className={`grid gap-4 ${
-              viewMode === 'grid'
-                ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-y-6'
-                : 'grid-cols-1'
-            }`}>
+            <div className={`grid gap-4 ${viewMode === 'grid' ? 'gap-y-6' : 'grid-cols-1'}`} style={viewMode === 'grid' ? columnsStyle(columns) : undefined}>
               {stories.map(story => (
                 viewMode === 'grid' ? (
                   <StoryCardGrid key={story.id} story={story} />
@@ -429,6 +413,7 @@ function ExplorePageContent() {
               ))}
             </div>
           )}
+          </div>
 
           {/* Pagination */}
           <Pagination

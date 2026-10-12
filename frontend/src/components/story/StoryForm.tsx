@@ -51,6 +51,7 @@ export interface StoryFormInitialValues {
   story_type?: 'novel' | 'manga';
   status?: 'ongoing' | 'completed' | 'hiatus' | 'dropped';
   group_id?: string | null;
+  group_name?: string | null;
   original_language?: string;
   cover_image_url?: string | null;
   banner_image_url?: string | null;
@@ -100,8 +101,9 @@ export default function StoryForm({ mode, initialValues, preselectedGroupId }: S
   useEffect(() => {
     async function fetchData() {
       try {
+        // only the groups I am in (not every group with every member: Plan/load-and-layout.md D2)
         const [groupRes, tagRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/groups`),
+          authFetch(`${API_BASE_URL}/groups?filter_status=my_groups&limit=100`),
           fetch(`${API_BASE_URL}/tags`),
         ]);
         if (groupRes.ok) {
@@ -124,11 +126,9 @@ export default function StoryForm({ mode, initialValues, preselectedGroupId }: S
   // Only groups the user belongs to (the server enforces the same rule).
   // The story's current group stays selectable when editing.
   const selectableGroups = useMemo(() => {
-    return groups.filter((g: any) =>
-      g.id === iv.group_id ||
-      (Array.isArray(g.members) && g.members.some((m: any) => m.user_id === user?.id))
-    );
-  }, [groups, user?.id, iv.group_id]);
+    if (!iv.group_id || groups.some((g: any) => g.id === iv.group_id)) return groups;
+    return [{ id: iv.group_id, name: iv.group_name || 'Nhóm hiện tại' }, ...groups];
+  }, [groups, iv.group_id, iv.group_name]);
 
   const allTags = useMemo(() => {
     const list: TagItem[] = [];

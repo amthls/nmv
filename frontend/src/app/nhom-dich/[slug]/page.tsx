@@ -472,7 +472,7 @@ export default function GroupDetailPage() {
             }`}
           >
             <BookOpen className="w-4 h-4" />
-            <span>Truyện ({group.stories?.length || 0})</span>
+            <span>Truyện ({group.story_count ?? group.stories?.length ?? 0})</span>
           </button>
 
           <button

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import ImageQualityPicker from '@/components/common/ImageQualityPicker';
 import { useMiniplayerEnabled } from '@/lib/miniplayerPref';
@@ -48,6 +48,8 @@ import SecurityTab from '@/components/account/SecurityTab';
 import { useConfirmPassword } from '@/components/account/ConfirmPassword';
 import { IDENTITY_URL } from '@/lib/session';
 import { useAuth } from '@/context/AuthContext';
+import SearchInput from '@/components/common/SearchInput';
+import { useDebounced } from '@/lib/useDebounced';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200';
@@ -202,24 +204,35 @@ export default function UserProfilePage() {
     }
   };
 
+  const adminInFlight = useRef<AbortController | null>(null);
   const fetchAdminUsers = async (query = '') => {
     if (!isAdmin) return;
+    adminInFlight.current?.abort(); // a newer search replaces the one still running
+    const ctrl = new AbortController();
+    adminInFlight.current = ctrl;
     setAdminLoading(true);
     try {
       // Accounts (email, roles, status) are listed by the identity service
-      const res = await authFetch(`${IDENTITY_URL}/admin/users?q=${encodeURIComponent(query)}`);
-      if (res.ok) {
+      const res = await authFetch(`${IDENTITY_URL}/admin/users?q=${encodeURIComponent(query)}`, { signal: ctrl.signal });
+      if (res.ok && !ctrl.signal.aborted) {
         const json = await res.json();
         if (json.success) {
           setAdminUsers(json.data || []);
         }
       }
-    } catch (e) {
-      console.error('Failed to load admin user list:', e);
+    } catch (e: any) {
+      if (e?.name !== 'AbortError') console.error('Failed to load admin user list:', e);
     } finally {
-      setAdminLoading(false);
+      if (!ctrl.signal.aborted) setAdminLoading(false);
     }
   };
+  // search as you type: one request when typing stops (Plan/load-and-layout.md)
+  const [adminSettled, adminTyping] = useDebounced(adminSearch.trim());
+  const firstAdminSearch = useRef(true);
+  useEffect(() => {
+    if (firstAdminSearch.current) { firstAdminSearch.current = false; return; } // the first list comes with the page
+    fetchAdminUsers(adminSettled);
+  }, [adminSettled]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -828,22 +841,13 @@ export default function UserProfilePage() {
                 </p>
               </div>
 
-              <div className="relative w-full sm:w-64">
-                <input
-                  type="text"
-                  placeholder="Tìm theo tên, username..."
-                  value={adminSearch}
-                  onChange={(e) => setAdminSearch(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      fetchAdminUsers(adminSearch);
-                    }
-                  }}
-                  className="w-full h-10 pl-9 pr-3 rounded-xl bg-black/40 border border-white/10 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-rose-500"
-                />
-                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              </div>
+              <SearchInput
+                className="w-full sm:w-64"
+                value={adminSearch}
+                onChange={setAdminSearch}
+                loading={adminTyping || (adminLoading && !!adminSearch)}
+                placeholder="Tìm theo tên, username..."
+              />
             </div>
 
             {roleActionFeedback && (

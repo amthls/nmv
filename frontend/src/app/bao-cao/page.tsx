@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { Flag, Check, X, Lock, ExternalLink, Search } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import SearchInput from '@/components/common/SearchInput';
+import { useDebounced } from '@/lib/useDebounced';
 import PageLoader from '@/components/common/PageLoader';
 import CodeBadge from '@/components/common/CodeBadge';
 import { COMMUNITY_URL } from '@/lib/apiJson';
@@ -59,14 +61,22 @@ export default function ReportsPage() {
 
   const isModerator = hasRole('admin', 'mod');
 
+  // search as you type: one request when typing stops, the previous one aborted (Plan/load-and-layout.md)
+  const [settledInput, typing] = useDebounced(searchInput);
+  useEffect(() => { setQuery(settledInput.trim()); }, [settledInput]);
+  const inFlight = useRef<AbortController | null>(null);
+
   const load = useCallback(async () => {
+    inFlight.current?.abort();
+    const ctrl = new AbortController();
+    inFlight.current = ctrl;
     setIsLoading(true);
     setError(null);
     try {
       const params = new URLSearchParams({ status, limit: '100' });
       if (type) params.set('type', type);
       if (query) params.set('q', query);
-      const res = await authFetch(`${COMMUNITY_URL}/reports?${params}`);
+      const res = await authFetch(`${COMMUNITY_URL}/reports?${params}`, { signal: ctrl.signal });
       const json = await res.json();
       if (res.ok && json.success) {
         setReports(json.data || []);
@@ -75,9 +85,9 @@ export default function ReportsPage() {
         setError(json.message || 'Không tải được danh sách báo cáo.');
       }
     } catch (e: any) {
-      setError('Lỗi kết nối: ' + e.message);
+      if (!ctrl.signal.aborted) setError('Lỗi kết nối: ' + e.message);
     } finally {
-      setIsLoading(false);
+      if (!ctrl.signal.aborted) setIsLoading(false);
     }
   }, [status, type, query, authFetch]);
 
@@ -158,19 +168,14 @@ export default function ReportsPage() {
             </button>
           ))}
         </div>
-        <form
-          onSubmit={(e) => { e.preventDefault(); setQuery(searchInput.trim()); }}
-          className="relative w-full sm:w-72 sm:ml-auto"
-        >
-          <input
-            type="text"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Mã báo cáo, mã/tên nội dung, mô tả..."
-            className="w-full h-9 pl-9 pr-3 rounded-xl bg-white/5 border border-white/10 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-500 transition"
-          />
-          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-        </form>
+        <SearchInput
+          className="w-full sm:w-72 sm:ml-auto"
+          value={searchInput}
+          onChange={setSearchInput}
+          loading={typing || (isLoading && !!query)}
+          placeholder="Mã báo cáo, mã/tên nội dung, mô tả..."
+          inputClassName="!h-9 !text-xs"
+        />
       </div>
 
       <div className="flex flex-wrap gap-2">

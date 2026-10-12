@@ -216,6 +216,7 @@ export const getUserProfile = async (req: AuthenticatedRequest, res: Response) =
         SELECT id, title, slug, cover_image_url, story_type, status, total_chapters, total_views
         FROM stories WHERE uploader_id = $1 AND approval_status = 'approved'
         ORDER BY last_chapter_at DESC NULLS LAST, created_at DESC
+        LIMIT 60 -- shortcut: a profile shows the 60 latest stories; add paging when uploaders have more
       `, [row.id]),
       pool.query(`
         SELECT g.name, g.slug, g.avatar_url, gm.role

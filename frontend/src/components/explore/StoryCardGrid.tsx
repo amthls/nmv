@@ -92,11 +92,11 @@ export default function StoryCardGrid({ story, rank, meta = 'stats' }: { story: 
         )}
       </div>
 
-      <h3 className="mt-2 text-[13px] font-semibold leading-snug text-white line-clamp-2 group-hover:text-brand-500 transition-colors">
+      <h3 className="mt-2 min-h-[2.75em] text-[13px] font-semibold leading-snug text-white line-clamp-2 group-hover:text-brand-500 transition-colors">
         {story.title}
       </h3>
 
-      <div className="mt-1 flex items-center gap-2 text-[11px] text-gray-400 min-w-0">
+      <div className="mt-1 h-4 flex items-center gap-2 text-[11px] leading-4 text-gray-400 min-w-0">
         {meta === 'updated' ? (
           <>
             <span className="truncate">{story.latest_chapter?.title || 'Đang cập nhật'}</span>

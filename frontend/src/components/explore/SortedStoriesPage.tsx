@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import StoryCardGrid, { CardMeta, Story } from './StoryCardGrid';
 import Pagination from './Pagination';
+import { columnsStyle, useAutoColumns } from '@/lib/useAutoColumns';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 const TYPES = [['', 'Tất cả'], ['novel', 'Truyện chữ'], ['manga', 'Truyện tranh']] as const;
@@ -24,6 +25,7 @@ export default function SortedStoriesPage({ title, subtitle, sort, meta, ranked 
   const [stories, setStories] = useState<Story[] | null>(null);
   const [totalPages, setTotalPages] = useState(1);
   const [error, setError] = useState(false);
+  const [gridBox, columns] = useAutoColumns();
 
   useEffect(() => {
     let stale = false;
@@ -75,9 +77,9 @@ export default function SortedStoriesPage({ title, subtitle, sort, meta, ranked 
       </header>
 
       {error && <p className="text-sm text-rose-300">Không tải được danh sách. Thử tải lại trang.</p>}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 gap-y-6">
+      <div ref={gridBox} className="grid gap-4 gap-y-6" style={columnsStyle(columns)}>
         {stories === null && !error
-          ? Array.from({ length: 12 }, (_, i) => <div key={i} className="aspect-[3/4] rounded-xl bg-white/5 animate-pulse" />)
+          ? Array.from({ length: columns * 2 }, (_, i) => <div key={i} className="aspect-[2/3] rounded-xl bg-white/5 animate-pulse" />)
           : (stories || []).map((s, i) => (
             <StoryCardGrid key={s.id} story={s} meta={meta} rank={ranked ? (page - 1) * PAGE_SIZE + i + 1 : undefined} />
           ))}

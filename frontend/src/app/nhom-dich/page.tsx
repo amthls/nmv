@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { 
   Users, 
@@ -16,6 +16,8 @@ import SmartImage from '@/components/common/SmartImage';
 import CreateGroupModal from '@/components/groups/CreateGroupModal';
 import { stripHtml } from '@/lib/richText';
 import { useAuth } from '@/context/AuthContext';
+import SearchInput from '@/components/common/SearchInput';
+import { useDebounced } from '@/lib/useDebounced';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -27,27 +29,44 @@ export default function GroupsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  const fetchGroups = async () => {
-    setIsLoading(true);
+  // search as you type: one request when typing stops, the previous one aborted (Plan/load-and-layout.md)
+  const [settledQuery, typing] = useDebounced(searchQuery.trim());
+  const inFlight = useRef<AbortController | null>(null);
+
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  /** Page 1 replaces the list; later pages ("Tải thêm") are appended. */
+  const fetchGroups = async (pageNum = 1) => {
+    inFlight.current?.abort();
+    const ctrl = new AbortController();
+    inFlight.current = ctrl;
+    if (pageNum === 1) setIsLoading(true); else setLoadingMore(true);
     try {
-      let url = `${API_BASE_URL}/groups?`;
+      let url = `${API_BASE_URL}/groups?page=${pageNum}&`;
       if (filterTab === 'my_groups') url += `filter_status=my_groups&`;
-      if (searchQuery.trim()) url += `q=${encodeURIComponent(searchQuery.trim())}&`;
+      if (settledQuery) url += `q=${encodeURIComponent(settledQuery)}&`;
 
       // authFetch: "my groups" depends on who is signed in
-      const res = await authFetch(url);
+      const res = await authFetch(url, { signal: ctrl.signal });
       const json = await res.json().catch(() => null);
-      setGroups(res.ok && json?.success ? json.data || [] : []);
-    } catch (e) {
-      console.error('Failed to fetch groups:', e);
+      if (!ctrl.signal.aborted) {
+        const rows = res.ok && json?.success ? json.data || [] : [];
+        setGroups((prev) => (pageNum === 1 ? rows : [...prev, ...rows]));
+        setPage(pageNum);
+        setHasMore(!!json?.pagination?.hasNextPage);
+      }
+    } catch (e: any) {
+      if (e?.name !== 'AbortError') console.error('Failed to fetch groups:', e);
     } finally {
-      setIsLoading(false);
+      if (!ctrl.signal.aborted) { setIsLoading(false); setLoadingMore(false); }
     }
   };
 
   useEffect(() => {
     fetchGroups();
-  }, [filterTab, isAuthenticated]);
+  }, [filterTab, isAuthenticated, settledQuery]);
 
   // "My groups" falls back to "all" when nobody is signed in any more (e.g. logout)
   useEffect(() => {
@@ -119,15 +138,8 @@ export default function GroupsPage() {
         </div>
 
         {/* Search */}
-        <form onSubmit={handleSearchSubmit} className="relative w-full sm:w-72">
-          <input
-            type="text"
-            placeholder="Tìm theo tên nhóm dịch..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-10 pl-9 pr-3 rounded-2xl bg-white/5 border border-white/10 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-500 transition"
-          />
-          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+        <form onSubmit={handleSearchSubmit} className="w-full sm:w-72">
+          <SearchInput value={searchQuery} onChange={setSearchQuery} loading={typing || (isLoading && !!settledQuery)} placeholder="Tìm theo tên nhóm dịch..." />
         </form>
 
       </div>
@@ -224,6 +236,17 @@ export default function GroupsPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+      {!isLoading && hasMore && (
+        <div className="text-center">
+          <button
+            onClick={() => fetchGroups(page + 1)}
+            disabled={loadingMore}
+            className="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-sm font-bold text-white disabled:opacity-50 inline-flex items-center gap-2"
+          >
+            {loadingMore && <span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" />} Tải thêm nhóm
+          </button>
         </div>
       )}
 

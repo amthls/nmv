@@ -110,7 +110,7 @@ export default function GroupWorkspacePage() {
             </span>
             <h1 className="mt-1 text-xl sm:text-2xl font-extrabold text-snow truncate">{group.name}</h1>
             <p className="text-xs text-emerald-100/80 mt-0.5">
-              Việc chung của cả nhóm · {group.stories?.length || 0} truyện · {group.members?.length || 0} thành viên
+              Việc chung của cả nhóm · {group.story_count ?? group.stories?.length ?? 0} truyện · {group.members?.length || 0} thành viên
             </p>
             <div className="mt-2 flex -space-x-2">
               {(group.members || []).slice(0, 8).map((m: any) => (
