@@ -637,7 +637,7 @@ class Importer:
         self.missing = self.args.target - count
         rows = psql("SELECT u.id FROM users u JOIN user_roles r ON r.user_id = u.id WHERE r.role = 'admin' ORDER BY u.created_at LIMIT 1;")
         if not rows:
-            raise RuntimeError("no admin account found (run the seeders first)")
+            raise RuntimeError("no admin account found (start the site with launch.py first)")
         self.admin_id = rows[0][0]
         # who "uploads" imported stories: every translator/author, once per group they are in (no group = independent)
         self.owners = [(r[0], r[1] or None) for r in psql(f"""

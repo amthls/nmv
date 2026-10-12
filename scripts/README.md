@@ -63,30 +63,24 @@ Open **http://localhost:3000** and log in with **`admin` / `password123`**.
 
 | Command | What it does |
 |:---|:---|
-| `python scripts/launch.py` | Build, start, seed (only if the DB has no stories), check (same as `up`). Shortcut for `python launch.py` in the project root; both accept the same options |
+| `python scripts/launch.py` | Build, start, check, then import sample stories in the background (same as `up`). Shortcut for `python launch.py` in the project root; both accept the same options |
 | `python scripts/launch.py --no-build` | Same, but reuse the images already built (faster) |
-| `python scripts/launch.py --no-seed` | Same, but **never** run the seeders |
-| `python scripts/launch.py --seed` | Same, but run the seeders even if the DB already has stories (resets all passwords!) |
-| `python scripts/launch.py check` | Only run the checks on a stack that is already running (no seeding) |
+| `python scripts/launch.py --no-crawl` | Same, but don't import sample stories |
+| `python scripts/launch.py check` | Only run the checks on a stack that is already running (no import) |
 | `python scripts/launch.py status` | Show the containers and their state |
 | `python scripts/launch.py logs` | Follow the logs of all containers (Ctrl+C to exit) |
 | `python scripts/launch.py logs catalog` | Follow the logs of one container (`catalog`, `frontend`, `postgres`...) |
 | `python scripts/launch.py down` | Stop and remove the containers. **Data is kept** (Docker volumes) |
 | `python scripts/launch.py --timeout 900` | Wait longer for slow machines (default 600 seconds) |
 
-The script exits with code `0` if all checks pass and `1` if any fail, so you can use it in other scripts or CI.
+The script exits with code `0` if all checks pass and `1` if any fail, so you can use it in other scripts.
 
-## 4. Sample data (seeders)
+## 4. Sample data
 
-When the database has no stories yet (or with `--seed`), the script runs these seeders from `catalog/scripts/`, in order:
-
-| Seeder | Result |
-|:---|:---|
-| `seed-stories.ts` | Adds 8 sample stories (Light Novel and Manga) with volumes and chapters |
-
-Running them again does **not** create duplicate stories. After seeding, catalog is restarted so the search engine indexes the new stories.
-
-> ⚠️ **Never use `--seed` once real people use the site.** The password seeder resets *every* account (including real users) to `password123`, and the story seeder overwrites edits made to the sample stories.
+- **Accounts:** `identity seed-demo` adds 12 sample accounts (password `password123`), only into an empty identity database.
+- **Stories:** `scripts/crawler.py` runs in the background after start (log: `logs/crawler.log`) and imports stories with real
+  chapters until the site has `--crawl-target` (100). They are spread over the translator/author accounts and their groups.
+  Run it in the foreground with `python launch.py crawl`.
 
 ## 5. What the checks mean
 
@@ -95,7 +89,7 @@ Running them again does **not** create duplicate stories. After seeding, catalog
 | `container <name>` | That container stopped or is unhealthy. Look at `logs <name>` |
 | `catalog GET /api/v1/health` | The API is not answering. `queue=up` means RabbitMQ is connected |
 | `database migrations` | A SQL migration failed (the error is printed) |
-| `sample data seeded` | A seeder failed (the error is printed) |
+| `accounts in identity (seed-demo)` | The sample accounts could not be created (the error is printed) |
 | `search GET /_cluster/health` | Elasticsearch is down (search falls back to plain SQL) |
 | `gateway GET /` | The website does not load through nginx |
 | `api GET /api/v1/stories` | The API cannot read from the database |
@@ -151,6 +145,6 @@ python scripts/launch.py
 
 ## 9. Before going public
 
-- Launch with `--no-seed` and change or delete the sample accounts (they all use `password123`).
+- Change or delete the sample accounts (they all use `password123`); launch with `--no-crawl` if you don't want sample stories.
 - Change the default Postgres password `postgres`.
 - Put HTTPS in front of port 3000 (for example a Cloudflare tunnel).
