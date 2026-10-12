@@ -133,6 +133,7 @@ class Http:
 
     def __init__(self):
         self.last = {}
+        self.min_interval = 0.0  # --delay: floor for the gap between two requests to one host
         self.robots = {}
         self.lock = threading.Lock()
 
@@ -168,6 +169,7 @@ class Http:
         headers = {"User-Agent": API_UA if api else BROWSER_UA, "Accept-Language": "vi,en;q=0.8"}
         if referer:
             headers["Referer"] = referer
+        interval = max(interval, self.min_interval)
         for attempt in range(tries):
             self._wait(host, interval)
             try:
@@ -964,6 +966,7 @@ class Importer:
                 except Exception as e:
                     log(f"[{source.name}] error: {e}")
                 self.release(bool(ok), source.name)
+                time.sleep(self.args.delay * random.uniform(1, 2))  # rest between two stories
 
                 # Circuit breaker: a source that keeps failing is dropped for this run
                 if ok is None:
@@ -1041,6 +1044,8 @@ def main():
     p.add_argument("--max-chapters", type=int, default=2, help="chapters per story (default 2)")
     p.add_argument("--max-pages", type=int, default=45, help="skip manga chapters longer than this (default 45 pages)")
     p.add_argument("--sources", default=",".join(SOURCES), help=f"comma-separated, from: {', '.join(SOURCES)}")
+    p.add_argument("--delay", type=float, default=2.0,
+                   help="seconds between two requests to the same site, and a longer rest between stories (default 2)")
     p.add_argument("--max-failures", type=int, default=8, help="drop a source after this many failed imports in a row (default 8)")
     p.add_argument("--dry-run", action="store_true", help="list what would be imported, write nothing")
     p.add_argument("--no-reindex", action="store_true", help="don't restart catalog to refresh search afterwards")
@@ -1048,6 +1053,7 @@ def main():
                    help="after crawling, allow EPUB/PDF downloads on this share of imported stories, picked at random (default 0.3, 0 = off)")
     args = p.parse_args()
 
+    HTTP.min_interval = args.delay
     if not acquire_lock():
         log("another crawler is already running (logs/crawler.lock); exiting")
         return
