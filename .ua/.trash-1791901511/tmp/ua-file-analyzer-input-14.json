@@ -1,1 +1,0 @@
-{"projectRoot":"C:/Users/Admin/Documents/vn/nmv","batchFiles":[{"path":"services/identity/.dockerignore","language":"unknown","sizeLines":2,"fileCategory":"infra"},{"path":"services/identity/Dockerfile","language":"dockerfile","sizeLines":15,"fileCategory":"infra"}],"batchImportData":{"services/identity/.dockerignore":[],"services/identity/Dockerfile":[]}}
