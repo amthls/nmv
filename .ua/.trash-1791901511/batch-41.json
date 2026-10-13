@@ -1,0 +1,1337 @@
+{
+ "nodes": [
+  {
+   "id": "file:services/workspace/blocks.go",
+   "type": "file",
+   "name": "blocks.go",
+   "filePath": "services/workspace/blocks.go",
+   "summary": "Content-block canonicalization, hashing, storage and hash diffing for chapter bodies.",
+   "tags": [
+    "go",
+    "content-blocks",
+    "hashing",
+    "diff"
+   ],
+   "complexity": "moderate",
+   "languageNotes": "Go package main of the workspace service."
+  },
+  {
+   "id": "function:services/workspace/blocks.go:blockHash",
+   "type": "function",
+   "name": "blockHash",
+   "filePath": "services/workspace/blocks.go",
+   "lineRange": [
+    43,
+    50
+   ],
+   "summary": "Computes a stable hash of a block ignoring position and JSON key order.",
+   "tags": [
+    "go",
+    "content-blocks",
+    "hashing"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:services/workspace/blocks.go:storeBlocks",
+   "type": "function",
+   "name": "storeBlocks",
+   "filePath": "services/workspace/blocks.go",
+   "lineRange": [
+    53,
+    73
+   ],
+   "summary": "Persists a chapter body as content-addressed blocks.",
+   "tags": [
+    "go",
+    "content-blocks",
+    "hashing"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:services/workspace/blocks.go:diffHashes",
+   "type": "function",
+   "name": "diffHashes",
+   "filePath": "services/workspace/blocks.go",
+   "lineRange": [
+    128,
+    165
+   ],
+   "summary": "Computes insert/delete/move operations between two block hash sequences.",
+   "tags": [
+    "go",
+    "content-blocks",
+    "hashing"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:services/workspace/chapters.go",
+   "type": "file",
+   "name": "chapters.go",
+   "filePath": "services/workspace/chapters.go",
+   "summary": "Chapter revision lifecycle HTTP handlers: create, edit, delete, list/compare revisions and rewind, backed by ws_chapter_versions.",
+   "tags": [
+    "go",
+    "api-handler",
+    "revisions",
+    "chapters"
+   ],
+   "complexity": "complex",
+   "languageNotes": "Go package main of the workspace service."
+  },
+  {
+   "id": "function:services/workspace/chapters.go:handleEdit",
+   "type": "function",
+   "name": "handleEdit",
+   "filePath": "services/workspace/chapters.go",
+   "lineRange": [
+    210,
+    248
+   ],
+   "summary": "Handles chapter edit requests by appending a new revision under a head lock.",
+   "tags": [
+    "go",
+    "api-handler",
+    "revisions"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/workspace/chapters.go:handleRewind",
+   "type": "function",
+   "name": "handleRewind",
+   "filePath": "services/workspace/chapters.go",
+   "lineRange": [
+    440,
+    492
+   ],
+   "summary": "Rewinds a chapter to an earlier revision by copying that version as a new head.",
+   "tags": [
+    "go",
+    "api-handler",
+    "revisions"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/workspace/chapters.go:handleCompare",
+   "type": "function",
+   "name": "handleCompare",
+   "filePath": "services/workspace/chapters.go",
+   "lineRange": [
+    395,
+    432
+   ],
+   "summary": "Compares two chapter revisions and returns a block-level diff.",
+   "tags": [
+    "go",
+    "api-handler",
+    "revisions"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:services/workspace/collab.go",
+   "type": "file",
+   "name": "collab.go",
+   "filePath": "services/workspace/collab.go",
+   "summary": "Draft collaboration handlers: locking, sharing, copying, offers, ownership transfer, orphan reclaim and shared-with-me listing.",
+   "tags": [
+    "go",
+    "api-handler",
+    "collaboration",
+    "drafts"
+   ],
+   "complexity": "complex",
+   "languageNotes": "Go package main of the workspace service."
+  },
+  {
+   "id": "function:services/workspace/collab.go:handleDraftGet",
+   "type": "function",
+   "name": "handleDraftGet",
+   "filePath": "services/workspace/collab.go",
+   "lineRange": [
+    121,
+    194
+   ],
+   "summary": "Returns a draft with its role-based access and lock state to the caller.",
+   "tags": [
+    "go",
+    "api-handler",
+    "collaboration"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/workspace/collab.go:handleOfferAccept",
+   "type": "function",
+   "name": "handleOfferAccept",
+   "filePath": "services/workspace/collab.go",
+   "lineRange": [
+    422,
+    477
+   ],
+   "summary": "Accepts a draft offer, transferring or copying the draft to the recipient.",
+   "tags": [
+    "go",
+    "api-handler",
+    "collaboration"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/workspace/collab.go:handleReclaim",
+   "type": "function",
+   "name": "handleReclaim",
+   "filePath": "services/workspace/collab.go",
+   "lineRange": [
+    597,
+    654
+   ],
+   "summary": "Lets an owner or admin reclaim orphaned drafts.",
+   "tags": [
+    "go",
+    "api-handler",
+    "collaboration"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:services/workspace/db.go",
+   "type": "file",
+   "name": "db.go",
+   "filePath": "services/workspace/db.go",
+   "summary": "Workspace database migration and block-rehash helpers run at startup.",
+   "tags": [
+    "go",
+    "database",
+    "migration"
+   ],
+   "complexity": "simple",
+   "languageNotes": "Go package main of the workspace service."
+  },
+  {
+   "id": "function:services/workspace/db.go:migrate",
+   "type": "function",
+   "name": "migrate",
+   "filePath": "services/workspace/db.go",
+   "lineRange": [
+    19,
+    56
+   ],
+   "summary": "Applies idempotent schema migration for workspace tables at startup.",
+   "tags": [
+    "go",
+    "database",
+    "migration"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/workspace/db.go:rehashOnce",
+   "type": "function",
+   "name": "rehashOnce",
+   "filePath": "services/workspace/db.go",
+   "lineRange": [
+    60,
+    103
+   ],
+   "summary": "One-time rehash of stored blocks after the hash algorithm changed.",
+   "tags": [
+    "go",
+    "database",
+    "migration"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:services/workspace/drafts.go",
+   "type": "file",
+   "name": "drafts.go",
+   "filePath": "services/workspace/drafts.go",
+   "summary": "Draft CRUD, save, publish transaction, and pull-from-upstream preview/apply handlers.",
+   "tags": [
+    "go",
+    "api-handler",
+    "drafts",
+    "publishing"
+   ],
+   "complexity": "complex",
+   "languageNotes": "Go package main of the workspace service."
+  },
+  {
+   "id": "function:services/workspace/drafts.go:publishTx",
+   "type": "function",
+   "name": "publishTx",
+   "filePath": "services/workspace/drafts.go",
+   "lineRange": [
+    337,
+    423
+   ],
+   "summary": "Transactionally publishes a draft into the chapter revision history and enqueues events.",
+   "tags": [
+    "go",
+    "api-handler",
+    "drafts"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:services/workspace/drafts.go:handleDraftSave",
+   "type": "function",
+   "name": "handleDraftSave",
+   "filePath": "services/workspace/drafts.go",
+   "lineRange": [
+    261,
+    295
+   ],
+   "summary": "Saves draft content with optimistic version checking.",
+   "tags": [
+    "go",
+    "api-handler",
+    "drafts"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/workspace/drafts.go:handlePullApply",
+   "type": "function",
+   "name": "handlePullApply",
+   "filePath": "services/workspace/drafts.go",
+   "lineRange": [
+    596,
+    649
+   ],
+   "summary": "Applies a three-way merge of upstream changes into a draft.",
+   "tags": [
+    "go",
+    "api-handler",
+    "drafts"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:services/workspace/events.go",
+   "type": "file",
+   "name": "events.go",
+   "filePath": "services/workspace/events.go",
+   "summary": "Transactional-outbox event enqueue and publisher loop that republishes workspace events to the message broker, plus stats endpoint.",
+   "tags": [
+    "go",
+    "events",
+    "outbox",
+    "messaging"
+   ],
+   "complexity": "moderate",
+   "languageNotes": "Go package main of the workspace service."
+  },
+  {
+   "id": "function:services/workspace/events.go:publishLoop",
+   "type": "function",
+   "name": "publishLoop",
+   "filePath": "services/workspace/events.go",
+   "lineRange": [
+    35,
+    53
+   ],
+   "summary": "Background loop that polls the outbox and publishes pending events.",
+   "tags": [
+    "go",
+    "events",
+    "outbox"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:services/workspace/events.go:publishBatch",
+   "type": "function",
+   "name": "publishBatch",
+   "filePath": "services/workspace/events.go",
+   "lineRange": [
+    91,
+    129
+   ],
+   "summary": "Publishes a batch of outbox events and marks them sent.",
+   "tags": [
+    "go",
+    "events",
+    "outbox"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:services/workspace/http.go",
+   "type": "file",
+   "name": "http.go",
+   "filePath": "services/workspace/http.go",
+   "summary": "Service config loading, JSON helpers, internal HMAC auth, user header parsing and cached permission lookups.",
+   "tags": [
+    "go",
+    "http",
+    "authentication",
+    "utility"
+   ],
+   "complexity": "moderate",
+   "languageNotes": "Go package main of the workspace service."
+  },
+  {
+   "id": "function:services/workspace/http.go:permission",
+   "type": "function",
+   "name": "permission",
+   "filePath": "services/workspace/http.go",
+   "lineRange": [
+    173,
+    209
+   ],
+   "summary": "Looks up a user permission with a short-lived cache.",
+   "tags": [
+    "go",
+    "http",
+    "authentication"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/workspace/http.go:loadConfig",
+   "type": "function",
+   "name": "loadConfig",
+   "filePath": "services/workspace/http.go",
+   "lineRange": [
+    32,
+    46
+   ],
+   "summary": "Reads service configuration from environment variables.",
+   "tags": [
+    "go",
+    "http",
+    "authentication"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:services/workspace/importer.go",
+   "type": "file",
+   "name": "importer.go",
+   "filePath": "services/workspace/importer.go",
+   "summary": "Imports chapters into the workspace as revisions.",
+   "tags": [
+    "go",
+    "import",
+    "chapters"
+   ],
+   "complexity": "simple",
+   "languageNotes": "Go package main of the workspace service."
+  },
+  {
+   "id": "function:services/workspace/importer.go:importChapters",
+   "type": "function",
+   "name": "importChapters",
+   "filePath": "services/workspace/importer.go",
+   "lineRange": [
+    17,
+    70
+   ],
+   "summary": "Bulk-imports chapters as workspace revisions.",
+   "tags": [
+    "go",
+    "import",
+    "chapters"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:services/workspace/log.go",
+   "type": "file",
+   "name": "log.go",
+   "filePath": "services/workspace/log.go",
+   "summary": "Structured logging with secret redaction and request-logging middleware.",
+   "tags": [
+    "go",
+    "logging",
+    "middleware"
+   ],
+   "complexity": "simple",
+   "languageNotes": "Go package main of the workspace service."
+  },
+  {
+   "id": "function:services/workspace/log.go:withRequestLog",
+   "type": "function",
+   "name": "withRequestLog",
+   "filePath": "services/workspace/log.go",
+   "lineRange": [
+    74,
+    96
+   ],
+   "summary": "Middleware logging each request with status and duration.",
+   "tags": [
+    "go",
+    "logging",
+    "middleware"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:services/workspace/main.go",
+   "type": "file",
+   "name": "main.go",
+   "filePath": "services/workspace/main.go",
+   "summary": "Entry point of the workspace service: wires config, database, background loops and HTTP routes.",
+   "tags": [
+    "go",
+    "entry-point",
+    "routing",
+    "server"
+   ],
+   "complexity": "moderate",
+   "languageNotes": "Go package main of the workspace service."
+  },
+  {
+   "id": "function:services/workspace/main.go:main",
+   "type": "function",
+   "name": "main",
+   "filePath": "services/workspace/main.go",
+   "lineRange": [
+    21,
+    89
+   ],
+   "summary": "Starts the workspace service, background loops and HTTP server.",
+   "tags": [
+    "go",
+    "entry-point",
+    "routing"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/workspace/main.go:routes",
+   "type": "function",
+   "name": "routes",
+   "filePath": "services/workspace/main.go",
+   "lineRange": [
+    92,
+    154
+   ],
+   "summary": "Registers all HTTP routes and middleware.",
+   "tags": [
+    "go",
+    "entry-point",
+    "routing"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:services/workspace/merge.go",
+   "type": "file",
+   "name": "merge.go",
+   "filePath": "services/workspace/merge.go",
+   "summary": "Three-way merge of block lists and metadata with conflict detection and resolution.",
+   "tags": [
+    "go",
+    "merge",
+    "conflict-resolution",
+    "algorithm"
+   ],
+   "complexity": "moderate",
+   "languageNotes": "Go package main of the workspace service."
+  },
+  {
+   "id": "function:services/workspace/merge.go:merge3x",
+   "type": "function",
+   "name": "merge3x",
+   "filePath": "services/workspace/merge.go",
+   "lineRange": [
+    53,
+    110
+   ],
+   "summary": "Three-way block merge producing merged chunks and conflicts.",
+   "tags": [
+    "go",
+    "merge",
+    "conflict-resolution"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/workspace/merge.go:resolve",
+   "type": "function",
+   "name": "resolve",
+   "filePath": "services/workspace/merge.go",
+   "lineRange": [
+    155,
+    188
+   ],
+   "summary": "Applies user conflict resolutions to a merge result.",
+   "tags": [
+    "go",
+    "merge",
+    "conflict-resolution"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:services/workspace/proposals.go",
+   "type": "file",
+   "name": "proposals.go",
+   "filePath": "services/workspace/proposals.go",
+   "summary": "Review-round workflow for drafts: submit, decide, withdraw, return, review and comment handlers.",
+   "tags": [
+    "go",
+    "api-handler",
+    "review",
+    "proposals"
+   ],
+   "complexity": "complex",
+   "languageNotes": "Go package main of the workspace service."
+  },
+  {
+   "id": "function:services/workspace/proposals.go:handleReview",
+   "type": "function",
+   "name": "handleReview",
+   "filePath": "services/workspace/proposals.go",
+   "lineRange": [
+    245,
+    338
+   ],
+   "summary": "Returns review data for a draft proposal round including diff and comments.",
+   "tags": [
+    "go",
+    "api-handler",
+    "review"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:services/workspace/proposals.go:decide",
+   "type": "function",
+   "name": "decide",
+   "filePath": "services/workspace/proposals.go",
+   "lineRange": [
+    120,
+    154
+   ],
+   "summary": "Records a reviewer decision (approve, reject, return) on a proposal round.",
+   "tags": [
+    "go",
+    "api-handler",
+    "review"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:services/workspace/quota.go",
+   "type": "file",
+   "name": "quota.go",
+   "filePath": "services/workspace/quota.go",
+   "summary": "Per-user write rate limiting with quota classes and a limiting middleware.",
+   "tags": [
+    "go",
+    "rate-limiting",
+    "middleware"
+   ],
+   "complexity": "simple",
+   "languageNotes": "Go package main of the workspace service."
+  },
+  {
+   "id": "function:services/workspace/quota.go:take",
+   "type": "function",
+   "name": "take",
+   "filePath": "services/workspace/quota.go",
+   "lineRange": [
+    51,
+    97
+   ],
+   "summary": "Consumes quota tokens for a user and reports whether the write is allowed.",
+   "tags": [
+    "go",
+    "rate-limiting",
+    "middleware"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/workspace/quota.go:limitWrites",
+   "type": "function",
+   "name": "limitWrites",
+   "filePath": "services/workspace/quota.go",
+   "lineRange": [
+    100,
+    122
+   ],
+   "summary": "Middleware rejecting write requests that exceed the quota.",
+   "tags": [
+    "go",
+    "rate-limiting",
+    "middleware"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:services/workspace/quota_test.go",
+   "type": "file",
+   "name": "quota_test.go",
+   "filePath": "services/workspace/quota_test.go",
+   "summary": "Unit tests for the write quota and quota classification.",
+   "tags": [
+    "go",
+    "test",
+    "rate-limiting"
+   ],
+   "complexity": "simple",
+   "languageNotes": "Go package main of the workspace service."
+  },
+  {
+   "id": "file:services/workspace/schedule.go",
+   "type": "file",
+   "name": "schedule.go",
+   "filePath": "services/workspace/schedule.go",
+   "summary": "Scheduled publishing handlers and background loop that publishes due drafts and records failures.",
+   "tags": [
+    "go",
+    "scheduling",
+    "publishing",
+    "background-job"
+   ],
+   "complexity": "moderate",
+   "languageNotes": "Go package main of the workspace service."
+  },
+  {
+   "id": "function:services/workspace/schedule.go:publishDue",
+   "type": "function",
+   "name": "publishDue",
+   "filePath": "services/workspace/schedule.go",
+   "lineRange": [
+    118,
+    176
+   ],
+   "summary": "Publishes scheduled drafts whose time has come.",
+   "tags": [
+    "go",
+    "scheduling",
+    "publishing"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/workspace/schedule.go:scheduleLoop",
+   "type": "function",
+   "name": "scheduleLoop",
+   "filePath": "services/workspace/schedule.go",
+   "lineRange": [
+    197,
+    212
+   ],
+   "summary": "Background ticker invoking publishDue.",
+   "tags": [
+    "go",
+    "scheduling",
+    "publishing"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:services/workspace/tasks.go",
+   "type": "file",
+   "name": "tasks.go",
+   "filePath": "services/workspace/tasks.go",
+   "summary": "Task board handlers for creating, claiming, starting, finishing and listing translation tasks with activity logging.",
+   "tags": [
+    "go",
+    "api-handler",
+    "tasks",
+    "workflow"
+   ],
+   "complexity": "complex",
+   "languageNotes": "Go package main of the workspace service."
+  },
+  {
+   "id": "function:services/workspace/tasks.go:handleTaskCreate",
+   "type": "function",
+   "name": "handleTaskCreate",
+   "filePath": "services/workspace/tasks.go",
+   "lineRange": [
+    204,
+    305
+   ],
+   "summary": "Creates a task, validating access and logging activity.",
+   "tags": [
+    "go",
+    "api-handler",
+    "tasks"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:services/workspace/tasks.go:handleBoard",
+   "type": "function",
+   "name": "handleBoard",
+   "filePath": "services/workspace/tasks.go",
+   "lineRange": [
+    609,
+    691
+   ],
+   "summary": "Builds the task board grouped by status for a story or group.",
+   "tags": [
+    "go",
+    "api-handler",
+    "tasks"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "file:services/workspace/workspace_test.go",
+   "type": "file",
+   "name": "workspace_test.go",
+   "filePath": "services/workspace/workspace_test.go",
+   "summary": "Integration tests covering block hashing, merge, revisions, drafts, proposals, collaboration, tasks and scheduling using a test harness.",
+   "tags": [
+    "go",
+    "test",
+    "integration-test",
+    "workspace"
+   ],
+   "complexity": "complex",
+   "languageNotes": "Go package main of the workspace service."
+  },
+  {
+   "id": "config:services/workspace/go.mod",
+   "type": "config",
+   "name": "go.mod",
+   "filePath": "services/workspace/go.mod",
+   "summary": "Go module definition for the workspace service (module nmv/workspace) and its dependencies.",
+   "tags": [
+    "configuration",
+    "go",
+    "dependencies"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "config:services/workspace/go.sum",
+   "type": "config",
+   "name": "go.sum",
+   "filePath": "services/workspace/go.sum",
+   "summary": "Checksum lock file for the workspace service Go dependencies.",
+   "tags": [
+    "configuration",
+    "go",
+    "lockfile"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "schema:sql/database.sql",
+   "type": "schema",
+   "name": "database.sql",
+   "filePath": "sql/database.sql",
+   "summary": "Full Postgres schema for NovelHub: users, groups, stories, chapters, comments, notifications, posts, reports, recommendation tables, views and indexes.",
+   "tags": [
+    "database",
+    "schema-definition",
+    "postgres",
+    "migration"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "table:sql/database.sql:stories",
+   "type": "table",
+   "name": "stories",
+   "filePath": "sql/database.sql",
+   "lineRange": [
+    292,
+    292
+   ],
+   "summary": "Definition of the stories table in the main schema.",
+   "tags": [
+    "database",
+    "table",
+    "postgres"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "table:sql/database.sql:chapters",
+   "type": "table",
+   "name": "chapters",
+   "filePath": "sql/database.sql",
+   "lineRange": [
+    383,
+    383
+   ],
+   "summary": "Definition of the chapters table in the main schema.",
+   "tags": [
+    "database",
+    "table",
+    "postgres"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "table:sql/database.sql:users",
+   "type": "table",
+   "name": "users",
+   "filePath": "sql/database.sql",
+   "lineRange": [
+    64,
+    64
+   ],
+   "summary": "Definition of the users table in the main schema.",
+   "tags": [
+    "database",
+    "table",
+    "postgres"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "table:sql/database.sql:comments",
+   "type": "table",
+   "name": "comments",
+   "filePath": "sql/database.sql",
+   "lineRange": [
+    601,
+    601
+   ],
+   "summary": "Definition of the comments table in the main schema.",
+   "tags": [
+    "database",
+    "table",
+    "postgres"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "table:sql/database.sql:ws_chapter_versions",
+   "type": "table",
+   "name": "ws_chapter_versions",
+   "filePath": "sql/database.sql",
+   "lineRange": [
+    1398,
+    1398
+   ],
+   "summary": "Revision history table for chapters used by the workspace service.",
+   "tags": [
+    "database",
+    "table",
+    "postgres"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "table:sql/database.sql:notifications",
+   "type": "table",
+   "name": "notifications",
+   "filePath": "sql/database.sql",
+   "lineRange": [
+    636,
+    636
+   ],
+   "summary": "Definition of the notifications table in the main schema.",
+   "tags": [
+    "database",
+    "table",
+    "postgres"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "table:sql/database.sql:albums",
+   "type": "table",
+   "name": "albums",
+   "filePath": "sql/database.sql",
+   "lineRange": [
+    508,
+    508
+   ],
+   "summary": "Definition of the albums table in the main schema.",
+   "tags": [
+    "database",
+    "table",
+    "postgres"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "table:sql/seeds/albums.sql:albums",
+   "type": "table",
+   "name": "albums",
+   "filePath": "sql/seeds/albums.sql",
+   "summary": "Seed script that regenerates demo themed albums from existing stories; safe to re-run.",
+   "tags": [
+    "database",
+    "seed-data",
+    "sql",
+    "demo"
+   ],
+   "complexity": "moderate"
+  }
+ ],
+ "edges": [
+  {
+   "source": "file:services/workspace/blocks.go",
+   "target": "function:services/workspace/blocks.go:blockHash",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/workspace/blocks.go",
+   "target": "function:services/workspace/blocks.go:storeBlocks",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/workspace/blocks.go",
+   "target": "function:services/workspace/blocks.go:diffHashes",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/workspace/chapters.go",
+   "target": "function:services/workspace/chapters.go:handleEdit",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/workspace/chapters.go",
+   "target": "function:services/workspace/chapters.go:handleRewind",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/workspace/chapters.go",
+   "target": "function:services/workspace/chapters.go:handleCompare",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/workspace/collab.go",
+   "target": "function:services/workspace/collab.go:handleDraftGet",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/workspace/collab.go",
+   "target": "function:services/workspace/collab.go:handleOfferAccept",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/workspace/collab.go",
+   "target": "function:services/workspace/collab.go:handleReclaim",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/workspace/db.go",
+   "target": "function:services/workspace/db.go:migrate",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/workspace/db.go",
+   "target": "function:services/workspace/db.go:rehashOnce",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/workspace/drafts.go",
+   "target": "function:services/workspace/drafts.go:publishTx",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/workspace/drafts.go",
+   "target": "function:services/workspace/drafts.go:handleDraftSave",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/workspace/drafts.go",
+   "target": "function:services/workspace/drafts.go:handlePullApply",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/workspace/events.go",
+   "target": "function:services/workspace/events.go:publishLoop",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/workspace/events.go",
+   "target": "function:services/workspace/events.go:publishBatch",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/workspace/http.go",
+   "target": "function:services/workspace/http.go:permission",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/workspace/http.go",
+   "target": "function:services/workspace/http.go:loadConfig",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/workspace/importer.go",
+   "target": "function:services/workspace/importer.go:importChapters",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/workspace/log.go",
+   "target": "function:services/workspace/log.go:withRequestLog",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/workspace/main.go",
+   "target": "function:services/workspace/main.go:main",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/workspace/main.go",
+   "target": "function:services/workspace/main.go:routes",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/workspace/merge.go",
+   "target": "function:services/workspace/merge.go:merge3x",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/workspace/merge.go",
+   "target": "function:services/workspace/merge.go:resolve",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/workspace/proposals.go",
+   "target": "function:services/workspace/proposals.go:handleReview",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/workspace/proposals.go",
+   "target": "function:services/workspace/proposals.go:decide",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/workspace/quota.go",
+   "target": "function:services/workspace/quota.go:take",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/workspace/quota.go",
+   "target": "function:services/workspace/quota.go:limitWrites",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/workspace/schedule.go",
+   "target": "function:services/workspace/schedule.go:publishDue",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/workspace/schedule.go",
+   "target": "function:services/workspace/schedule.go:scheduleLoop",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/workspace/tasks.go",
+   "target": "function:services/workspace/tasks.go:handleTaskCreate",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/workspace/tasks.go",
+   "target": "function:services/workspace/tasks.go:handleBoard",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/workspace/quota.go",
+   "target": "file:services/workspace/quota_test.go",
+   "type": "tested_by",
+   "direction": "forward",
+   "weight": 0.5
+  },
+  {
+   "source": "file:services/workspace/blocks.go",
+   "target": "file:services/workspace/workspace_test.go",
+   "type": "tested_by",
+   "direction": "forward",
+   "weight": 0.5
+  },
+  {
+   "source": "file:services/workspace/merge.go",
+   "target": "file:services/workspace/workspace_test.go",
+   "type": "tested_by",
+   "direction": "forward",
+   "weight": 0.5
+  },
+  {
+   "source": "function:services/workspace/main.go:main",
+   "target": "function:services/workspace/http.go:loadConfig",
+   "type": "calls",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "function:services/workspace/main.go:main",
+   "target": "function:services/workspace/db.go:migrate",
+   "type": "calls",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "function:services/workspace/main.go:routes",
+   "target": "function:services/workspace/log.go:withRequestLog",
+   "type": "calls",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "function:services/workspace/main.go:routes",
+   "target": "function:services/workspace/quota.go:limitWrites",
+   "type": "calls",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "function:services/workspace/drafts.go:handlePullApply",
+   "target": "function:services/workspace/merge.go:merge3x",
+   "type": "calls",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "function:services/workspace/blocks.go:storeBlocks",
+   "target": "function:services/workspace/blocks.go:blockHash",
+   "type": "calls",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "config:services/workspace/go.mod",
+   "target": "file:services/workspace/main.go",
+   "type": "configures",
+   "direction": "forward",
+   "weight": 0.6
+  },
+  {
+   "source": "config:services/workspace/go.sum",
+   "target": "config:services/workspace/go.mod",
+   "type": "related",
+   "direction": "forward",
+   "weight": 0.5
+  },
+  {
+   "source": "schema:sql/database.sql",
+   "target": "table:sql/database.sql:stories",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "schema:sql/database.sql",
+   "target": "table:sql/database.sql:chapters",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "schema:sql/database.sql",
+   "target": "table:sql/database.sql:users",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "schema:sql/database.sql",
+   "target": "table:sql/database.sql:comments",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "schema:sql/database.sql",
+   "target": "table:sql/database.sql:ws_chapter_versions",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "schema:sql/database.sql",
+   "target": "table:sql/database.sql:notifications",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "schema:sql/database.sql",
+   "target": "table:sql/database.sql:albums",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "schema:sql/database.sql",
+   "target": "file:services/workspace/chapters.go",
+   "type": "defines_schema",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "table:sql/seeds/albums.sql:albums",
+   "target": "table:sql/database.sql:albums",
+   "type": "migrates",
+   "direction": "forward",
+   "weight": 0.7
+  }
+ ]
+}

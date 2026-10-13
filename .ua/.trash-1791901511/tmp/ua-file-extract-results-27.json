@@ -1,0 +1,996 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 30,
+  "filesSkipped": [],
+  "filesUnreadable": [],
+  "analysisOutcomes": {
+    "structure": {
+      "succeeded": 30,
+      "failed": 0
+    },
+    "callGraph": {
+      "succeeded": 0,
+      "failed": 0,
+      "skipped": 30
+    }
+  },
+  "results": [
+    {
+      "path": "sql/migrations/001_story_comments.sql",
+      "language": "sql",
+      "fileCategory": "data",
+      "totalLines": 27,
+      "nonEmptyLines": 25,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "definitionCount": 0
+      }
+    },
+    {
+      "path": "sql/migrations/002_notification_queue.sql",
+      "language": "sql",
+      "fileCategory": "data",
+      "totalLines": 16,
+      "nonEmptyLines": 13,
+      "definitions": [
+        {
+          "name": "uq_notifications_dedupe",
+          "kind": "index",
+          "fields": [],
+          "startLine": 7,
+          "endLine": 7
+        },
+        {
+          "name": "idx_notifications_sender",
+          "kind": "index",
+          "fields": [],
+          "startLine": 14,
+          "endLine": 14
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "definitionCount": 2
+      }
+    },
+    {
+      "path": "sql/migrations/003_group_join_requests.sql",
+      "language": "sql",
+      "fileCategory": "data",
+      "totalLines": 28,
+      "nonEmptyLines": 23,
+      "definitions": [
+        {
+          "name": "group_join_requests",
+          "kind": "table",
+          "fields": [
+            "id",
+            "group_id",
+            "user_id",
+            "message",
+            "status",
+            "reviewed_by",
+            "reviewed_at",
+            "created_at"
+          ],
+          "startLine": 8,
+          "endLine": 17
+        },
+        {
+          "name": "uq_group_join_requests_pending",
+          "kind": "index",
+          "fields": [],
+          "startLine": 20,
+          "endLine": 20
+        },
+        {
+          "name": "idx_group_join_requests_group",
+          "kind": "index",
+          "fields": [],
+          "startLine": 24,
+          "endLine": 24
+        },
+        {
+          "name": "idx_group_join_requests_user",
+          "kind": "index",
+          "fields": [],
+          "startLine": 27,
+          "endLine": 27
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "definitionCount": 4
+      }
+    },
+    {
+      "path": "sql/migrations/004_group_approval_audit.sql",
+      "language": "sql",
+      "fileCategory": "data",
+      "totalLines": 6,
+      "nonEmptyLines": 5,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "definitionCount": 0
+      }
+    },
+    {
+      "path": "sql/migrations/005_user_soft_delete.sql",
+      "language": "sql",
+      "fileCategory": "data",
+      "totalLines": 6,
+      "nonEmptyLines": 5,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "definitionCount": 0
+      }
+    },
+    {
+      "path": "sql/migrations/006_story_sources.sql",
+      "language": "sql",
+      "fileCategory": "data",
+      "totalLines": 9,
+      "nonEmptyLines": 8,
+      "definitions": [
+        {
+          "name": "uq_stories_source",
+          "kind": "index",
+          "fields": [],
+          "startLine": 6,
+          "endLine": 6
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "definitionCount": 1
+      }
+    },
+    {
+      "path": "sql/migrations/007_story_exports.sql",
+      "language": "sql",
+      "fileCategory": "data",
+      "totalLines": 27,
+      "nonEmptyLines": 25,
+      "definitions": [
+        {
+          "name": "story_exports",
+          "kind": "table",
+          "fields": [
+            "id",
+            "story_id",
+            "format",
+            "mode",
+            "chapter_ids",
+            "status",
+            "progress",
+            "file_name",
+            "file_path",
+            "file_size",
+            "error",
+            "requested_by",
+            "download_count",
+            "created_at",
+            "updated_at",
+            "last_used_at"
+          ],
+          "startLine": 5,
+          "endLine": 24
+        },
+        {
+          "name": "idx_story_exports_story",
+          "kind": "index",
+          "fields": [],
+          "startLine": 26,
+          "endLine": 26
+        },
+        {
+          "name": "idx_story_exports_last_used",
+          "kind": "index",
+          "fields": [],
+          "startLine": 27,
+          "endLine": 27
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "definitionCount": 3
+      }
+    },
+    {
+      "path": "sql/migrations/008_chapter_translator_messages.sql",
+      "language": "sql",
+      "fileCategory": "data",
+      "totalLines": 7,
+      "nonEmptyLines": 7,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "definitionCount": 0
+      }
+    },
+    {
+      "path": "sql/migrations/009_story_albums.sql",
+      "language": "sql",
+      "fileCategory": "data",
+      "totalLines": 64,
+      "nonEmptyLines": 60,
+      "definitions": [
+        {
+          "name": "albums",
+          "kind": "table",
+          "fields": [
+            "id",
+            "user_id",
+            "name",
+            "description",
+            "is_public",
+            "share_token",
+            "copied_from",
+            "created_at",
+            "updated_at"
+          ],
+          "startLine": 5,
+          "endLine": 15
+        },
+        {
+          "name": "album_stories",
+          "kind": "table",
+          "fields": [
+            "album_id",
+            "story_id",
+            "added_at"
+          ],
+          "startLine": 18,
+          "endLine": 23
+        },
+        {
+          "name": "album_saves",
+          "kind": "table",
+          "fields": [
+            "user_id",
+            "album_id",
+            "share_token"
+          ],
+          "startLine": 27,
+          "endLine": 33
+        },
+        {
+          "name": "idx_albums_user",
+          "kind": "index",
+          "fields": [],
+          "startLine": 16,
+          "endLine": 16
+        },
+        {
+          "name": "idx_album_stories_story",
+          "kind": "index",
+          "fields": [],
+          "startLine": 24,
+          "endLine": 24
+        },
+        {
+          "name": "idx_album_saves_album",
+          "kind": "index",
+          "fields": [],
+          "startLine": 34,
+          "endLine": 34
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "definitionCount": 6
+      }
+    },
+    {
+      "path": "sql/migrations/010_recommendations.sql",
+      "language": "sql",
+      "fileCategory": "data",
+      "totalLines": 70,
+      "nonEmptyLines": 65,
+      "definitions": [
+        {
+          "name": "rec_events",
+          "kind": "table",
+          "fields": [
+            "id",
+            "user_id",
+            "visitor_id",
+            "story_id",
+            "chapter_id",
+            "kind"
+          ],
+          "startLine": 7,
+          "endLine": 17
+        },
+        {
+          "name": "rec_item_similar",
+          "kind": "table",
+          "fields": [
+            "story_id",
+            "similar_id",
+            "score",
+            "co_readers"
+          ],
+          "startLine": 23,
+          "endLine": 34
+        },
+        {
+          "name": "rec_user_scores",
+          "kind": "table",
+          "fields": [
+            "user_id",
+            "story_id",
+            "score",
+            "reason",
+            "reason_tag",
+            "pct"
+          ],
+          "startLine": 37,
+          "endLine": 46
+        },
+        {
+          "name": "rec_user_factors",
+          "kind": "table",
+          "fields": [
+            "user_id",
+            "factors"
+          ],
+          "startLine": 49,
+          "endLine": 52
+        },
+        {
+          "name": "rec_item_factors",
+          "kind": "table",
+          "fields": [
+            "story_id",
+            "factors",
+            "popularity"
+          ],
+          "startLine": 53,
+          "endLine": 57
+        },
+        {
+          "name": "rec_model_runs",
+          "kind": "table",
+          "fields": [
+            "id",
+            "started_at",
+            "duration_ms",
+            "users",
+            "stories",
+            "interactions",
+            "metrics",
+            "status",
+            "error"
+          ],
+          "startLine": 60,
+          "endLine": 70
+        },
+        {
+          "name": "idx_rec_events_user",
+          "kind": "index",
+          "fields": [],
+          "startLine": 18,
+          "endLine": 18
+        },
+        {
+          "name": "idx_rec_events_visitor",
+          "kind": "index",
+          "fields": [],
+          "startLine": 19,
+          "endLine": 19
+        },
+        {
+          "name": "idx_rec_events_created",
+          "kind": "index",
+          "fields": [],
+          "startLine": 20,
+          "endLine": 20
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "definitionCount": 9
+      }
+    },
+    {
+      "path": "sql/migrations/011_rating_avg_scale.sql",
+      "language": "sql",
+      "fileCategory": "data",
+      "totalLines": 25,
+      "nonEmptyLines": 25,
+      "definitions": [
+        {
+          "name": "v_trending_stories",
+          "kind": "view",
+          "fields": [],
+          "startLine": 13,
+          "endLine": 13
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "definitionCount": 1
+      }
+    },
+    {
+      "path": "sql/migrations/012_fandom_posts.sql",
+      "language": "sql",
+      "fileCategory": "data",
+      "totalLines": 6,
+      "nonEmptyLines": 6,
+      "definitions": [
+        {
+          "name": "idx_posts_feed",
+          "kind": "index",
+          "fields": [],
+          "startLine": 5,
+          "endLine": 5
+        },
+        {
+          "name": "idx_posts_story",
+          "kind": "index",
+          "fields": [],
+          "startLine": 6,
+          "endLine": 6
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "definitionCount": 2
+      }
+    },
+    {
+      "path": "sql/migrations/013_notification_preferences.sql",
+      "language": "sql",
+      "fileCategory": "data",
+      "totalLines": 14,
+      "nonEmptyLines": 13,
+      "definitions": [
+        {
+          "name": "post_notification_mutes",
+          "kind": "table",
+          "fields": [
+            "user_id",
+            "post_id",
+            "created_at"
+          ],
+          "startLine": 9,
+          "endLine": 14
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "definitionCount": 1
+      }
+    },
+    {
+      "path": "sql/migrations/014_direct_messages.sql",
+      "language": "sql",
+      "fileCategory": "data",
+      "totalLines": 15,
+      "nonEmptyLines": 14,
+      "definitions": [
+        {
+          "name": "direct_messages",
+          "kind": "table",
+          "fields": [
+            "id",
+            "sender_id",
+            "recipient_id",
+            "message",
+            "read_at",
+            "created_at"
+          ],
+          "startLine": 3,
+          "endLine": 11
+        },
+        {
+          "name": "idx_direct_messages_sender",
+          "kind": "index",
+          "fields": [],
+          "startLine": 13,
+          "endLine": 13
+        },
+        {
+          "name": "idx_direct_messages_recipient",
+          "kind": "index",
+          "fields": [],
+          "startLine": 14,
+          "endLine": 14
+        },
+        {
+          "name": "idx_direct_messages_unread",
+          "kind": "index",
+          "fields": [],
+          "startLine": 15,
+          "endLine": 15
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "definitionCount": 4
+      }
+    },
+    {
+      "path": "sql/migrations/015_account_security.sql",
+      "language": "sql",
+      "fileCategory": "data",
+      "totalLines": 16,
+      "nonEmptyLines": 14,
+      "definitions": [
+        {
+          "name": "auth_tokens",
+          "kind": "table",
+          "fields": [
+            "token_hash",
+            "user_id",
+            "purpose",
+            "expires_at",
+            "used_at",
+            "created_at"
+          ],
+          "startLine": 7,
+          "endLine": 14
+        },
+        {
+          "name": "idx_auth_tokens_user",
+          "kind": "index",
+          "fields": [],
+          "startLine": 16,
+          "endLine": 16
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "definitionCount": 2
+      }
+    },
+    {
+      "path": "sql/migrations/016_dm_labels_block_pin.sql",
+      "language": "sql",
+      "fileCategory": "data",
+      "totalLines": 34,
+      "nonEmptyLines": 30,
+      "definitions": [
+        {
+          "name": "dm_labels",
+          "kind": "table",
+          "fields": [
+            "id",
+            "user_id",
+            "name",
+            "color",
+            "created_at"
+          ],
+          "startLine": 4,
+          "endLine": 10
+        },
+        {
+          "name": "dm_label_conversations",
+          "kind": "table",
+          "fields": [
+            "label_id",
+            "partner_id",
+            "created_at"
+          ],
+          "startLine": 14,
+          "endLine": 19
+        },
+        {
+          "name": "user_blocks",
+          "kind": "table",
+          "fields": [
+            "blocker_id",
+            "blocked_id",
+            "created_at"
+          ],
+          "startLine": 22,
+          "endLine": 28
+        },
+        {
+          "name": "uq_dm_labels_user_name",
+          "kind": "index",
+          "fields": [],
+          "startLine": 11,
+          "endLine": 11
+        },
+        {
+          "name": "idx_user_blocks_blocked",
+          "kind": "index",
+          "fields": [],
+          "startLine": 29,
+          "endLine": 29
+        },
+        {
+          "name": "idx_direct_messages_pinned",
+          "kind": "index",
+          "fields": [],
+          "startLine": 34,
+          "endLine": 34
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "definitionCount": 6
+      }
+    },
+    {
+      "path": "sql/migrations/017_smart_codes.sql",
+      "language": "sql",
+      "fileCategory": "data",
+      "totalLines": 158,
+      "nonEmptyLines": 141,
+      "definitions": [
+        {
+          "name": "uq_users_code_no",
+          "kind": "index",
+          "fields": [],
+          "startLine": 153,
+          "endLine": 153
+        },
+        {
+          "name": "uq_groups_code_no",
+          "kind": "index",
+          "fields": [],
+          "startLine": 154,
+          "endLine": 154
+        },
+        {
+          "name": "uq_stories_code_no",
+          "kind": "index",
+          "fields": [],
+          "startLine": 155,
+          "endLine": 155
+        },
+        {
+          "name": "uq_posts_code_no",
+          "kind": "index",
+          "fields": [],
+          "startLine": 156,
+          "endLine": 156
+        },
+        {
+          "name": "uq_albums_code_no",
+          "kind": "index",
+          "fields": [],
+          "startLine": 157,
+          "endLine": 157
+        },
+        {
+          "name": "uq_reports_code_no",
+          "kind": "index",
+          "fields": [],
+          "startLine": 158,
+          "endLine": 158
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "definitionCount": 6
+      }
+    },
+    {
+      "path": "sql/migrations/018_drop_ratings.sql",
+      "language": "sql",
+      "fileCategory": "data",
+      "totalLines": 22,
+      "nonEmptyLines": 19,
+      "definitions": [
+        {
+          "name": "v_trending_stories",
+          "kind": "view",
+          "fields": [],
+          "startLine": 11,
+          "endLine": 11
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "definitionCount": 1
+      }
+    },
+    {
+      "path": "sql/migrations/019_no_approval.sql",
+      "language": "sql",
+      "fileCategory": "data",
+      "totalLines": 23,
+      "nonEmptyLines": 19,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "definitionCount": 0
+      }
+    },
+    {
+      "path": "sql/migrations/020_soft_remove.sql",
+      "language": "sql",
+      "fileCategory": "data",
+      "totalLines": 14,
+      "nonEmptyLines": 14,
+      "definitions": [
+        {
+          "name": "idx_stories_removed",
+          "kind": "index",
+          "fields": [],
+          "startLine": 5,
+          "endLine": 5
+        },
+        {
+          "name": "idx_posts_removed",
+          "kind": "index",
+          "fields": [],
+          "startLine": 12,
+          "endLine": 12
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "definitionCount": 2
+      }
+    },
+    {
+      "path": "sql/migrations/021_report_spam.sql",
+      "language": "sql",
+      "fileCategory": "data",
+      "totalLines": 15,
+      "nonEmptyLines": 15,
+      "definitions": [
+        {
+          "name": "uq_reports_pending",
+          "kind": "index",
+          "fields": [],
+          "startLine": 12,
+          "endLine": 12
+        },
+        {
+          "name": "idx_reports_target",
+          "kind": "index",
+          "fields": [],
+          "startLine": 13,
+          "endLine": 13
+        },
+        {
+          "name": "idx_reports_reporter_time",
+          "kind": "index",
+          "fields": [],
+          "startLine": 14,
+          "endLine": 14
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "definitionCount": 3
+      }
+    },
+    {
+      "path": "sql/migrations/022_identity_copy.sql",
+      "language": "sql",
+      "fileCategory": "data",
+      "totalLines": 29,
+      "nonEmptyLines": 26,
+      "definitions": [
+        {
+          "name": "processed_events",
+          "kind": "table",
+          "fields": [
+            "event_id",
+            "type",
+            "processed_at"
+          ],
+          "startLine": 24,
+          "endLine": 28
+        },
+        {
+          "name": "idx_processed_events_time",
+          "kind": "index",
+          "fields": [],
+          "startLine": 29,
+          "endLine": 29
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "definitionCount": 2
+      }
+    },
+    {
+      "path": "sql/migrations/023_ws_chapter_versions.sql",
+      "language": "sql",
+      "fileCategory": "data",
+      "totalLines": 8,
+      "nonEmptyLines": 8,
+      "definitions": [
+        {
+          "name": "ws_chapter_versions",
+          "kind": "table",
+          "fields": [
+            "chapter_id",
+            "version",
+            "applied_at"
+          ],
+          "startLine": 4,
+          "endLine": 8
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "definitionCount": 1
+      }
+    },
+    {
+      "path": "sql/migrations/024_dm_draft_card.sql",
+      "language": "sql",
+      "fileCategory": "data",
+      "totalLines": 3,
+      "nonEmptyLines": 3,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "definitionCount": 0
+      }
+    },
+    {
+      "path": "sql/migrations/025_group_workflow.sql",
+      "language": "sql",
+      "fileCategory": "data",
+      "totalLines": 8,
+      "nonEmptyLines": 8,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "definitionCount": 0
+      }
+    },
+    {
+      "path": "sql/migrations/026_drop_legacy_credentials.sql",
+      "language": "sql",
+      "fileCategory": "data",
+      "totalLines": 8,
+      "nonEmptyLines": 8,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "definitionCount": 0
+      }
+    },
+    {
+      "path": "sql/migrations/027_drop_legacy_tables.sql",
+      "language": "sql",
+      "fileCategory": "data",
+      "totalLines": 16,
+      "nonEmptyLines": 15,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "definitionCount": 0
+      }
+    },
+    {
+      "path": "sql/migrations/028_group_mergers.sql",
+      "language": "sql",
+      "fileCategory": "data",
+      "totalLines": 7,
+      "nonEmptyLines": 7,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "definitionCount": 0
+      }
+    },
+    {
+      "path": "sql/migrations/029_story_sources_repair.sql",
+      "language": "sql",
+      "fileCategory": "data",
+      "totalLines": 10,
+      "nonEmptyLines": 9,
+      "definitions": [
+        {
+          "name": "uq_stories_source",
+          "kind": "index",
+          "fields": [],
+          "startLine": 7,
+          "endLine": 7
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "definitionCount": 1
+      }
+    },
+    {
+      "path": "sql/migrations/030_allow_download_repair.sql",
+      "language": "sql",
+      "fileCategory": "data",
+      "totalLines": 3,
+      "nonEmptyLines": 3,
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "definitionCount": 0
+      }
+    }
+  ]
+}

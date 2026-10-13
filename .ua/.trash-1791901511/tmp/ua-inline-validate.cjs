@@ -1,0 +1,12 @@
+const fs=require('fs');const [gp,op]=process.argv.slice(2);
+const graph=JSON.parse(fs.readFileSync(gp,'utf8'));const issues=[],warnings=[];
+const ids=new Set(graph.nodes.map(n=>n.id));
+const seen=new Set();
+graph.nodes.forEach((n,i)=>{if(!n.type||!n.name)issues.push(`Node ${n.id} missing type/name`);if(!n.summary)issues.push(`Node ${n.id} missing summary`);if(!n.tags||!n.tags.length)issues.push(`Node ${n.id} missing tags`);if(seen.has(n.id))issues.push('dup '+n.id);seen.add(n.id)});
+graph.edges.forEach((e,i)=>{if(!ids.has(e.source)||!ids.has(e.target))issues.push(`Edge[${i}] dangling ${e.source}->${e.target}`)});
+const ft=new Set(['file','config','document','service','pipeline','table','schema','resource','endpoint']);
+const asg=new Map();
+graph.layers.forEach(l=>l.nodeIds.forEach(id=>{if(!ids.has(id))issues.push(`Layer ${l.id} missing ${id}`);if(asg.has(id))issues.push('multi-layer '+id);asg.set(id,l.id)}));
+graph.nodes.filter(n=>ft.has(n.type)).forEach(n=>{if(!asg.has(n.id))issues.push(`unlayered ${n.id}`)});
+graph.tour.forEach((s,i)=>s.nodeIds.forEach(id=>{if(!ids.has(id))issues.push(`tour ${i} missing ${id}`)}));
+fs.writeFileSync(op,JSON.stringify({issues,warnings},null,2));console.log(issues.length,'issues');

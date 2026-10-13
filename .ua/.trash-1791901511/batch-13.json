@@ -1,0 +1,40 @@
+{
+ "nodes": [
+  {
+   "id": "service:services/community/Dockerfile",
+   "type": "service",
+   "name": "Dockerfile",
+   "filePath": "services/community/Dockerfile",
+   "summary": "Multi-stage Docker build for the community Node service with production-only dependencies, bundled migrations, healthcheck and non-root user.",
+   "tags": [
+    "containerization",
+    "infrastructure",
+    "healthcheck",
+    "nodejs"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "config:services/community/.dockerignore",
+   "type": "config",
+   "name": ".dockerignore",
+   "filePath": "services/community/.dockerignore",
+   "summary": "Dockerignore excluding node_modules and dist for the community service.",
+   "tags": [
+    "configuration",
+    "docker",
+    "build-context"
+   ],
+   "complexity": "simple"
+  }
+ ],
+ "edges": [
+  {
+   "source": "config:services/community/.dockerignore",
+   "target": "service:services/community/Dockerfile",
+   "type": "configures",
+   "direction": "forward",
+   "weight": 0.6
+  }
+ ]
+}

@@ -1,0 +1,1 @@
+{"projectRoot":"C:/Users/Admin/Documents/vn/nmv","batchFiles":[{"path":"services/recommender/rec/migrations/001_init.sql","language":"sql","sizeLines":109,"fileCategory":"data"}],"batchImportData":{"services/recommender/rec/migrations/001_init.sql":[]}}

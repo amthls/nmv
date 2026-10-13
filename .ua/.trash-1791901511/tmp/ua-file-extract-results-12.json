@@ -1,0 +1,176 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 1,
+  "filesSkipped": [
+    "frontend/.dockerignore"
+  ],
+  "filesUnreadable": [],
+  "analysisOutcomes": {
+    "structure": {
+      "succeeded": 1,
+      "failed": 0
+    },
+    "callGraph": {
+      "succeeded": 0,
+      "failed": 0,
+      "skipped": 1
+    }
+  },
+  "results": [
+    {
+      "path": "frontend/Dockerfile",
+      "language": "dockerfile",
+      "fileCategory": "infra",
+      "totalLines": 37,
+      "nonEmptyLines": 26,
+      "services": [
+        {
+          "name": "builder",
+          "image": "node:22-slim",
+          "ports": [],
+          "startLine": 1,
+          "endLine": 15
+        },
+        {
+          "name": "runner",
+          "image": "node:22-slim",
+          "ports": [
+            3000
+          ],
+          "startLine": 16,
+          "endLine": 38
+        }
+      ],
+      "steps": [
+        {
+          "name": "FROM node:22-slim AS builder",
+          "startLine": 1,
+          "endLine": 1
+        },
+        {
+          "name": "WORKDIR /app",
+          "startLine": 3,
+          "endLine": 3
+        },
+        {
+          "name": "ARG NEXT_PUBLIC_API_URL=/api/v1",
+          "startLine": 5,
+          "endLine": 5
+        },
+        {
+          "name": "ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL",
+          "startLine": 6,
+          "endLine": 6
+        },
+        {
+          "name": "ARG NEXT_PUBLIC_TURNSTILE_SITE_KEY=",
+          "startLine": 7,
+          "endLine": 7
+        },
+        {
+          "name": "ENV NEXT_PUBLIC_TURNSTILE_SITE_KEY=$NEXT_PUBLIC_TURNSTILE_SITE_K",
+          "startLine": 8,
+          "endLine": 8
+        },
+        {
+          "name": "COPY package.json yarn.lock* ./",
+          "startLine": 10,
+          "endLine": 10
+        },
+        {
+          "name": "RUN yarn install --frozen-lockfile || yarn install",
+          "startLine": 11,
+          "endLine": 11
+        },
+        {
+          "name": "COPY . .",
+          "startLine": 13,
+          "endLine": 13
+        },
+        {
+          "name": "RUN yarn build",
+          "startLine": 14,
+          "endLine": 14
+        },
+        {
+          "name": "FROM node:22-slim AS runner",
+          "startLine": 16,
+          "endLine": 16
+        },
+        {
+          "name": "WORKDIR /app",
+          "startLine": 18,
+          "endLine": 18
+        },
+        {
+          "name": "RUN apt-get -o Acquire::Check-Date=false update -y && apt-get up",
+          "startLine": 21,
+          "endLine": 21
+        },
+        {
+          "name": "ENV NODE_ENV=production",
+          "startLine": 23,
+          "endLine": 23
+        },
+        {
+          "name": "ENV PORT=3000",
+          "startLine": 24,
+          "endLine": 24
+        },
+        {
+          "name": "ENV HOSTNAME=\"0.0.0.0\"",
+          "startLine": 25,
+          "endLine": 25
+        },
+        {
+          "name": "COPY --from=builder /app/package.json ./",
+          "startLine": 27,
+          "endLine": 27
+        },
+        {
+          "name": "COPY --from=builder /app/node_modules ./node_modules",
+          "startLine": 28,
+          "endLine": 28
+        },
+        {
+          "name": "COPY --from=builder /app/.next ./.next",
+          "startLine": 29,
+          "endLine": 29
+        },
+        {
+          "name": "COPY --from=builder /app/public ./public",
+          "startLine": 30,
+          "endLine": 30
+        },
+        {
+          "name": "RUN chown -R node:node /app/.next",
+          "startLine": 32,
+          "endLine": 32
+        },
+        {
+          "name": "USER node",
+          "startLine": 33,
+          "endLine": 33
+        },
+        {
+          "name": "EXPOSE 3000",
+          "startLine": 35,
+          "endLine": 35
+        },
+        {
+          "name": "CMD [\"yarn\", \"start\", \"-H\", \"0.0.0.0\", \"-p\", \"3000\"]",
+          "startLine": 37,
+          "endLine": 37
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "serviceCount": 2,
+        "stepCount": 24
+      }
+    }
+  ]
+}

@@ -1,0 +1,79 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 1,
+  "filesSkipped": [],
+  "filesUnreadable": [],
+  "analysisOutcomes": {
+    "structure": {
+      "succeeded": 1,
+      "failed": 0
+    },
+    "callGraph": {
+      "succeeded": 0,
+      "failed": 0,
+      "skipped": 1
+    }
+  },
+  "results": [
+    {
+      "path": "services/media/migrations/001_init.sql",
+      "language": "sql",
+      "fileCategory": "data",
+      "totalLines": 25,
+      "nonEmptyLines": 25,
+      "definitions": [
+        {
+          "name": "story_exports",
+          "kind": "table",
+          "fields": [
+            "id",
+            "story_id",
+            "mode",
+            "chapter_ids",
+            "status",
+            "progress",
+            "file_name",
+            "file_path",
+            "file_size",
+            "error",
+            "requested_by",
+            "download_count",
+            "created_at",
+            "updated_at",
+            "last_used_at"
+          ],
+          "startLine": 3,
+          "endLine": 22
+        },
+        {
+          "name": "story_exports_story",
+          "kind": "index",
+          "fields": [],
+          "startLine": 23,
+          "endLine": 23
+        },
+        {
+          "name": "story_exports_last_used",
+          "kind": "index",
+          "fields": [],
+          "startLine": 24,
+          "endLine": 24
+        },
+        {
+          "name": "story_exports_queued",
+          "kind": "index",
+          "fields": [],
+          "startLine": 25,
+          "endLine": 25
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "definitionCount": 4
+      }
+    }
+  ]
+}

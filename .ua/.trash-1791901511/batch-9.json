@@ -1,0 +1,989 @@
+{
+ "nodes": [
+  {
+   "id": "file:frontend/src/app/kham-pha/page.tsx",
+   "type": "file",
+   "name": "page.tsx",
+   "filePath": "frontend/src/app/kham-pha/page.tsx",
+   "summary": "Explore page with search, filter sidebar, sorting, grid/list toggle and pagination of stories, driven by URL query parameters.",
+   "tags": [
+    "page",
+    "explore",
+    "filters",
+    "nextjs"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:frontend/src/app/kham-pha/page.tsx:ExplorePage",
+   "type": "function",
+   "name": "ExplorePage",
+   "filePath": "frontend/src/app/kham-pha/page.tsx",
+   "lineRange": [
+    26,
+    32
+   ],
+   "summary": "Page wrapper rendering the content inside Suspense.",
+   "tags": [
+    "page",
+    "suspense",
+    "nextjs"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:frontend/src/app/kham-pha/page.tsx:ExplorePageContent",
+   "type": "function",
+   "name": "ExplorePageContent",
+   "filePath": "frontend/src/app/kham-pha/page.tsx",
+   "lineRange": [
+    40,
+    461
+   ],
+   "summary": "Client component managing explore filters, URL sync, fetching, and rendering the result grid or list.",
+   "tags": [
+    "component",
+    "state-management",
+    "data-fetching"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "file:frontend/src/app/moi-cap-nhat/page.tsx",
+   "type": "file",
+   "name": "page.tsx",
+   "filePath": "frontend/src/app/moi-cap-nhat/page.tsx",
+   "summary": "Recently updated stories page that renders the shared sorted stories listing.",
+   "tags": [
+    "page",
+    "nextjs",
+    "listing"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:frontend/src/app/moi-cap-nhat/page.tsx:RecentlyUpdatedPage",
+   "type": "function",
+   "name": "RecentlyUpdatedPage",
+   "filePath": "frontend/src/app/moi-cap-nhat/page.tsx",
+   "lineRange": [
+    8,
+    14
+   ],
+   "summary": "Page component for stories sorted by last update.",
+   "tags": [
+    "page",
+    "nextjs",
+    "listing"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:frontend/src/app/nhieu-nguoi-xem/page.tsx",
+   "type": "file",
+   "name": "page.tsx",
+   "filePath": "frontend/src/app/nhieu-nguoi-xem/page.tsx",
+   "summary": "Most viewed stories page that renders the shared sorted stories listing.",
+   "tags": [
+    "page",
+    "nextjs",
+    "listing"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:frontend/src/app/nhieu-nguoi-xem/page.tsx:MostViewedPage",
+   "type": "function",
+   "name": "MostViewedPage",
+   "filePath": "frontend/src/app/nhieu-nguoi-xem/page.tsx",
+   "lineRange": [
+    8,
+    14
+   ],
+   "summary": "Page component for stories sorted by views.",
+   "tags": [
+    "page",
+    "nextjs",
+    "listing"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:frontend/src/app/page.tsx",
+   "type": "file",
+   "name": "page.tsx",
+   "filePath": "frontend/src/app/page.tsx",
+   "summary": "Home page that fetches story lists and renders the featured carousel, story rails and recommendations.",
+   "tags": [
+    "page",
+    "home",
+    "nextjs",
+    "server-component"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:frontend/src/app/page.tsx:getList",
+   "type": "function",
+   "name": "getList",
+   "filePath": "frontend/src/app/page.tsx",
+   "lineRange": [
+    11,
+    21
+   ],
+   "summary": "Fetches a story list from the API for a home section.",
+   "tags": [
+    "data-fetching",
+    "api",
+    "home"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:frontend/src/app/page.tsx:HomePage",
+   "type": "function",
+   "name": "HomePage",
+   "filePath": "frontend/src/app/page.tsx",
+   "lineRange": [
+    23,
+    70
+   ],
+   "summary": "Home page composing carousel, rails and recommendation sections.",
+   "tags": [
+    "page",
+    "home",
+    "nextjs"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:frontend/src/components/explore/FilterSidebar.tsx",
+   "type": "file",
+   "name": "FilterSidebar.tsx",
+   "filePath": "frontend/src/components/explore/FilterSidebar.tsx",
+   "summary": "Sidebar with genre, status, type and other filters for the explore page.",
+   "tags": [
+    "component",
+    "filters",
+    "ui",
+    "explore"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:frontend/src/components/explore/FilterSidebar.tsx:FilterSidebar",
+   "type": "function",
+   "name": "FilterSidebar",
+   "filePath": "frontend/src/components/explore/FilterSidebar.tsx",
+   "lineRange": [
+    53,
+    329
+   ],
+   "summary": "Renders filter controls and reports filter changes.",
+   "tags": [
+    "component",
+    "filters",
+    "ui"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "file:frontend/src/components/explore/Pagination.tsx",
+   "type": "file",
+   "name": "Pagination.tsx",
+   "filePath": "frontend/src/components/explore/Pagination.tsx",
+   "summary": "Pagination control with page numbers and previous/next buttons.",
+   "tags": [
+    "component",
+    "pagination",
+    "ui"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:frontend/src/components/explore/Pagination.tsx:Pagination",
+   "type": "function",
+   "name": "Pagination",
+   "filePath": "frontend/src/components/explore/Pagination.tsx",
+   "lineRange": [
+    12,
+    91
+   ],
+   "summary": "Renders page navigation with ellipsis windows.",
+   "tags": [
+    "component",
+    "pagination",
+    "ui"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:frontend/src/components/explore/SortedStoriesPage.tsx",
+   "type": "file",
+   "name": "SortedStoriesPage.tsx",
+   "filePath": "frontend/src/components/explore/SortedStoriesPage.tsx",
+   "summary": "Reusable client page that loads a fixed-sort story list with grid and pagination.",
+   "tags": [
+    "component",
+    "listing",
+    "data-fetching",
+    "pagination"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:frontend/src/components/explore/SortedStoriesPage.tsx:SortedStoriesPage",
+   "type": "function",
+   "name": "SortedStoriesPage",
+   "filePath": "frontend/src/components/explore/SortedStoriesPage.tsx",
+   "lineRange": [
+    17,
+    91
+   ],
+   "summary": "Fetches paginated stories for a given sort and displays them in an auto-column grid.",
+   "tags": [
+    "component",
+    "data-fetching",
+    "listing"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:frontend/src/components/explore/StoryCardGrid.tsx",
+   "type": "file",
+   "name": "StoryCardGrid.tsx",
+   "filePath": "frontend/src/components/explore/StoryCardGrid.tsx",
+   "summary": "Story card grid component plus count and relative-time formatters shared across listings.",
+   "tags": [
+    "component",
+    "grid",
+    "formatting",
+    "ui"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:frontend/src/components/explore/StoryCardGrid.tsx:formatCount",
+   "type": "function",
+   "name": "formatCount",
+   "filePath": "frontend/src/components/explore/StoryCardGrid.tsx",
+   "lineRange": [
+    42,
+    48
+   ],
+   "summary": "Formats large numbers compactly.",
+   "tags": [
+    "formatting",
+    "utility",
+    "numbers"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:frontend/src/components/explore/StoryCardGrid.tsx:formatTimeAgo",
+   "type": "function",
+   "name": "formatTimeAgo",
+   "filePath": "frontend/src/components/explore/StoryCardGrid.tsx",
+   "lineRange": [
+    50,
+    59
+   ],
+   "summary": "Formats a timestamp as relative time in Vietnamese.",
+   "tags": [
+    "formatting",
+    "utility",
+    "time"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:frontend/src/components/explore/StoryCardGrid.tsx:StoryCardGrid",
+   "type": "function",
+   "name": "StoryCardGrid",
+   "filePath": "frontend/src/components/explore/StoryCardGrid.tsx",
+   "lineRange": [
+    67,
+    116
+   ],
+   "summary": "Renders story cards in a responsive grid.",
+   "tags": [
+    "component",
+    "grid",
+    "ui"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:frontend/src/components/explore/StoryCardList.tsx",
+   "type": "file",
+   "name": "StoryCardList.tsx",
+   "filePath": "frontend/src/components/explore/StoryCardList.tsx",
+   "summary": "Horizontal list-view story card with cover, rich-text description and stats.",
+   "tags": [
+    "component",
+    "list-view",
+    "ui"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:frontend/src/components/explore/StoryCardList.tsx:StoryCardList",
+   "type": "function",
+   "name": "StoryCardList",
+   "filePath": "frontend/src/components/explore/StoryCardList.tsx",
+   "lineRange": [
+    28,
+    97
+   ],
+   "summary": "Renders stories as a detailed list.",
+   "tags": [
+    "component",
+    "list-view",
+    "ui"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:frontend/src/components/home/FeaturedCarousel.tsx",
+   "type": "file",
+   "name": "FeaturedCarousel.tsx",
+   "filePath": "frontend/src/components/home/FeaturedCarousel.tsx",
+   "summary": "Auto-advancing featured story carousel on the home page with artwork selection and controls.",
+   "tags": [
+    "component",
+    "carousel",
+    "home",
+    "ui"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:frontend/src/components/home/FeaturedCarousel.tsx:pickArtwork",
+   "type": "function",
+   "name": "pickArtwork",
+   "filePath": "frontend/src/components/home/FeaturedCarousel.tsx",
+   "lineRange": [
+    18,
+    26
+   ],
+   "summary": "Picks the best banner artwork for a story.",
+   "tags": [
+    "utility",
+    "images",
+    "selection"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:frontend/src/components/home/FeaturedCarousel.tsx:FeaturedCarousel",
+   "type": "function",
+   "name": "FeaturedCarousel",
+   "filePath": "frontend/src/components/home/FeaturedCarousel.tsx",
+   "lineRange": [
+    36,
+    214
+   ],
+   "summary": "Carousel with timer and dot navigation for featured stories.",
+   "tags": [
+    "component",
+    "carousel",
+    "home"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "file:frontend/src/components/home/RecommendationRail.tsx",
+   "type": "file",
+   "name": "RecommendationRail.tsx",
+   "filePath": "frontend/src/components/home/RecommendationRail.tsx",
+   "summary": "Home rail showing personalized recommendations for the logged-in user.",
+   "tags": [
+    "component",
+    "recommendations",
+    "home",
+    "data-fetching"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:frontend/src/components/home/RecommendationRail.tsx:RecommendationRail",
+   "type": "function",
+   "name": "RecommendationRail",
+   "filePath": "frontend/src/components/home/RecommendationRail.tsx",
+   "lineRange": [
+    16,
+    72
+   ],
+   "summary": "Fetches recommendations when authenticated and renders them in a rail.",
+   "tags": [
+    "component",
+    "recommendations",
+    "home"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:frontend/src/components/home/StoryRail.tsx",
+   "type": "file",
+   "name": "StoryRail.tsx",
+   "filePath": "frontend/src/components/home/StoryRail.tsx",
+   "summary": "Horizontal scrolling rail of story cards with a title and see-all link.",
+   "tags": [
+    "component",
+    "rail",
+    "home",
+    "ui"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:frontend/src/components/home/StoryRail.tsx:StoryRail",
+   "type": "function",
+   "name": "StoryRail",
+   "filePath": "frontend/src/components/home/StoryRail.tsx",
+   "lineRange": [
+    9,
+    87
+   ],
+   "summary": "Renders a titled horizontally scrolling story rail.",
+   "tags": [
+    "component",
+    "rail",
+    "home"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:frontend/src/lib/useAutoColumns.ts",
+   "type": "file",
+   "name": "useAutoColumns.ts",
+   "filePath": "frontend/src/lib/useAutoColumns.ts",
+   "summary": "Hook computing a responsive column count from container width and a minimum card size.",
+   "tags": [
+    "hook",
+    "responsive",
+    "layout"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:frontend/src/lib/useAutoColumns.ts:useAutoColumns",
+   "type": "function",
+   "name": "useAutoColumns",
+   "filePath": "frontend/src/lib/useAutoColumns.ts",
+   "lineRange": [
+    12,
+    25
+   ],
+   "summary": "Observes container width to compute grid column count.",
+   "tags": [
+    "hook",
+    "resize-observer",
+    "layout"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:frontend/src/lib/useAutoColumns.ts:columnsStyle",
+   "type": "function",
+   "name": "columnsStyle",
+   "filePath": "frontend/src/lib/useAutoColumns.ts",
+   "lineRange": [
+    28,
+    28
+   ],
+   "summary": "Builds the CSS grid style for a column count.",
+   "tags": [
+    "css",
+    "utility",
+    "layout"
+   ],
+   "complexity": "simple"
+  }
+ ],
+ "edges": [
+  {
+   "source": "file:frontend/src/app/kham-pha/page.tsx",
+   "target": "function:frontend/src/app/kham-pha/page.tsx:ExplorePage",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:frontend/src/app/kham-pha/page.tsx",
+   "target": "function:frontend/src/app/kham-pha/page.tsx:ExplorePage",
+   "type": "exports",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "file:frontend/src/app/kham-pha/page.tsx",
+   "target": "function:frontend/src/app/kham-pha/page.tsx:ExplorePageContent",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:frontend/src/app/kham-pha/page.tsx",
+   "target": "file:frontend/src/components/SearchBox.tsx",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:frontend/src/app/kham-pha/page.tsx",
+   "target": "file:frontend/src/components/common/PageLoader.tsx",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:frontend/src/app/kham-pha/page.tsx",
+   "target": "file:frontend/src/components/explore/FilterSidebar.tsx",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:frontend/src/app/kham-pha/page.tsx",
+   "target": "file:frontend/src/components/explore/Pagination.tsx",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:frontend/src/app/kham-pha/page.tsx",
+   "target": "file:frontend/src/components/explore/StoryCardGrid.tsx",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:frontend/src/app/kham-pha/page.tsx",
+   "target": "file:frontend/src/components/explore/StoryCardList.tsx",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:frontend/src/app/kham-pha/page.tsx",
+   "target": "file:frontend/src/lib/useAutoColumns.ts",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:frontend/src/app/moi-cap-nhat/page.tsx",
+   "target": "function:frontend/src/app/moi-cap-nhat/page.tsx:RecentlyUpdatedPage",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:frontend/src/app/moi-cap-nhat/page.tsx",
+   "target": "function:frontend/src/app/moi-cap-nhat/page.tsx:RecentlyUpdatedPage",
+   "type": "exports",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "file:frontend/src/app/moi-cap-nhat/page.tsx",
+   "target": "file:frontend/src/components/common/PageLoader.tsx",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:frontend/src/app/moi-cap-nhat/page.tsx",
+   "target": "file:frontend/src/components/explore/SortedStoriesPage.tsx",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:frontend/src/app/nhieu-nguoi-xem/page.tsx",
+   "target": "function:frontend/src/app/nhieu-nguoi-xem/page.tsx:MostViewedPage",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:frontend/src/app/nhieu-nguoi-xem/page.tsx",
+   "target": "function:frontend/src/app/nhieu-nguoi-xem/page.tsx:MostViewedPage",
+   "type": "exports",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "file:frontend/src/app/nhieu-nguoi-xem/page.tsx",
+   "target": "file:frontend/src/components/common/PageLoader.tsx",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:frontend/src/app/nhieu-nguoi-xem/page.tsx",
+   "target": "file:frontend/src/components/explore/SortedStoriesPage.tsx",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:frontend/src/app/page.tsx",
+   "target": "function:frontend/src/app/page.tsx:getList",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:frontend/src/app/page.tsx",
+   "target": "function:frontend/src/app/page.tsx:HomePage",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:frontend/src/app/page.tsx",
+   "target": "function:frontend/src/app/page.tsx:HomePage",
+   "type": "exports",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "file:frontend/src/app/page.tsx",
+   "target": "file:frontend/src/components/explore/StoryCardGrid.tsx",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:frontend/src/app/page.tsx",
+   "target": "file:frontend/src/components/home/FeaturedCarousel.tsx",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:frontend/src/app/page.tsx",
+   "target": "file:frontend/src/components/home/RecommendationRail.tsx",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:frontend/src/app/page.tsx",
+   "target": "file:frontend/src/components/home/StoryRail.tsx",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:frontend/src/components/explore/FilterSidebar.tsx",
+   "target": "function:frontend/src/components/explore/FilterSidebar.tsx:FilterSidebar",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:frontend/src/components/explore/FilterSidebar.tsx",
+   "target": "function:frontend/src/components/explore/FilterSidebar.tsx:FilterSidebar",
+   "type": "exports",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "file:frontend/src/components/explore/Pagination.tsx",
+   "target": "function:frontend/src/components/explore/Pagination.tsx:Pagination",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:frontend/src/components/explore/Pagination.tsx",
+   "target": "function:frontend/src/components/explore/Pagination.tsx:Pagination",
+   "type": "exports",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "file:frontend/src/components/explore/SortedStoriesPage.tsx",
+   "target": "function:frontend/src/components/explore/SortedStoriesPage.tsx:SortedStoriesPage",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:frontend/src/components/explore/SortedStoriesPage.tsx",
+   "target": "function:frontend/src/components/explore/SortedStoriesPage.tsx:SortedStoriesPage",
+   "type": "exports",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "file:frontend/src/components/explore/SortedStoriesPage.tsx",
+   "target": "file:frontend/src/components/explore/Pagination.tsx",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:frontend/src/components/explore/SortedStoriesPage.tsx",
+   "target": "file:frontend/src/components/explore/StoryCardGrid.tsx",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:frontend/src/components/explore/SortedStoriesPage.tsx",
+   "target": "file:frontend/src/lib/useAutoColumns.ts",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:frontend/src/components/explore/StoryCardGrid.tsx",
+   "target": "function:frontend/src/components/explore/StoryCardGrid.tsx:formatCount",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:frontend/src/components/explore/StoryCardGrid.tsx",
+   "target": "function:frontend/src/components/explore/StoryCardGrid.tsx:formatCount",
+   "type": "exports",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "file:frontend/src/components/explore/StoryCardGrid.tsx",
+   "target": "function:frontend/src/components/explore/StoryCardGrid.tsx:formatTimeAgo",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:frontend/src/components/explore/StoryCardGrid.tsx",
+   "target": "function:frontend/src/components/explore/StoryCardGrid.tsx:formatTimeAgo",
+   "type": "exports",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "file:frontend/src/components/explore/StoryCardGrid.tsx",
+   "target": "function:frontend/src/components/explore/StoryCardGrid.tsx:StoryCardGrid",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:frontend/src/components/explore/StoryCardGrid.tsx",
+   "target": "function:frontend/src/components/explore/StoryCardGrid.tsx:StoryCardGrid",
+   "type": "exports",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "file:frontend/src/components/explore/StoryCardGrid.tsx",
+   "target": "file:frontend/src/components/common/Link.tsx",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:frontend/src/components/explore/StoryCardGrid.tsx",
+   "target": "file:frontend/src/components/common/SmartImage.tsx",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:frontend/src/components/explore/StoryCardList.tsx",
+   "target": "function:frontend/src/components/explore/StoryCardList.tsx:StoryCardList",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:frontend/src/components/explore/StoryCardList.tsx",
+   "target": "function:frontend/src/components/explore/StoryCardList.tsx:StoryCardList",
+   "type": "exports",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "file:frontend/src/components/explore/StoryCardList.tsx",
+   "target": "file:frontend/src/components/common/Link.tsx",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:frontend/src/components/explore/StoryCardList.tsx",
+   "target": "file:frontend/src/components/common/SmartImage.tsx",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:frontend/src/components/explore/StoryCardList.tsx",
+   "target": "file:frontend/src/components/explore/StoryCardGrid.tsx",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:frontend/src/components/explore/StoryCardList.tsx",
+   "target": "file:frontend/src/lib/richText.ts",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:frontend/src/components/home/FeaturedCarousel.tsx",
+   "target": "function:frontend/src/components/home/FeaturedCarousel.tsx:pickArtwork",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:frontend/src/components/home/FeaturedCarousel.tsx",
+   "target": "function:frontend/src/components/home/FeaturedCarousel.tsx:FeaturedCarousel",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:frontend/src/components/home/FeaturedCarousel.tsx",
+   "target": "function:frontend/src/components/home/FeaturedCarousel.tsx:FeaturedCarousel",
+   "type": "exports",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "file:frontend/src/components/home/FeaturedCarousel.tsx",
+   "target": "file:frontend/src/components/common/Link.tsx",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:frontend/src/components/home/FeaturedCarousel.tsx",
+   "target": "file:frontend/src/components/common/SmartImage.tsx",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:frontend/src/components/home/FeaturedCarousel.tsx",
+   "target": "file:frontend/src/components/explore/StoryCardGrid.tsx",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:frontend/src/components/home/FeaturedCarousel.tsx",
+   "target": "file:frontend/src/lib/richText.ts",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:frontend/src/components/home/RecommendationRail.tsx",
+   "target": "function:frontend/src/components/home/RecommendationRail.tsx:RecommendationRail",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:frontend/src/components/home/RecommendationRail.tsx",
+   "target": "function:frontend/src/components/home/RecommendationRail.tsx:RecommendationRail",
+   "type": "exports",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "file:frontend/src/components/home/RecommendationRail.tsx",
+   "target": "file:frontend/src/components/explore/StoryCardGrid.tsx",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:frontend/src/components/home/RecommendationRail.tsx",
+   "target": "file:frontend/src/components/home/StoryRail.tsx",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:frontend/src/components/home/RecommendationRail.tsx",
+   "target": "file:frontend/src/context/AuthContext.tsx",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:frontend/src/components/home/RecommendationRail.tsx",
+   "target": "file:frontend/src/lib/apiJson.ts",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:frontend/src/components/home/StoryRail.tsx",
+   "target": "function:frontend/src/components/home/StoryRail.tsx:StoryRail",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:frontend/src/components/home/StoryRail.tsx",
+   "target": "function:frontend/src/components/home/StoryRail.tsx:StoryRail",
+   "type": "exports",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "file:frontend/src/components/home/StoryRail.tsx",
+   "target": "file:frontend/src/components/common/Link.tsx",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:frontend/src/components/home/StoryRail.tsx",
+   "target": "file:frontend/src/components/explore/StoryCardGrid.tsx",
+   "type": "imports",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "file:frontend/src/lib/useAutoColumns.ts",
+   "target": "function:frontend/src/lib/useAutoColumns.ts:useAutoColumns",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:frontend/src/lib/useAutoColumns.ts",
+   "target": "function:frontend/src/lib/useAutoColumns.ts:useAutoColumns",
+   "type": "exports",
+   "direction": "forward",
+   "weight": 0.8
+  },
+  {
+   "source": "file:frontend/src/lib/useAutoColumns.ts",
+   "target": "function:frontend/src/lib/useAutoColumns.ts:columnsStyle",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:frontend/src/lib/useAutoColumns.ts",
+   "target": "function:frontend/src/lib/useAutoColumns.ts:columnsStyle",
+   "type": "exports",
+   "direction": "forward",
+   "weight": 0.8
+  }
+ ]
+}

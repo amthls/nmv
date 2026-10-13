@@ -1,0 +1,476 @@
+{
+ "nodes": [
+  {
+   "id": "config:.gitattributes",
+   "type": "config",
+   "name": ".gitattributes",
+   "filePath": ".gitattributes",
+   "summary": "Git attributes forcing LF endings for shell scripts and other files.",
+   "tags": [
+    "configuration",
+    "git",
+    "line-endings"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "config:.github/dependabot.yml",
+   "type": "config",
+   "name": "dependabot.yml",
+   "filePath": ".github/dependabot.yml",
+   "summary": "Dependabot configuration listing the package ecosystems and update schedules monitored.",
+   "tags": [
+    "configuration",
+    "dependencies",
+    "automation"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "config:.ua/config.json",
+   "type": "config",
+   "name": "config.json",
+   "filePath": ".ua/config.json",
+   "summary": "Understand-Anything tool configuration setting output language to English.",
+   "tags": [
+    "configuration",
+    "tooling"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "document:Plan/Trang chủ.docx",
+   "type": "document",
+   "name": "Trang chủ.docx",
+   "filePath": "Plan/Trang chủ.docx",
+   "summary": "Word planning document for the home page design.",
+   "tags": [
+    "documentation",
+    "planning",
+    "homepage"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "schema:catalog/prisma/schema.prisma",
+   "type": "schema",
+   "name": "schema.prisma",
+   "filePath": "catalog/prisma/schema.prisma",
+   "summary": "Prisma schema describing the catalog domain models and enums (users, stories, approvals, groups).",
+   "tags": [
+    "schema-definition",
+    "database",
+    "prisma",
+    "data-model"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "file:catalog/scripts/check-db.ts",
+   "type": "file",
+   "name": "check-db.ts",
+   "filePath": "catalog/scripts/check-db.ts",
+   "summary": "Script that checks database connectivity and prints a summary of table contents.",
+   "tags": [
+    "script",
+    "database",
+    "diagnostics"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:catalog/scripts/check-db.ts:checkDatabase",
+   "type": "function",
+   "name": "checkDatabase",
+   "filePath": "catalog/scripts/check-db.ts",
+   "lineRange": [
+    13,
+    72
+   ],
+   "summary": "Connects to the database and reports table counts and health.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:catalog/scripts/import-from-docmep.ts",
+   "type": "file",
+   "name": "import-from-docmep.ts",
+   "filePath": "catalog/scripts/import-from-docmep.ts",
+   "summary": "One-off importer that copies legacy Docmep data and files into the catalog database with slug generation.",
+   "tags": [
+    "script",
+    "import",
+    "migration",
+    "data"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:catalog/scripts/import-from-docmep.ts:slugify",
+   "type": "function",
+   "name": "slugify",
+   "filePath": "catalog/scripts/import-from-docmep.ts",
+   "lineRange": [
+    13,
+    22
+   ],
+   "summary": "Converts a title into a URL slug.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:catalog/scripts/import-from-docmep.ts:importFromDocmep",
+   "type": "function",
+   "name": "importFromDocmep",
+   "filePath": "catalog/scripts/import-from-docmep.ts",
+   "lineRange": [
+    39,
+    272
+   ],
+   "summary": "Imports stories, chapters and assets from the legacy Docmep source into the catalog database.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "file:catalog/scripts/import-sql.ts",
+   "type": "file",
+   "name": "import-sql.ts",
+   "filePath": "catalog/scripts/import-sql.ts",
+   "summary": "Script that executes a SQL file against the database to import data.",
+   "tags": [
+    "script",
+    "import",
+    "database"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:catalog/scripts/import-sql.ts:importSql",
+   "type": "function",
+   "name": "importSql",
+   "filePath": "catalog/scripts/import-sql.ts",
+   "lineRange": [
+    13,
+    37
+   ],
+   "summary": "Reads a SQL file and runs it against the database.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:catalog/scripts/test-run.js",
+   "type": "file",
+   "name": "test-run.js",
+   "filePath": "catalog/scripts/test-run.js",
+   "summary": "Throwaway script referencing legacy backend/frontend directories for ad hoc testing.",
+   "tags": [
+    "script",
+    "legacy",
+    "tooling"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:catalog/scripts/update-backend-part1.js",
+   "type": "file",
+   "name": "update-backend-part1.js",
+   "filePath": "catalog/scripts/update-backend-part1.js",
+   "summary": "Legacy one-off script that patches files in an old backend source tree.",
+   "tags": [
+    "script",
+    "legacy",
+    "codemod"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:catalog/src/middlewares/auth.middleware.test.ts",
+   "type": "file",
+   "name": "auth.middleware.test.ts",
+   "filePath": "catalog/src/middlewares/auth.middleware.test.ts",
+   "summary": "Tests for the catalog auth middleware signed identity header handling.",
+   "tags": [
+    "test",
+    "auth",
+    "middleware"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:frontend/next-env.d.ts",
+   "type": "file",
+   "name": "next-env.d.ts",
+   "filePath": "frontend/next-env.d.ts",
+   "summary": "Next.js generated type reference declarations.",
+   "tags": [
+    "type-definition",
+    "nextjs",
+    "generated"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "config:frontend/next.config.mjs",
+   "type": "config",
+   "name": "next.config.mjs",
+   "filePath": "frontend/next.config.mjs",
+   "summary": "Next.js configuration covering build options, headers and image settings.",
+   "tags": [
+    "configuration",
+    "nextjs",
+    "build-system"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "config:frontend/postcss.config.js",
+   "type": "config",
+   "name": "postcss.config.js",
+   "filePath": "frontend/postcss.config.js",
+   "summary": "PostCSS configuration enabling Tailwind CSS and autoprefixer.",
+   "tags": [
+    "configuration",
+    "postcss",
+    "css"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:frontend/public/huong-dan/duyet.webp",
+   "type": "file",
+   "name": "duyet.webp",
+   "filePath": "frontend/public/huong-dan/duyet.webp",
+   "summary": "Tutorial screenshot image (WebP) for the translator workflow guide: duyet.",
+   "tags": [
+    "image",
+    "asset",
+    "tutorial",
+    "public-asset"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:frontend/public/huong-dan/giao-viec.webp",
+   "type": "file",
+   "name": "giao-viec.webp",
+   "filePath": "frontend/public/huong-dan/giao-viec.webp",
+   "summary": "Tutorial screenshot image (WebP) for the translator workflow guide: giao-viec.",
+   "tags": [
+    "image",
+    "asset",
+    "tutorial",
+    "public-asset"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:frontend/public/huong-dan/gui-ban-dich.webp",
+   "type": "file",
+   "name": "gui-ban-dich.webp",
+   "filePath": "frontend/public/huong-dan/gui-ban-dich.webp",
+   "summary": "Tutorial screenshot image (WebP) for the translator workflow guide: gui-ban-dich.",
+   "tags": [
+    "image",
+    "asset",
+    "tutorial",
+    "public-asset"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:frontend/public/huong-dan/nhan-viec.webp",
+   "type": "file",
+   "name": "nhan-viec.webp",
+   "filePath": "frontend/public/huong-dan/nhan-viec.webp",
+   "summary": "Tutorial screenshot image (WebP) for the translator workflow guide: nhan-viec.",
+   "tags": [
+    "image",
+    "asset",
+    "tutorial",
+    "public-asset"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:frontend/public/huong-dan/phien-ban.webp",
+   "type": "file",
+   "name": "phien-ban.webp",
+   "filePath": "frontend/public/huong-dan/phien-ban.webp",
+   "summary": "Tutorial screenshot image (WebP) for the translator workflow guide: phien-ban.",
+   "tags": [
+    "image",
+    "asset",
+    "tutorial",
+    "public-asset"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:frontend/public/huong-dan/quy-trinh.webp",
+   "type": "file",
+   "name": "quy-trinh.webp",
+   "filePath": "frontend/public/huong-dan/quy-trinh.webp",
+   "summary": "Tutorial screenshot image (WebP) for the translator workflow guide: quy-trinh.",
+   "tags": [
+    "image",
+    "asset",
+    "tutorial",
+    "public-asset"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:frontend/public/huong-dan/thong-bao.webp",
+   "type": "file",
+   "name": "thong-bao.webp",
+   "filePath": "frontend/public/huong-dan/thong-bao.webp",
+   "summary": "Tutorial screenshot image (WebP) for the translator workflow guide: thong-bao.",
+   "tags": [
+    "image",
+    "asset",
+    "tutorial",
+    "public-asset"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:frontend/public/huong-dan/tin-nhan.webp",
+   "type": "file",
+   "name": "tin-nhan.webp",
+   "filePath": "frontend/public/huong-dan/tin-nhan.webp",
+   "summary": "Tutorial screenshot image (WebP) for the translator workflow guide: tin-nhan.",
+   "tags": [
+    "image",
+    "asset",
+    "tutorial",
+    "public-asset"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "document:frontend/public/robots.txt",
+   "type": "document",
+   "name": "robots.txt",
+   "filePath": "frontend/public/robots.txt",
+   "summary": "Robots exclusion rules for search crawlers.",
+   "tags": [
+    "seo",
+    "public-asset",
+    "configuration"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:frontend/src/app/dat-lai-mat-khau/layout.tsx",
+   "type": "file",
+   "name": "layout.tsx",
+   "filePath": "frontend/src/app/dat-lai-mat-khau/layout.tsx",
+   "summary": "Layout and metadata for the password reset page.",
+   "tags": [
+    "layout",
+    "nextjs",
+    "auth",
+    "page"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:frontend/src/app/dat-lai-mat-khau/layout.tsx:Layout",
+   "type": "function",
+   "name": "Layout",
+   "filePath": "frontend/src/app/dat-lai-mat-khau/layout.tsx",
+   "lineRange": [
+    6,
+    8
+   ],
+   "summary": "Pass-through layout for the password reset route.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:frontend/src/app/globals.css",
+   "type": "file",
+   "name": "globals.css",
+   "filePath": "frontend/src/app/globals.css",
+   "summary": "Global stylesheet with Tailwind layers, theme CSS variables and shared component styles.",
+   "tags": [
+    "css",
+    "styling",
+    "theme",
+    "global"
+   ],
+   "complexity": "complex"
+  }
+ ],
+ "edges": [
+  {
+   "source": "file:catalog/scripts/check-db.ts",
+   "target": "function:catalog/scripts/check-db.ts:checkDatabase",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:catalog/scripts/import-from-docmep.ts",
+   "target": "function:catalog/scripts/import-from-docmep.ts:slugify",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:catalog/scripts/import-from-docmep.ts",
+   "target": "function:catalog/scripts/import-from-docmep.ts:importFromDocmep",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:catalog/scripts/import-sql.ts",
+   "target": "function:catalog/scripts/import-sql.ts:importSql",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:frontend/src/app/dat-lai-mat-khau/layout.tsx",
+   "target": "function:frontend/src/app/dat-lai-mat-khau/layout.tsx:Layout",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:frontend/src/app/globals.css",
+   "target": "config:frontend/postcss.config.js",
+   "type": "related",
+   "direction": "forward",
+   "weight": 0.5
+  },
+  {
+   "source": "config:frontend/next.config.mjs",
+   "target": "file:frontend/src/app/dat-lai-mat-khau/layout.tsx",
+   "type": "configures",
+   "direction": "forward",
+   "weight": 0.6
+  }
+ ]
+}

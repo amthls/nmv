@@ -1,0 +1,1167 @@
+{
+ "nodes": [
+  {
+   "id": "file:scripts/crawler.py",
+   "type": "file",
+   "name": "crawler.py",
+   "filePath": "scripts/crawler.py",
+   "summary": "Crawler importing manga and novels from MangaDex, TopTruyen and Valvrare into the database, with locking, status reporting and cover handling.",
+   "tags": [
+    "crawler",
+    "script",
+    "import",
+    "data-pipeline"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:scripts/crawler.py:starting_views",
+   "type": "function",
+   "name": "starting_views",
+   "filePath": "scripts/crawler.py",
+   "lineRange": [
+    77,
+    82
+   ],
+   "summary": "Picks a random initial view count.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:scripts/crawler.py:log",
+   "type": "function",
+   "name": "log",
+   "filePath": "scripts/crawler.py",
+   "lineRange": [
+    85,
+    87
+   ],
+   "summary": "Helper log in crawler.py.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:scripts/crawler.py:env_value",
+   "type": "function",
+   "name": "env_value",
+   "filePath": "scripts/crawler.py",
+   "lineRange": [
+    96,
+    103
+   ],
+   "summary": "Reads a value from .env.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:scripts/crawler.py:psql",
+   "type": "function",
+   "name": "psql",
+   "filePath": "scripts/crawler.py",
+   "lineRange": [
+    110,
+    120
+   ],
+   "summary": "Runs a SQL statement through psql in the database container.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:scripts/crawler.py:q",
+   "type": "function",
+   "name": "q",
+   "filePath": "scripts/crawler.py",
+   "lineRange": [
+    123,
+    131
+   ],
+   "summary": "Quotes a value as a SQL literal.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:scripts/crawler.py:slugify",
+   "type": "function",
+   "name": "slugify",
+   "filePath": "scripts/crawler.py",
+   "lineRange": [
+    207,
+    210
+   ],
+   "summary": "Builds a slug from text.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:scripts/crawler.py:text_of",
+   "type": "function",
+   "name": "text_of",
+   "filePath": "scripts/crawler.py",
+   "lineRange": [
+    213,
+    214
+   ],
+   "summary": "Helper text_of in crawler.py.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:scripts/crawler.py:meta",
+   "type": "function",
+   "name": "meta",
+   "filePath": "scripts/crawler.py",
+   "lineRange": [
+    217,
+    219
+   ],
+   "summary": "Helper meta in crawler.py.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:scripts/crawler.py:absolute",
+   "type": "function",
+   "name": "absolute",
+   "filePath": "scripts/crawler.py",
+   "lineRange": [
+    222,
+    228
+   ],
+   "summary": "Helper absolute in crawler.py.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:scripts/crawler.py:chapter_number",
+   "type": "function",
+   "name": "chapter_number",
+   "filePath": "scripts/crawler.py",
+   "lineRange": [
+    231,
+    238
+   ],
+   "summary": "Helper chapter_number in crawler.py.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:scripts/crawler.py:status_of",
+   "type": "function",
+   "name": "status_of",
+   "filePath": "scripts/crawler.py",
+   "lineRange": [
+    241,
+    246
+   ],
+   "summary": "Helper status_of in crawler.py.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:scripts/crawler.py:image_size",
+   "type": "function",
+   "name": "image_size",
+   "filePath": "scripts/crawler.py",
+   "lineRange": [
+    249,
+    279
+   ],
+   "summary": "Reads image dimensions from bytes.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:scripts/crawler.py:is_image",
+   "type": "function",
+   "name": "is_image",
+   "filePath": "scripts/crawler.py",
+   "lineRange": [
+    282,
+    283
+   ],
+   "summary": "Helper is_image in crawler.py.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:scripts/crawler.py:compress_folder",
+   "type": "function",
+   "name": "compress_folder",
+   "filePath": "scripts/crawler.py",
+   "lineRange": [
+    570,
+    584
+   ],
+   "summary": "Compresses a chapter folder.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:scripts/crawler.py:give_views_to_unviewed",
+   "type": "function",
+   "name": "give_views_to_unviewed",
+   "filePath": "scripts/crawler.py",
+   "lineRange": [
+    593,
+    596
+   ],
+   "summary": "Assigns views to stories with none.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:scripts/crawler.py:enable_random_downloads",
+   "type": "function",
+   "name": "enable_random_downloads",
+   "filePath": "scripts/crawler.py",
+   "lineRange": [
+    599,
+    619
+   ],
+   "summary": "Enables downloads on random imported stories.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:scripts/crawler.py:fill_missing_covers",
+   "type": "function",
+   "name": "fill_missing_covers",
+   "filePath": "scripts/crawler.py",
+   "lineRange": [
+    622,
+    632
+   ],
+   "summary": "Fills missing covers from first chapter images.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:scripts/crawler.py:pid_alive",
+   "type": "function",
+   "name": "pid_alive",
+   "filePath": "scripts/crawler.py",
+   "lineRange": [
+    1002,
+    1012
+   ],
+   "summary": "Checks whether a PID is alive.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:scripts/crawler.py:is_crawler",
+   "type": "function",
+   "name": "is_crawler",
+   "filePath": "scripts/crawler.py",
+   "lineRange": [
+    1015,
+    1021
+   ],
+   "summary": "Checks whether a PID is a crawler process.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:scripts/crawler.py:stop_process",
+   "type": "function",
+   "name": "stop_process",
+   "filePath": "scripts/crawler.py",
+   "lineRange": [
+    1024,
+    1033
+   ],
+   "summary": "Terminates a running crawler process.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:scripts/crawler.py:read_status",
+   "type": "function",
+   "name": "read_status",
+   "filePath": "scripts/crawler.py",
+   "lineRange": [
+    1036,
+    1041
+   ],
+   "summary": "Reads the crawler status file.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:scripts/crawler.py:acquire_lock",
+   "type": "function",
+   "name": "acquire_lock",
+   "filePath": "scripts/crawler.py",
+   "lineRange": [
+    1044,
+    1059
+   ],
+   "summary": "Takes the single-instance crawler lock, stopping older crawlers.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:scripts/crawler.py:release_lock",
+   "type": "function",
+   "name": "release_lock",
+   "filePath": "scripts/crawler.py",
+   "lineRange": [
+    1062,
+    1069
+   ],
+   "summary": "Releases the crawler lock.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:scripts/crawler.py:print_status",
+   "type": "function",
+   "name": "print_status",
+   "filePath": "scripts/crawler.py",
+   "lineRange": [
+    1072,
+    1085
+   ],
+   "summary": "Prints crawler progress and errors.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:scripts/crawler.py:main",
+   "type": "function",
+   "name": "main",
+   "filePath": "scripts/crawler.py",
+   "lineRange": [
+    1088,
+    1143
+   ],
+   "summary": "CLI entry point handling crawl, status and stop options.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "class:scripts/crawler.py:Blocked",
+   "type": "class",
+   "name": "Blocked",
+   "filePath": "scripts/crawler.py",
+   "lineRange": [
+    90,
+    91
+   ],
+   "summary": "Exception raised when a source blocks requests.",
+   "tags": [
+    "class",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "class:scripts/crawler.py:Http",
+   "type": "class",
+   "name": "Http",
+   "filePath": "scripts/crawler.py",
+   "lineRange": [
+    136,
+    199
+   ],
+   "summary": "HTTP client with retries, rate limits and blocking detection.",
+   "tags": [
+    "class",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "class:scripts/crawler.py:ParagraphParser",
+   "type": "class",
+   "name": "ParagraphParser",
+   "filePath": "scripts/crawler.py",
+   "lineRange": [
+    286,
+    327
+   ],
+   "summary": "HTML parser extracting paragraph text.",
+   "tags": [
+    "class",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "class:scripts/crawler.py:MangaDex",
+   "type": "class",
+   "name": "MangaDex",
+   "filePath": "scripts/crawler.py",
+   "lineRange": [
+    338,
+    424
+   ],
+   "summary": "Source adapter for the MangaDex API.",
+   "tags": [
+    "class",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "class:scripts/crawler.py:TopTruyen",
+   "type": "class",
+   "name": "TopTruyen",
+   "filePath": "scripts/crawler.py",
+   "lineRange": [
+    427,
+    481
+   ],
+   "summary": "Source adapter for TopTruyen pages.",
+   "tags": [
+    "class",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "class:scripts/crawler.py:Valvrare",
+   "type": "class",
+   "name": "Valvrare",
+   "filePath": "scripts/crawler.py",
+   "lineRange": [
+    484,
+    533
+   ],
+   "summary": "Source adapter for Valvrare novels.",
+   "tags": [
+    "class",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "class:scripts/crawler.py:Importer",
+   "type": "class",
+   "name": "Importer",
+   "filePath": "scripts/crawler.py",
+   "lineRange": [
+    637,
+    997
+   ],
+   "summary": "Imports crawled stories and chapters into the database and media folders.",
+   "tags": [
+    "class",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "file:scripts/launch.py",
+   "type": "file",
+   "name": "launch.py",
+   "filePath": "scripts/launch.py",
+   "summary": "Shortcut wrapper delegating to the project-root launch.py.",
+   "tags": [
+    "script",
+    "entry-point",
+    "wrapper"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:scripts/library-smoke.py",
+   "type": "file",
+   "name": "library-smoke.py",
+   "filePath": "scripts/library-smoke.py",
+   "summary": "Smoke test of library features such as follows and reading history.",
+   "tags": [
+    "test",
+    "smoke",
+    "library",
+    "script"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:scripts/library-smoke.py:check",
+   "type": "function",
+   "name": "check",
+   "filePath": "scripts/library-smoke.py",
+   "lineRange": [
+    31,
+    34
+   ],
+   "summary": "Helper check in library-smoke.py.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:scripts/library-smoke.py:eventually",
+   "type": "function",
+   "name": "eventually",
+   "filePath": "scripts/library-smoke.py",
+   "lineRange": [
+    61,
+    67
+   ],
+   "summary": "Retries an assertion until it passes or times out.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "class:scripts/library-smoke.py:Client",
+   "type": "class",
+   "name": "Client",
+   "filePath": "scripts/library-smoke.py",
+   "lineRange": [
+    37,
+    58
+   ],
+   "summary": "Cookie and CSRF aware HTTP client for smoke tests.",
+   "tags": [
+    "class",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:scripts/recommender-smoke.py",
+   "type": "file",
+   "name": "recommender-smoke.py",
+   "filePath": "scripts/recommender-smoke.py",
+   "summary": "Smoke test of the recommender behaviour including guest follow and view rows.",
+   "tags": [
+    "test",
+    "smoke",
+    "recommender",
+    "script"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:scripts/recommender-smoke.py:check",
+   "type": "function",
+   "name": "check",
+   "filePath": "scripts/recommender-smoke.py",
+   "lineRange": [
+    29,
+    32
+   ],
+   "summary": "Helper check in recommender-smoke.py.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:scripts/recommender-smoke.py:eventually",
+   "type": "function",
+   "name": "eventually",
+   "filePath": "scripts/recommender-smoke.py",
+   "lineRange": [
+    59,
+    65
+   ],
+   "summary": "Retries an assertion until it passes or times out.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:scripts/recommender-smoke.py:guest_row_follows_view",
+   "type": "function",
+   "name": "guest_row_follows_view",
+   "filePath": "scripts/recommender-smoke.py",
+   "lineRange": [
+    81,
+    84
+   ],
+   "summary": "Helper guest_row_follows_view in recommender-smoke.py.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "class:scripts/recommender-smoke.py:Client",
+   "type": "class",
+   "name": "Client",
+   "filePath": "scripts/recommender-smoke.py",
+   "lineRange": [
+    35,
+    56
+   ],
+   "summary": "Cookie and CSRF aware HTTP client for smoke tests.",
+   "tags": [
+    "class",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:scripts/workspace-smoke.py",
+   "type": "file",
+   "name": "workspace-smoke.py",
+   "filePath": "scripts/workspace-smoke.py",
+   "summary": "Smoke test of the translation workspace flows (assign, submit, review, notifications).",
+   "tags": [
+    "test",
+    "smoke",
+    "workspace",
+    "script"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:scripts/workspace-smoke.py:check",
+   "type": "function",
+   "name": "check",
+   "filePath": "scripts/workspace-smoke.py",
+   "lineRange": [
+    31,
+    34
+   ],
+   "summary": "Helper check in workspace-smoke.py.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:scripts/workspace-smoke.py:has_notification",
+   "type": "function",
+   "name": "has_notification",
+   "filePath": "scripts/workspace-smoke.py",
+   "lineRange": [
+    58,
+    61
+   ],
+   "summary": "Checks whether a user received a notification.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:scripts/workspace-smoke.py:eventually",
+   "type": "function",
+   "name": "eventually",
+   "filePath": "scripts/workspace-smoke.py",
+   "lineRange": [
+    64,
+    70
+   ],
+   "summary": "Retries an assertion until it passes or times out.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "class:scripts/workspace-smoke.py:Client",
+   "type": "class",
+   "name": "Client",
+   "filePath": "scripts/workspace-smoke.py",
+   "lineRange": [
+    37,
+    55
+   ],
+   "summary": "Cookie and CSRF aware HTTP client for smoke tests.",
+   "tags": [
+    "class",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "config:services/community/package.json",
+   "type": "config",
+   "name": "package.json",
+   "filePath": "services/community/package.json",
+   "summary": "npm manifest for the community service.",
+   "tags": [
+    "configuration",
+    "npm",
+    "community"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:services/community/seed/demo.sql",
+   "type": "file",
+   "name": "demo.sql",
+   "filePath": "services/community/seed/demo.sql",
+   "summary": "Seed SQL adding demo Fandom posts, reactions, comments and a report once into an empty community database.",
+   "tags": [
+    "database",
+    "seed",
+    "demo",
+    "sql"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:services/community/src/auth.test.ts",
+   "type": "file",
+   "name": "auth.test.ts",
+   "filePath": "services/community/src/auth.test.ts",
+   "summary": "Tests for the community service signed user header authentication.",
+   "tags": [
+    "test",
+    "auth",
+    "community"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "config:services/community/tsconfig.json",
+   "type": "config",
+   "name": "tsconfig.json",
+   "filePath": "services/community/tsconfig.json",
+   "summary": "TypeScript compiler configuration for the community service.",
+   "tags": [
+    "configuration",
+    "typescript",
+    "community"
+   ],
+   "complexity": "simple"
+  }
+ ],
+ "edges": [
+  {
+   "source": "file:scripts/crawler.py",
+   "target": "function:scripts/crawler.py:starting_views",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/crawler.py",
+   "target": "function:scripts/crawler.py:log",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/crawler.py",
+   "target": "function:scripts/crawler.py:env_value",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/crawler.py",
+   "target": "function:scripts/crawler.py:psql",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/crawler.py",
+   "target": "function:scripts/crawler.py:q",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/crawler.py",
+   "target": "function:scripts/crawler.py:slugify",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/crawler.py",
+   "target": "function:scripts/crawler.py:text_of",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/crawler.py",
+   "target": "function:scripts/crawler.py:meta",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/crawler.py",
+   "target": "function:scripts/crawler.py:absolute",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/crawler.py",
+   "target": "function:scripts/crawler.py:chapter_number",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/crawler.py",
+   "target": "function:scripts/crawler.py:status_of",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/crawler.py",
+   "target": "function:scripts/crawler.py:image_size",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/crawler.py",
+   "target": "function:scripts/crawler.py:is_image",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/crawler.py",
+   "target": "function:scripts/crawler.py:compress_folder",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/crawler.py",
+   "target": "function:scripts/crawler.py:give_views_to_unviewed",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/crawler.py",
+   "target": "function:scripts/crawler.py:enable_random_downloads",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/crawler.py",
+   "target": "function:scripts/crawler.py:fill_missing_covers",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/crawler.py",
+   "target": "function:scripts/crawler.py:pid_alive",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/crawler.py",
+   "target": "function:scripts/crawler.py:is_crawler",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/crawler.py",
+   "target": "function:scripts/crawler.py:stop_process",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/crawler.py",
+   "target": "function:scripts/crawler.py:read_status",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/crawler.py",
+   "target": "function:scripts/crawler.py:acquire_lock",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/crawler.py",
+   "target": "function:scripts/crawler.py:release_lock",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/crawler.py",
+   "target": "function:scripts/crawler.py:print_status",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/crawler.py",
+   "target": "function:scripts/crawler.py:main",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/crawler.py",
+   "target": "class:scripts/crawler.py:Blocked",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/crawler.py",
+   "target": "class:scripts/crawler.py:Http",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/crawler.py",
+   "target": "class:scripts/crawler.py:ParagraphParser",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/crawler.py",
+   "target": "class:scripts/crawler.py:MangaDex",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/crawler.py",
+   "target": "class:scripts/crawler.py:TopTruyen",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/crawler.py",
+   "target": "class:scripts/crawler.py:Valvrare",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/crawler.py",
+   "target": "class:scripts/crawler.py:Importer",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/library-smoke.py",
+   "target": "function:scripts/library-smoke.py:check",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/library-smoke.py",
+   "target": "function:scripts/library-smoke.py:eventually",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/library-smoke.py",
+   "target": "class:scripts/library-smoke.py:Client",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/recommender-smoke.py",
+   "target": "function:scripts/recommender-smoke.py:check",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/recommender-smoke.py",
+   "target": "function:scripts/recommender-smoke.py:eventually",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/recommender-smoke.py",
+   "target": "function:scripts/recommender-smoke.py:guest_row_follows_view",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/recommender-smoke.py",
+   "target": "class:scripts/recommender-smoke.py:Client",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/workspace-smoke.py",
+   "target": "function:scripts/workspace-smoke.py:check",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/workspace-smoke.py",
+   "target": "function:scripts/workspace-smoke.py:has_notification",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/workspace-smoke.py",
+   "target": "function:scripts/workspace-smoke.py:eventually",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/workspace-smoke.py",
+   "target": "class:scripts/workspace-smoke.py:Client",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:scripts/launch.py",
+   "target": "file:launch.py",
+   "type": "depends_on",
+   "direction": "forward",
+   "weight": 0.6
+  }
+ ]
+}

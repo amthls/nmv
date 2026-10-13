@@ -1,0 +1,73 @@
+{
+ "nodes": [
+  {
+   "id": "config:frontend/.env.example",
+   "type": "config",
+   "name": ".env.example",
+   "filePath": "frontend/.env.example",
+   "summary": "Template of public Next.js environment variables (API URL, site name, site URL) for the frontend.",
+   "tags": [
+    "configuration",
+    "environment",
+    "frontend"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "config:frontend/.env.local",
+   "type": "config",
+   "name": ".env.local",
+   "filePath": "frontend/.env.local",
+   "summary": "Local development values for the frontend public environment variables pointing at the catalog API and localhost site.",
+   "tags": [
+    "configuration",
+    "environment",
+    "frontend"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "config:frontend/package.json",
+   "type": "config",
+   "name": "package.json",
+   "filePath": "frontend/package.json",
+   "summary": "npm manifest for the Next.js frontend with scripts and dependencies.",
+   "tags": [
+    "configuration",
+    "npm",
+    "nextjs",
+    "build-system"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "config:frontend/tsconfig.json",
+   "type": "config",
+   "name": "tsconfig.json",
+   "filePath": "frontend/tsconfig.json",
+   "summary": "TypeScript compiler configuration for the Next.js frontend including path aliases.",
+   "tags": [
+    "configuration",
+    "typescript",
+    "build-system"
+   ],
+   "complexity": "simple"
+  }
+ ],
+ "edges": [
+  {
+   "source": "config:frontend/tsconfig.json",
+   "target": "file:frontend/next-env.d.ts",
+   "type": "configures",
+   "direction": "forward",
+   "weight": 0.6
+  },
+  {
+   "source": "config:frontend/.env.example",
+   "target": "config:frontend/.env.local",
+   "type": "related",
+   "direction": "forward",
+   "weight": 0.5
+  }
+ ]
+}

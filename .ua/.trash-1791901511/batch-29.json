@@ -1,0 +1,344 @@
+{
+ "nodes": [
+  {
+   "id": "document:Plan/ar.md",
+   "type": "document",
+   "name": "ar.md",
+   "filePath": "Plan/ar.md",
+   "summary": "Short rough note listing initial stack choices (Next.js, Docker Compose, Postgres) and separating backend/frontend directories.",
+   "tags": [
+    "plan",
+    "documentation",
+    "notes"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "document:Plan/branch-workflow.md",
+   "type": "document",
+   "name": "branch-workflow.md",
+   "filePath": "Plan/branch-workflow.md",
+   "summary": "Checklist plan for automating the branch, PR and plan-file workflow with helper scripts.",
+   "tags": [
+    "plan",
+    "documentation",
+    "git",
+    "workflow"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "document:Plan/catalog.md",
+   "type": "document",
+   "name": "catalog.md",
+   "filePath": "Plan/catalog.md",
+   "summary": "Phase I plan for the catalog service, the remainder of the former monolithic backend.",
+   "tags": [
+    "plan",
+    "documentation",
+    "catalog",
+    "microservices"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "document:Plan/chapter-workspace.md",
+   "type": "document",
+   "name": "chapter-workspace.md",
+   "filePath": "Plan/chapter-workspace.md",
+   "summary": "Detailed plan for the chapter workspace with an official branch and draft revisions in a pull-request style.",
+   "tags": [
+    "plan",
+    "documentation",
+    "workspace",
+    "chapters",
+    "design"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "document:Plan/community.md",
+   "type": "document",
+   "name": "community.md",
+   "filePath": "Plan/community.md",
+   "summary": "Phase F plan for the TypeScript community service.",
+   "tags": [
+    "plan",
+    "documentation",
+    "community",
+    "microservices"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "document:Plan/dm-labels-block-pin.md",
+   "type": "document",
+   "name": "dm-labels-block-pin.md",
+   "filePath": "Plan/dm-labels-block-pin.md",
+   "summary": "Plan for direct-message labels, label search, blocking and pinning.",
+   "tags": [
+    "plan",
+    "documentation",
+    "messaging",
+    "feature"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "document:Plan/identity.md",
+   "type": "document",
+   "name": "identity.md",
+   "filePath": "Plan/identity.md",
+   "summary": "Phase B plan for the Go identity service covering login, sessions, signed headers and data sync.",
+   "tags": [
+    "plan",
+    "documentation",
+    "identity",
+    "microservices",
+    "security"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "document:Plan/library.md",
+   "type": "document",
+   "name": "library.md",
+   "filePath": "Plan/library.md",
+   "summary": "Phase G plan for the Go library service handling follows, bookmarks, albums and reading history.",
+   "tags": [
+    "plan",
+    "documentation",
+    "library",
+    "microservices"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "document:Plan/load-and-layout.md",
+   "type": "document",
+   "name": "load-and-layout.md",
+   "filePath": "Plan/load-and-layout.md",
+   "summary": "Plan for unified search, story cards, non-bloating grids and overload protection.",
+   "tags": [
+    "plan",
+    "documentation",
+    "frontend",
+    "performance"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "document:Plan/load.md",
+   "type": "document",
+   "name": "load.md",
+   "filePath": "Plan/load.md",
+   "summary": "Research and plan for reducing request load and adding per-user write rate limits.",
+   "tags": [
+    "plan",
+    "documentation",
+    "performance",
+    "rate-limiting"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "document:Plan/media.md",
+   "type": "document",
+   "name": "media.md",
+   "filePath": "Plan/media.md",
+   "summary": "Phase D plan for the TypeScript media service.",
+   "tags": [
+    "plan",
+    "documentation",
+    "media",
+    "microservices"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "document:Plan/messaging.md",
+   "type": "document",
+   "name": "messaging.md",
+   "filePath": "Plan/messaging.md",
+   "summary": "Phase E plan for the Go messaging service, split into four branches.",
+   "tags": [
+    "plan",
+    "documentation",
+    "messaging",
+    "microservices"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "document:Plan/microservices.md",
+   "type": "document",
+   "name": "microservices.md",
+   "filePath": "Plan/microservices.md",
+   "summary": "Master plan for splitting NovelHub into multiple services, with service table, phases, shared rules and data consistency design.",
+   "tags": [
+    "plan",
+    "documentation",
+    "microservices",
+    "architecture",
+    "roadmap"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "document:Plan/navigation.md",
+   "type": "document",
+   "name": "navigation.md",
+   "filePath": "Plan/navigation.md",
+   "summary": "Plan for back navigation based on the previous in-site route, removing hard-coded breadcrumbs.",
+   "tags": [
+    "plan",
+    "documentation",
+    "frontend",
+    "navigation"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "document:Plan/next15-and-push.md",
+   "type": "document",
+   "name": "next15-and-push.md",
+   "filePath": "Plan/next15-and-push.md",
+   "summary": "Plan to push code to GitHub and upgrade Next.js 14 to 15.",
+   "tags": [
+    "plan",
+    "documentation",
+    "nextjs",
+    "upgrade"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "document:Plan/no-approval.md",
+   "type": "document",
+   "name": "no-approval.md",
+   "filePath": "Plan/no-approval.md",
+   "summary": "Plan to remove the content approval step so admins and mods only take down violating content.",
+   "tags": [
+    "plan",
+    "documentation",
+    "moderation",
+    "feature"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "document:Plan/recommender.md",
+   "type": "document",
+   "name": "recommender.md",
+   "filePath": "Plan/recommender.md",
+   "summary": "Phase H plan for the Python recommender service.",
+   "tags": [
+    "plan",
+    "documentation",
+    "recommender",
+    "microservices"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "document:Plan/remove-backup-purge.md",
+   "type": "document",
+   "name": "remove-backup-purge.md",
+   "filePath": "Plan/remove-backup-purge.md",
+   "summary": "Plan to remove backups and the automatic purge of taken-down stories after 60 days.",
+   "tags": [
+    "plan",
+    "documentation",
+    "cleanup",
+    "feature"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "document:Plan/remove-ratings.md",
+   "type": "document",
+   "name": "remove-ratings.md",
+   "filePath": "Plan/remove-ratings.md",
+   "summary": "Plan to fully remove the story rating feature.",
+   "tags": [
+    "plan",
+    "documentation",
+    "cleanup",
+    "feature"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "document:Plan/review-followups.md",
+   "type": "document",
+   "name": "review-followups.md",
+   "filePath": "Plan/review-followups.md",
+   "summary": "Plan fixing items from code review follow-ups (#38, #43, #45).",
+   "tags": [
+    "plan",
+    "documentation",
+    "review",
+    "fixes"
+   ],
+   "complexity": "moderate"
+  }
+ ],
+ "edges": [
+  {
+   "source": "document:Plan/catalog.md",
+   "target": "document:Plan/microservices.md",
+   "type": "related",
+   "direction": "forward",
+   "weight": 0.5
+  },
+  {
+   "source": "document:Plan/community.md",
+   "target": "document:Plan/microservices.md",
+   "type": "related",
+   "direction": "forward",
+   "weight": 0.5
+  },
+  {
+   "source": "document:Plan/identity.md",
+   "target": "document:Plan/microservices.md",
+   "type": "related",
+   "direction": "forward",
+   "weight": 0.5
+  },
+  {
+   "source": "document:Plan/library.md",
+   "target": "document:Plan/microservices.md",
+   "type": "related",
+   "direction": "forward",
+   "weight": 0.5
+  },
+  {
+   "source": "document:Plan/media.md",
+   "target": "document:Plan/microservices.md",
+   "type": "related",
+   "direction": "forward",
+   "weight": 0.5
+  },
+  {
+   "source": "document:Plan/messaging.md",
+   "target": "document:Plan/microservices.md",
+   "type": "related",
+   "direction": "forward",
+   "weight": 0.5
+  },
+  {
+   "source": "document:Plan/recommender.md",
+   "target": "document:Plan/microservices.md",
+   "type": "related",
+   "direction": "forward",
+   "weight": 0.5
+  },
+  {
+   "source": "document:Plan/navigation.md",
+   "target": "document:CLAUDE.md",
+   "type": "related",
+   "direction": "forward",
+   "weight": 0.5
+  }
+ ]
+}

@@ -1,0 +1,161 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 1,
+  "filesSkipped": [
+    "catalog/.dockerignore"
+  ],
+  "filesUnreadable": [],
+  "analysisOutcomes": {
+    "structure": {
+      "succeeded": 1,
+      "failed": 0
+    },
+    "callGraph": {
+      "succeeded": 0,
+      "failed": 0,
+      "skipped": 1
+    }
+  },
+  "results": [
+    {
+      "path": "catalog/Dockerfile",
+      "language": "dockerfile",
+      "fileCategory": "infra",
+      "totalLines": 36,
+      "nonEmptyLines": 24,
+      "services": [
+        {
+          "name": "builder",
+          "image": "node:22-slim",
+          "ports": [],
+          "startLine": 1,
+          "endLine": 13
+        },
+        {
+          "name": "runner",
+          "image": "node:22-slim",
+          "ports": [
+            5000
+          ],
+          "startLine": 14,
+          "endLine": 37
+        }
+      ],
+      "steps": [
+        {
+          "name": "FROM node:22-slim AS builder",
+          "startLine": 1,
+          "endLine": 1
+        },
+        {
+          "name": "WORKDIR /app",
+          "startLine": 3,
+          "endLine": 3
+        },
+        {
+          "name": "RUN apt-get -o Acquire::Check-Date=false update -y && apt-get in",
+          "startLine": 5,
+          "endLine": 5
+        },
+        {
+          "name": "COPY package.json yarn.lock* ./",
+          "startLine": 7,
+          "endLine": 7
+        },
+        {
+          "name": "RUN yarn install",
+          "startLine": 8,
+          "endLine": 8
+        },
+        {
+          "name": "COPY . .",
+          "startLine": 10,
+          "endLine": 10
+        },
+        {
+          "name": "RUN npx prisma generate",
+          "startLine": 11,
+          "endLine": 11
+        },
+        {
+          "name": "RUN yarn build",
+          "startLine": 12,
+          "endLine": 12
+        },
+        {
+          "name": "FROM node:22-slim AS runner",
+          "startLine": 14,
+          "endLine": 14
+        },
+        {
+          "name": "WORKDIR /app",
+          "startLine": 16,
+          "endLine": 16
+        },
+        {
+          "name": "RUN apt-get -o Acquire::Check-Date=false update -y     && apt-ge",
+          "startLine": 19,
+          "endLine": 19
+        },
+        {
+          "name": "ENV NODE_ENV=production",
+          "startLine": 21,
+          "endLine": 21
+        },
+        {
+          "name": "COPY --from=builder /app/package.json ./",
+          "startLine": 23,
+          "endLine": 23
+        },
+        {
+          "name": "COPY --from=builder /app/node_modules ./node_modules",
+          "startLine": 24,
+          "endLine": 24
+        },
+        {
+          "name": "COPY --from=builder /app/dist ./dist",
+          "startLine": 25,
+          "endLine": 25
+        },
+        {
+          "name": "COPY --from=builder /app/prisma ./prisma",
+          "startLine": 26,
+          "endLine": 26
+        },
+        {
+          "name": "COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh",
+          "startLine": 29,
+          "endLine": 29
+        },
+        {
+          "name": "RUN sed -i 's/\\r$//' /usr/local/bin/docker-entrypoint.sh && chmo",
+          "startLine": 30,
+          "endLine": 30
+        },
+        {
+          "name": "ENTRYPOINT [\"docker-entrypoint.sh\"]",
+          "startLine": 32,
+          "endLine": 32
+        },
+        {
+          "name": "EXPOSE 5000",
+          "startLine": 34,
+          "endLine": 34
+        },
+        {
+          "name": "CMD [\"node\", \"dist/server.js\"]",
+          "startLine": 36,
+          "endLine": 36
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "serviceCount": 2,
+        "stepCount": 21
+      }
+    }
+  ]
+}
