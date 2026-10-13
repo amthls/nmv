@@ -320,6 +320,7 @@ CREATE TABLE stories (
     source_name         VARCHAR(50),    -- where an imported story came from (scripts/crawler.py)
     source_id           VARCHAR(100),
     source_url          TEXT,
+    allow_download      BOOLEAN NOT NULL DEFAULT false, -- the team lets readers download EPUB/PDF (media service)
     created_at          TIMESTAMPTZ DEFAULT NOW(),
     updated_at          TIMESTAMPTZ DEFAULT NOW()
 );
@@ -1052,76 +1053,8 @@ INSERT INTO group_members (group_id, user_id, role) VALUES
 ('e0000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000008', 'member'),
 ('e0000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000005', 'leader');
 
--- Theo dõi dịch giả
-INSERT INTO user_follows (follower_id, following_id) VALUES
-('a0000000-0000-0000-0000-000000000009', 'a0000000-0000-0000-0000-000000000004'),
-('a0000000-0000-0000-0000-000000000009', 'a0000000-0000-0000-0000-000000000005'),
-('a0000000-0000-0000-0000-000000000009', 'a0000000-0000-0000-0000-000000000006'),
-('a0000000-0000-0000-0000-000000000010', 'a0000000-0000-0000-0000-000000000007'),
-('a0000000-0000-0000-0000-000000000010', 'a0000000-0000-0000-0000-000000000004'),
-('a0000000-0000-0000-0000-000000000011', 'a0000000-0000-0000-0000-000000000005'),
-('a0000000-0000-0000-0000-000000000011', 'a0000000-0000-0000-0000-000000000006'),
-('a0000000-0000-0000-0000-000000000012', 'a0000000-0000-0000-0000-000000000004');
-
--- Thông báo (Notifications)
-INSERT INTO notifications (user_id, type, title, message, reference_type, sender_id) VALUES
-('a0000000-0000-0000-0000-000000000009', 'system', '🎉 Chào mừng đến NovelHub!', 'Cảm ơn bạn đã đăng ký tài khoản. Hãy khám phá kho truyện đồ sộ của chúng tôi!', NULL, 'a0000000-0000-0000-0000-000000000001'),
-('a0000000-0000-0000-0000-000000000010', 'system', '🎉 Chào mừng đến NovelHub!', 'Cảm ơn bạn đã đăng ký tài khoản. Hãy khám phá kho truyện đồ sộ của chúng tôi!', NULL, 'a0000000-0000-0000-0000-000000000001'),
-('a0000000-0000-0000-0000-000000000011', 'system', '🎉 Chào mừng đến NovelHub!', 'Cảm ơn bạn đã đăng ký tài khoản. Hãy khám phá kho truyện đồ sộ của chúng tôi!', NULL, 'a0000000-0000-0000-0000-000000000001'),
-('a0000000-0000-0000-0000-000000000012', 'system', '🎉 Chào mừng đến NovelHub!', 'Cảm ơn bạn đã đăng ký tài khoản. Hãy khám phá kho truyện đồ sộ của chúng tôi!', NULL, 'a0000000-0000-0000-0000-000000000001'),
-('a0000000-0000-0000-0000-000000000008', 'group_invite', 'Lời mời tham gia nhóm dịch', 'Bạn đã được mời tham gia nhóm dịch "Neko Translation"', 'group', 'a0000000-0000-0000-0000-000000000004'),
-('a0000000-0000-0000-0000-000000000005', 'group_member_add', 'Thành viên mới trong nhóm', 'Usagi Editor đã tham gia nhóm "Neko Translation"', 'group', NULL);
-
--- Broadcast Notifications
-INSERT INTO broadcast_notifications (sender_id, title, message) VALUES
-('a0000000-0000-0000-0000-000000000001', '📢 Cập nhật hệ thống v2.0', 'Chúng tôi vừa cập nhật giao diện mới với nhiều tính năng hấp dẫn. Hãy trải nghiệm ngay!'),
-('a0000000-0000-0000-0000-000000000001', '🎊 Sự kiện đọc truyện mùa hè', 'Tham gia sự kiện đọc truyện mùa hè để nhận badge đặc biệt! Chi tiết tại trang sự kiện.');
-
--- Posts (Fandom/Blog)
-INSERT INTO posts (id, user_id, title, slug, content, story_id, is_published) VALUES
-('f0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000009',
-    'Top 10 Light Novel Isekai hay nhất 2026 - Không thể bỏ lỡ!',
-    'top-10-light-novel-isekai-2026',
-    E'## Danh sách Top 10 Isekai LN hay nhất năm nay\n\nXin chào mọi người! Mình là Hana, hôm nay mình muốn chia sẻ danh sách top 10 Light Novel Isekai mà mình đã đọc trong năm 2026.\n\n### 1. Mushoku Tensei\nKinh điển không cần bàn cãi...\n\n### 2. Re:Zero\nChuyển sinh vào thế giới khác với khả năng quay về sau khi chết...\n\n### 3. Overlord\nBị kẹt trong game MMORPG với sức mạnh tối thượng...\n\nCác bạn có bộ nào muốn thêm vào danh sách không? Comment bên dưới nhé! 👇',
-    NULL, TRUE),
-('f0000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000010',
-    'Review: Solo Leveling - Từ E-rank lên Shadow Monarch',
-    'review-solo-leveling',
-    E'## Solo Leveling - Review chi tiết\n\n**Rating: 9/10** ⭐\n\nSolo Leveling là một trong những manhwa hay nhất mình từng đọc. Câu chuyện về Sung Jin-Woo từ một hunter E-rank yếu nhất trở thành Shadow Monarch mạnh nhất thế giới.\n\n### Điểm mạnh:\n- Artwork tuyệt đẹp\n- Power progression hợp lý\n- Action scenes đỉnh cao\n\n### Điểm yếu:\n- Side characters thiếu chiều sâu\n- Ending hơi rushed\n\nTổng kết: MUST READ! 🔥',
-    NULL, TRUE),
-('f0000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000011',
-    'Chia sẻ: Tại sao Slice of Life là thể loại tuyệt vời nhất?',
-    'tai-sao-slice-of-life-tuyet-voi',
-    E'## Slice of Life - Thể loại bị đánh giá thấp\n\nMọi người thường bỏ qua Slice of Life vì nghĩ nó "chán", nhưng thực tế đây là thể loại mang lại cảm giác thư giãn và healing nhất.\n\n### Vì sao mình yêu SoL:\n1. **Healing**: Sau một ngày mệt mỏi, SoL giúp mình thư giãn\n2. **Nhân vật chân thực**: Không cần super power, chỉ cần cuộc sống bình thường\n3. **Cảm xúc sâu sắc**: Những khoảnh khắc nhỏ nhưng đầy ý nghĩa\n\nCác bạn có thích SoL không? Bộ SoL yêu thích của bạn là gì? 🌸',
-    NULL, TRUE);
-
--- Post Reactions
-INSERT INTO post_reactions (post_id, user_id, reaction) VALUES
-('f0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000010', 'like'),
-('f0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000011', 'love'),
-('f0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000012', 'like'),
-('f0000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000004', 'love'),
-('f0000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000009', 'wow'),
-('f0000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000012', 'like'),
-('f0000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000009', 'love'),
-('f0000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000010', 'like');
-
--- Comments
-INSERT INTO comments (id, user_id, target_type, target_id, parent_id, root_id, depth, content) VALUES
-('11000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000010', 'post', 'f0000000-0000-0000-0000-000000000001', NULL, NULL, 0, 'Danh sách hay quá! Mình cũng đang đọc Mushoku Tensei, đỉnh thật 🔥'),
-('11000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000012', 'post', 'f0000000-0000-0000-0000-000000000001', NULL, NULL, 0, 'Thiếu Konosuba rồi bạn ơi! Bộ đó hài vãi 😂'),
-('11000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000009', 'post', 'f0000000-0000-0000-0000-000000000001', '11000000-0000-0000-0000-000000000002', '11000000-0000-0000-0000-000000000002', 1, 'Ôi đúng rồi! Mình quên mất Konosuba! Sẽ update thêm 😅'),
-('11000000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000009', 'post', 'f0000000-0000-0000-0000-000000000002', NULL, NULL, 0, 'Mình cũng cho 9/10. Ending hơi tiếc nhưng overall vẫn là masterpiece!'),
-('11000000-0000-0000-0000-000000000005', 'a0000000-0000-0000-0000-000000000011', 'post', 'f0000000-0000-0000-0000-000000000002', NULL, NULL, 0, 'Artwork cũng là điểm mạnh lớn nhất. Mỗi panel đều như wallpaper 🖼️');
-
--- Update stats on posts
-UPDATE posts SET
-    reaction_count = (SELECT COUNT(*) FROM post_reactions WHERE post_id = posts.id),
-    comment_count = (SELECT COUNT(*) FROM comments WHERE target_type = 'post' AND target_id = posts.id);
-
--- Reports
-INSERT INTO reports (reporter_id, target_type, target_id, reason, description, status) VALUES
-('a0000000-0000-0000-0000-000000000009', 'comment', '11000000-0000-0000-0000-000000000001', 'spam', 'Comment này có vẻ là spam', 'pending');
+-- Sample follows, notifications, Fandom posts, comments and reports live in the services now (their tables are
+-- dropped below, 027): launch.py loads services/{library,messaging,community}/seed/demo.sql into an empty install.
 
 -- Recommendations (sql/migrations/010_recommendations.sql)
 -- Recommendations ("Đề xuất cho bạn" on the home page, "Truyện liên quan" on a story page).
@@ -1488,7 +1421,7 @@ ALTER TABLE users DROP COLUMN IF EXISTS last_login_at;
 
 -- 027: drop the tables whose data moved to other services (Plan/catalog.md, stage I1): messaging (messages,
 -- notifications), community (posts, comments, reports), library (follows, bookmarks, history, albums), recommender
--- (rec_*), media (story_exports). A fresh install therefore has no sample posts, comments or notifications.
+-- (rec_*), media (story_exports). Sample rows for them: services/*/seed/demo.sql.
 DROP TABLE IF EXISTS
   direct_messages, group_messages, user_blocks, dm_label_conversations, dm_labels, notifications, broadcast_notifications,
   post_notification_mutes, post_reactions, post_tags, comment_likes, comments, reports, posts,

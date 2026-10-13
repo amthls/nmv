@@ -540,6 +540,13 @@ def run_checks(env, timeout):
         record("chapters in workspace (import)", res.returncode == 0,
                next((l for l in out.splitlines() if "import:" in l), out.strip()[-300:]))
 
+        # Sample rows the services own (the backend copies are dropped by database.sql); each file adds them once, empty DBs only
+        for svc, db in (("library", "library_db"), ("messaging", "messaging_db"), ("community", "community_db")):
+            with open(os.path.join(ROOT, "services", svc, "seed", "demo.sql"), "rb") as f:
+                res = subprocess.run(["docker", "compose", "exec", "-T", "postgres", "psql", "-v", "ON_ERROR_STOP=1", "-q",
+                                      "-U", env.get("POSTGRES_USER", "postgres"), "-d", db], cwd=ROOT, stdin=f, capture_output=True)
+            record(f"sample data in {svc} (seed/demo.sql)", res.returncode == 0, res.stderr.decode(errors="replace").strip()[:300])
+
     # Search service
     es_auth = base64.b64encode(f"elastic:{env.get('ELASTIC_PASSWORD', '')}".encode()).decode()
     code, body = http("GET", f"{search}/_cluster/health", headers={"Authorization": f"Basic {es_auth}"})

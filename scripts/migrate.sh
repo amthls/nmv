@@ -64,3 +64,9 @@ fi
 if docker compose config --services 2>/dev/null | grep -qx workspace; then
   docker compose run --rm workspace import
 fi
+
+# Sample follows, notifications and Fandom posts live in the services (database.sql drops the backend copies): each file
+# adds them once and only into an empty service database
+for svc in library messaging community; do
+  docker compose exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -q -U "$POSTGRES_USER" -d "$1"' psql "${svc}_db" < "services/$svc/seed/demo.sql"
+done
