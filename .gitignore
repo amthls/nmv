@@ -19,3 +19,4 @@ __pycache__/
 # Go binaries from a local `go build`
 services/*/*.exe
 .ua/intermediate/
+.ua/.trash-*/
