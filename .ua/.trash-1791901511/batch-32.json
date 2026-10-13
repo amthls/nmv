@@ -1,0 +1,272 @@
+{
+ "nodes": [
+  {
+   "id": "config:events/catalog.chapter.read.v1.json",
+   "type": "config",
+   "name": "catalog.chapter.read.v1.json",
+   "filePath": "events/catalog.chapter.read.v1.json",
+   "summary": "JSON schema for the catalog.chapter.read event published when a chapter is read.",
+   "tags": [
+    "event-schema",
+    "json-schema",
+    "messaging",
+    "contract"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "config:events/catalog.story.viewed.v1.json",
+   "type": "config",
+   "name": "catalog.story.viewed.v1.json",
+   "filePath": "events/catalog.story.viewed.v1.json",
+   "summary": "JSON schema for the catalog.story.viewed event published when a story is viewed.",
+   "tags": [
+    "event-schema",
+    "json-schema",
+    "messaging",
+    "contract"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "config:events/envelope.v1.json",
+   "type": "config",
+   "name": "envelope.v1.json",
+   "filePath": "events/envelope.v1.json",
+   "summary": "Base JSON schema envelope for every event on the novelhub.events exchange, with versioning and dedupe rules.",
+   "tags": [
+    "event-schema",
+    "json-schema",
+    "messaging",
+    "contract"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "config:events/identity.alert.v1.json",
+   "type": "config",
+   "name": "identity.alert.v1.json",
+   "filePath": "events/identity.alert.v1.json",
+   "summary": "JSON schema for identity alert events.",
+   "tags": [
+    "event-schema",
+    "json-schema",
+    "messaging",
+    "contract"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "config:events/identity.user.v1.json",
+   "type": "config",
+   "name": "identity.user.v1.json",
+   "filePath": "events/identity.user.v1.json",
+   "summary": "JSON schema for identity user created/updated/deleted events used to sync user copies.",
+   "tags": [
+    "event-schema",
+    "json-schema",
+    "messaging",
+    "contract"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "config:events/library.album.story_added.v1.json",
+   "type": "config",
+   "name": "library.album.story_added.v1.json",
+   "filePath": "events/library.album.story_added.v1.json",
+   "summary": "JSON schema for the event emitted when a story is added to an album.",
+   "tags": [
+    "event-schema",
+    "json-schema",
+    "messaging",
+    "contract"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "config:events/library.album.story_removed.v1.json",
+   "type": "config",
+   "name": "library.album.story_removed.v1.json",
+   "filePath": "events/library.album.story_removed.v1.json",
+   "summary": "JSON schema for the event emitted when a story is removed from an album.",
+   "tags": [
+    "event-schema",
+    "json-schema",
+    "messaging",
+    "contract"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "config:events/library.bookmark.created.v1.json",
+   "type": "config",
+   "name": "library.bookmark.created.v1.json",
+   "filePath": "events/library.bookmark.created.v1.json",
+   "summary": "JSON schema for the event emitted when a bookmark is created.",
+   "tags": [
+    "event-schema",
+    "json-schema",
+    "messaging",
+    "contract"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "config:events/library.bookmark.deleted.v1.json",
+   "type": "config",
+   "name": "library.bookmark.deleted.v1.json",
+   "filePath": "events/library.bookmark.deleted.v1.json",
+   "summary": "JSON schema for the event emitted when a bookmark is deleted.",
+   "tags": [
+    "event-schema",
+    "json-schema",
+    "messaging",
+    "contract"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "config:events/library.story.followed.v1.json",
+   "type": "config",
+   "name": "library.story.followed.v1.json",
+   "filePath": "events/library.story.followed.v1.json",
+   "summary": "JSON schema for the event emitted when a user follows a story.",
+   "tags": [
+    "event-schema",
+    "json-schema",
+    "messaging",
+    "contract"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "config:events/library.story.unfollowed.v1.json",
+   "type": "config",
+   "name": "library.story.unfollowed.v1.json",
+   "filePath": "events/library.story.unfollowed.v1.json",
+   "summary": "JSON schema for the event emitted when a user unfollows a story.",
+   "tags": [
+    "event-schema",
+    "json-schema",
+    "messaging",
+    "contract"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "config:events/workspace.revision.merged.v1.json",
+   "type": "config",
+   "name": "workspace.revision.merged.v1.json",
+   "filePath": "events/workspace.revision.merged.v1.json",
+   "summary": "JSON schema for the event emitted when a workspace revision is merged.",
+   "tags": [
+    "event-schema",
+    "json-schema",
+    "messaging",
+    "contract"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "config:events/workspace.task.opened.v1.json",
+   "type": "config",
+   "name": "workspace.task.opened.v1.json",
+   "filePath": "events/workspace.task.opened.v1.json",
+   "summary": "JSON schema for the event emitted when a workspace task is opened.",
+   "tags": [
+    "event-schema",
+    "json-schema",
+    "messaging",
+    "contract"
+   ],
+   "complexity": "simple"
+  }
+ ],
+ "edges": [
+  {
+   "source": "config:events/catalog.chapter.read.v1.json",
+   "target": "config:events/envelope.v1.json",
+   "type": "depends_on",
+   "direction": "forward",
+   "weight": 0.6
+  },
+  {
+   "source": "config:events/catalog.story.viewed.v1.json",
+   "target": "config:events/envelope.v1.json",
+   "type": "depends_on",
+   "direction": "forward",
+   "weight": 0.6
+  },
+  {
+   "source": "config:events/identity.alert.v1.json",
+   "target": "config:events/envelope.v1.json",
+   "type": "depends_on",
+   "direction": "forward",
+   "weight": 0.6
+  },
+  {
+   "source": "config:events/identity.user.v1.json",
+   "target": "config:events/envelope.v1.json",
+   "type": "depends_on",
+   "direction": "forward",
+   "weight": 0.6
+  },
+  {
+   "source": "config:events/library.album.story_added.v1.json",
+   "target": "config:events/envelope.v1.json",
+   "type": "depends_on",
+   "direction": "forward",
+   "weight": 0.6
+  },
+  {
+   "source": "config:events/library.album.story_removed.v1.json",
+   "target": "config:events/envelope.v1.json",
+   "type": "depends_on",
+   "direction": "forward",
+   "weight": 0.6
+  },
+  {
+   "source": "config:events/library.bookmark.created.v1.json",
+   "target": "config:events/envelope.v1.json",
+   "type": "depends_on",
+   "direction": "forward",
+   "weight": 0.6
+  },
+  {
+   "source": "config:events/library.bookmark.deleted.v1.json",
+   "target": "config:events/envelope.v1.json",
+   "type": "depends_on",
+   "direction": "forward",
+   "weight": 0.6
+  },
+  {
+   "source": "config:events/library.story.followed.v1.json",
+   "target": "config:events/envelope.v1.json",
+   "type": "depends_on",
+   "direction": "forward",
+   "weight": 0.6
+  },
+  {
+   "source": "config:events/library.story.unfollowed.v1.json",
+   "target": "config:events/envelope.v1.json",
+   "type": "depends_on",
+   "direction": "forward",
+   "weight": 0.6
+  },
+  {
+   "source": "config:events/workspace.revision.merged.v1.json",
+   "target": "config:events/envelope.v1.json",
+   "type": "depends_on",
+   "direction": "forward",
+   "weight": 0.6
+  },
+  {
+   "source": "config:events/workspace.task.opened.v1.json",
+   "target": "config:events/envelope.v1.json",
+   "type": "depends_on",
+   "direction": "forward",
+   "weight": 0.6
+  }
+ ]
+}

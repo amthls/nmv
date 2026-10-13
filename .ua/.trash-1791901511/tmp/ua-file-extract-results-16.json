@@ -1,0 +1,166 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 1,
+  "filesSkipped": [
+    "services/media/.dockerignore"
+  ],
+  "filesUnreadable": [],
+  "analysisOutcomes": {
+    "structure": {
+      "succeeded": 1,
+      "failed": 0
+    },
+    "callGraph": {
+      "succeeded": 0,
+      "failed": 0,
+      "skipped": 1
+    }
+  },
+  "results": [
+    {
+      "path": "services/media/Dockerfile",
+      "language": "dockerfile",
+      "fileCategory": "infra",
+      "totalLines": 30,
+      "nonEmptyLines": 28,
+      "services": [
+        {
+          "name": "builder",
+          "image": "node:22-slim",
+          "ports": [],
+          "startLine": 1,
+          "endLine": 8
+        },
+        {
+          "name": "node",
+          "image": "node:22-slim",
+          "ports": [
+            8080
+          ],
+          "startLine": 9,
+          "endLine": 31
+        }
+      ],
+      "steps": [
+        {
+          "name": "FROM node:22-slim AS builder",
+          "startLine": 1,
+          "endLine": 1
+        },
+        {
+          "name": "WORKDIR /app",
+          "startLine": 2,
+          "endLine": 2
+        },
+        {
+          "name": "COPY package.json yarn.lock ./",
+          "startLine": 3,
+          "endLine": 3
+        },
+        {
+          "name": "RUN yarn install --frozen-lockfile",
+          "startLine": 4,
+          "endLine": 4
+        },
+        {
+          "name": "COPY tsconfig.json ./",
+          "startLine": 5,
+          "endLine": 5
+        },
+        {
+          "name": "COPY src ./src",
+          "startLine": 6,
+          "endLine": 6
+        },
+        {
+          "name": "RUN yarn build && yarn install --frozen-lockfile --production",
+          "startLine": 7,
+          "endLine": 7
+        },
+        {
+          "name": "FROM node:22-slim",
+          "startLine": 9,
+          "endLine": 9
+        },
+        {
+          "name": "WORKDIR /app",
+          "startLine": 10,
+          "endLine": 10
+        },
+        {
+          "name": "RUN apt-get -o Acquire::Check-Date=false update -y && apt-get up",
+          "startLine": 13,
+          "endLine": 13
+        },
+        {
+          "name": "ENV NODE_ENV=production",
+          "startLine": 16,
+          "endLine": 16
+        },
+        {
+          "name": "COPY --from=builder /app/package.json ./",
+          "startLine": 17,
+          "endLine": 17
+        },
+        {
+          "name": "COPY --from=builder /app/node_modules ./node_modules",
+          "startLine": 18,
+          "endLine": 18
+        },
+        {
+          "name": "COPY --from=builder /app/dist ./dist",
+          "startLine": 19,
+          "endLine": 19
+        },
+        {
+          "name": "COPY assets ./assets",
+          "startLine": 20,
+          "endLine": 20
+        },
+        {
+          "name": "COPY migrations ./migrations",
+          "startLine": 21,
+          "endLine": 21
+        },
+        {
+          "name": "COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh",
+          "startLine": 24,
+          "endLine": 24
+        },
+        {
+          "name": "RUN sed -i 's/\\r$//' /usr/local/bin/docker-entrypoint.sh && chmo",
+          "startLine": 25,
+          "endLine": 25
+        },
+        {
+          "name": "ENTRYPOINT [\"docker-entrypoint.sh\"]",
+          "startLine": 27,
+          "endLine": 27
+        },
+        {
+          "name": "EXPOSE 8080",
+          "startLine": 28,
+          "endLine": 28
+        },
+        {
+          "name": "HEALTHCHECK --interval=10s --timeout=3s --retries=5 CMD [\"node\", \"dist/s",
+          "startLine": 29,
+          "endLine": 29
+        },
+        {
+          "name": "CMD [\"node\", \"dist/server.js\"]",
+          "startLine": 30,
+          "endLine": 30
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "serviceCount": 2,
+        "stepCount": 22
+      }
+    }
+  ]
+}

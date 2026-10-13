@@ -1,0 +1,662 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 5,
+  "filesSkipped": [],
+  "filesUnreadable": [],
+  "analysisOutcomes": {
+    "structure": {
+      "succeeded": 5,
+      "failed": 0
+    },
+    "callGraph": {
+      "succeeded": 0,
+      "failed": 0,
+      "skipped": 5
+    }
+  },
+  "results": [
+    {
+      "path": ".env.example",
+      "language": "config",
+      "fileCategory": "config",
+      "totalLines": 85,
+      "nonEmptyLines": 73,
+      "definitions": [
+        {
+          "name": "POSTGRES_USER",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 6,
+          "endLine": 6
+        },
+        {
+          "name": "POSTGRES_PASSWORD",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 7,
+          "endLine": 7
+        },
+        {
+          "name": "POSTGRES_DB",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 8,
+          "endLine": 8
+        },
+        {
+          "name": "POSTGRES_PORT",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 9,
+          "endLine": 9
+        },
+        {
+          "name": "POSTGRES_HOST",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 10,
+          "endLine": 10
+        },
+        {
+          "name": "DATABASE_URL",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 13,
+          "endLine": 13
+        },
+        {
+          "name": "PORT",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 16,
+          "endLine": 16
+        },
+        {
+          "name": "NODE_ENV",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 17,
+          "endLine": 17
+        },
+        {
+          "name": "CORS_ORIGIN",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 18,
+          "endLine": 18
+        },
+        {
+          "name": "NEXT_PUBLIC_API_URL",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 21,
+          "endLine": 21
+        },
+        {
+          "name": "NEXT_PUBLIC_SITE_NAME",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 22,
+          "endLine": 22
+        },
+        {
+          "name": "NEXT_PUBLIC_SITE_URL",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 23,
+          "endLine": 23
+        },
+        {
+          "name": "PGADMIN_PORT",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 26,
+          "endLine": 26
+        },
+        {
+          "name": "PGADMIN_DEFAULT_EMAIL",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 27,
+          "endLine": 27
+        },
+        {
+          "name": "PGADMIN_DEFAULT_PASSWORD",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 28,
+          "endLine": 28
+        },
+        {
+          "name": "SEARCH_URL",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 32,
+          "endLine": 32
+        },
+        {
+          "name": "SEARCH_INDEX",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 33,
+          "endLine": 33
+        },
+        {
+          "name": "SEARCH_PORT",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 34,
+          "endLine": 34
+        },
+        {
+          "name": "RABBITMQ_URL",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 37,
+          "endLine": 37
+        },
+        {
+          "name": "RABBITMQ_USER",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 38,
+          "endLine": 38
+        },
+        {
+          "name": "RABBITMQ_PASSWORD",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 39,
+          "endLine": 39
+        },
+        {
+          "name": "RABBITMQ_MANAGEMENT_PORT",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 40,
+          "endLine": 40
+        },
+        {
+          "name": "REDIS_PASSWORD",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 43,
+          "endLine": 43
+        },
+        {
+          "name": "REDIS_PORT",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 44,
+          "endLine": 44
+        },
+        {
+          "name": "ELASTIC_PASSWORD",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 47,
+          "endLine": 47
+        },
+        {
+          "name": "IDENTITY_DB_PASSWORD",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 50,
+          "endLine": 50
+        },
+        {
+          "name": "IDENTITY_JWT_SECRET",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 51,
+          "endLine": 51
+        },
+        {
+          "name": "TURNSTILE_SITE_KEY",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 53,
+          "endLine": 53
+        },
+        {
+          "name": "TURNSTILE_SECRET",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 54,
+          "endLine": 54
+        },
+        {
+          "name": "USER_SIG_KEY_CATALOG",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 57,
+          "endLine": 57
+        },
+        {
+          "name": "USER_SIG_KEY_WORKSPACE",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 58,
+          "endLine": 58
+        },
+        {
+          "name": "USER_SIG_KEY_MEDIA",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 59,
+          "endLine": 59
+        },
+        {
+          "name": "USER_SIG_KEY_MESSAGING",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 60,
+          "endLine": 60
+        },
+        {
+          "name": "USER_SIG_KEY_COMMUNITY",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 61,
+          "endLine": 61
+        },
+        {
+          "name": "USER_SIG_KEY_LIBRARY",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 62,
+          "endLine": 62
+        },
+        {
+          "name": "USER_SIG_KEY_RECOMMENDER",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 63,
+          "endLine": 63
+        },
+        {
+          "name": "INTERNAL_KEY_CATALOG",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 64,
+          "endLine": 64
+        },
+        {
+          "name": "INTERNAL_KEY_IDENTITY",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 65,
+          "endLine": 65
+        },
+        {
+          "name": "INTERNAL_KEY_WORKSPACE",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 66,
+          "endLine": 66
+        },
+        {
+          "name": "INTERNAL_KEY_MESSAGING",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 67,
+          "endLine": 67
+        },
+        {
+          "name": "INTERNAL_KEY_COMMUNITY",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 68,
+          "endLine": 68
+        },
+        {
+          "name": "INTERNAL_KEY_LIBRARY",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 69,
+          "endLine": 69
+        },
+        {
+          "name": "WORKSPACE_DB_PASSWORD",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 71,
+          "endLine": 71
+        },
+        {
+          "name": "MEDIA_DB_PASSWORD",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 73,
+          "endLine": 73
+        },
+        {
+          "name": "MESSAGING_DB_PASSWORD",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 75,
+          "endLine": 75
+        },
+        {
+          "name": "COMMUNITY_DB_PASSWORD",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 77,
+          "endLine": 77
+        },
+        {
+          "name": "LIBRARY_DB_PASSWORD",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 79,
+          "endLine": 79
+        },
+        {
+          "name": "RECOMMENDER_DB_PASSWORD",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 81,
+          "endLine": 81
+        },
+        {
+          "name": "ENABLE_DEMO_ACCOUNTS",
+          "kind": "variable",
+          "fields": [],
+          "startLine": 85,
+          "endLine": 85
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "definitionCount": 49
+      }
+    },
+    {
+      "path": "CLAUDE.md",
+      "language": "markdown",
+      "fileCategory": "docs",
+      "totalLines": 66,
+      "nonEmptyLines": 55,
+      "sections": [
+        {
+          "heading": "NovelHub: hướng dẫn làm việc",
+          "level": 1,
+          "line": 1
+        },
+        {
+          "heading": "Quy trình git (bắt buộc)",
+          "level": 2,
+          "line": 7
+        },
+        {
+          "heading": "Điều hướng \"quay lại\" (Plan/navigation.md)",
+          "level": 2,
+          "line": 29
+        },
+        {
+          "heading": "Kế hoạch (Plan/)",
+          "level": 2,
+          "line": 38
+        },
+        {
+          "heading": "Lệnh hay dùng",
+          "level": 2,
+          "line": 44
+        },
+        {
+          "heading": "Bẫy đã biết",
+          "level": 2,
+          "line": 56
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "sectionCount": 6
+      }
+    },
+    {
+      "path": "README.md",
+      "language": "markdown",
+      "fileCategory": "docs",
+      "totalLines": 673,
+      "nonEmptyLines": 561,
+      "sections": [
+        {
+          "heading": "📚 NovelHub - Light Novel & Manga Platform",
+          "level": 1,
+          "line": 1
+        },
+        {
+          "heading": "📑 Mục lục",
+          "level": 2,
+          "line": 14
+        },
+        {
+          "heading": "🛠 Kiến trúc & Công nghệ",
+          "level": 2,
+          "line": 32
+        },
+        {
+          "heading": "📂 Cấu trúc thư mục",
+          "level": 2,
+          "line": 99
+        },
+        {
+          "heading": "🚀 Khởi chạy",
+          "level": 2,
+          "line": 137
+        },
+        {
+          "heading": "⚙️ Biến môi trường",
+          "level": 2,
+          "line": 160
+        },
+        {
+          "heading": "🛡 Chống lạm dụng & DDoS",
+          "level": 2,
+          "line": 192
+        },
+        {
+          "heading": "⚡ Hiệu năng & mở rộng (Redis, realtime, PgBouncer)",
+          "level": 2,
+          "line": 218
+        },
+        {
+          "heading": "🔁 Kiểm tra & migration",
+          "level": 2,
+          "line": 235
+        },
+        {
+          "heading": "🔑 Service identity",
+          "level": 2,
+          "line": 243
+        },
+        {
+          "heading": "📝 Service workspace (lịch sử chương)",
+          "level": 2,
+          "line": 259
+        },
+        {
+          "heading": "🔄 Sự kiện giữa các service",
+          "level": 2,
+          "line": 281
+        },
+        {
+          "heading": "🖼 Service media (ảnh, EPUB/PDF)",
+          "level": 2,
+          "line": 290
+        },
+        {
+          "heading": "💬 Service community (Fandom, bình luận, báo cáo)",
+          "level": 2,
+          "line": 307
+        },
+        {
+          "heading": "📚 Service library (theo dõi, bookmark, lịch sử đọc, album)",
+          "level": 2,
+          "line": 327
+        },
+        {
+          "heading": "🧠 Service recommender (gợi ý truyện)",
+          "level": 2,
+          "line": 355
+        },
+        {
+          "heading": "💾 Sao lưu",
+          "level": 2,
+          "line": 377
+        },
+        {
+          "heading": "🔐 Lộ trình bảo mật",
+          "level": 2,
+          "line": 384
+        },
+        {
+          "heading": "📬 Hàng đợi thông báo (RabbitMQ)",
+          "level": 2,
+          "line": 393
+        },
+        {
+          "heading": "🔎 Tìm kiếm với Elasticsearch",
+          "level": 2,
+          "line": 416
+        },
+        {
+          "heading": "✍️ Trình soạn thảo rich text (CKEditor 5)",
+          "level": 2,
+          "line": 432
+        },
+        {
+          "heading": "🖼 Độ phân giải ảnh cho người đọc",
+          "level": 2,
+          "line": 450
+        },
+        {
+          "heading": "⏳ Hiệu ứng tải trang",
+          "level": 2,
+          "line": 464
+        },
+        {
+          "heading": "✨ Chức năng & Trang giao diện",
+          "level": 2,
+          "line": 476
+        },
+        {
+          "heading": "🔐 Phân quyền",
+          "level": 2,
+          "line": 505
+        },
+        {
+          "heading": "🗄 Cơ sở dữ liệu",
+          "level": 2,
+          "line": 529
+        },
+        {
+          "heading": "📡 API Endpoints (`/api/v1`)",
+          "level": 2,
+          "line": 566
+        },
+        {
+          "heading": "👥 Tài khoản mẫu",
+          "level": 2,
+          "line": 637
+        },
+        {
+          "heading": "⚠️ Hạn chế đã biết",
+          "level": 2,
+          "line": 652
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "sectionCount": 29
+      }
+    },
+    {
+      "path": "docker-compose.yml",
+      "language": "yaml",
+      "fileCategory": "infra",
+      "totalLines": 633,
+      "nonEmptyLines": 613,
+      "sections": [
+        {
+          "heading": "services",
+          "level": 1,
+          "line": 1
+        },
+        {
+          "heading": "volumes",
+          "level": 1,
+          "line": 612
+        },
+        {
+          "heading": "networks",
+          "level": 1,
+          "line": 626
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "sectionCount": 3
+      }
+    },
+    {
+      "path": "package.json",
+      "language": "json",
+      "fileCategory": "config",
+      "totalLines": 25,
+      "nonEmptyLines": 25,
+      "sections": [
+        {
+          "heading": "name",
+          "level": 1,
+          "line": 2
+        },
+        {
+          "heading": "version",
+          "level": 1,
+          "line": 3
+        },
+        {
+          "heading": "private",
+          "level": 1,
+          "line": 4
+        },
+        {
+          "heading": "description",
+          "level": 1,
+          "line": 5
+        },
+        {
+          "heading": "scripts",
+          "level": 1,
+          "line": 6
+        },
+        {
+          "heading": "devDependencies",
+          "level": 1,
+          "line": 22
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "sectionCount": 6
+      }
+    }
+  ]
+}

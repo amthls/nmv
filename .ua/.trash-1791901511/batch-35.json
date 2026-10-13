@@ -1,0 +1,52 @@
+{
+ "nodes": [
+  {
+   "id": "document:services/identity/commonpasswords.txt",
+   "type": "document",
+   "name": "commonpasswords.txt",
+   "filePath": "services/identity/commonpasswords.txt",
+   "summary": "Word list of common passwords used by the identity service to reject weak passwords.",
+   "tags": [
+    "data",
+    "security",
+    "password-policy"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "config:services/identity/go.mod",
+   "type": "config",
+   "name": "go.mod",
+   "filePath": "services/identity/go.mod",
+   "summary": "Go module definition for the identity service and its dependencies (jwt, pgx, amqp).",
+   "tags": [
+    "configuration",
+    "go",
+    "dependencies"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "config:services/identity/go.sum",
+   "type": "config",
+   "name": "go.sum",
+   "filePath": "services/identity/go.sum",
+   "summary": "Go dependency checksum lockfile for the identity service.",
+   "tags": [
+    "configuration",
+    "go",
+    "lockfile"
+   ],
+   "complexity": "simple"
+  }
+ ],
+ "edges": [
+  {
+   "source": "config:services/identity/go.mod",
+   "target": "config:services/identity/go.sum",
+   "type": "related",
+   "direction": "forward",
+   "weight": 0.5
+  }
+ ]
+}

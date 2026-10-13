@@ -1,0 +1,922 @@
+{
+ "nodes": [
+  {
+   "id": "file:services/library/seed/demo.sql",
+   "type": "file",
+   "name": "demo.sql",
+   "filePath": "services/library/seed/demo.sql",
+   "summary": "Demo seed data for the library service.",
+   "tags": [
+    "seed-data",
+    "demo",
+    "sql",
+    "library"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:services/library/server.go",
+   "type": "file",
+   "name": "server.go",
+   "filePath": "services/library/server.go",
+   "summary": "HTTP server scaffolding for the library service: JSON helpers, error types, DB row mappers, authed and internal wrappers and route table.",
+   "tags": [
+    "http",
+    "routing",
+    "server",
+    "library"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:services/library/server.go:routes",
+   "type": "function",
+   "name": "routes",
+   "filePath": "services/library/server.go",
+   "lineRange": [
+    187,
+    236
+   ],
+   "summary": "Registers all library routes.",
+   "tags": [
+    "http",
+    "function",
+    "library"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/library/server.go:authed",
+   "type": "function",
+   "name": "authed",
+   "filePath": "services/library/server.go",
+   "lineRange": [
+    152,
+    163
+   ],
+   "summary": "Requires a signed user for a handler.",
+   "tags": [
+    "http",
+    "function",
+    "library"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:services/library/server.go:internal",
+   "type": "function",
+   "name": "internal",
+   "filePath": "services/library/server.go",
+   "lineRange": [
+    174,
+    184
+   ],
+   "summary": "Requires internal key for a handler.",
+   "tags": [
+    "http",
+    "function",
+    "library"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:services/library/server.go:answer",
+   "type": "function",
+   "name": "answer",
+   "filePath": "services/library/server.go",
+   "lineRange": [
+    54,
+    67
+   ],
+   "summary": "Writes handler results or errors as JSON.",
+   "tags": [
+    "http",
+    "function",
+    "library"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:services/library/server.go:rowMaps",
+   "type": "function",
+   "name": "rowMaps",
+   "filePath": "services/library/server.go",
+   "lineRange": [
+    95,
+    114
+   ],
+   "summary": "Converts SQL rows to maps.",
+   "tags": [
+    "http",
+    "function",
+    "library"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:services/library/sync.go",
+   "type": "file",
+   "name": "sync.go",
+   "filePath": "services/library/sync.go",
+   "summary": "Synchronizes chapter metadata from the catalog and reconciles library rows periodically.",
+   "tags": [
+    "sync",
+    "background-worker",
+    "reconciliation",
+    "library"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/library/sync.go:syncOnce",
+   "type": "function",
+   "name": "syncOnce",
+   "filePath": "services/library/sync.go",
+   "lineRange": [
+    76,
+    121
+   ],
+   "summary": "Runs one sync pass.",
+   "tags": [
+    "sync",
+    "function",
+    "library"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/library/sync.go:reconcile",
+   "type": "function",
+   "name": "reconcile",
+   "filePath": "services/library/sync.go",
+   "lineRange": [
+    125,
+    147
+   ],
+   "summary": "Reconciles library data with catalog.",
+   "tags": [
+    "sync",
+    "function",
+    "library"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/library/sync.go:syncChapter",
+   "type": "function",
+   "name": "syncChapter",
+   "filePath": "services/library/sync.go",
+   "lineRange": [
+    48,
+    73
+   ],
+   "summary": "Syncs one chapter.",
+   "tags": [
+    "sync",
+    "function",
+    "library"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/library/sync.go:syncLoop",
+   "type": "function",
+   "name": "syncLoop",
+   "filePath": "services/library/sync.go",
+   "lineRange": [
+    149,
+    166
+   ],
+   "summary": "Periodic sync loop.",
+   "tags": [
+    "sync",
+    "function",
+    "library"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "document:services/media/assets/fonts/OFL.txt",
+   "type": "document",
+   "name": "OFL.txt",
+   "filePath": "services/media/assets/fonts/OFL.txt",
+   "summary": "SIL Open Font License text for fonts bundled with the media service.",
+   "tags": [
+    "license",
+    "fonts",
+    "documentation",
+    "media"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:services/media/src/auth.test.ts",
+   "type": "file",
+   "name": "auth.test.ts",
+   "filePath": "services/media/src/auth.test.ts",
+   "summary": "Small test for media service request authentication using signed headers.",
+   "tags": [
+    "test",
+    "authentication",
+    "media",
+    "typescript"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:services/messaging/backend.go",
+   "type": "file",
+   "name": "backend.go",
+   "filePath": "services/messaging/backend.go",
+   "summary": "Client for the catalog backend from messaging: signed calls, profile, username and group member lookups with caching.",
+   "tags": [
+    "http-client",
+    "internal-api",
+    "cache",
+    "messaging"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/messaging/backend.go:call",
+   "type": "function",
+   "name": "call",
+   "filePath": "services/messaging/backend.go",
+   "lineRange": [
+    60,
+    89
+   ],
+   "summary": "Performs a signed internal request.",
+   "tags": [
+    "http-client",
+    "function",
+    "messaging"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/messaging/backend.go:profiles",
+   "type": "function",
+   "name": "profiles",
+   "filePath": "services/messaging/backend.go",
+   "lineRange": [
+    92,
+    123
+   ],
+   "summary": "Fetches cached profiles.",
+   "tags": [
+    "http-client",
+    "function",
+    "messaging"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/messaging/backend.go:members",
+   "type": "function",
+   "name": "members",
+   "filePath": "services/messaging/backend.go",
+   "lineRange": [
+    142,
+    172
+   ],
+   "summary": "Looks up group members.",
+   "tags": [
+    "http-client",
+    "function",
+    "messaging"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/messaging/backend.go:byUsername",
+   "type": "function",
+   "name": "byUsername",
+   "filePath": "services/messaging/backend.go",
+   "lineRange": [
+    126,
+    139
+   ],
+   "summary": "Resolves users by username.",
+   "tags": [
+    "http-client",
+    "function",
+    "messaging"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:services/messaging/conversations_test.go",
+   "type": "file",
+   "name": "conversations_test.go",
+   "filePath": "services/messaging/conversations_test.go",
+   "summary": "Integration tests for messaging: direct messages, group chat, legacy import and notifications.",
+   "tags": [
+    "test",
+    "integration-test",
+    "messaging",
+    "go"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:services/messaging/conversations_test.go:newConv",
+   "type": "function",
+   "name": "newConv",
+   "filePath": "services/messaging/conversations_test.go",
+   "lineRange": [
+    35,
+    92
+   ],
+   "summary": "Builds the conversation test harness.",
+   "tags": [
+    "test",
+    "function",
+    "go"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "file:services/messaging/db.go",
+   "type": "file",
+   "name": "db.go",
+   "filePath": "services/messaging/db.go",
+   "summary": "Applies the embedded schema migration for the messaging service database.",
+   "tags": [
+    "database",
+    "migration",
+    "messaging",
+    "go"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/messaging/db.go:migrate",
+   "type": "function",
+   "name": "migrate",
+   "filePath": "services/messaging/db.go",
+   "lineRange": [
+    18,
+    54
+   ],
+   "summary": "Runs idempotent schema creation.",
+   "tags": [
+    "database",
+    "function",
+    "go"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:services/messaging/dm.go",
+   "type": "file",
+   "name": "dm.go",
+   "filePath": "services/messaging/dm.go",
+   "summary": "Direct message endpoints: inbox, threads, sending, labels, blocking and pinning with conversation keys.",
+   "tags": [
+    "api-handler",
+    "direct-messages",
+    "labels",
+    "messaging"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:services/messaging/dm.go:handleInbox",
+   "type": "function",
+   "name": "handleInbox",
+   "filePath": "services/messaging/dm.go",
+   "lineRange": [
+    75,
+    165
+   ],
+   "summary": "Lists the inbox conversations.",
+   "tags": [
+    "api-handler",
+    "function",
+    "messaging"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:services/messaging/dm.go:handleThread",
+   "type": "function",
+   "name": "handleThread",
+   "filePath": "services/messaging/dm.go",
+   "lineRange": [
+    203,
+    251
+   ],
+   "summary": "Returns a DM thread.",
+   "tags": [
+    "api-handler",
+    "function",
+    "messaging"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/messaging/dm.go:sendDM",
+   "type": "function",
+   "name": "sendDM",
+   "filePath": "services/messaging/dm.go",
+   "lineRange": [
+    286,
+    326
+   ],
+   "summary": "Persists and pushes a direct message.",
+   "tags": [
+    "api-handler",
+    "function",
+    "messaging"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/messaging/dm.go:handleSend",
+   "type": "function",
+   "name": "handleSend",
+   "filePath": "services/messaging/dm.go",
+   "lineRange": [
+    329,
+    368
+   ],
+   "summary": "Handles a send request with block checks.",
+   "tags": [
+    "api-handler",
+    "function",
+    "messaging"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/messaging/dm.go:handleSetLabels",
+   "type": "function",
+   "name": "handleSetLabels",
+   "filePath": "services/messaging/dm.go",
+   "lineRange": [
+    541,
+    590
+   ],
+   "summary": "Sets labels on a conversation.",
+   "tags": [
+    "api-handler",
+    "function",
+    "messaging"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/messaging/dm.go:handleBlock",
+   "type": "function",
+   "name": "handleBlock",
+   "filePath": "services/messaging/dm.go",
+   "lineRange": [
+    594,
+    624
+   ],
+   "summary": "Blocks or unblocks a user.",
+   "tags": [
+    "api-handler",
+    "function",
+    "messaging"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/messaging/dm.go:handlePin",
+   "type": "function",
+   "name": "handlePin",
+   "filePath": "services/messaging/dm.go",
+   "lineRange": [
+    627,
+    677
+   ],
+   "summary": "Pins or unpins a conversation.",
+   "tags": [
+    "api-handler",
+    "function",
+    "messaging"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "config:services/messaging/go.mod",
+   "type": "config",
+   "name": "go.mod",
+   "filePath": "services/messaging/go.mod",
+   "summary": "Go module definition and dependencies for the messaging service.",
+   "tags": [
+    "configuration",
+    "go-modules",
+    "dependencies",
+    "messaging"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "config:services/messaging/go.sum",
+   "type": "config",
+   "name": "go.sum",
+   "filePath": "services/messaging/go.sum",
+   "summary": "Dependency checksum lockfile for the messaging Go module.",
+   "tags": [
+    "configuration",
+    "lockfile",
+    "go-modules",
+    "messaging"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:services/messaging/group.go",
+   "type": "file",
+   "name": "group.go",
+   "filePath": "services/messaging/group.go",
+   "summary": "Group chat endpoints: role and access checks, message list, send and delete.",
+   "tags": [
+    "api-handler",
+    "group-chat",
+    "messaging",
+    "go"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/messaging/group.go:handleGroupMessages",
+   "type": "function",
+   "name": "handleGroupMessages",
+   "filePath": "services/messaging/group.go",
+   "lineRange": [
+    62,
+    107
+   ],
+   "summary": "Lists group messages.",
+   "tags": [
+    "api-handler",
+    "function",
+    "go"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/messaging/group.go:handleGroupSend",
+   "type": "function",
+   "name": "handleGroupSend",
+   "filePath": "services/messaging/group.go",
+   "lineRange": [
+    123,
+    168
+   ],
+   "summary": "Sends a group message.",
+   "tags": [
+    "api-handler",
+    "function",
+    "go"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/messaging/group.go:handleGroupDelete",
+   "type": "function",
+   "name": "handleGroupDelete",
+   "filePath": "services/messaging/group.go",
+   "lineRange": [
+    171,
+    205
+   ],
+   "summary": "Deletes a group message with permission checks.",
+   "tags": [
+    "api-handler",
+    "function",
+    "go"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/messaging/group.go:groupAccess",
+   "type": "function",
+   "name": "groupAccess",
+   "filePath": "services/messaging/group.go",
+   "lineRange": [
+    39,
+    59
+   ],
+   "summary": "Checks group access for a user.",
+   "tags": [
+    "api-handler",
+    "function",
+    "go"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:services/messaging/hub.go",
+   "type": "file",
+   "name": "hub.go",
+   "filePath": "services/messaging/hub.go",
+   "summary": "Websocket connection hub tracking per-user clients, pushing events and closing connections.",
+   "tags": [
+    "websocket",
+    "realtime",
+    "hub",
+    "messaging"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/messaging/hub.go:add",
+   "type": "function",
+   "name": "add",
+   "filePath": "services/messaging/hub.go",
+   "lineRange": [
+    59,
+    83
+   ],
+   "summary": "Registers a client connection.",
+   "tags": [
+    "websocket",
+    "function",
+    "messaging"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/messaging/hub.go:push",
+   "type": "function",
+   "name": "push",
+   "filePath": "services/messaging/hub.go",
+   "lineRange": [
+    98,
+    119
+   ],
+   "summary": "Pushes an event to a user clients.",
+   "tags": [
+    "websocket",
+    "function",
+    "messaging"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/messaging/hub.go:serve",
+   "type": "function",
+   "name": "serve",
+   "filePath": "services/messaging/hub.go",
+   "lineRange": [
+    145,
+    185
+   ],
+   "summary": "Serves the websocket connection lifecycle.",
+   "tags": [
+    "websocket",
+    "function",
+    "messaging"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/messaging/hub.go:closeAll",
+   "type": "function",
+   "name": "closeAll",
+   "filePath": "services/messaging/hub.go",
+   "lineRange": [
+    132,
+    141
+   ],
+   "summary": "Closes all connections.",
+   "tags": [
+    "websocket",
+    "function",
+    "messaging"
+   ],
+   "complexity": "simple"
+  }
+ ],
+ "edges": [
+  {
+   "source": "file:services/library/seed/demo.sql",
+   "target": "file:services/library/main.go",
+   "type": "related",
+   "direction": "forward",
+   "weight": 0.5
+  },
+  {
+   "source": "file:services/library/server.go",
+   "target": "function:services/library/server.go:routes",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/library/server.go",
+   "target": "function:services/library/server.go:authed",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/library/server.go",
+   "target": "function:services/library/server.go:internal",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/library/server.go",
+   "target": "function:services/library/server.go:answer",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/library/server.go",
+   "target": "function:services/library/server.go:rowMaps",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/library/sync.go",
+   "target": "function:services/library/sync.go:syncOnce",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/library/sync.go",
+   "target": "function:services/library/sync.go:reconcile",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/library/sync.go",
+   "target": "function:services/library/sync.go:syncChapter",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/library/sync.go",
+   "target": "function:services/library/sync.go:syncLoop",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/messaging/backend.go",
+   "target": "function:services/messaging/backend.go:call",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/messaging/backend.go",
+   "target": "function:services/messaging/backend.go:profiles",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/messaging/backend.go",
+   "target": "function:services/messaging/backend.go:members",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/messaging/backend.go",
+   "target": "function:services/messaging/backend.go:byUsername",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/messaging/conversations_test.go",
+   "target": "function:services/messaging/conversations_test.go:newConv",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/messaging/db.go",
+   "target": "function:services/messaging/db.go:migrate",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/messaging/dm.go",
+   "target": "function:services/messaging/dm.go:handleInbox",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/messaging/dm.go",
+   "target": "function:services/messaging/dm.go:handleThread",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/messaging/dm.go",
+   "target": "function:services/messaging/dm.go:sendDM",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/messaging/dm.go",
+   "target": "function:services/messaging/dm.go:handleSend",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/messaging/dm.go",
+   "target": "function:services/messaging/dm.go:handleSetLabels",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/messaging/dm.go",
+   "target": "function:services/messaging/dm.go:handleBlock",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/messaging/dm.go",
+   "target": "function:services/messaging/dm.go:handlePin",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "config:services/messaging/go.mod",
+   "target": "file:services/messaging/main.go",
+   "type": "configures",
+   "direction": "forward",
+   "weight": 0.6
+  },
+  {
+   "source": "file:services/messaging/group.go",
+   "target": "function:services/messaging/group.go:handleGroupMessages",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/messaging/group.go",
+   "target": "function:services/messaging/group.go:handleGroupSend",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/messaging/group.go",
+   "target": "function:services/messaging/group.go:handleGroupDelete",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/messaging/group.go",
+   "target": "function:services/messaging/group.go:groupAccess",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/messaging/hub.go",
+   "target": "function:services/messaging/hub.go:add",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/messaging/hub.go",
+   "target": "function:services/messaging/hub.go:push",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/messaging/hub.go",
+   "target": "function:services/messaging/hub.go:serve",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/messaging/hub.go",
+   "target": "function:services/messaging/hub.go:closeAll",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  }
+ ]
+}

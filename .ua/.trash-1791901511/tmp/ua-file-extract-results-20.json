@@ -1,0 +1,257 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 1,
+  "filesSkipped": [],
+  "filesUnreadable": [],
+  "analysisOutcomes": {
+    "structure": {
+      "succeeded": 1,
+      "failed": 0
+    },
+    "callGraph": {
+      "succeeded": 0,
+      "failed": 0,
+      "skipped": 1
+    }
+  },
+  "results": [
+    {
+      "path": "services/community/migrations/001_init.sql",
+      "language": "sql",
+      "fileCategory": "data",
+      "totalLines": 151,
+      "nonEmptyLines": 139,
+      "definitions": [
+        {
+          "name": "posts",
+          "kind": "table",
+          "fields": [
+            "id",
+            "user_id",
+            "title",
+            "slug",
+            "content",
+            "cover_image_url",
+            "images",
+            "story_id",
+            "is_draft",
+            "is_deleted",
+            "approval_status",
+            "approved_by",
+            "approved_at",
+            "view_count",
+            "comment_count",
+            "reaction_count",
+            "published_at",
+            "created_at",
+            "updated_at",
+            "category",
+            "is_pinned",
+            "rejection_reason",
+            "code_no",
+            "code",
+            "removed_by",
+            "removed_at"
+          ],
+          "startLine": 13,
+          "endLine": 41
+        },
+        {
+          "name": "post_reactions",
+          "kind": "table",
+          "fields": [
+            "id",
+            "post_id",
+            "user_id",
+            "reaction",
+            "created_at"
+          ],
+          "startLine": 59,
+          "endLine": 66
+        },
+        {
+          "name": "post_notification_mutes",
+          "kind": "table",
+          "fields": [
+            "user_id",
+            "post_id",
+            "created_at"
+          ],
+          "startLine": 69,
+          "endLine": 74
+        },
+        {
+          "name": "comments",
+          "kind": "table",
+          "fields": [
+            "id",
+            "user_id",
+            "target_type",
+            "target_id",
+            "parent_id",
+            "root_id",
+            "depth",
+            "content",
+            "is_edited",
+            "is_deleted",
+            "quoted_text",
+            "like_count",
+            "reply_count",
+            "created_at",
+            "updated_at"
+          ],
+          "startLine": 76,
+          "endLine": 92
+        },
+        {
+          "name": "comment_likes",
+          "kind": "table",
+          "fields": [
+            "user_id",
+            "comment_id",
+            "created_at"
+          ],
+          "startLine": 98,
+          "endLine": 103
+        },
+        {
+          "name": "reports",
+          "kind": "table",
+          "fields": [
+            "id",
+            "reporter_id",
+            "target_type",
+            "target_id",
+            "reason",
+            "description",
+            "status",
+            "resolved_by",
+            "resolved_at",
+            "resolution_note",
+            "created_at",
+            "code_no",
+            "code",
+            "as",
+            "linkable",
+            "target_code",
+            "target_path"
+          ],
+          "startLine": 106,
+          "endLine": 124
+        },
+        {
+          "name": "processed_events",
+          "kind": "table",
+          "fields": [
+            "event_id",
+            "type",
+            "created_at"
+          ],
+          "startLine": 141,
+          "endLine": 145
+        },
+        {
+          "name": "legacy_imports",
+          "kind": "table",
+          "fields": [
+            "part",
+            "done_at"
+          ],
+          "startLine": 148,
+          "endLine": 151
+        },
+        {
+          "name": "idx_posts_feed",
+          "kind": "index",
+          "fields": [],
+          "startLine": 42,
+          "endLine": 42
+        },
+        {
+          "name": "idx_posts_removed",
+          "kind": "index",
+          "fields": [],
+          "startLine": 43,
+          "endLine": 43
+        },
+        {
+          "name": "idx_posts_story",
+          "kind": "index",
+          "fields": [],
+          "startLine": 44,
+          "endLine": 44
+        },
+        {
+          "name": "idx_posts_user",
+          "kind": "index",
+          "fields": [],
+          "startLine": 45,
+          "endLine": 45
+        },
+        {
+          "name": "idx_posts_title_trgm",
+          "kind": "index",
+          "fields": [],
+          "startLine": 46,
+          "endLine": 46
+        },
+        {
+          "name": "idx_comments_target",
+          "kind": "index",
+          "fields": [],
+          "startLine": 93,
+          "endLine": 93
+        },
+        {
+          "name": "idx_comments_parent",
+          "kind": "index",
+          "fields": [],
+          "startLine": 94,
+          "endLine": 94
+        },
+        {
+          "name": "idx_comments_user",
+          "kind": "index",
+          "fields": [],
+          "startLine": 95,
+          "endLine": 95
+        },
+        {
+          "name": "idx_reports_reporter_time",
+          "kind": "index",
+          "fields": [],
+          "startLine": 125,
+          "endLine": 125
+        },
+        {
+          "name": "idx_reports_status",
+          "kind": "index",
+          "fields": [],
+          "startLine": 126,
+          "endLine": 126
+        },
+        {
+          "name": "idx_reports_target",
+          "kind": "index",
+          "fields": [],
+          "startLine": 127,
+          "endLine": 127
+        },
+        {
+          "name": "uq_reports_pending",
+          "kind": "index",
+          "fields": [],
+          "startLine": 128,
+          "endLine": 128
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "definitionCount": 20
+      }
+    }
+  ]
+}

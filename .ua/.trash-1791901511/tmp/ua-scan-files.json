@@ -1,0 +1,2757 @@
+{
+  "scriptCompleted": true,
+  "contentDigest": "ac49c674b6f8e285f9418cac326005729c2c59cdc006b843c395a0e741412962",
+  "files": [
+    {
+      "path": ".env.example",
+      "language": "config",
+      "sizeLines": 85,
+      "fileCategory": "config"
+    },
+    {
+      "path": ".gitattributes",
+      "language": "unknown",
+      "sizeLines": 5,
+      "fileCategory": "code"
+    },
+    {
+      "path": ".github/dependabot.yml",
+      "language": "yaml",
+      "sizeLines": 56,
+      "fileCategory": "config"
+    },
+    {
+      "path": ".ua/config.json",
+      "language": "json",
+      "sizeLines": 1,
+      "fileCategory": "config"
+    },
+    {
+      "path": "CLAUDE.md",
+      "language": "markdown",
+      "sizeLines": 66,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "Plan/Trang chủ.docx",
+      "language": "docx",
+      "sizeLines": 2088,
+      "fileCategory": "code"
+    },
+    {
+      "path": "Plan/ar.md",
+      "language": "markdown",
+      "sizeLines": 4,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "Plan/branch-workflow.md",
+      "language": "markdown",
+      "sizeLines": 17,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "Plan/catalog.md",
+      "language": "markdown",
+      "sizeLines": 50,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "Plan/chapter-workspace.md",
+      "language": "markdown",
+      "sizeLines": 292,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "Plan/community.md",
+      "language": "markdown",
+      "sizeLines": 50,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "Plan/dm-labels-block-pin.md",
+      "language": "markdown",
+      "sizeLines": 39,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "Plan/identity.md",
+      "language": "markdown",
+      "sizeLines": 109,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "Plan/library.md",
+      "language": "markdown",
+      "sizeLines": 76,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "Plan/load-and-layout.md",
+      "language": "markdown",
+      "sizeLines": 36,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "Plan/load.md",
+      "language": "markdown",
+      "sizeLines": 60,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "Plan/media.md",
+      "language": "markdown",
+      "sizeLines": 39,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "Plan/messaging.md",
+      "language": "markdown",
+      "sizeLines": 118,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "Plan/microservices.md",
+      "language": "markdown",
+      "sizeLines": 575,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "Plan/navigation.md",
+      "language": "markdown",
+      "sizeLines": 60,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "Plan/next15-and-push.md",
+      "language": "markdown",
+      "sizeLines": 39,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "Plan/no-approval.md",
+      "language": "markdown",
+      "sizeLines": 66,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "Plan/recommender.md",
+      "language": "markdown",
+      "sizeLines": 53,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "Plan/remove-backup-purge.md",
+      "language": "markdown",
+      "sizeLines": 28,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "Plan/remove-ratings.md",
+      "language": "markdown",
+      "sizeLines": 23,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "Plan/review-followups.md",
+      "language": "markdown",
+      "sizeLines": 61,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "Plan/scale-phase1.md",
+      "language": "markdown",
+      "sizeLines": 138,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "Plan/security-hardening.md",
+      "language": "markdown",
+      "sizeLines": 54,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "Plan/smart-codes.md",
+      "language": "markdown",
+      "sizeLines": 51,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "Plan/ui-overhaul.md",
+      "language": "markdown",
+      "sizeLines": 54,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "README.md",
+      "language": "markdown",
+      "sizeLines": 673,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "catalog/.dockerignore",
+      "language": "unknown",
+      "sizeLines": 5,
+      "fileCategory": "infra"
+    },
+    {
+      "path": "catalog/.env.example",
+      "language": "config",
+      "sizeLines": 4,
+      "fileCategory": "config"
+    },
+    {
+      "path": "catalog/Dockerfile",
+      "language": "dockerfile",
+      "sizeLines": 36,
+      "fileCategory": "infra"
+    },
+    {
+      "path": "catalog/docker-entrypoint.sh",
+      "language": "shell",
+      "sizeLines": 17,
+      "fileCategory": "script"
+    },
+    {
+      "path": "catalog/package.json",
+      "language": "json",
+      "sizeLines": 49,
+      "fileCategory": "config"
+    },
+    {
+      "path": "catalog/prisma/schema.prisma",
+      "language": "prisma",
+      "sizeLines": 327,
+      "fileCategory": "data"
+    },
+    {
+      "path": "catalog/scripts/check-db.ts",
+      "language": "typescript",
+      "sizeLines": 74,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/scripts/import-from-docmep.ts",
+      "language": "typescript",
+      "sizeLines": 274,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/scripts/import-sql.ts",
+      "language": "typescript",
+      "sizeLines": 39,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/scripts/migrate-groups-chapters.ts",
+      "language": "typescript",
+      "sizeLines": 67,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/scripts/test-run.js",
+      "language": "javascript",
+      "sizeLines": 9,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/scripts/update-backend-part1.js",
+      "language": "javascript",
+      "sizeLines": 135,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/config/db.ts",
+      "language": "typescript",
+      "sizeLines": 32,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/config/env.ts",
+      "language": "typescript",
+      "sizeLines": 18,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/config/redis.ts",
+      "language": "typescript",
+      "sizeLines": 35,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/controllers/auth.controller.ts",
+      "language": "typescript",
+      "sizeLines": 53,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/controllers/chapter.controller.ts",
+      "language": "typescript",
+      "sizeLines": 1100,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/controllers/code.controller.test.ts",
+      "language": "typescript",
+      "sizeLines": 32,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/controllers/code.controller.ts",
+      "language": "typescript",
+      "sizeLines": 83,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/controllers/group.controller.ts",
+      "language": "typescript",
+      "sizeLines": 751,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/controllers/internal.controller.ts",
+      "language": "typescript",
+      "sizeLines": 264,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/controllers/story.controller.ts",
+      "language": "typescript",
+      "sizeLines": 1013,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/controllers/tag.controller.ts",
+      "language": "typescript",
+      "sizeLines": 32,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/controllers/user.controller.ts",
+      "language": "typescript",
+      "sizeLines": 399,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/middlewares/auth.middleware.test.ts",
+      "language": "typescript",
+      "sizeLines": 37,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/middlewares/auth.middleware.ts",
+      "language": "typescript",
+      "sizeLines": 133,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/middlewares/cache.ts",
+      "language": "typescript",
+      "sizeLines": 73,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/middlewares/security.ts",
+      "language": "typescript",
+      "sizeLines": 179,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/routes/api.routes.ts",
+      "language": "typescript",
+      "sizeLines": 176,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/server.ts",
+      "language": "typescript",
+      "sizeLines": 139,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/services/behaviorEvents.ts",
+      "language": "typescript",
+      "sizeLines": 42,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/services/communityClient.ts",
+      "language": "typescript",
+      "sizeLines": 31,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/services/eventConsumer.ts",
+      "language": "typescript",
+      "sizeLines": 64,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/services/exportSource.ts",
+      "language": "typescript",
+      "sizeLines": 213,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/services/hotShelf.ts",
+      "language": "typescript",
+      "sizeLines": 67,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/services/identitySync.ts",
+      "language": "typescript",
+      "sizeLines": 156,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/services/libraryClient.ts",
+      "language": "typescript",
+      "sizeLines": 36,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/services/mailer.ts",
+      "language": "typescript",
+      "sizeLines": 34,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/services/messagingClient.ts",
+      "language": "typescript",
+      "sizeLines": 32,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/services/notification.service.ts",
+      "language": "typescript",
+      "sizeLines": 119,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/services/queue.service.ts",
+      "language": "typescript",
+      "sizeLines": 198,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/services/realtime.ts",
+      "language": "typescript",
+      "sizeLines": 24,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/services/reconcile.ts",
+      "language": "typescript",
+      "sizeLines": 85,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/services/search.service.ts",
+      "language": "typescript",
+      "sizeLines": 304,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/services/storyPurge.ts",
+      "language": "typescript",
+      "sizeLines": 77,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/services/viewCounter.ts",
+      "language": "typescript",
+      "sizeLines": 94,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/services/workspaceSync.ts",
+      "language": "typescript",
+      "sizeLines": 185,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/utils/dbErrors.ts",
+      "language": "typescript",
+      "sizeLines": 18,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/utils/ids.ts",
+      "language": "typescript",
+      "sizeLines": 53,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/utils/logger.test.ts",
+      "language": "typescript",
+      "sizeLines": 19,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/utils/logger.ts",
+      "language": "typescript",
+      "sizeLines": 59,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/utils/richText.ts",
+      "language": "typescript",
+      "sizeLines": 105,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/utils/validation.ts",
+      "language": "typescript",
+      "sizeLines": 61,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/src/worker.ts",
+      "language": "typescript",
+      "sizeLines": 77,
+      "fileCategory": "code"
+    },
+    {
+      "path": "catalog/tsconfig.json",
+      "language": "json",
+      "sizeLines": 17,
+      "fileCategory": "config"
+    },
+    {
+      "path": "docker-compose.yml",
+      "language": "yaml",
+      "sizeLines": 633,
+      "fileCategory": "infra"
+    },
+    {
+      "path": "events/catalog.chapter.read.v1.json",
+      "language": "json",
+      "sizeLines": 58,
+      "fileCategory": "config"
+    },
+    {
+      "path": "events/catalog.story.viewed.v1.json",
+      "language": "json",
+      "sizeLines": 53,
+      "fileCategory": "config"
+    },
+    {
+      "path": "events/envelope.v1.json",
+      "language": "json",
+      "sizeLines": 16,
+      "fileCategory": "config"
+    },
+    {
+      "path": "events/identity.alert.v1.json",
+      "language": "json",
+      "sizeLines": 19,
+      "fileCategory": "config"
+    },
+    {
+      "path": "events/identity.user.v1.json",
+      "language": "json",
+      "sizeLines": 41,
+      "fileCategory": "config"
+    },
+    {
+      "path": "events/library.album.story_added.v1.json",
+      "language": "json",
+      "sizeLines": 43,
+      "fileCategory": "config"
+    },
+    {
+      "path": "events/library.album.story_removed.v1.json",
+      "language": "json",
+      "sizeLines": 43,
+      "fileCategory": "config"
+    },
+    {
+      "path": "events/library.bookmark.created.v1.json",
+      "language": "json",
+      "sizeLines": 43,
+      "fileCategory": "config"
+    },
+    {
+      "path": "events/library.bookmark.deleted.v1.json",
+      "language": "json",
+      "sizeLines": 43,
+      "fileCategory": "config"
+    },
+    {
+      "path": "events/library.story.followed.v1.json",
+      "language": "json",
+      "sizeLines": 38,
+      "fileCategory": "config"
+    },
+    {
+      "path": "events/library.story.unfollowed.v1.json",
+      "language": "json",
+      "sizeLines": 38,
+      "fileCategory": "config"
+    },
+    {
+      "path": "events/workspace.revision.merged.v1.json",
+      "language": "json",
+      "sizeLines": 47,
+      "fileCategory": "config"
+    },
+    {
+      "path": "events/workspace.task.opened.v1.json",
+      "language": "json",
+      "sizeLines": 25,
+      "fileCategory": "config"
+    },
+    {
+      "path": "frontend/.dockerignore",
+      "language": "unknown",
+      "sizeLines": 5,
+      "fileCategory": "infra"
+    },
+    {
+      "path": "frontend/.env.example",
+      "language": "config",
+      "sizeLines": 3,
+      "fileCategory": "config"
+    },
+    {
+      "path": "frontend/.env.local",
+      "language": "config",
+      "sizeLines": 3,
+      "fileCategory": "config"
+    },
+    {
+      "path": "frontend/Dockerfile",
+      "language": "dockerfile",
+      "sizeLines": 37,
+      "fileCategory": "infra"
+    },
+    {
+      "path": "frontend/next-env.d.ts",
+      "language": "typescript",
+      "sizeLines": 6,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/next.config.mjs",
+      "language": "javascript",
+      "sizeLines": 55,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/package.json",
+      "language": "json",
+      "sizeLines": 32,
+      "fileCategory": "config"
+    },
+    {
+      "path": "frontend/postcss.config.js",
+      "language": "javascript",
+      "sizeLines": 6,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/public/huong-dan/duyet.webp",
+      "language": "webp",
+      "sizeLines": 91,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/public/huong-dan/giao-viec.webp",
+      "language": "webp",
+      "sizeLines": 92,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/public/huong-dan/gui-ban-dich.webp",
+      "language": "webp",
+      "sizeLines": 100,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/public/huong-dan/nhan-viec.webp",
+      "language": "webp",
+      "sizeLines": 175,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/public/huong-dan/phien-ban.webp",
+      "language": "webp",
+      "sizeLines": 115,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/public/huong-dan/quy-trinh.webp",
+      "language": "webp",
+      "sizeLines": 69,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/public/huong-dan/thong-bao.webp",
+      "language": "webp",
+      "sizeLines": 38,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/public/huong-dan/tin-nhan.webp",
+      "language": "webp",
+      "sizeLines": 23,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/public/robots.txt",
+      "language": "txt",
+      "sizeLines": 2,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "frontend/src/app/album/[id]/page.tsx",
+      "language": "typescript",
+      "sizeLines": 355,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/app/bao-cao/page.tsx",
+      "language": "typescript",
+      "sizeLines": 286,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/app/bookmark/page.tsx",
+      "language": "typescript",
+      "sizeLines": 559,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/app/da-go/page.tsx",
+      "language": "typescript",
+      "sizeLines": 222,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/app/dang-chuong/page.tsx",
+      "language": "typescript",
+      "sizeLines": 1391,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/app/dang-truyen-tranh/page.tsx",
+      "language": "typescript",
+      "sizeLines": 843,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/app/dang-truyen/page.tsx",
+      "language": "typescript",
+      "sizeLines": 74,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/app/dang-truyen/sua/[slug]/page.tsx",
+      "language": "typescript",
+      "sizeLines": 140,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/app/dat-lai-mat-khau/layout.tsx",
+      "language": "typescript",
+      "sizeLines": 8,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/app/dat-lai-mat-khau/page.tsx",
+      "language": "typescript",
+      "sizeLines": 50,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/app/fandom/[slug]/page.tsx",
+      "language": "typescript",
+      "sizeLines": 431,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/app/fandom/page.tsx",
+      "language": "typescript",
+      "sizeLines": 441,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/app/globals.css",
+      "language": "css",
+      "sizeLines": 469,
+      "fileCategory": "markup"
+    },
+    {
+      "path": "frontend/src/app/huong-dan/lam-chuong/page.tsx",
+      "language": "typescript",
+      "sizeLines": 137,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/app/kham-pha/page.tsx",
+      "language": "typescript",
+      "sizeLines": 461,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/app/layout.tsx",
+      "language": "typescript",
+      "sizeLines": 45,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/app/lich-su/page.tsx",
+      "language": "typescript",
+      "sizeLines": 488,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/app/loading.tsx",
+      "language": "typescript",
+      "sizeLines": 6,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/app/ma/[code]/page.tsx",
+      "language": "typescript",
+      "sizeLines": 37,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/app/moi-cap-nhat/page.tsx",
+      "language": "typescript",
+      "sizeLines": 14,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/app/nguoi-dung/[username]/page.tsx",
+      "language": "typescript",
+      "sizeLines": 341,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/app/nhieu-nguoi-xem/page.tsx",
+      "language": "typescript",
+      "sizeLines": 14,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/app/nhom-dich/[slug]/page.tsx",
+      "language": "typescript",
+      "sizeLines": 973,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/app/nhom-dich/page.tsx",
+      "language": "typescript",
+      "sizeLines": 262,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/app/page.tsx",
+      "language": "typescript",
+      "sizeLines": 70,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/app/quen-mat-khau/page.tsx",
+      "language": "typescript",
+      "sizeLines": 50,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/app/tai-khoan/page.tsx",
+      "language": "typescript",
+      "sizeLines": 973,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/app/thong-bao/page.tsx",
+      "language": "typescript",
+      "sizeLines": 322,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/app/thong-tin/page.tsx",
+      "language": "typescript",
+      "sizeLines": 81,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/app/tin-nhan/page.tsx",
+      "language": "typescript",
+      "sizeLines": 596,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/app/truyen/[slug]/[chapterSlug]/page.tsx",
+      "language": "typescript",
+      "sizeLines": 895,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/app/truyen/[slug]/lich-su/[chapterId]/page.tsx",
+      "language": "typescript",
+      "sizeLines": 156,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/app/truyen/[slug]/page.tsx",
+      "language": "typescript",
+      "sizeLines": 888,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/app/ws/de-xuat/[id]/page.tsx",
+      "language": "typescript",
+      "sizeLines": 297,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/app/ws/nhom/[slug]/page.tsx",
+      "language": "typescript",
+      "sizeLines": 244,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/app/ws/page.tsx",
+      "language": "typescript",
+      "sizeLines": 248,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/app/ws/truyen/[slug]/page.tsx",
+      "language": "typescript",
+      "sizeLines": 238,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/app/xac-thuc-email/layout.tsx",
+      "language": "typescript",
+      "sizeLines": 8,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/app/xac-thuc-email/page.tsx",
+      "language": "typescript",
+      "sizeLines": 46,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/Footer.tsx",
+      "language": "typescript",
+      "sizeLines": 60,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/Navbar.tsx",
+      "language": "typescript",
+      "sizeLines": 606,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/QuickActionModal.tsx",
+      "language": "typescript",
+      "sizeLines": 86,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/SearchBox.tsx",
+      "language": "typescript",
+      "sizeLines": 175,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/account/ConfirmPassword.tsx",
+      "language": "typescript",
+      "sizeLines": 61,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/account/SecurityTab.tsx",
+      "language": "typescript",
+      "sizeLines": 124,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/admin/RecommenderPanel.tsx",
+      "language": "typescript",
+      "sizeLines": 145,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/album/AlbumCard.tsx",
+      "language": "typescript",
+      "sizeLines": 94,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/album/CopyAlbumModal.tsx",
+      "language": "typescript",
+      "sizeLines": 168,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/album/SaveToAlbumModal.tsx",
+      "language": "typescript",
+      "sizeLines": 181,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/album/StoryAlbumsSection.tsx",
+      "language": "typescript",
+      "sizeLines": 138,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/auth/AccountCard.tsx",
+      "language": "typescript",
+      "sizeLines": 83,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/auth/AuthModal.tsx",
+      "language": "typescript",
+      "sizeLines": 408,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/auth/Turnstile.tsx",
+      "language": "typescript",
+      "sizeLines": 57,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/chapter/ChapterEditor.tsx",
+      "language": "typescript",
+      "sizeLines": 17,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/chapter/ChapterEditorImpl.tsx",
+      "language": "typescript",
+      "sizeLines": 179,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/comments/CommentSection.tsx",
+      "language": "typescript",
+      "sizeLines": 450,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/common/BackLink.tsx",
+      "language": "typescript",
+      "sizeLines": 43,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/common/BookLoader.tsx",
+      "language": "typescript",
+      "sizeLines": 30,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/common/CodeBadge.tsx",
+      "language": "typescript",
+      "sizeLines": 64,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/common/ImageQualityPicker.tsx",
+      "language": "typescript",
+      "sizeLines": 38,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/common/ImageUploadDropzone.tsx",
+      "language": "typescript",
+      "sizeLines": 195,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/common/Link.tsx",
+      "language": "typescript",
+      "sizeLines": 26,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/common/NavTracker.tsx",
+      "language": "typescript",
+      "sizeLines": 10,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/common/NavigationProgress.tsx",
+      "language": "typescript",
+      "sizeLines": 101,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/common/PageLoader.tsx",
+      "language": "typescript",
+      "sizeLines": 33,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/common/RateLimitNotice.tsx",
+      "language": "typescript",
+      "sizeLines": 56,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/common/ReportButton.tsx",
+      "language": "typescript",
+      "sizeLines": 171,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/common/RichContent.tsx",
+      "language": "typescript",
+      "sizeLines": 24,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/common/RichTextEditor.tsx",
+      "language": "typescript",
+      "sizeLines": 17,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/common/RichTextEditorImpl.tsx",
+      "language": "typescript",
+      "sizeLines": 137,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/common/SearchInput.tsx",
+      "language": "typescript",
+      "sizeLines": 45,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/common/SmartImage.tsx",
+      "language": "typescript",
+      "sizeLines": 50,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/common/ThemeToggle.tsx",
+      "language": "typescript",
+      "sizeLines": 34,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/explore/FilterSidebar.tsx",
+      "language": "typescript",
+      "sizeLines": 329,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/explore/Pagination.tsx",
+      "language": "typescript",
+      "sizeLines": 91,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/explore/SortedStoriesPage.tsx",
+      "language": "typescript",
+      "sizeLines": 91,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/explore/StoryCardGrid.tsx",
+      "language": "typescript",
+      "sizeLines": 116,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/explore/StoryCardList.tsx",
+      "language": "typescript",
+      "sizeLines": 97,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/fandom/CreatePostModal.tsx",
+      "language": "typescript",
+      "sizeLines": 285,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/fandom/PostCard.tsx",
+      "language": "typescript",
+      "sizeLines": 302,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/fandom/ReactionBar.tsx",
+      "language": "typescript",
+      "sizeLines": 109,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/fandom/SmartPostGallery.tsx",
+      "language": "typescript",
+      "sizeLines": 212,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/fandom/SmartStorySearch.tsx",
+      "language": "typescript",
+      "sizeLines": 191,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/groups/CreateGroupModal.tsx",
+      "language": "typescript",
+      "sizeLines": 213,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/home/FeaturedCarousel.tsx",
+      "language": "typescript",
+      "sizeLines": 214,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/home/RecommendationRail.tsx",
+      "language": "typescript",
+      "sizeLines": 72,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/home/StoryRail.tsx",
+      "language": "typescript",
+      "sizeLines": 87,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/messages/LabelManager.tsx",
+      "language": "typescript",
+      "sizeLines": 159,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/messages/labels.ts",
+      "language": "typescript",
+      "sizeLines": 15,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/notifications/NotificationItem.tsx",
+      "language": "typescript",
+      "sizeLines": 72,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/random/StoryCaseOpening.tsx",
+      "language": "typescript",
+      "sizeLines": 425,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/reader/ChapterSelectorModal.tsx",
+      "language": "typescript",
+      "sizeLines": 143,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/reader/ContinueReadingMiniplayer.tsx",
+      "language": "typescript",
+      "sizeLines": 367,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/reader/FloatingReaderBar.tsx",
+      "language": "typescript",
+      "sizeLines": 138,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/reader/ImageLightbox.tsx",
+      "language": "typescript",
+      "sizeLines": 70,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/reader/MangaReader.tsx",
+      "language": "typescript",
+      "sizeLines": 378,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/reader/MiniplayerReaderView.tsx",
+      "language": "typescript",
+      "sizeLines": 202,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/reader/ReaderSettingsModal.tsx",
+      "language": "typescript",
+      "sizeLines": 315,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/story/DownloadModal.tsx",
+      "language": "typescript",
+      "sizeLines": 413,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/story/StoryForm.tsx",
+      "language": "typescript",
+      "sizeLines": 608,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/story/UploadHeader.tsx",
+      "language": "typescript",
+      "sizeLines": 36,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/story/UploadModeSwitch.tsx",
+      "language": "typescript",
+      "sizeLines": 41,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/workspace/AssignForm.tsx",
+      "language": "typescript",
+      "sizeLines": 159,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/workspace/BlockDiff.tsx",
+      "language": "typescript",
+      "sizeLines": 89,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/workspace/DraftCard.tsx",
+      "language": "typescript",
+      "sizeLines": 68,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/workspace/DraftRow.tsx",
+      "language": "typescript",
+      "sizeLines": 48,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/workspace/PullDialog.tsx",
+      "language": "typescript",
+      "sizeLines": 214,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/workspace/ShareDialog.tsx",
+      "language": "typescript",
+      "sizeLines": 122,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/workspace/StoryFlow.tsx",
+      "language": "typescript",
+      "sizeLines": 251,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/workspace/TaskCard.tsx",
+      "language": "typescript",
+      "sizeLines": 131,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/components/workspace/WorkflowSteps.tsx",
+      "language": "typescript",
+      "sizeLines": 43,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/context/AuthContext.tsx",
+      "language": "typescript",
+      "sizeLines": 179,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/context/ReadingSessionContext.tsx",
+      "language": "typescript",
+      "sizeLines": 79,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/lib/albums.ts",
+      "language": "typescript",
+      "sizeLines": 72,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/lib/apiJson.ts",
+      "language": "typescript",
+      "sizeLines": 27,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/lib/chapterBlocks.ts",
+      "language": "typescript",
+      "sizeLines": 74,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/lib/chapterContent.ts",
+      "language": "typescript",
+      "sizeLines": 84,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/lib/chapterRender.ts",
+      "language": "typescript",
+      "sizeLines": 40,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/lib/chapterUpload.ts",
+      "language": "typescript",
+      "sizeLines": 20,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/lib/coalesce.test.ts",
+      "language": "typescript",
+      "sizeLines": 24,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/lib/coalesce.ts",
+      "language": "typescript",
+      "sizeLines": 30,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/lib/fandom.ts",
+      "language": "typescript",
+      "sizeLines": 47,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/lib/imageQuality.ts",
+      "language": "typescript",
+      "sizeLines": 73,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/lib/mangaUpload.ts",
+      "language": "typescript",
+      "sizeLines": 283,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/lib/memo.ts",
+      "language": "typescript",
+      "sizeLines": 20,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/lib/miniplayerPref.ts",
+      "language": "typescript",
+      "sizeLines": 26,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/lib/nav.ts",
+      "language": "typescript",
+      "sizeLines": 99,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/lib/readingHistory.ts",
+      "language": "typescript",
+      "sizeLines": 132,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/lib/realtime.ts",
+      "language": "typescript",
+      "sizeLines": 125,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/lib/richText.ts",
+      "language": "typescript",
+      "sizeLines": 22,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/lib/session.ts",
+      "language": "typescript",
+      "sizeLines": 46,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/lib/theme.ts",
+      "language": "typescript",
+      "sizeLines": 66,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/lib/themeScript.ts",
+      "language": "typescript",
+      "sizeLines": 4,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/lib/useAutoColumns.ts",
+      "language": "typescript",
+      "sizeLines": 28,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/src/lib/useDebounced.ts",
+      "language": "typescript",
+      "sizeLines": 15,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/tailwind.config.ts",
+      "language": "typescript",
+      "sizeLines": 141,
+      "fileCategory": "code"
+    },
+    {
+      "path": "frontend/tsconfig.json",
+      "language": "json",
+      "sizeLines": 27,
+      "fileCategory": "config"
+    },
+    {
+      "path": "frontend/tsconfig.tsbuildinfo",
+      "language": "tsbuildinfo",
+      "sizeLines": 0,
+      "fileCategory": "code"
+    },
+    {
+      "path": "launch.py",
+      "language": "python",
+      "sizeLines": 715,
+      "fileCategory": "code"
+    },
+    {
+      "path": "nginx/nginx.conf",
+      "language": "conf",
+      "sizeLines": 426,
+      "fileCategory": "code"
+    },
+    {
+      "path": "package.json",
+      "language": "json",
+      "sizeLines": 25,
+      "fileCategory": "config"
+    },
+    {
+      "path": "postgres/provision.sh",
+      "language": "shell",
+      "sizeLines": 25,
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/README.md",
+      "language": "markdown",
+      "sizeLines": 150,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "scripts/auth-smoke.py",
+      "language": "python",
+      "sizeLines": 137,
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/bench.mjs",
+      "language": "javascript",
+      "sizeLines": 41,
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/check-nav.sh",
+      "language": "shell",
+      "sizeLines": 12,
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/community-smoke.py",
+      "language": "python",
+      "sizeLines": 190,
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/crawler.py",
+      "language": "python",
+      "sizeLines": 1147,
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/launch.py",
+      "language": "python",
+      "sizeLines": 15,
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/library-smoke.py",
+      "language": "python",
+      "sizeLines": 159,
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/migrate.sh",
+      "language": "shell",
+      "sizeLines": 72,
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/new-branch.sh",
+      "language": "shell",
+      "sizeLines": 54,
+      "fileCategory": "script"
+    },
+    {
+      "path": "scripts/recommender-smoke.py",
+      "language": "python",
+      "sizeLines": 106,
+      "fileCategory": "code"
+    },
+    {
+      "path": "scripts/workspace-smoke.py",
+      "language": "python",
+      "sizeLines": 352,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/community/.dockerignore",
+      "language": "unknown",
+      "sizeLines": 2,
+      "fileCategory": "infra"
+    },
+    {
+      "path": "services/community/Dockerfile",
+      "language": "dockerfile",
+      "sizeLines": 21,
+      "fileCategory": "infra"
+    },
+    {
+      "path": "services/community/migrations/001_init.sql",
+      "language": "sql",
+      "sizeLines": 151,
+      "fileCategory": "data"
+    },
+    {
+      "path": "services/community/package.json",
+      "language": "json",
+      "sizeLines": 28,
+      "fileCategory": "config"
+    },
+    {
+      "path": "services/community/seed/demo.sql",
+      "language": "sql",
+      "sizeLines": 55,
+      "fileCategory": "data"
+    },
+    {
+      "path": "services/community/src/auth.test.ts",
+      "language": "typescript",
+      "sizeLines": 40,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/community/src/auth.ts",
+      "language": "typescript",
+      "sizeLines": 75,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/community/src/backend.ts",
+      "language": "typescript",
+      "sizeLines": 114,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/community/src/comments.ts",
+      "language": "typescript",
+      "sizeLines": 278,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/community/src/config.ts",
+      "language": "typescript",
+      "sizeLines": 43,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/community/src/dbErrors.ts",
+      "language": "typescript",
+      "sizeLines": 18,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/community/src/events.ts",
+      "language": "typescript",
+      "sizeLines": 64,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/community/src/importLegacy.ts",
+      "language": "typescript",
+      "sizeLines": 102,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/community/src/logger.ts",
+      "language": "typescript",
+      "sizeLines": 59,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/community/src/moderation.ts",
+      "language": "typescript",
+      "sizeLines": 138,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/community/src/notify.ts",
+      "language": "typescript",
+      "sizeLines": 200,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/community/src/posts.ts",
+      "language": "typescript",
+      "sizeLines": 493,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/community/src/reports.ts",
+      "language": "typescript",
+      "sizeLines": 183,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/community/src/richText.ts",
+      "language": "typescript",
+      "sizeLines": 105,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/community/src/server.ts",
+      "language": "typescript",
+      "sizeLines": 127,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/community/src/validation.ts",
+      "language": "typescript",
+      "sizeLines": 61,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/community/tsconfig.json",
+      "language": "json",
+      "sizeLines": 17,
+      "fileCategory": "config"
+    },
+    {
+      "path": "services/identity/.dockerignore",
+      "language": "unknown",
+      "sizeLines": 2,
+      "fileCategory": "infra"
+    },
+    {
+      "path": "services/identity/Dockerfile",
+      "language": "dockerfile",
+      "sizeLines": 15,
+      "fileCategory": "infra"
+    },
+    {
+      "path": "services/identity/admin.go",
+      "language": "go",
+      "sizeLines": 453,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/identity/auth.go",
+      "language": "go",
+      "sizeLines": 597,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/identity/commonpasswords.txt",
+      "language": "txt",
+      "sizeLines": 2101,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "services/identity/config.go",
+      "language": "go",
+      "sizeLines": 74,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/identity/db.go",
+      "language": "go",
+      "sizeLines": 55,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/identity/demo.go",
+      "language": "go",
+      "sizeLines": 63,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/identity/email.go",
+      "language": "go",
+      "sizeLines": 171,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/identity/events.go",
+      "language": "go",
+      "sizeLines": 205,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/identity/go.mod",
+      "language": "mod",
+      "sizeLines": 23,
+      "fileCategory": "config"
+    },
+    {
+      "path": "services/identity/go.sum",
+      "language": "sum",
+      "sizeLines": 54,
+      "fileCategory": "config"
+    },
+    {
+      "path": "services/identity/http.go",
+      "language": "go",
+      "sizeLines": 203,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/identity/integration_test.go",
+      "language": "go",
+      "sizeLines": 479,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/identity/log.go",
+      "language": "go",
+      "sizeLines": 93,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/identity/mail.go",
+      "language": "go",
+      "sizeLines": 180,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/identity/main.go",
+      "language": "go",
+      "sizeLines": 158,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/identity/migrations/001_init.sql",
+      "language": "sql",
+      "sizeLines": 107,
+      "fileCategory": "data"
+    },
+    {
+      "path": "services/identity/migrations/002_mail_extras.sql",
+      "language": "sql",
+      "sizeLines": 7,
+      "fileCategory": "data"
+    },
+    {
+      "path": "services/identity/password.go",
+      "language": "go",
+      "sizeLines": 101,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/identity/seclog.go",
+      "language": "go",
+      "sizeLines": 76,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/identity/sessions.go",
+      "language": "go",
+      "sizeLines": 207,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/identity/tokens.go",
+      "language": "go",
+      "sizeLines": 88,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/identity/unit_test.go",
+      "language": "go",
+      "sizeLines": 143,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/identity/verify.go",
+      "language": "go",
+      "sizeLines": 135,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/library/Dockerfile",
+      "language": "dockerfile",
+      "sizeLines": 14,
+      "fileCategory": "infra"
+    },
+    {
+      "path": "services/library/albums.go",
+      "language": "go",
+      "sizeLines": 574,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/library/backend.go",
+      "language": "go",
+      "sizeLines": 135,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/library/db.go",
+      "language": "go",
+      "sizeLines": 54,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/library/events.go",
+      "language": "go",
+      "sizeLines": 140,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/library/go.mod",
+      "language": "mod",
+      "sizeLines": 16,
+      "fileCategory": "config"
+    },
+    {
+      "path": "services/library/go.sum",
+      "language": "sum",
+      "sizeLines": 30,
+      "fileCategory": "config"
+    },
+    {
+      "path": "services/library/history.go",
+      "language": "go",
+      "sizeLines": 391,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/library/internal.go",
+      "language": "go",
+      "sizeLines": 225,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/library/legacy.go",
+      "language": "go",
+      "sizeLines": 91,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/library/library_test.go",
+      "language": "go",
+      "sizeLines": 468,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/library/log.go",
+      "language": "go",
+      "sizeLines": 106,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/library/main.go",
+      "language": "go",
+      "sizeLines": 128,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/library/migrations/001_init.sql",
+      "language": "sql",
+      "sizeLines": 149,
+      "fileCategory": "data"
+    },
+    {
+      "path": "services/library/migrations/002_outbox.sql",
+      "language": "sql",
+      "sizeLines": 71,
+      "fileCategory": "data"
+    },
+    {
+      "path": "services/library/outbox.go",
+      "language": "go",
+      "sizeLines": 110,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/library/positions.go",
+      "language": "go",
+      "sizeLines": 179,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/library/seed/demo.sql",
+      "language": "sql",
+      "sizeLines": 15,
+      "fileCategory": "data"
+    },
+    {
+      "path": "services/library/server.go",
+      "language": "go",
+      "sizeLines": 236,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/library/sync.go",
+      "language": "go",
+      "sizeLines": 166,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/media/.dockerignore",
+      "language": "unknown",
+      "sizeLines": 2,
+      "fileCategory": "infra"
+    },
+    {
+      "path": "services/media/Dockerfile",
+      "language": "dockerfile",
+      "sizeLines": 30,
+      "fileCategory": "infra"
+    },
+    {
+      "path": "services/media/assets/fonts/OFL.txt",
+      "language": "txt",
+      "sizeLines": 93,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "services/media/docker-entrypoint.sh",
+      "language": "shell",
+      "sizeLines": 17,
+      "fileCategory": "script"
+    },
+    {
+      "path": "services/media/migrations/001_init.sql",
+      "language": "sql",
+      "sizeLines": 25,
+      "fileCategory": "data"
+    },
+    {
+      "path": "services/media/package.json",
+      "language": "json",
+      "sizeLines": 30,
+      "fileCategory": "config"
+    },
+    {
+      "path": "services/media/src/auth.test.ts",
+      "language": "typescript",
+      "sizeLines": 21,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/media/src/auth.ts",
+      "language": "typescript",
+      "sizeLines": 72,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/media/src/config.ts",
+      "language": "typescript",
+      "sizeLines": 41,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/media/src/export/content.ts",
+      "language": "typescript",
+      "sizeLines": 197,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/media/src/export/epub.ts",
+      "language": "typescript",
+      "sizeLines": 367,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/media/src/export/index.ts",
+      "language": "typescript",
+      "sizeLines": 297,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/media/src/export/pdf.ts",
+      "language": "typescript",
+      "sizeLines": 316,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/media/src/export/pdfText.ts",
+      "language": "typescript",
+      "sizeLines": 125,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/media/src/export/zip.ts",
+      "language": "typescript",
+      "sizeLines": 119,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/media/src/exportRoutes.ts",
+      "language": "typescript",
+      "sizeLines": 112,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/media/src/image.ts",
+      "language": "typescript",
+      "sizeLines": 113,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/media/src/logger.ts",
+      "language": "typescript",
+      "sizeLines": 59,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/media/src/server.ts",
+      "language": "typescript",
+      "sizeLines": 99,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/media/src/upload.ts",
+      "language": "typescript",
+      "sizeLines": 171,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/media/src/uploadFiles.ts",
+      "language": "typescript",
+      "sizeLines": 82,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/media/tsconfig.json",
+      "language": "json",
+      "sizeLines": 17,
+      "fileCategory": "config"
+    },
+    {
+      "path": "services/messaging/Dockerfile",
+      "language": "dockerfile",
+      "sizeLines": 14,
+      "fileCategory": "infra"
+    },
+    {
+      "path": "services/messaging/backend.go",
+      "language": "go",
+      "sizeLines": 198,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/messaging/conversations_test.go",
+      "language": "go",
+      "sizeLines": 434,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/messaging/db.go",
+      "language": "go",
+      "sizeLines": 54,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/messaging/dm.go",
+      "language": "go",
+      "sizeLines": 677,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/messaging/go.mod",
+      "language": "mod",
+      "sizeLines": 21,
+      "fileCategory": "config"
+    },
+    {
+      "path": "services/messaging/go.sum",
+      "language": "sum",
+      "sizeLines": 46,
+      "fileCategory": "config"
+    },
+    {
+      "path": "services/messaging/group.go",
+      "language": "go",
+      "sizeLines": 205,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/messaging/hub.go",
+      "language": "go",
+      "sizeLines": 185,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/messaging/legacy.go",
+      "language": "go",
+      "sizeLines": 280,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/messaging/loadtest.go",
+      "language": "go",
+      "sizeLines": 152,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/messaging/log.go",
+      "language": "go",
+      "sizeLines": 106,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/messaging/main.go",
+      "language": "go",
+      "sizeLines": 198,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/messaging/messaging_test.go",
+      "language": "go",
+      "sizeLines": 111,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/messaging/migrations/001_conversations.sql",
+      "language": "sql",
+      "sizeLines": 62,
+      "fileCategory": "data"
+    },
+    {
+      "path": "services/messaging/migrations/002_notifications.sql",
+      "language": "sql",
+      "sizeLines": 61,
+      "fileCategory": "data"
+    },
+    {
+      "path": "services/messaging/notify.go",
+      "language": "go",
+      "sizeLines": 401,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/messaging/notify_api.go",
+      "language": "go",
+      "sizeLines": 376,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/messaging/seed/demo.sql",
+      "language": "sql",
+      "sizeLines": 17,
+      "fileCategory": "data"
+    },
+    {
+      "path": "services/messaging/server.go",
+      "language": "go",
+      "sizeLines": 238,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/recommender/Dockerfile",
+      "language": "dockerfile",
+      "sizeLines": 12,
+      "fileCategory": "infra"
+    },
+    {
+      "path": "services/recommender/rec/__init__.py",
+      "language": "python",
+      "sizeLines": 0,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/recommender/rec/__main__.py",
+      "language": "python",
+      "sizeLines": 28,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/recommender/rec/algorithms.py",
+      "language": "python",
+      "sizeLines": 168,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/recommender/rec/api.py",
+      "language": "python",
+      "sizeLines": 177,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/recommender/rec/common.py",
+      "language": "python",
+      "sizeLines": 119,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/recommender/rec/ingest.py",
+      "language": "python",
+      "sizeLines": 209,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/recommender/rec/migrations/001_init.sql",
+      "language": "sql",
+      "sizeLines": 109,
+      "fileCategory": "data"
+    },
+    {
+      "path": "services/recommender/rec/serve.py",
+      "language": "python",
+      "sizeLines": 218,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/recommender/rec/train.py",
+      "language": "python",
+      "sizeLines": 439,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/recommender/requirements-dev.txt",
+      "language": "txt",
+      "sizeLines": 3,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "services/recommender/requirements.txt",
+      "language": "txt",
+      "sizeLines": 5,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "services/recommender/tests/test_rec.py",
+      "language": "python",
+      "sizeLines": 182,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/workspace/.dockerignore",
+      "language": "unknown",
+      "sizeLines": 2,
+      "fileCategory": "infra"
+    },
+    {
+      "path": "services/workspace/Dockerfile",
+      "language": "dockerfile",
+      "sizeLines": 14,
+      "fileCategory": "infra"
+    },
+    {
+      "path": "services/workspace/blocks.go",
+      "language": "go",
+      "sizeLines": 165,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/workspace/chapters.go",
+      "language": "go",
+      "sizeLines": 492,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/workspace/collab.go",
+      "language": "go",
+      "sizeLines": 736,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/workspace/db.go",
+      "language": "go",
+      "sizeLines": 103,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/workspace/drafts.go",
+      "language": "go",
+      "sizeLines": 649,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/workspace/events.go",
+      "language": "go",
+      "sizeLines": 175,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/workspace/go.mod",
+      "language": "mod",
+      "sizeLines": 17,
+      "fileCategory": "config"
+    },
+    {
+      "path": "services/workspace/go.sum",
+      "language": "sum",
+      "sizeLines": 34,
+      "fileCategory": "config"
+    },
+    {
+      "path": "services/workspace/http.go",
+      "language": "go",
+      "sizeLines": 215,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/workspace/importer.go",
+      "language": "go",
+      "sizeLines": 70,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/workspace/log.go",
+      "language": "go",
+      "sizeLines": 96,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/workspace/main.go",
+      "language": "go",
+      "sizeLines": 154,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/workspace/merge.go",
+      "language": "go",
+      "sizeLines": 188,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/workspace/migrations/001_init.sql",
+      "language": "sql",
+      "sizeLines": 47,
+      "fileCategory": "data"
+    },
+    {
+      "path": "services/workspace/migrations/002_drafts.sql",
+      "language": "sql",
+      "sizeLines": 22,
+      "fileCategory": "data"
+    },
+    {
+      "path": "services/workspace/migrations/003_proposals.sql",
+      "language": "sql",
+      "sizeLines": 40,
+      "fileCategory": "data"
+    },
+    {
+      "path": "services/workspace/migrations/004_collab.sql",
+      "language": "sql",
+      "sizeLines": 39,
+      "fileCategory": "data"
+    },
+    {
+      "path": "services/workspace/migrations/005_tasks.sql",
+      "language": "sql",
+      "sizeLines": 40,
+      "fileCategory": "data"
+    },
+    {
+      "path": "services/workspace/migrations/006_schedule.sql",
+      "language": "sql",
+      "sizeLines": 11,
+      "fileCategory": "data"
+    },
+    {
+      "path": "services/workspace/proposals.go",
+      "language": "go",
+      "sizeLines": 378,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/workspace/quota.go",
+      "language": "go",
+      "sizeLines": 122,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/workspace/quota_test.go",
+      "language": "go",
+      "sizeLines": 56,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/workspace/schedule.go",
+      "language": "go",
+      "sizeLines": 212,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/workspace/tasks.go",
+      "language": "go",
+      "sizeLines": 691,
+      "fileCategory": "code"
+    },
+    {
+      "path": "services/workspace/workspace_test.go",
+      "language": "go",
+      "sizeLines": 780,
+      "fileCategory": "code"
+    },
+    {
+      "path": "sql/database.sql",
+      "language": "sql",
+      "sizeLines": 1443,
+      "fileCategory": "data"
+    },
+    {
+      "path": "sql/migrations/001_story_comments.sql",
+      "language": "sql",
+      "sizeLines": 27,
+      "fileCategory": "data"
+    },
+    {
+      "path": "sql/migrations/002_notification_queue.sql",
+      "language": "sql",
+      "sizeLines": 16,
+      "fileCategory": "data"
+    },
+    {
+      "path": "sql/migrations/003_group_join_requests.sql",
+      "language": "sql",
+      "sizeLines": 28,
+      "fileCategory": "data"
+    },
+    {
+      "path": "sql/migrations/004_group_approval_audit.sql",
+      "language": "sql",
+      "sizeLines": 6,
+      "fileCategory": "data"
+    },
+    {
+      "path": "sql/migrations/005_user_soft_delete.sql",
+      "language": "sql",
+      "sizeLines": 6,
+      "fileCategory": "data"
+    },
+    {
+      "path": "sql/migrations/006_story_sources.sql",
+      "language": "sql",
+      "sizeLines": 9,
+      "fileCategory": "data"
+    },
+    {
+      "path": "sql/migrations/007_story_exports.sql",
+      "language": "sql",
+      "sizeLines": 27,
+      "fileCategory": "data"
+    },
+    {
+      "path": "sql/migrations/008_chapter_translator_messages.sql",
+      "language": "sql",
+      "sizeLines": 7,
+      "fileCategory": "data"
+    },
+    {
+      "path": "sql/migrations/009_story_albums.sql",
+      "language": "sql",
+      "sizeLines": 64,
+      "fileCategory": "data"
+    },
+    {
+      "path": "sql/migrations/010_recommendations.sql",
+      "language": "sql",
+      "sizeLines": 70,
+      "fileCategory": "data"
+    },
+    {
+      "path": "sql/migrations/011_rating_avg_scale.sql",
+      "language": "sql",
+      "sizeLines": 25,
+      "fileCategory": "data"
+    },
+    {
+      "path": "sql/migrations/012_fandom_posts.sql",
+      "language": "sql",
+      "sizeLines": 6,
+      "fileCategory": "data"
+    },
+    {
+      "path": "sql/migrations/013_notification_preferences.sql",
+      "language": "sql",
+      "sizeLines": 14,
+      "fileCategory": "data"
+    },
+    {
+      "path": "sql/migrations/014_direct_messages.sql",
+      "language": "sql",
+      "sizeLines": 15,
+      "fileCategory": "data"
+    },
+    {
+      "path": "sql/migrations/015_account_security.sql",
+      "language": "sql",
+      "sizeLines": 16,
+      "fileCategory": "data"
+    },
+    {
+      "path": "sql/migrations/016_dm_labels_block_pin.sql",
+      "language": "sql",
+      "sizeLines": 34,
+      "fileCategory": "data"
+    },
+    {
+      "path": "sql/migrations/017_smart_codes.sql",
+      "language": "sql",
+      "sizeLines": 158,
+      "fileCategory": "data"
+    },
+    {
+      "path": "sql/migrations/018_drop_ratings.sql",
+      "language": "sql",
+      "sizeLines": 22,
+      "fileCategory": "data"
+    },
+    {
+      "path": "sql/migrations/019_no_approval.sql",
+      "language": "sql",
+      "sizeLines": 23,
+      "fileCategory": "data"
+    },
+    {
+      "path": "sql/migrations/020_soft_remove.sql",
+      "language": "sql",
+      "sizeLines": 14,
+      "fileCategory": "data"
+    },
+    {
+      "path": "sql/migrations/021_report_spam.sql",
+      "language": "sql",
+      "sizeLines": 15,
+      "fileCategory": "data"
+    },
+    {
+      "path": "sql/migrations/022_identity_copy.sql",
+      "language": "sql",
+      "sizeLines": 29,
+      "fileCategory": "data"
+    },
+    {
+      "path": "sql/migrations/023_ws_chapter_versions.sql",
+      "language": "sql",
+      "sizeLines": 8,
+      "fileCategory": "data"
+    },
+    {
+      "path": "sql/migrations/024_dm_draft_card.sql",
+      "language": "sql",
+      "sizeLines": 3,
+      "fileCategory": "data"
+    },
+    {
+      "path": "sql/migrations/025_group_workflow.sql",
+      "language": "sql",
+      "sizeLines": 8,
+      "fileCategory": "data"
+    },
+    {
+      "path": "sql/migrations/026_drop_legacy_credentials.sql",
+      "language": "sql",
+      "sizeLines": 8,
+      "fileCategory": "data"
+    },
+    {
+      "path": "sql/migrations/027_drop_legacy_tables.sql",
+      "language": "sql",
+      "sizeLines": 16,
+      "fileCategory": "data"
+    },
+    {
+      "path": "sql/migrations/028_group_mergers.sql",
+      "language": "sql",
+      "sizeLines": 7,
+      "fileCategory": "data"
+    },
+    {
+      "path": "sql/migrations/029_story_sources_repair.sql",
+      "language": "sql",
+      "sizeLines": 10,
+      "fileCategory": "data"
+    },
+    {
+      "path": "sql/migrations/030_allow_download_repair.sql",
+      "language": "sql",
+      "sizeLines": 3,
+      "fileCategory": "data"
+    },
+    {
+      "path": "sql/seeds/albums.sql",
+      "language": "sql",
+      "sizeLines": 118,
+      "fileCategory": "data"
+    }
+  ],
+  "totalFiles": 452,
+  "filteredByIgnore": 210,
+  "estimatedComplexity": "large",
+  "failures": [],
+  "stats": {
+    "filesScanned": 452,
+    "byCategory": {
+      "config": 36,
+      "code": 310,
+      "docs": 32,
+      "infra": 16,
+      "script": 6,
+      "data": 51,
+      "markup": 1
+    },
+    "byLanguage": {
+      "config": 4,
+      "unknown": 7,
+      "yaml": 2,
+      "json": 23,
+      "markdown": 27,
+      "docx": 1,
+      "dockerfile": 9,
+      "shell": 6,
+      "prisma": 1,
+      "typescript": 213,
+      "javascript": 5,
+      "webp": 8,
+      "txt": 5,
+      "css": 1,
+      "tsbuildinfo": 1,
+      "python": 17,
+      "conf": 1,
+      "sql": 50,
+      "go": 63,
+      "mod": 4,
+      "sum": 4
+    }
+  }
+}

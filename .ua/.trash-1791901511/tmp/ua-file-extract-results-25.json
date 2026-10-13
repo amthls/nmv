@@ -1,0 +1,233 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 1,
+  "filesSkipped": [],
+  "filesUnreadable": [],
+  "analysisOutcomes": {
+    "structure": {
+      "succeeded": 1,
+      "failed": 0
+    },
+    "callGraph": {
+      "succeeded": 0,
+      "failed": 0,
+      "skipped": 1
+    }
+  },
+  "results": [
+    {
+      "path": "services/recommender/rec/migrations/001_init.sql",
+      "language": "sql",
+      "fileCategory": "data",
+      "totalLines": 109,
+      "nonEmptyLines": 104,
+      "definitions": [
+        {
+          "name": "ext_stories",
+          "kind": "table",
+          "fields": [
+            "id",
+            "title",
+            "slug",
+            "cover_image_url",
+            "story_type",
+            "status",
+            "approval_status",
+            "author_name",
+            "group_id",
+            "synopsis",
+            "tags",
+            "total_chapters",
+            "total_views",
+            "total_favorites",
+            "last_chapter_at",
+            "created_at",
+            "updated_at",
+            "synced_at"
+          ],
+          "startLine": 4,
+          "endLine": 23
+        },
+        {
+          "name": "sync_state",
+          "kind": "table",
+          "fields": [
+            "name",
+            "last_ts",
+            "last_id"
+          ],
+          "startLine": 24,
+          "endLine": 24
+        },
+        {
+          "name": "events",
+          "kind": "table",
+          "fields": [
+            "id",
+            "event_id"
+          ],
+          "startLine": 28,
+          "endLine": 30
+        },
+        {
+          "name": "favorites",
+          "kind": "table",
+          "fields": [
+            "user_id",
+            "story_id",
+            "following",
+            "at"
+          ],
+          "startLine": 48,
+          "endLine": 54
+        },
+        {
+          "name": "album_stories",
+          "kind": "table",
+          "fields": [
+            "album_id",
+            "story_id",
+            "user_id",
+            "present",
+            "at"
+          ],
+          "startLine": 55,
+          "endLine": 62
+        },
+        {
+          "name": "bookmarks",
+          "kind": "table",
+          "fields": [
+            "id",
+            "user_id",
+            "story_id",
+            "present",
+            "at"
+          ],
+          "startLine": 63,
+          "endLine": 69
+        },
+        {
+          "name": "legacy_imports",
+          "kind": "table",
+          "fields": [
+            "part",
+            "imported_at"
+          ],
+          "startLine": 72,
+          "endLine": 72
+        },
+        {
+          "name": "rec_item_similar",
+          "kind": "table",
+          "fields": [
+            "story_id",
+            "similar_id",
+            "score",
+            "co_readers",
+            "pct_readers",
+            "covisit",
+            "content",
+            "reason"
+          ],
+          "startLine": 75,
+          "endLine": 86
+        },
+        {
+          "name": "rec_user_scores",
+          "kind": "table",
+          "fields": [
+            "user_id",
+            "story_id",
+            "score",
+            "reason",
+            "reason_tag",
+            "pct"
+          ],
+          "startLine": 87,
+          "endLine": 96
+        },
+        {
+          "name": "rec_user_factors",
+          "kind": "table",
+          "fields": [
+            "user_id",
+            "factors"
+          ],
+          "startLine": 97,
+          "endLine": 97
+        },
+        {
+          "name": "rec_item_factors",
+          "kind": "table",
+          "fields": [
+            "story_id",
+            "factors",
+            "popularity"
+          ],
+          "startLine": 98,
+          "endLine": 98
+        },
+        {
+          "name": "rec_model_runs",
+          "kind": "table",
+          "fields": [
+            "id",
+            "started_at",
+            "duration_ms",
+            "users",
+            "stories",
+            "interactions",
+            "metrics",
+            "status",
+            "error"
+          ],
+          "startLine": 99,
+          "endLine": 109
+        },
+        {
+          "name": "idx_events_user",
+          "kind": "index",
+          "fields": [],
+          "startLine": 40,
+          "endLine": 40
+        },
+        {
+          "name": "idx_events_visitor",
+          "kind": "index",
+          "fields": [],
+          "startLine": 41,
+          "endLine": 41
+        },
+        {
+          "name": "idx_events_created",
+          "kind": "index",
+          "fields": [],
+          "startLine": 42,
+          "endLine": 42
+        },
+        {
+          "name": "idx_events_read_once",
+          "kind": "index",
+          "fields": [],
+          "startLine": 44,
+          "endLine": 44
+        },
+        {
+          "name": "idx_bookmarks_user",
+          "kind": "index",
+          "fields": [],
+          "startLine": 70,
+          "endLine": 70
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "definitionCount": 17
+      }
+    }
+  ]
+}

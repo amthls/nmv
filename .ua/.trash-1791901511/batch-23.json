@@ -1,0 +1,51 @@
+{
+ "nodes": [
+  {
+   "id": "schema:services/media/migrations/001_init.sql",
+   "type": "schema",
+   "name": "001_init.sql",
+   "filePath": "services/media/migrations/001_init.sql",
+   "summary": "Initial media_db schema with the story_exports cache table for EPUB/PDF builds keyed by content.",
+   "tags": [
+    "database",
+    "migration",
+    "sql",
+    "media"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "table:services/media/migrations/001_init.sql:story_exports",
+   "type": "table",
+   "name": "story_exports",
+   "filePath": "services/media/migrations/001_init.sql",
+   "lineRange": [
+    3,
+    22
+   ],
+   "summary": "Table story_exports created in 001_init.sql (15 columns).",
+   "tags": [
+    "database",
+    "table",
+    "media"
+   ],
+   "complexity": "moderate"
+  }
+ ],
+ "edges": [
+  {
+   "source": "schema:services/media/migrations/001_init.sql",
+   "target": "table:services/media/migrations/001_init.sql:story_exports",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "schema:services/media/migrations/001_init.sql",
+   "target": "table:services/media/migrations/001_init.sql:story_exports",
+   "type": "migrates",
+   "direction": "forward",
+   "weight": 0.7
+  }
+ ]
+}

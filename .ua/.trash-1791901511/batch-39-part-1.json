@@ -1,0 +1,1235 @@
+{
+ "nodes": [
+  {
+   "id": "file:services/identity/http.go",
+   "type": "file",
+   "name": "http.go",
+   "filePath": "services/identity/http.go",
+   "summary": "HTTP helpers for the identity service: JSON read/write, client IP, session cookie and CSRF handling, and the authed wrapper that resolves the caller from the access token.",
+   "tags": [
+    "http",
+    "helpers",
+    "csrf",
+    "cookies",
+    "identity"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/http.go:writeJSON",
+   "type": "function",
+   "name": "writeJSON",
+   "filePath": "services/identity/http.go",
+   "lineRange": [
+    26,
+    31
+   ],
+   "summary": "Serializes a JSON response with status code.",
+   "tags": [
+    "http",
+    "function",
+    "identity"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:services/identity/http.go:setSessionCookies",
+   "type": "function",
+   "name": "setSessionCookies",
+   "filePath": "services/identity/http.go",
+   "lineRange": [
+    111,
+    121
+   ],
+   "summary": "Sets access, refresh and CSRF cookies on login or refresh.",
+   "tags": [
+    "http",
+    "function",
+    "identity"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:services/identity/http.go:authed",
+   "type": "function",
+   "name": "authed",
+   "filePath": "services/identity/http.go",
+   "lineRange": [
+    158,
+    172
+   ],
+   "summary": "Wraps a handler so it requires a valid, non-revoked session and passes the caller in.",
+   "tags": [
+    "http",
+    "function",
+    "identity"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:services/identity/http.go:callerOf",
+   "type": "function",
+   "name": "callerOf",
+   "filePath": "services/identity/http.go",
+   "lineRange": [
+    175,
+    201
+   ],
+   "summary": "Resolves the calling user from the request access token and session state.",
+   "tags": [
+    "http",
+    "function",
+    "identity"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:services/identity/integration_test.go",
+   "type": "file",
+   "name": "integration_test.go",
+   "filePath": "services/identity/integration_test.go",
+   "summary": "Integration tests for the identity service against a real test database, covering register/login, CSRF, refresh rotation, lockout, verify, logout-all, password reset, email change, events and Turnstile.",
+   "tags": [
+    "test",
+    "integration-test",
+    "identity",
+    "go"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:services/identity/integration_test.go:newHarness",
+   "type": "function",
+   "name": "newHarness",
+   "filePath": "services/identity/integration_test.go",
+   "lineRange": [
+    36,
+    82
+   ],
+   "summary": "Builds the test harness with database, server and mail stub.",
+   "tags": [
+    "test",
+    "function",
+    "go"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/integration_test.go:TestRefreshRotationAndReuse",
+   "type": "function",
+   "name": "TestRefreshRotationAndReuse",
+   "filePath": "services/identity/integration_test.go",
+   "lineRange": [
+    185,
+    209
+   ],
+   "summary": "Verifies refresh token rotation and reuse detection.",
+   "tags": [
+    "test",
+    "function",
+    "go"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/integration_test.go:TestEventContracts",
+   "type": "function",
+   "name": "TestEventContracts",
+   "filePath": "services/identity/integration_test.go",
+   "lineRange": [
+    354,
+    407
+   ],
+   "summary": "Checks the outbox event payload contracts emitted by identity.",
+   "tags": [
+    "test",
+    "function",
+    "go"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "file:services/identity/log.go",
+   "type": "file",
+   "name": "log.go",
+   "filePath": "services/identity/log.go",
+   "summary": "Structured logging helpers with secret redaction and a request-logging middleware with a status-capturing response writer.",
+   "tags": [
+    "logging",
+    "middleware",
+    "redaction",
+    "identity"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/log.go:withRequestLog",
+   "type": "function",
+   "name": "withRequestLog",
+   "filePath": "services/identity/log.go",
+   "lineRange": [
+    71,
+    93
+   ],
+   "summary": "Middleware that logs each request with status and duration.",
+   "tags": [
+    "logging",
+    "function",
+    "identity"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/log.go:logf",
+   "type": "function",
+   "name": "logf",
+   "filePath": "services/identity/log.go",
+   "lineRange": [
+    40,
+    56
+   ],
+   "summary": "Writes a redacted structured log line.",
+   "tags": [
+    "logging",
+    "function",
+    "identity"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:services/identity/mail.go",
+   "type": "file",
+   "name": "mail.go",
+   "filePath": "services/identity/mail.go",
+   "summary": "Outgoing mail queue for identity: enqueues messages, a polling loop that sends them, and an SMTP sender with daily limits.",
+   "tags": [
+    "mail",
+    "smtp",
+    "queue",
+    "background-worker"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/mail.go:enqueueMail",
+   "type": "function",
+   "name": "enqueueMail",
+   "filePath": "services/identity/mail.go",
+   "lineRange": [
+    25,
+    44
+   ],
+   "summary": "Inserts a mail job into the queue.",
+   "tags": [
+    "mail",
+    "function",
+    "background-worker"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/mail.go:mailLoop",
+   "type": "function",
+   "name": "mailLoop",
+   "filePath": "services/identity/mail.go",
+   "lineRange": [
+    49,
+    67
+   ],
+   "summary": "Background loop that polls and sends queued mails.",
+   "tags": [
+    "mail",
+    "function",
+    "background-worker"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/mail.go:sendNextMail",
+   "type": "function",
+   "name": "sendNextMail",
+   "filePath": "services/identity/mail.go",
+   "lineRange": [
+    69,
+    110
+   ],
+   "summary": "Claims and sends the next pending mail, handling retries.",
+   "tags": [
+    "mail",
+    "function",
+    "background-worker"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/mail.go:sendSMTP",
+   "type": "function",
+   "name": "sendSMTP",
+   "filePath": "services/identity/mail.go",
+   "lineRange": [
+    113,
+    180
+   ],
+   "summary": "Delivers a message over SMTP with TLS.",
+   "tags": [
+    "mail",
+    "function",
+    "background-worker"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "file:services/identity/main.go",
+   "type": "file",
+   "name": "main.go",
+   "filePath": "services/identity/main.go",
+   "summary": "Entry point of the identity service: loads configuration, opens the database, starts background loops and registers HTTP routes and readiness.",
+   "tags": [
+    "entry-point",
+    "identity",
+    "routing",
+    "go"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/main.go:main",
+   "type": "function",
+   "name": "main",
+   "filePath": "services/identity/main.go",
+   "lineRange": [
+    22,
+    104
+   ],
+   "summary": "Bootstraps config, database, workers and HTTP server.",
+   "tags": [
+    "entry-point",
+    "function",
+    "go"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:services/identity/main.go:routes",
+   "type": "function",
+   "name": "routes",
+   "filePath": "services/identity/main.go",
+   "lineRange": [
+    107,
+    142
+   ],
+   "summary": "Registers all identity HTTP routes.",
+   "tags": [
+    "entry-point",
+    "function",
+    "go"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/main.go:handleReady",
+   "type": "function",
+   "name": "handleReady",
+   "filePath": "services/identity/main.go",
+   "lineRange": [
+    144,
+    158
+   ],
+   "summary": "Readiness probe handler.",
+   "tags": [
+    "entry-point",
+    "function",
+    "go"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:services/identity/password.go",
+   "type": "file",
+   "name": "password.go",
+   "filePath": "services/identity/password.go",
+   "summary": "Password hashing, verification with legacy bcrypt upgrade, rehash detection and password strength checks.",
+   "tags": [
+    "security",
+    "password",
+    "hashing",
+    "identity"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/password.go:checkPassword",
+   "type": "function",
+   "name": "checkPassword",
+   "filePath": "services/identity/password.go",
+   "lineRange": [
+    34,
+    60
+   ],
+   "summary": "Verifies a password against stored hash, supporting legacy formats.",
+   "tags": [
+    "security",
+    "function",
+    "identity"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/password.go:passwordProblem",
+   "type": "function",
+   "name": "passwordProblem",
+   "filePath": "services/identity/password.go",
+   "lineRange": [
+    83,
+    101
+   ],
+   "summary": "Returns a validation problem for weak passwords.",
+   "tags": [
+    "security",
+    "function",
+    "identity"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/password.go:hashPassword",
+   "type": "function",
+   "name": "hashPassword",
+   "filePath": "services/identity/password.go",
+   "lineRange": [
+    25,
+    31
+   ],
+   "summary": "Hashes a password with the current algorithm.",
+   "tags": [
+    "security",
+    "function",
+    "identity"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:services/identity/seclog.go",
+   "type": "file",
+   "name": "seclog.go",
+   "filePath": "services/identity/seclog.go",
+   "summary": "Security audit log writer and periodic housekeeping that prunes expired sessions and tokens.",
+   "tags": [
+    "security",
+    "audit-log",
+    "housekeeping",
+    "identity"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/seclog.go:housekeeping",
+   "type": "function",
+   "name": "housekeeping",
+   "filePath": "services/identity/seclog.go",
+   "lineRange": [
+    35,
+    76
+   ],
+   "summary": "Periodic cleanup of expired data.",
+   "tags": [
+    "security",
+    "function",
+    "identity"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/seclog.go:securityLog",
+   "type": "function",
+   "name": "securityLog",
+   "filePath": "services/identity/seclog.go",
+   "lineRange": [
+    20,
+    32
+   ],
+   "summary": "Records a security event row.",
+   "tags": [
+    "security",
+    "function",
+    "identity"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:services/identity/sessions.go",
+   "type": "file",
+   "name": "sessions.go",
+   "filePath": "services/identity/sessions.go",
+   "summary": "Session lifecycle: revocation cache, role lookup, session creation, bulk revoke and the refresh endpoint with rotation and reuse detection.",
+   "tags": [
+    "sessions",
+    "authentication",
+    "refresh-token",
+    "identity"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/sessions.go:sessionRevoked",
+   "type": "function",
+   "name": "sessionRevoked",
+   "filePath": "services/identity/sessions.go",
+   "lineRange": [
+    22,
+    48
+   ],
+   "summary": "Checks whether a session is revoked with caching.",
+   "tags": [
+    "sessions",
+    "function",
+    "identity"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/sessions.go:rolesOf",
+   "type": "function",
+   "name": "rolesOf",
+   "filePath": "services/identity/sessions.go",
+   "lineRange": [
+    50,
+    75
+   ],
+   "summary": "Loads and caches roles for a user.",
+   "tags": [
+    "sessions",
+    "function",
+    "identity"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/sessions.go:markRevoked",
+   "type": "function",
+   "name": "markRevoked",
+   "filePath": "services/identity/sessions.go",
+   "lineRange": [
+    84,
+    99
+   ],
+   "summary": "Marks sessions revoked in the cache and database.",
+   "tags": [
+    "sessions",
+    "function",
+    "identity"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:services/identity/sessions.go:handleRefresh",
+   "type": "function",
+   "name": "handleRefresh",
+   "filePath": "services/identity/sessions.go",
+   "lineRange": [
+    134,
+    207
+   ],
+   "summary": "Handles refresh-token rotation and detects token reuse.",
+   "tags": [
+    "sessions",
+    "function",
+    "identity"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "file:services/identity/tokens.go",
+   "type": "file",
+   "name": "tokens.go",
+   "filePath": "services/identity/tokens.go",
+   "summary": "Token and signing primitives: random tokens, SHA-256, UUIDs, access JWT sign/parse and HMAC-signed user headers for downstream services.",
+   "tags": [
+    "tokens",
+    "jwt",
+    "crypto",
+    "identity"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/tokens.go:signAccess",
+   "type": "function",
+   "name": "signAccess",
+   "filePath": "services/identity/tokens.go",
+   "lineRange": [
+    48,
+    58
+   ],
+   "summary": "Signs a short-lived access token.",
+   "tags": [
+    "tokens",
+    "function",
+    "identity"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:services/identity/tokens.go:parseAccess",
+   "type": "function",
+   "name": "parseAccess",
+   "filePath": "services/identity/tokens.go",
+   "lineRange": [
+    60,
+    71
+   ],
+   "summary": "Parses and validates an access token.",
+   "tags": [
+    "tokens",
+    "function",
+    "identity"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:services/identity/tokens.go:signUserHeaders",
+   "type": "function",
+   "name": "signUserHeaders",
+   "filePath": "services/identity/tokens.go",
+   "lineRange": [
+    75,
+    79
+   ],
+   "summary": "Signs X-User headers for a downstream service.",
+   "tags": [
+    "tokens",
+    "function",
+    "identity"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:services/identity/tokens.go:verifyUserHeaders",
+   "type": "function",
+   "name": "verifyUserHeaders",
+   "filePath": "services/identity/tokens.go",
+   "lineRange": [
+    81,
+    88
+   ],
+   "summary": "Verifies signed user headers.",
+   "tags": [
+    "tokens",
+    "function",
+    "identity"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:services/identity/unit_test.go",
+   "type": "file",
+   "name": "unit_test.go",
+   "filePath": "services/identity/unit_test.go",
+   "summary": "Unit tests for password hashing, access tokens, signed headers, CSRF, moderation rights and log redaction.",
+   "tags": [
+    "test",
+    "unit-test",
+    "identity",
+    "go"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:services/identity/verify.go",
+   "type": "file",
+   "name": "verify.go",
+   "filePath": "services/identity/verify.go",
+   "summary": "Verification and internal endpoints: signs user headers for the gateway auth request and exposes internal user lookup and role grant APIs.",
+   "tags": [
+    "auth",
+    "internal-api",
+    "verification",
+    "identity"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/verify.go:handleVerify",
+   "type": "function",
+   "name": "handleVerify",
+   "filePath": "services/identity/verify.go",
+   "lineRange": [
+    33,
+    50
+   ],
+   "summary": "Auth subrequest endpoint returning signed user headers.",
+   "tags": [
+    "auth",
+    "function",
+    "identity"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/verify.go:handleInternalUser",
+   "type": "function",
+   "name": "handleInternalUser",
+   "filePath": "services/identity/verify.go",
+   "lineRange": [
+    83,
+    103
+   ],
+   "summary": "Internal user lookup for other services.",
+   "tags": [
+    "auth",
+    "function",
+    "identity"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/verify.go:handleInternalGrant",
+   "type": "function",
+   "name": "handleInternalGrant",
+   "filePath": "services/identity/verify.go",
+   "lineRange": [
+    107,
+    135
+   ],
+   "summary": "Internal endpoint to grant or revoke roles.",
+   "tags": [
+    "auth",
+    "function",
+    "identity"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/verify.go:internalAuthOK",
+   "type": "function",
+   "name": "internalAuthOK",
+   "filePath": "services/identity/verify.go",
+   "lineRange": [
+    60,
+    69
+   ],
+   "summary": "Checks the internal key header.",
+   "tags": [
+    "auth",
+    "function",
+    "identity"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "file:services/library/albums.go",
+   "type": "file",
+   "name": "albums.go",
+   "filePath": "services/library/albums.go",
+   "summary": "Album endpoints of the library service: list, view, create, update, delete, share-link reset, add/remove stories, save and copy albums with ownership and visibility rules.",
+   "tags": [
+    "api-handler",
+    "albums",
+    "library",
+    "go"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:services/library/albums.go:handleAlbum",
+   "type": "function",
+   "name": "handleAlbum",
+   "filePath": "services/library/albums.go",
+   "lineRange": [
+    220,
+    254
+   ],
+   "summary": "Returns an album if viewable by the caller.",
+   "tags": [
+    "api-handler",
+    "function",
+    "go"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/library/albums.go:handleCreateAlbum",
+   "type": "function",
+   "name": "handleCreateAlbum",
+   "filePath": "services/library/albums.go",
+   "lineRange": [
+    257,
+    306
+   ],
+   "summary": "Creates an album with validation.",
+   "tags": [
+    "api-handler",
+    "function",
+    "go"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/library/albums.go:handleUpdateAlbum",
+   "type": "function",
+   "name": "handleUpdateAlbum",
+   "filePath": "services/library/albums.go",
+   "lineRange": [
+    318,
+    351
+   ],
+   "summary": "Updates album fields and visibility.",
+   "tags": [
+    "api-handler",
+    "function",
+    "go"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/library/albums.go:handleAddToAlbum",
+   "type": "function",
+   "name": "handleAddToAlbum",
+   "filePath": "services/library/albums.go",
+   "lineRange": [
+    402,
+    438
+   ],
+   "summary": "Adds stories to an owned album.",
+   "tags": [
+    "api-handler",
+    "function",
+    "go"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/library/albums.go:handleCopyAlbum",
+   "type": "function",
+   "name": "handleCopyAlbum",
+   "filePath": "services/library/albums.go",
+   "lineRange": [
+    495,
+    574
+   ],
+   "summary": "Copies a shared album into the caller library.",
+   "tags": [
+    "api-handler",
+    "function",
+    "go"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:services/library/albums.go:handleAlbumsByStory",
+   "type": "function",
+   "name": "handleAlbumsByStory",
+   "filePath": "services/library/albums.go",
+   "lineRange": [
+    175,
+    217
+   ],
+   "summary": "Lists albums containing a story.",
+   "tags": [
+    "api-handler",
+    "function",
+    "go"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/library/albums.go:withOwners",
+   "type": "function",
+   "name": "withOwners",
+   "filePath": "services/library/albums.go",
+   "lineRange": [
+    45,
+    67
+   ],
+   "summary": "Attaches owner profile data to album rows.",
+   "tags": [
+    "api-handler",
+    "function",
+    "go"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:services/library/backend.go",
+   "type": "file",
+   "name": "backend.go",
+   "filePath": "services/library/backend.go",
+   "summary": "Client for the catalog backend: signed internal calls, cached profile lookups and internal auth checking.",
+   "tags": [
+    "http-client",
+    "internal-api",
+    "cache",
+    "library"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/library/backend.go:call",
+   "type": "function",
+   "name": "call",
+   "filePath": "services/library/backend.go",
+   "lineRange": [
+    49,
+    78
+   ],
+   "summary": "Performs a signed internal request to the backend.",
+   "tags": [
+    "http-client",
+    "function",
+    "library"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/library/backend.go:profiles",
+   "type": "function",
+   "name": "profiles",
+   "filePath": "services/library/backend.go",
+   "lineRange": [
+    81,
+    115
+   ],
+   "summary": "Fetches and caches user profiles in batch.",
+   "tags": [
+    "http-client",
+    "function",
+    "library"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/library/backend.go:internalAuthOK",
+   "type": "function",
+   "name": "internalAuthOK",
+   "filePath": "services/library/backend.go",
+   "lineRange": [
+    118,
+    127
+   ],
+   "summary": "Validates internal key on incoming calls.",
+   "tags": [
+    "http-client",
+    "function",
+    "library"
+   ],
+   "complexity": "simple"
+  }
+ ],
+ "edges": [
+  {
+   "source": "file:services/identity/http.go",
+   "target": "function:services/identity/http.go:writeJSON",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/http.go",
+   "target": "function:services/identity/http.go:setSessionCookies",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/http.go",
+   "target": "function:services/identity/http.go:authed",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/http.go",
+   "target": "function:services/identity/http.go:callerOf",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/integration_test.go",
+   "target": "function:services/identity/integration_test.go:newHarness",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/integration_test.go",
+   "target": "function:services/identity/integration_test.go:TestRefreshRotationAndReuse",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/integration_test.go",
+   "target": "function:services/identity/integration_test.go:TestEventContracts",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/main.go",
+   "target": "file:services/identity/integration_test.go",
+   "type": "tested_by",
+   "direction": "forward",
+   "weight": 0.5
+  },
+  {
+   "source": "file:services/identity/log.go",
+   "target": "function:services/identity/log.go:withRequestLog",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/log.go",
+   "target": "function:services/identity/log.go:logf",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/mail.go",
+   "target": "function:services/identity/mail.go:enqueueMail",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/mail.go",
+   "target": "function:services/identity/mail.go:mailLoop",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/mail.go",
+   "target": "function:services/identity/mail.go:sendNextMail",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/mail.go",
+   "target": "function:services/identity/mail.go:sendSMTP",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/main.go",
+   "target": "function:services/identity/main.go:main",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/main.go",
+   "target": "function:services/identity/main.go:routes",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/main.go",
+   "target": "function:services/identity/main.go:handleReady",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/password.go",
+   "target": "function:services/identity/password.go:checkPassword",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/password.go",
+   "target": "function:services/identity/password.go:passwordProblem",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/password.go",
+   "target": "function:services/identity/password.go:hashPassword",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/seclog.go",
+   "target": "function:services/identity/seclog.go:housekeeping",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/seclog.go",
+   "target": "function:services/identity/seclog.go:securityLog",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/sessions.go",
+   "target": "function:services/identity/sessions.go:sessionRevoked",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/sessions.go",
+   "target": "function:services/identity/sessions.go:rolesOf",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/sessions.go",
+   "target": "function:services/identity/sessions.go:markRevoked",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/sessions.go",
+   "target": "function:services/identity/sessions.go:handleRefresh",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/tokens.go",
+   "target": "function:services/identity/tokens.go:signAccess",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/tokens.go",
+   "target": "function:services/identity/tokens.go:parseAccess",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/tokens.go",
+   "target": "function:services/identity/tokens.go:signUserHeaders",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/tokens.go",
+   "target": "function:services/identity/tokens.go:verifyUserHeaders",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/main.go",
+   "target": "file:services/identity/unit_test.go",
+   "type": "tested_by",
+   "direction": "forward",
+   "weight": 0.5
+  },
+  {
+   "source": "file:services/identity/verify.go",
+   "target": "function:services/identity/verify.go:handleVerify",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/verify.go",
+   "target": "function:services/identity/verify.go:handleInternalUser",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/verify.go",
+   "target": "function:services/identity/verify.go:handleInternalGrant",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/verify.go",
+   "target": "function:services/identity/verify.go:internalAuthOK",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/library/albums.go",
+   "target": "function:services/library/albums.go:handleAlbum",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/library/albums.go",
+   "target": "function:services/library/albums.go:handleCreateAlbum",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/library/albums.go",
+   "target": "function:services/library/albums.go:handleUpdateAlbum",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/library/albums.go",
+   "target": "function:services/library/albums.go:handleAddToAlbum",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/library/albums.go",
+   "target": "function:services/library/albums.go:handleCopyAlbum",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/library/albums.go",
+   "target": "function:services/library/albums.go:handleAlbumsByStory",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/library/albums.go",
+   "target": "function:services/library/albums.go:withOwners",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/library/backend.go",
+   "target": "function:services/library/backend.go:call",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/library/backend.go",
+   "target": "function:services/library/backend.go:profiles",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/library/backend.go",
+   "target": "function:services/library/backend.go:internalAuthOK",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  }
+ ]
+}

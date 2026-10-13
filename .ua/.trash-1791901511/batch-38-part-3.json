@@ -1,0 +1,948 @@
+{
+ "nodes": [
+  {
+   "id": "file:services/identity/admin.go",
+   "type": "file",
+   "name": "admin.go",
+   "filePath": "services/identity/admin.go",
+   "summary": "Admin HTTP handlers of the identity service for role changes, bans, user deletion, lookup and session revocation.",
+   "tags": [
+    "api-handler",
+    "admin",
+    "identity",
+    "go"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:services/identity/admin.go:moderationRights",
+   "type": "function",
+   "name": "moderationRights",
+   "filePath": "services/identity/admin.go",
+   "lineRange": [
+    37,
+    49
+   ],
+   "summary": "Computes which roles an actor may grant.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:services/identity/admin.go:handleRoles",
+   "type": "function",
+   "name": "handleRoles",
+   "filePath": "services/identity/admin.go",
+   "lineRange": [
+    74,
+    161
+   ],
+   "summary": "Handler changing a user role set with moderation rights checks.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:services/identity/admin.go:handleBan",
+   "type": "function",
+   "name": "handleBan",
+   "filePath": "services/identity/admin.go",
+   "lineRange": [
+    164,
+    241
+   ],
+   "summary": "Handler banning or unbanning a user and revoking sessions.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:services/identity/admin.go:handleDeleteUser",
+   "type": "function",
+   "name": "handleDeleteUser",
+   "filePath": "services/identity/admin.go",
+   "lineRange": [
+    245,
+    327
+   ],
+   "summary": "Handler deleting a user after checks including catalog delete check.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:services/identity/admin.go:backendDeleteCheck",
+   "type": "function",
+   "name": "backendDeleteCheck",
+   "filePath": "services/identity/admin.go",
+   "lineRange": [
+    331,
+    353
+   ],
+   "summary": "Asks the catalog whether a user can be deleted.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/admin.go:handleLookup",
+   "type": "function",
+   "name": "handleLookup",
+   "filePath": "services/identity/admin.go",
+   "lineRange": [
+    356,
+    393
+   ],
+   "summary": "Handler looking up users for admins.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/admin.go:handlePrivate",
+   "type": "function",
+   "name": "handlePrivate",
+   "filePath": "services/identity/admin.go",
+   "lineRange": [
+    396,
+    420
+   ],
+   "summary": "Handler for private user data access.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/admin.go:handleRevokeAll",
+   "type": "function",
+   "name": "handleRevokeAll",
+   "filePath": "services/identity/admin.go",
+   "lineRange": [
+    423,
+    453
+   ],
+   "summary": "Handler revoking all sessions of a user.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:services/identity/auth.go",
+   "type": "file",
+   "name": "auth.go",
+   "filePath": "services/identity/auth.go",
+   "summary": "Core auth handlers of the identity service: register, login, logout, sessions, password change/reset and email verification.",
+   "tags": [
+    "api-handler",
+    "auth",
+    "identity",
+    "go"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:services/identity/auth.go:handleRegister",
+   "type": "function",
+   "name": "handleRegister",
+   "filePath": "services/identity/auth.go",
+   "lineRange": [
+    51,
+    142
+   ],
+   "summary": "Registers an account with password policy and verification mail.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:services/identity/auth.go:handleLogin",
+   "type": "function",
+   "name": "handleLogin",
+   "filePath": "services/identity/auth.go",
+   "lineRange": [
+    144,
+    241
+   ],
+   "summary": "Authenticates credentials, enforces throttling and creates a session.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:services/identity/auth.go:handleLogout",
+   "type": "function",
+   "name": "handleLogout",
+   "filePath": "services/identity/auth.go",
+   "lineRange": [
+    244,
+    265
+   ],
+   "summary": "Ends the current session.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/auth.go:handleLogoutAll",
+   "type": "function",
+   "name": "handleLogoutAll",
+   "filePath": "services/identity/auth.go",
+   "lineRange": [
+    267,
+    284
+   ],
+   "summary": "Ends all sessions of the user.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:services/identity/auth.go:handleSessions",
+   "type": "function",
+   "name": "handleSessions",
+   "filePath": "services/identity/auth.go",
+   "lineRange": [
+    298,
+    324
+   ],
+   "summary": "Lists the user sessions.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/auth.go:handleRevokeSession",
+   "type": "function",
+   "name": "handleRevokeSession",
+   "filePath": "services/identity/auth.go",
+   "lineRange": [
+    326,
+    344
+   ],
+   "summary": "Revokes one session.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:services/identity/auth.go:consumeAccountToken",
+   "type": "function",
+   "name": "consumeAccountToken",
+   "filePath": "services/identity/auth.go",
+   "lineRange": [
+    363,
+    374
+   ],
+   "summary": "Validates and consumes an account token.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:services/identity/auth.go:handleChangePassword",
+   "type": "function",
+   "name": "handleChangePassword",
+   "filePath": "services/identity/auth.go",
+   "lineRange": [
+    377,
+    425
+   ],
+   "summary": "Changes password and revokes other sessions.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/auth.go:handleForgot",
+   "type": "function",
+   "name": "handleForgot",
+   "filePath": "services/identity/auth.go",
+   "lineRange": [
+    439,
+    481
+   ],
+   "summary": "Starts the forgot password flow by mail.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/auth.go:handleReset",
+   "type": "function",
+   "name": "handleReset",
+   "filePath": "services/identity/auth.go",
+   "lineRange": [
+    484,
+    532
+   ],
+   "summary": "Completes password reset with a token.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/auth.go:handleVerifyEmail",
+   "type": "function",
+   "name": "handleVerifyEmail",
+   "filePath": "services/identity/auth.go",
+   "lineRange": [
+    537,
+    564
+   ],
+   "summary": "Verifies an email address token.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/auth.go:handleResendVerification",
+   "type": "function",
+   "name": "handleResendVerification",
+   "filePath": "services/identity/auth.go",
+   "lineRange": [
+    566,
+    597
+   ],
+   "summary": "Resends the verification mail.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:services/identity/config.go",
+   "type": "file",
+   "name": "config.go",
+   "filePath": "services/identity/config.go",
+   "summary": "Loads identity service configuration from environment variables.",
+   "tags": [
+    "configuration",
+    "identity",
+    "go"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:services/identity/config.go:loadConfig",
+   "type": "function",
+   "name": "loadConfig",
+   "filePath": "services/identity/config.go",
+   "lineRange": [
+    32,
+    67
+   ],
+   "summary": "Reads configuration from environment into config.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "class:services/identity/config.go:config",
+   "type": "class",
+   "name": "config",
+   "filePath": "services/identity/config.go",
+   "lineRange": [
+    9,
+    30
+   ],
+   "summary": "Class config in config.go.",
+   "tags": [
+    "class",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:services/identity/db.go",
+   "type": "file",
+   "name": "db.go",
+   "filePath": "services/identity/db.go",
+   "summary": "Creates and migrates the identity database schema.",
+   "tags": [
+    "database",
+    "migration",
+    "identity",
+    "go"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:services/identity/db.go:migrate",
+   "type": "function",
+   "name": "migrate",
+   "filePath": "services/identity/db.go",
+   "lineRange": [
+    18,
+    55
+   ],
+   "summary": "Creates identity tables and indexes.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:services/identity/demo.go",
+   "type": "file",
+   "name": "demo.go",
+   "filePath": "services/identity/demo.go",
+   "summary": "Seeds demo accounts into the identity database.",
+   "tags": [
+    "seed",
+    "demo",
+    "identity",
+    "go"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:services/identity/demo.go:seedDemo",
+   "type": "function",
+   "name": "seedDemo",
+   "filePath": "services/identity/demo.go",
+   "lineRange": [
+    30,
+    63
+   ],
+   "summary": "Seeds demo accounts.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:services/identity/email.go",
+   "type": "file",
+   "name": "email.go",
+   "filePath": "services/identity/email.go",
+   "summary": "Email change request and confirmation handlers plus a human-check helper.",
+   "tags": [
+    "api-handler",
+    "email",
+    "identity",
+    "go"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/email.go:handleChangeEmail",
+   "type": "function",
+   "name": "handleChangeEmail",
+   "filePath": "services/identity/email.go",
+   "lineRange": [
+    20,
+    80
+   ],
+   "summary": "Starts an email change with confirmation mail.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:services/identity/email.go:handleConfirmEmailChange",
+   "type": "function",
+   "name": "handleConfirmEmailChange",
+   "filePath": "services/identity/email.go",
+   "lineRange": [
+    83,
+    137
+   ],
+   "summary": "Confirms an email change token.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/email.go:humanOK",
+   "type": "function",
+   "name": "humanOK",
+   "filePath": "services/identity/email.go",
+   "lineRange": [
+    144,
+    171
+   ],
+   "summary": "Checks a human verification answer.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "file:services/identity/events.go",
+   "type": "file",
+   "name": "events.go",
+   "filePath": "services/identity/events.go",
+   "summary": "Transactional outbox for user events: enqueue, publish loop to RabbitMQ, republish and stats endpoint.",
+   "tags": [
+    "events",
+    "outbox",
+    "messaging",
+    "identity",
+    "go"
+   ],
+   "complexity": "complex"
+  },
+  {
+   "id": "function:services/identity/events.go:userEvent",
+   "type": "function",
+   "name": "userEvent",
+   "filePath": "services/identity/events.go",
+   "lineRange": [
+    30,
+    40
+   ],
+   "summary": "Builds a user event payload.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:services/identity/events.go:enqueueEvent",
+   "type": "function",
+   "name": "enqueueEvent",
+   "filePath": "services/identity/events.go",
+   "lineRange": [
+    51,
+    64
+   ],
+   "summary": "Inserts a user event in the outbox.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:services/identity/events.go:publishLoop",
+   "type": "function",
+   "name": "publishLoop",
+   "filePath": "services/identity/events.go",
+   "lineRange": [
+    67,
+    85
+   ],
+   "summary": "Background loop publishing outbox events.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "function:services/identity/events.go:publishSession",
+   "type": "function",
+   "name": "publishSession",
+   "filePath": "services/identity/events.go",
+   "lineRange": [
+    87,
+    121
+   ],
+   "summary": "Publishes events in a session.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/events.go:publishBatch",
+   "type": "function",
+   "name": "publishBatch",
+   "filePath": "services/identity/events.go",
+   "lineRange": [
+    123,
+    161
+   ],
+   "summary": "Publishes a batch of events to RabbitMQ.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/events.go:republish",
+   "type": "function",
+   "name": "republish",
+   "filePath": "services/identity/events.go",
+   "lineRange": [
+    165,
+    190
+   ],
+   "summary": "Republishes events on demand.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "function:services/identity/events.go:handleStats",
+   "type": "function",
+   "name": "handleStats",
+   "filePath": "services/identity/events.go",
+   "lineRange": [
+    193,
+    205
+   ],
+   "summary": "Reports outbox stats.",
+   "tags": [
+    "helper",
+    "logic",
+    "implementation"
+   ],
+   "complexity": "simple"
+  }
+ ],
+ "edges": [
+  {
+   "source": "file:services/identity/admin.go",
+   "target": "function:services/identity/admin.go:moderationRights",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/admin.go",
+   "target": "function:services/identity/admin.go:handleRoles",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/admin.go",
+   "target": "function:services/identity/admin.go:handleBan",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/admin.go",
+   "target": "function:services/identity/admin.go:handleDeleteUser",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/admin.go",
+   "target": "function:services/identity/admin.go:backendDeleteCheck",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/admin.go",
+   "target": "function:services/identity/admin.go:handleLookup",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/admin.go",
+   "target": "function:services/identity/admin.go:handlePrivate",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/admin.go",
+   "target": "function:services/identity/admin.go:handleRevokeAll",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/auth.go",
+   "target": "function:services/identity/auth.go:handleRegister",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/auth.go",
+   "target": "function:services/identity/auth.go:handleLogin",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/auth.go",
+   "target": "function:services/identity/auth.go:handleLogout",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/auth.go",
+   "target": "function:services/identity/auth.go:handleLogoutAll",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/auth.go",
+   "target": "function:services/identity/auth.go:handleSessions",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/auth.go",
+   "target": "function:services/identity/auth.go:handleRevokeSession",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/auth.go",
+   "target": "function:services/identity/auth.go:consumeAccountToken",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/auth.go",
+   "target": "function:services/identity/auth.go:handleChangePassword",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/auth.go",
+   "target": "function:services/identity/auth.go:handleForgot",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/auth.go",
+   "target": "function:services/identity/auth.go:handleReset",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/auth.go",
+   "target": "function:services/identity/auth.go:handleVerifyEmail",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/auth.go",
+   "target": "function:services/identity/auth.go:handleResendVerification",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/config.go",
+   "target": "function:services/identity/config.go:loadConfig",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/config.go",
+   "target": "class:services/identity/config.go:config",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/db.go",
+   "target": "function:services/identity/db.go:migrate",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/demo.go",
+   "target": "function:services/identity/demo.go:seedDemo",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/email.go",
+   "target": "function:services/identity/email.go:handleChangeEmail",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/email.go",
+   "target": "function:services/identity/email.go:handleConfirmEmailChange",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/email.go",
+   "target": "function:services/identity/email.go:humanOK",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/events.go",
+   "target": "function:services/identity/events.go:userEvent",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/events.go",
+   "target": "function:services/identity/events.go:enqueueEvent",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/events.go",
+   "target": "function:services/identity/events.go:publishLoop",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/events.go",
+   "target": "function:services/identity/events.go:publishSession",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/events.go",
+   "target": "function:services/identity/events.go:publishBatch",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/events.go",
+   "target": "function:services/identity/events.go:republish",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/events.go",
+   "target": "function:services/identity/events.go:handleStats",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "file:services/identity/auth.go",
+   "target": "file:services/identity/db.go",
+   "type": "depends_on",
+   "direction": "forward",
+   "weight": 0.6
+  },
+  {
+   "source": "file:services/identity/auth.go",
+   "target": "file:services/identity/config.go",
+   "type": "depends_on",
+   "direction": "forward",
+   "weight": 0.6
+  },
+  {
+   "source": "file:services/identity/demo.go",
+   "target": "file:services/identity/db.go",
+   "type": "depends_on",
+   "direction": "forward",
+   "weight": 0.6
+  },
+  {
+   "source": "file:services/identity/events.go",
+   "target": "file:services/identity/auth.go",
+   "type": "related",
+   "direction": "forward",
+   "weight": 0.5
+  }
+ ]
+}

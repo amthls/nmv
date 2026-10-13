@@ -1,0 +1,253 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 2,
+  "filesSkipped": [],
+  "filesUnreadable": [],
+  "analysisOutcomes": {
+    "structure": {
+      "succeeded": 2,
+      "failed": 0
+    },
+    "callGraph": {
+      "succeeded": 0,
+      "failed": 0,
+      "skipped": 2
+    }
+  },
+  "results": [
+    {
+      "path": "services/messaging/migrations/001_conversations.sql",
+      "language": "sql",
+      "fileCategory": "data",
+      "totalLines": 62,
+      "nonEmptyLines": 56,
+      "definitions": [
+        {
+          "name": "conversations",
+          "kind": "table",
+          "fields": [
+            "id",
+            "kind",
+            "dm_key",
+            "created_at"
+          ],
+          "startLine": 4,
+          "endLine": 12
+        },
+        {
+          "name": "conversation_members",
+          "kind": "table",
+          "fields": [
+            "conversation_id",
+            "user_id",
+            "last_read_seq"
+          ],
+          "startLine": 15,
+          "endLine": 21
+        },
+        {
+          "name": "messages",
+          "kind": "table",
+          "fields": [
+            "id",
+            "seq",
+            "sender_id",
+            "body",
+            "draft_id",
+            "pinned_by",
+            "created_at"
+          ],
+          "startLine": 24,
+          "endLine": 34
+        },
+        {
+          "name": "user_blocks",
+          "kind": "table",
+          "fields": [
+            "blocker_id",
+            "blocked_id",
+            "created_at"
+          ],
+          "startLine": 38,
+          "endLine": 44
+        },
+        {
+          "name": "dm_labels",
+          "kind": "table",
+          "fields": [
+            "id",
+            "user_id",
+            "name",
+            "color",
+            "created_at"
+          ],
+          "startLine": 47,
+          "endLine": 53
+        },
+        {
+          "name": "dm_label_conversations",
+          "kind": "table",
+          "fields": [
+            "label_id",
+            "partner_id",
+            "created_at"
+          ],
+          "startLine": 57,
+          "endLine": 62
+        },
+        {
+          "name": "conversation_members_user",
+          "kind": "index",
+          "fields": [],
+          "startLine": 22,
+          "endLine": 22
+        },
+        {
+          "name": "messages_conversation",
+          "kind": "index",
+          "fields": [],
+          "startLine": 35,
+          "endLine": 35
+        },
+        {
+          "name": "messages_pinned",
+          "kind": "index",
+          "fields": [],
+          "startLine": 36,
+          "endLine": 36
+        },
+        {
+          "name": "user_blocks_blocked",
+          "kind": "index",
+          "fields": [],
+          "startLine": 45,
+          "endLine": 45
+        },
+        {
+          "name": "dm_labels_user_name",
+          "kind": "index",
+          "fields": [],
+          "startLine": 54,
+          "endLine": 54
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "definitionCount": 11
+      }
+    },
+    {
+      "path": "services/messaging/migrations/002_notifications.sql",
+      "language": "sql",
+      "fileCategory": "data",
+      "totalLines": 61,
+      "nonEmptyLines": 56,
+      "definitions": [
+        {
+          "name": "notifications",
+          "kind": "table",
+          "fields": [
+            "id",
+            "user_id",
+            "type",
+            "category",
+            "link",
+            "actors",
+            "at",
+            "count",
+            "updated_at"
+          ],
+          "startLine": 3,
+          "endLine": 21
+        },
+        {
+          "name": "notification_dedupe",
+          "kind": "table",
+          "fields": [
+            "created_at"
+          ],
+          "startLine": 27,
+          "endLine": 30
+        },
+        {
+          "name": "notification_settings",
+          "kind": "table",
+          "fields": [
+            "user_id",
+            "category",
+            "web"
+          ],
+          "startLine": 33,
+          "endLine": 38
+        },
+        {
+          "name": "broadcasts",
+          "kind": "table",
+          "fields": [
+            "id",
+            "title",
+            "message",
+            "link",
+            "created_by",
+            "created_at"
+          ],
+          "startLine": 41,
+          "endLine": 48
+        },
+        {
+          "name": "broadcast_reads",
+          "kind": "table",
+          "fields": [
+            "broadcast_id",
+            "user_id",
+            "seen_at",
+            "read_at"
+          ],
+          "startLine": 49,
+          "endLine": 55
+        },
+        {
+          "name": "legacy_imports",
+          "kind": "table",
+          "fields": [
+            "part",
+            "done_at"
+          ],
+          "startLine": 58,
+          "endLine": 61
+        },
+        {
+          "name": "notifications_user",
+          "kind": "index",
+          "fields": [],
+          "startLine": 22,
+          "endLine": 22
+        },
+        {
+          "name": "notifications_unseen",
+          "kind": "index",
+          "fields": [],
+          "startLine": 23,
+          "endLine": 23
+        },
+        {
+          "name": "notifications_group",
+          "kind": "index",
+          "fields": [],
+          "startLine": 24,
+          "endLine": 24
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0,
+        "definitionCount": 9
+      }
+    }
+  ]
+}

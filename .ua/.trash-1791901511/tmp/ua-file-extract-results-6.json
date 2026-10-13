@@ -1,0 +1,4271 @@
+{
+  "scriptCompleted": true,
+  "filesAnalyzed": 21,
+  "filesSkipped": [],
+  "filesUnreadable": [],
+  "analysisOutcomes": {
+    "structure": {
+      "succeeded": 21,
+      "failed": 0
+    },
+    "callGraph": {
+      "succeeded": 21,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "results": [
+    {
+      "path": "catalog/src/services/exportSource.ts",
+      "language": "typescript",
+      "fileCategory": "code",
+      "totalLines": 213,
+      "nonEmptyLines": 193,
+      "functions": [
+        {
+          "name": "cleanText",
+          "startLine": 48,
+          "endLine": 51,
+          "params": [
+            "input"
+          ]
+        },
+        {
+          "name": "htmlToText",
+          "startLine": 56,
+          "endLine": 64,
+          "params": [
+            "input"
+          ]
+        },
+        {
+          "name": "blocksFromContent",
+          "startLine": 69,
+          "endLine": 80,
+          "params": [
+            "content"
+          ]
+        },
+        {
+          "name": "blocksFromJson",
+          "startLine": 82,
+          "endLine": 108,
+          "params": [
+            "items"
+          ]
+        },
+        {
+          "name": "listExportableChapters",
+          "startLine": 120,
+          "endLine": 134,
+          "params": [
+            "storyId",
+            "chapterIds"
+          ]
+        },
+        {
+          "name": "storyFingerprint",
+          "startLine": 137,
+          "endLine": 144,
+          "params": [
+            "storyId"
+          ]
+        },
+        {
+          "name": "loadBook",
+          "startLine": 146,
+          "endLine": 213,
+          "params": [
+            "storyId",
+            "chapterIds"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "cleanText",
+          "line": 48,
+          "isDefault": false
+        },
+        {
+          "name": "htmlToText",
+          "line": 56,
+          "isDefault": false
+        },
+        {
+          "name": "MAX_EXPORT_CHAPTERS",
+          "line": 112,
+          "isDefault": false
+        },
+        {
+          "name": "MAX_EXPORT_PAGES",
+          "line": 113,
+          "isDefault": false
+        },
+        {
+          "name": "listExportableChapters",
+          "line": 120,
+          "isDefault": false
+        },
+        {
+          "name": "storyFingerprint",
+          "line": 137,
+          "isDefault": false
+        },
+        {
+          "name": "loadBook",
+          "line": 146,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "cleanText",
+          "callee": "input.normalize('NFC').replace(XML_ILLEGAL, '').replace(/\\r\\n?/g, '\\n').replace(/[ \\t ]+$/gm, '').trim",
+          "lineNumber": 50
+        },
+        {
+          "caller": "cleanText",
+          "callee": "input.normalize('NFC').replace(XML_ILLEGAL, '').replace(/\\r\\n?/g, '\\n').replace",
+          "lineNumber": 50
+        },
+        {
+          "caller": "cleanText",
+          "callee": "input.normalize('NFC').replace(XML_ILLEGAL, '').replace",
+          "lineNumber": 50
+        },
+        {
+          "caller": "cleanText",
+          "callee": "input.normalize('NFC').replace",
+          "lineNumber": 50
+        },
+        {
+          "caller": "cleanText",
+          "callee": "input.normalize",
+          "lineNumber": 50
+        },
+        {
+          "caller": "htmlToText",
+          "callee": "/<\\/?[a-z][^>]*>/i.test",
+          "lineNumber": 57
+        },
+        {
+          "caller": "htmlToText",
+          "callee": "input\r\n    .replace(/<br\\s*\\/?>/gi, '\\n')\r\n    .replace(/<\\/(p|h[1-6]|li|blockquote|figure|div)>/gi, '\\n\\n')\r\n    .replace(/<[^>]+>/g, '')\r\n    .replace(/&(amp|lt|gt|quot|#39|apos|nbsp);/g, (_, e) => ENTITIES[e])\r\n    .replace",
+          "lineNumber": 58
+        },
+        {
+          "caller": "htmlToText",
+          "callee": "input\r\n    .replace(/<br\\s*\\/?>/gi, '\\n')\r\n    .replace(/<\\/(p|h[1-6]|li|blockquote|figure|div)>/gi, '\\n\\n')\r\n    .replace(/<[^>]+>/g, '')\r\n    .replace",
+          "lineNumber": 58
+        },
+        {
+          "caller": "htmlToText",
+          "callee": "input\r\n    .replace(/<br\\s*\\/?>/gi, '\\n')\r\n    .replace(/<\\/(p|h[1-6]|li|blockquote|figure|div)>/gi, '\\n\\n')\r\n    .replace",
+          "lineNumber": 58
+        },
+        {
+          "caller": "htmlToText",
+          "callee": "input\r\n    .replace(/<br\\s*\\/?>/gi, '\\n')\r\n    .replace",
+          "lineNumber": 58
+        },
+        {
+          "caller": "htmlToText",
+          "callee": "input\r\n    .replace",
+          "lineNumber": 58
+        },
+        {
+          "caller": "htmlToText",
+          "callee": "String.fromCodePoint",
+          "lineNumber": 63
+        },
+        {
+          "caller": "htmlToText",
+          "callee": "Number",
+          "lineNumber": 63
+        },
+        {
+          "caller": "blocksFromContent",
+          "callee": "htmlToText(content).split",
+          "lineNumber": 71
+        },
+        {
+          "caller": "blocksFromContent",
+          "callee": "htmlToText",
+          "lineNumber": 71
+        },
+        {
+          "caller": "blocksFromContent",
+          "callee": "cleanText",
+          "lineNumber": 72
+        },
+        {
+          "caller": "blocksFromContent",
+          "callee": "line.match",
+          "lineNumber": 74
+        },
+        {
+          "caller": "blocksFromContent",
+          "callee": "blocks.push",
+          "lineNumber": 75
+        },
+        {
+          "caller": "blocksFromContent",
+          "callee": "/^(\\*\\s*){3,}$|^-{3,}$/.test",
+          "lineNumber": 76
+        },
+        {
+          "caller": "blocksFromContent",
+          "callee": "blocks.push",
+          "lineNumber": 76
+        },
+        {
+          "caller": "blocksFromContent",
+          "callee": "blocks.push",
+          "lineNumber": 77
+        },
+        {
+          "caller": "blocksFromJson",
+          "callee": "cleanText",
+          "lineNumber": 86
+        },
+        {
+          "caller": "blocksFromJson",
+          "callee": "htmlToText",
+          "lineNumber": 86
+        },
+        {
+          "caller": "blocksFromJson",
+          "callee": "cleanText",
+          "lineNumber": 87
+        },
+        {
+          "caller": "blocksFromJson",
+          "callee": "blocks.push",
+          "lineNumber": 89
+        },
+        {
+          "caller": "blocksFromJson",
+          "callee": "blocks.push",
+          "lineNumber": 93
+        },
+        {
+          "caller": "blocksFromJson",
+          "callee": "text.split(/\\n+/).map((t) => t.trim()).filter",
+          "lineNumber": 98
+        },
+        {
+          "caller": "blocksFromJson",
+          "callee": "text.split(/\\n+/).map",
+          "lineNumber": 98
+        },
+        {
+          "caller": "blocksFromJson",
+          "callee": "text.split",
+          "lineNumber": 98
+        },
+        {
+          "caller": "blocksFromJson",
+          "callee": "t.trim",
+          "lineNumber": 98
+        },
+        {
+          "caller": "blocksFromJson",
+          "callee": "parts.forEach",
+          "lineNumber": 99
+        },
+        {
+          "caller": "blocksFromJson",
+          "callee": "blocks.push",
+          "lineNumber": 99
+        },
+        {
+          "caller": "blocksFromJson",
+          "callee": "blocks.push",
+          "lineNumber": 102
+        },
+        {
+          "caller": "blocksFromJson",
+          "callee": "blocks.push",
+          "lineNumber": 104
+        },
+        {
+          "caller": "listExportableChapters",
+          "callee": "pool.query",
+          "lineNumber": 121
+        },
+        {
+          "caller": "storyFingerprint",
+          "callee": "pool.query",
+          "lineNumber": 138
+        },
+        {
+          "caller": "loadBook",
+          "callee": "pool.query",
+          "lineNumber": 147
+        },
+        {
+          "caller": "loadBook",
+          "callee": "cleanText",
+          "lineNumber": 158
+        },
+        {
+          "caller": "loadBook",
+          "callee": "cleanText",
+          "lineNumber": 161
+        },
+        {
+          "caller": "loadBook",
+          "callee": "cleanText",
+          "lineNumber": 162
+        },
+        {
+          "caller": "loadBook",
+          "callee": "cleanText",
+          "lineNumber": 163
+        },
+        {
+          "caller": "loadBook",
+          "callee": "cleanText",
+          "lineNumber": 164
+        },
+        {
+          "caller": "loadBook",
+          "callee": "htmlToText",
+          "lineNumber": 164
+        },
+        {
+          "caller": "loadBook",
+          "callee": "new Date(s.updated_at).toISOString",
+          "lineNumber": 166
+        },
+        {
+          "caller": "loadBook",
+          "callee": "pool.query",
+          "lineNumber": 169
+        },
+        {
+          "caller": "loadBook",
+          "callee": "pool.query",
+          "lineNumber": 178
+        },
+        {
+          "caller": "loadBook",
+          "callee": "pagesBy.has",
+          "lineNumber": 185
+        },
+        {
+          "caller": "loadBook",
+          "callee": "pagesBy.set",
+          "lineNumber": 185
+        },
+        {
+          "caller": "loadBook",
+          "callee": "pagesBy.get(p.chapter_id)!.push",
+          "lineNumber": 186
+        },
+        {
+          "caller": "loadBook",
+          "callee": "pagesBy.get",
+          "lineNumber": 186
+        },
+        {
+          "caller": "loadBook",
+          "callee": "cRes.rows.map",
+          "lineNumber": 189
+        },
+        {
+          "caller": "loadBook",
+          "callee": "Array.isArray",
+          "lineNumber": 190
+        },
+        {
+          "caller": "loadBook",
+          "callee": "blocksFromJson",
+          "lineNumber": 191
+        },
+        {
+          "caller": "loadBook",
+          "callee": "blocksFromContent",
+          "lineNumber": 192
+        },
+        {
+          "caller": "loadBook",
+          "callee": "pagesBy.get",
+          "lineNumber": 193
+        },
+        {
+          "caller": "loadBook",
+          "callee": "blocks.filter((b): b is Extract<Block, { kind: 'image' }> => b.kind === 'image').map",
+          "lineNumber": 195
+        },
+        {
+          "caller": "loadBook",
+          "callee": "blocks.filter",
+          "lineNumber": 195
+        },
+        {
+          "caller": "loadBook",
+          "callee": "Number",
+          "lineNumber": 197
+        },
+        {
+          "caller": "loadBook",
+          "callee": "cleanText",
+          "lineNumber": 199
+        },
+        {
+          "caller": "loadBook",
+          "callee": "cleanText",
+          "lineNumber": 203
+        },
+        {
+          "caller": "loadBook",
+          "callee": "new Date(c.updated_at).toISOString",
+          "lineNumber": 205
+        }
+      ],
+      "metrics": {
+        "importCount": 1,
+        "exportCount": 7,
+        "functionCount": 7,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "catalog/src/services/hotShelf.ts",
+      "language": "typescript",
+      "fileCategory": "code",
+      "totalLines": 67,
+      "nonEmptyLines": 64,
+      "functions": [
+        {
+          "name": "scheduleHotShelf",
+          "startLine": 10,
+          "endLine": 22,
+          "params": []
+        },
+        {
+          "name": "trendingStories",
+          "startLine": 25,
+          "endLine": 67,
+          "params": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "scheduleHotShelf",
+          "line": 10,
+          "isDefault": false
+        },
+        {
+          "name": "trendingStories",
+          "line": 25,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "run",
+          "callee": "redisReady",
+          "lineNumber": 12
+        },
+        {
+          "caller": "run",
+          "callee": "JSON.stringify",
+          "lineNumber": 14
+        },
+        {
+          "caller": "run",
+          "callee": "trendingStories",
+          "lineNumber": 14
+        },
+        {
+          "caller": "run",
+          "callee": "redis.set",
+          "lineNumber": 15
+        },
+        {
+          "caller": "run",
+          "callee": "Math.ceil",
+          "lineNumber": 15
+        },
+        {
+          "caller": "run",
+          "callee": "console.error",
+          "lineNumber": 17
+        },
+        {
+          "caller": "scheduleHotShelf",
+          "callee": "setTimeout(run, 5_000).unref",
+          "lineNumber": 20
+        },
+        {
+          "caller": "scheduleHotShelf",
+          "callee": "setTimeout",
+          "lineNumber": 20
+        },
+        {
+          "caller": "scheduleHotShelf",
+          "callee": "setInterval(run, EVERY_MS).unref",
+          "lineNumber": 21
+        },
+        {
+          "caller": "scheduleHotShelf",
+          "callee": "setInterval",
+          "lineNumber": 21
+        },
+        {
+          "caller": "trendingStories",
+          "callee": "pool.query",
+          "lineNumber": 26
+        }
+      ],
+      "metrics": {
+        "importCount": 2,
+        "exportCount": 2,
+        "functionCount": 2,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "catalog/src/services/identitySync.ts",
+      "language": "typescript",
+      "fileCategory": "code",
+      "totalLines": 156,
+      "nonEmptyLines": 145,
+      "functions": [
+        {
+          "name": "applyUserSnapshot",
+          "startLine": 37,
+          "endLine": 79,
+          "params": [
+            "client",
+            "u",
+            "deleted"
+          ]
+        },
+        {
+          "name": "readThroughUser",
+          "startLine": 82,
+          "endLine": 104,
+          "params": [
+            "id"
+          ]
+        },
+        {
+          "name": "notifyAdmins",
+          "startLine": 107,
+          "endLine": 116,
+          "params": [
+            "key",
+            "title",
+            "message"
+          ]
+        },
+        {
+          "name": "handleIdentityEvent",
+          "startLine": 119,
+          "endLine": 152,
+          "params": [
+            "evt"
+          ]
+        },
+        {
+          "name": "startIdentityConsumer",
+          "startLine": 155,
+          "endLine": 156,
+          "params": [
+            "onClose"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "applyUserSnapshot",
+          "line": 37,
+          "isDefault": false
+        },
+        {
+          "name": "readThroughUser",
+          "line": 82,
+          "isDefault": false
+        },
+        {
+          "name": "notifyAdmins",
+          "line": 107,
+          "isDefault": false
+        },
+        {
+          "name": "handleIdentityEvent",
+          "line": 119,
+          "isDefault": false
+        },
+        {
+          "name": "startIdentityConsumer",
+          "line": 155,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "applyUserSnapshot",
+          "callee": "client.query",
+          "lineNumber": 39
+        },
+        {
+          "caller": "applyUserSnapshot",
+          "callee": "client.query",
+          "lineNumber": 55
+        },
+        {
+          "caller": "applyUserSnapshot",
+          "callee": "(u.roles || []).filter",
+          "lineNumber": 58
+        },
+        {
+          "caller": "applyUserSnapshot",
+          "callee": "ROLES.has",
+          "lineNumber": 58
+        },
+        {
+          "caller": "applyUserSnapshot",
+          "callee": "client.query",
+          "lineNumber": 59
+        },
+        {
+          "caller": "applyUserSnapshot",
+          "callee": "roles.map",
+          "lineNumber": 59
+        },
+        {
+          "caller": "applyUserSnapshot",
+          "callee": "client.query",
+          "lineNumber": 61
+        },
+        {
+          "caller": "applyUserSnapshot",
+          "callee": "client.query",
+          "lineNumber": 70
+        },
+        {
+          "caller": "applyUserSnapshot",
+          "callee": "client.query",
+          "lineNumber": 72
+        },
+        {
+          "caller": "applyUserSnapshot",
+          "callee": "client.query",
+          "lineNumber": 73
+        },
+        {
+          "caller": "applyUserSnapshot",
+          "callee": "client.query",
+          "lineNumber": 74
+        },
+        {
+          "caller": "readThroughUser",
+          "callee": "fetch",
+          "lineNumber": 84
+        },
+        {
+          "caller": "readThroughUser",
+          "callee": "encodeURIComponent",
+          "lineNumber": 84
+        },
+        {
+          "caller": "readThroughUser",
+          "callee": "internalAuthHeader",
+          "lineNumber": 85
+        },
+        {
+          "caller": "readThroughUser",
+          "callee": "AbortSignal.timeout",
+          "lineNumber": 86
+        },
+        {
+          "caller": "readThroughUser",
+          "callee": "res.json",
+          "lineNumber": 89
+        },
+        {
+          "caller": "readThroughUser",
+          "callee": "pool.connect",
+          "lineNumber": 90
+        },
+        {
+          "caller": "readThroughUser",
+          "callee": "client.query",
+          "lineNumber": 92
+        },
+        {
+          "caller": "readThroughUser",
+          "callee": "applyUserSnapshot",
+          "lineNumber": 93
+        },
+        {
+          "caller": "readThroughUser",
+          "callee": "Boolean",
+          "lineNumber": 93
+        },
+        {
+          "caller": "readThroughUser",
+          "callee": "client.query",
+          "lineNumber": 94
+        },
+        {
+          "caller": "readThroughUser",
+          "callee": "client.query('ROLLBACK').catch",
+          "lineNumber": 96
+        },
+        {
+          "caller": "readThroughUser",
+          "callee": "client.query",
+          "lineNumber": 96
+        },
+        {
+          "caller": "readThroughUser",
+          "callee": "client.release",
+          "lineNumber": 99
+        },
+        {
+          "caller": "readThroughUser",
+          "callee": "console.warn",
+          "lineNumber": 102
+        },
+        {
+          "caller": "notifyAdmins",
+          "callee": "pool.query",
+          "lineNumber": 108
+        },
+        {
+          "caller": "notifyAdmins",
+          "callee": "enqueueNotificationJob",
+          "lineNumber": 109
+        },
+        {
+          "caller": "notifyAdmins",
+          "callee": "admins.rows.map",
+          "lineNumber": 111
+        },
+        {
+          "caller": "notifyAdmins",
+          "callee": "String(title).slice",
+          "lineNumber": 112
+        },
+        {
+          "caller": "notifyAdmins",
+          "callee": "String",
+          "lineNumber": 112
+        },
+        {
+          "caller": "notifyAdmins",
+          "callee": "String",
+          "lineNumber": 112
+        },
+        {
+          "caller": "handleIdentityEvent",
+          "callee": "pool.connect",
+          "lineNumber": 121
+        },
+        {
+          "caller": "handleIdentityEvent",
+          "callee": "client.query",
+          "lineNumber": 125
+        },
+        {
+          "caller": "handleIdentityEvent",
+          "callee": "client.query",
+          "lineNumber": 126
+        },
+        {
+          "caller": "handleIdentityEvent",
+          "callee": "evt.type.startsWith",
+          "lineNumber": 130
+        },
+        {
+          "caller": "handleIdentityEvent",
+          "callee": "applyUserSnapshot",
+          "lineNumber": 132
+        },
+        {
+          "caller": "handleIdentityEvent",
+          "callee": "sideEffects.push",
+          "lineNumber": 134
+        },
+        {
+          "caller": "handleIdentityEvent",
+          "callee": "disconnectUser",
+          "lineNumber": 134
+        },
+        {
+          "caller": "handleIdentityEvent",
+          "callee": "sideEffects.push",
+          "lineNumber": 140
+        },
+        {
+          "caller": "handleIdentityEvent",
+          "callee": "notifyAdmins(`identity:${key}`, title, message).catch",
+          "lineNumber": 140
+        },
+        {
+          "caller": "handleIdentityEvent",
+          "callee": "notifyAdmins",
+          "lineNumber": 140
+        },
+        {
+          "caller": "handleIdentityEvent",
+          "callee": "console.error",
+          "lineNumber": 140
+        },
+        {
+          "caller": "handleIdentityEvent",
+          "callee": "client.query",
+          "lineNumber": 143
+        },
+        {
+          "caller": "handleIdentityEvent",
+          "callee": "client.query('ROLLBACK').catch",
+          "lineNumber": 145
+        },
+        {
+          "caller": "handleIdentityEvent",
+          "callee": "client.query",
+          "lineNumber": 145
+        },
+        {
+          "caller": "handleIdentityEvent",
+          "callee": "client.release",
+          "lineNumber": 148
+        },
+        {
+          "caller": "handleIdentityEvent",
+          "callee": "sideEffects.forEach",
+          "lineNumber": 150
+        },
+        {
+          "caller": "handleIdentityEvent",
+          "callee": "f",
+          "lineNumber": 150
+        },
+        {
+          "caller": "startIdentityConsumer",
+          "callee": "startEventConsumer",
+          "lineNumber": 156
+        }
+      ],
+      "metrics": {
+        "importCount": 5,
+        "exportCount": 5,
+        "functionCount": 5,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "catalog/src/services/libraryClient.ts",
+      "language": "typescript",
+      "fileCategory": "code",
+      "totalLines": 36,
+      "nonEmptyLines": 32,
+      "functions": [
+        {
+          "name": "callLibrary",
+          "startLine": 7,
+          "endLine": 19,
+          "params": [
+            "method",
+            "path",
+            "body",
+            "timeoutMs"
+          ]
+        },
+        {
+          "name": "libraryData",
+          "startLine": 22,
+          "endLine": 26,
+          "params": [
+            "path",
+            "timeoutMs"
+          ]
+        },
+        {
+          "name": "purgeLibrary",
+          "startLine": 29,
+          "endLine": 36,
+          "params": [
+            "ids"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "callLibrary",
+          "line": 7,
+          "isDefault": false
+        },
+        {
+          "name": "libraryData",
+          "line": 22,
+          "isDefault": false
+        },
+        {
+          "name": "purgeLibrary",
+          "line": 29,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "callLibrary",
+          "callee": "fetch",
+          "lineNumber": 8
+        },
+        {
+          "caller": "callLibrary",
+          "callee": "internalAuthHeader",
+          "lineNumber": 12
+        },
+        {
+          "caller": "callLibrary",
+          "callee": "currentRequestId",
+          "lineNumber": 13
+        },
+        {
+          "caller": "callLibrary",
+          "callee": "currentRequestId",
+          "lineNumber": 13
+        },
+        {
+          "caller": "callLibrary",
+          "callee": "JSON.stringify",
+          "lineNumber": 15
+        },
+        {
+          "caller": "callLibrary",
+          "callee": "AbortSignal.timeout",
+          "lineNumber": 16
+        },
+        {
+          "caller": "callLibrary",
+          "callee": "res.json().catch",
+          "lineNumber": 18
+        },
+        {
+          "caller": "callLibrary",
+          "callee": "res.json",
+          "lineNumber": 18
+        },
+        {
+          "caller": "libraryData",
+          "callee": "callLibrary",
+          "lineNumber": 23
+        },
+        {
+          "caller": "purgeLibrary",
+          "callee": "callLibrary",
+          "lineNumber": 31
+        },
+        {
+          "caller": "purgeLibrary",
+          "callee": "console.error",
+          "lineNumber": 34
+        },
+        {
+          "caller": "purgeLibrary",
+          "callee": "JSON.stringify",
+          "lineNumber": 34
+        }
+      ],
+      "metrics": {
+        "importCount": 2,
+        "exportCount": 3,
+        "functionCount": 3,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "catalog/src/services/mailer.ts",
+      "language": "typescript",
+      "fileCategory": "code",
+      "totalLines": 34,
+      "nonEmptyLines": 30,
+      "functions": [
+        {
+          "name": "mailConfigured",
+          "startLine": 12,
+          "endLine": 12,
+          "params": []
+        },
+        {
+          "name": "sendLinkMail",
+          "startLine": 15,
+          "endLine": 34,
+          "params": [
+            "to",
+            "subject",
+            "intro",
+            "linkText",
+            "link"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "SITE_URL",
+          "line": 8,
+          "isDefault": false
+        },
+        {
+          "name": "mailConfigured",
+          "line": 12,
+          "isDefault": false
+        },
+        {
+          "name": "sendLinkMail",
+          "line": 15,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "mailConfigured",
+          "callee": "Boolean",
+          "lineNumber": 12
+        },
+        {
+          "caller": "sendLinkMail",
+          "callee": "log",
+          "lineNumber": 18
+        },
+        {
+          "caller": "esc",
+          "callee": "s.replace",
+          "lineNumber": 21
+        },
+        {
+          "caller": "sendLinkMail",
+          "callee": "transport.sendMail",
+          "lineNumber": 23
+        },
+        {
+          "caller": "sendLinkMail",
+          "callee": "esc",
+          "lineNumber": 28
+        },
+        {
+          "caller": "sendLinkMail",
+          "callee": "esc",
+          "lineNumber": 28
+        },
+        {
+          "caller": "sendLinkMail",
+          "callee": "esc",
+          "lineNumber": 28
+        },
+        {
+          "caller": "sendLinkMail",
+          "callee": "console.error",
+          "lineNumber": 32
+        }
+      ],
+      "metrics": {
+        "importCount": 1,
+        "exportCount": 3,
+        "functionCount": 2,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "catalog/src/services/messagingClient.ts",
+      "language": "typescript",
+      "fileCategory": "code",
+      "totalLines": 32,
+      "nonEmptyLines": 28,
+      "functions": [
+        {
+          "name": "call",
+          "startLine": 7,
+          "endLine": 19,
+          "params": [
+            "method",
+            "path",
+            "body"
+          ]
+        },
+        {
+          "name": "dmBlocked",
+          "startLine": 22,
+          "endLine": 26,
+          "params": [
+            "a",
+            "b"
+          ]
+        },
+        {
+          "name": "sendDraftCard",
+          "startLine": 29,
+          "endLine": 32,
+          "params": [
+            "from",
+            "to",
+            "message",
+            "draftId"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "dmBlocked",
+          "line": 22,
+          "isDefault": false
+        },
+        {
+          "name": "sendDraftCard",
+          "line": 29,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "call",
+          "callee": "fetch",
+          "lineNumber": 8
+        },
+        {
+          "caller": "call",
+          "callee": "internalAuthHeader",
+          "lineNumber": 12
+        },
+        {
+          "caller": "call",
+          "callee": "currentRequestId",
+          "lineNumber": 13
+        },
+        {
+          "caller": "call",
+          "callee": "currentRequestId",
+          "lineNumber": 13
+        },
+        {
+          "caller": "call",
+          "callee": "JSON.stringify",
+          "lineNumber": 15
+        },
+        {
+          "caller": "call",
+          "callee": "AbortSignal.timeout",
+          "lineNumber": 16
+        },
+        {
+          "caller": "call",
+          "callee": "res.json().catch",
+          "lineNumber": 18
+        },
+        {
+          "caller": "call",
+          "callee": "res.json",
+          "lineNumber": 18
+        },
+        {
+          "caller": "dmBlocked",
+          "callee": "call",
+          "lineNumber": 23
+        },
+        {
+          "caller": "dmBlocked",
+          "callee": "Boolean",
+          "lineNumber": 25
+        },
+        {
+          "caller": "sendDraftCard",
+          "callee": "call",
+          "lineNumber": 30
+        }
+      ],
+      "metrics": {
+        "importCount": 2,
+        "exportCount": 2,
+        "functionCount": 3,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "catalog/src/services/notification.service.ts",
+      "language": "typescript",
+      "fileCategory": "code",
+      "totalLines": 119,
+      "nonEmptyLines": 109,
+      "functions": [
+        {
+          "name": "snippet",
+          "startLine": 57,
+          "endLine": 60,
+          "params": [
+            "text",
+            "n"
+          ]
+        },
+        {
+          "name": "groupJoinRequestNotifications",
+          "startLine": 63,
+          "endLine": 76,
+          "params": [
+            "input"
+          ]
+        },
+        {
+          "name": "groupJoinDecisionNotification",
+          "startLine": 79,
+          "endLine": 92,
+          "params": [
+            "input"
+          ]
+        },
+        {
+          "name": "draftNotifications",
+          "startLine": 98,
+          "endLine": 119,
+          "params": [
+            "input"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "groupJoinRequestNotifications",
+          "line": 63,
+          "isDefault": false
+        },
+        {
+          "name": "groupJoinDecisionNotification",
+          "line": 79,
+          "isDefault": false
+        },
+        {
+          "name": "draftNotifications",
+          "line": 98,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "snippet",
+          "callee": "text.replace(/\\s+/g, ' ').trim",
+          "lineNumber": 58
+        },
+        {
+          "caller": "snippet",
+          "callee": "text.replace",
+          "lineNumber": 58
+        },
+        {
+          "caller": "snippet",
+          "callee": "t.slice",
+          "lineNumber": 59
+        },
+        {
+          "caller": "groupJoinRequestNotifications",
+          "callee": "input.managerIds\r\n    .filter((id) => id !== input.requesterId)\r\n    .map",
+          "lineNumber": 66
+        },
+        {
+          "caller": "groupJoinRequestNotifications",
+          "callee": "input.managerIds\r\n    .filter",
+          "lineNumber": 66
+        },
+        {
+          "caller": "groupJoinRequestNotifications",
+          "callee": "snippet",
+          "lineNumber": 71
+        },
+        {
+          "caller": "draftNotifications",
+          "callee": "[...new Set(input.recipientIds)]\r\n    .filter((id) => id && id !== input.actorId)\r\n    .map",
+          "lineNumber": 109
+        },
+        {
+          "caller": "draftNotifications",
+          "callee": "[...new Set(input.recipientIds)]\r\n    .filter",
+          "lineNumber": 109
+        },
+        {
+          "caller": "draftNotifications",
+          "callee": "snippet",
+          "lineNumber": 113
+        },
+        {
+          "caller": "draftNotifications",
+          "callee": "Date.now",
+          "lineNumber": 117
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 3,
+        "functionCount": 4,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "catalog/src/services/queue.service.ts",
+      "language": "typescript",
+      "fileCategory": "code",
+      "totalLines": 198,
+      "nonEmptyLines": 182,
+      "functions": [
+        {
+          "name": "brokerUrl",
+          "startLine": 35,
+          "endLine": 35,
+          "params": []
+        },
+        {
+          "name": "queueEnabled",
+          "startLine": 42,
+          "endLine": 42,
+          "params": []
+        },
+        {
+          "name": "queueStatus",
+          "startLine": 43,
+          "endLine": 43,
+          "params": []
+        },
+        {
+          "name": "assertTopology",
+          "startLine": 47,
+          "endLine": 55,
+          "params": [
+            "ch"
+          ]
+        },
+        {
+          "name": "connectQueue",
+          "startLine": 58,
+          "endLine": 91,
+          "params": []
+        },
+        {
+          "name": "publishEvent",
+          "startLine": 97,
+          "endLine": 107,
+          "params": [
+            "type",
+            "data"
+          ]
+        },
+        {
+          "name": "closeQueue",
+          "startLine": 109,
+          "endLine": 115,
+          "params": []
+        },
+        {
+          "name": "attachLinks",
+          "startLine": 120,
+          "endLine": 136,
+          "params": [
+            "items"
+          ]
+        },
+        {
+          "name": "prepare",
+          "startLine": 138,
+          "endLine": 147,
+          "params": [
+            "job"
+          ]
+        },
+        {
+          "name": "postToMessaging",
+          "startLine": 150,
+          "endLine": 166,
+          "params": [
+            "job"
+          ]
+        },
+        {
+          "name": "enqueueNotificationJob",
+          "startLine": 172,
+          "endLine": 198,
+          "params": [
+            "input"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "QUEUE",
+          "line": 21,
+          "isDefault": false
+        },
+        {
+          "name": "RETRY_QUEUE",
+          "line": 22,
+          "isDefault": false
+        },
+        {
+          "name": "DLQ",
+          "line": 23,
+          "isDefault": false
+        },
+        {
+          "name": "queueEnabled",
+          "line": 42,
+          "isDefault": false
+        },
+        {
+          "name": "queueStatus",
+          "line": 43,
+          "isDefault": false
+        },
+        {
+          "name": "connectQueue",
+          "line": 58,
+          "isDefault": false
+        },
+        {
+          "name": "publishEvent",
+          "line": 97,
+          "isDefault": false
+        },
+        {
+          "name": "closeQueue",
+          "line": 109,
+          "isDefault": false
+        },
+        {
+          "name": "enqueueNotificationJob",
+          "line": 172,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "brokerUrl",
+          "callee": "RABBITMQ_URL.includes",
+          "lineNumber": 35
+        },
+        {
+          "caller": "queueStatus",
+          "callee": "queueEnabled",
+          "lineNumber": 43
+        },
+        {
+          "caller": "assertTopology",
+          "callee": "ch.assertExchange",
+          "lineNumber": 48
+        },
+        {
+          "caller": "assertTopology",
+          "callee": "ch.assertQueue",
+          "lineNumber": 49
+        },
+        {
+          "caller": "assertTopology",
+          "callee": "ch.assertQueue",
+          "lineNumber": 50
+        },
+        {
+          "caller": "assertTopology",
+          "callee": "ch.assertQueue",
+          "lineNumber": 54
+        },
+        {
+          "caller": "connectQueue",
+          "callee": "queueEnabled",
+          "lineNumber": 59
+        },
+        {
+          "caller": "connectQueue",
+          "callee": "(async () => {\r\n    let delay = 1000;\r\n    while (!stopped) {\r\n      try {\r\n        connection = await amqp.connect(brokerUrl());\r\n        connection.on('error', (e: Error) => console.error('[Queue] connection error:', e.message));\r\n        connection.on('close', () => {\r\n          console.warn('[Queue] connection closed');\r\n          publishChannel = null;\r\n          connection = null;\r\n          if (!stopped) {\r\n            connecting = false;\r\n            setTimeout(connectQueue, 2000).unref();\r\n          }\r\n        });\r\n        publishChannel = await connection.createConfirmChannel();\r\n        publishChannel.on('error', (e: Error) => console.error('[Queue] channel error:', e.message));\r\n        await assertTopology(publishChannel);\r\n        console.log('[Queue] connected to RabbitMQ');\r\n        return;\r\n      } catch (err: any) {\r\n        console.warn(`[Queue] RabbitMQ unavailable (${err.message}); retrying in ${Math.round(delay / 1000)}s`);\r\n        publishChannel = null;\r\n        await new Promise((r) => setTimeout(r, delay));\r\n        delay = Math.min(delay * 2, 30_000);\r\n      }\r\n    }\r\n  })().finally",
+          "lineNumber": 61
+        },
+        {
+          "caller": "connectQueue",
+          "callee": "(async () => {\r\n    let delay = 1000;\r\n    while (!stopped) {\r\n      try {\r\n        connection = await amqp.connect(brokerUrl());\r\n        connection.on('error', (e: Error) => console.error('[Queue] connection error:', e.message));\r\n        connection.on('close', () => {\r\n          console.warn('[Queue] connection closed');\r\n          publishChannel = null;\r\n          connection = null;\r\n          if (!stopped) {\r\n            connecting = false;\r\n            setTimeout(connectQueue, 2000).unref();\r\n          }\r\n        });\r\n        publishChannel = await connection.createConfirmChannel();\r\n        publishChannel.on('error', (e: Error) => console.error('[Queue] channel error:', e.message));\r\n        await assertTopology(publishChannel);\r\n        console.log('[Queue] connected to RabbitMQ');\r\n        return;\r\n      } catch (err: any) {\r\n        console.warn(`[Queue] RabbitMQ unavailable (${err.message}); retrying in ${Math.round(delay / 1000)}s`);\r\n        publishChannel = null;\r\n        await new Promise((r) => setTimeout(r, delay));\r\n        delay = Math.min(delay * 2, 30_000);\r\n      }\r\n    }\r\n  })",
+          "lineNumber": 61
+        },
+        {
+          "caller": "connectQueue",
+          "callee": "amqp.connect",
+          "lineNumber": 65
+        },
+        {
+          "caller": "connectQueue",
+          "callee": "brokerUrl",
+          "lineNumber": 65
+        },
+        {
+          "caller": "connectQueue",
+          "callee": "connection.on",
+          "lineNumber": 66
+        },
+        {
+          "caller": "connectQueue",
+          "callee": "console.error",
+          "lineNumber": 66
+        },
+        {
+          "caller": "connectQueue",
+          "callee": "connection.on",
+          "lineNumber": 67
+        },
+        {
+          "caller": "connectQueue",
+          "callee": "console.warn",
+          "lineNumber": 68
+        },
+        {
+          "caller": "connectQueue",
+          "callee": "setTimeout(connectQueue, 2000).unref",
+          "lineNumber": 73
+        },
+        {
+          "caller": "connectQueue",
+          "callee": "setTimeout",
+          "lineNumber": 73
+        },
+        {
+          "caller": "connectQueue",
+          "callee": "connection.createConfirmChannel",
+          "lineNumber": 76
+        },
+        {
+          "caller": "connectQueue",
+          "callee": "publishChannel.on",
+          "lineNumber": 77
+        },
+        {
+          "caller": "connectQueue",
+          "callee": "console.error",
+          "lineNumber": 77
+        },
+        {
+          "caller": "connectQueue",
+          "callee": "assertTopology",
+          "lineNumber": 78
+        },
+        {
+          "caller": "connectQueue",
+          "callee": "console.log",
+          "lineNumber": 79
+        },
+        {
+          "caller": "connectQueue",
+          "callee": "console.warn",
+          "lineNumber": 82
+        },
+        {
+          "caller": "connectQueue",
+          "callee": "Math.round",
+          "lineNumber": 82
+        },
+        {
+          "caller": "connectQueue",
+          "callee": "setTimeout",
+          "lineNumber": 84
+        },
+        {
+          "caller": "connectQueue",
+          "callee": "Math.min",
+          "lineNumber": 85
+        },
+        {
+          "caller": "publishEvent",
+          "callee": "crypto.randomUUID",
+          "lineNumber": 99
+        },
+        {
+          "caller": "publishEvent",
+          "callee": "new Date().toISOString",
+          "lineNumber": 100
+        },
+        {
+          "caller": "publishEvent",
+          "callee": "currentRequestId",
+          "lineNumber": 100
+        },
+        {
+          "caller": "publishEvent",
+          "callee": "publishChannel.publish",
+          "lineNumber": 102
+        },
+        {
+          "caller": "publishEvent",
+          "callee": "Buffer.from",
+          "lineNumber": 102
+        },
+        {
+          "caller": "publishEvent",
+          "callee": "JSON.stringify",
+          "lineNumber": 102
+        },
+        {
+          "caller": "publishEvent",
+          "callee": "console.warn",
+          "lineNumber": 105
+        },
+        {
+          "caller": "closeQueue",
+          "callee": "publishChannel?.close",
+          "lineNumber": 111
+        },
+        {
+          "caller": "closeQueue",
+          "callee": "connection?.close",
+          "lineNumber": 112
+        },
+        {
+          "caller": "attachLinks",
+          "callee": "items.filter",
+          "lineNumber": 121
+        },
+        {
+          "caller": "attachLinks",
+          "callee": "pool.query",
+          "lineNumber": 123
+        },
+        {
+          "caller": "attachLinks",
+          "callee": "refs.map",
+          "lineNumber": 133
+        },
+        {
+          "caller": "attachLinks",
+          "callee": "refs.map",
+          "lineNumber": 133
+        },
+        {
+          "caller": "attachLinks",
+          "callee": "Object.assign",
+          "lineNumber": 135
+        },
+        {
+          "caller": "prepare",
+          "callee": "attachLinks",
+          "lineNumber": 140
+        },
+        {
+          "caller": "prepare",
+          "callee": "pool.query",
+          "lineNumber": 143
+        },
+        {
+          "caller": "postToMessaging",
+          "callee": "fetch",
+          "lineNumber": 152
+        },
+        {
+          "caller": "postToMessaging",
+          "callee": "internalAuthHeader",
+          "lineNumber": 156
+        },
+        {
+          "caller": "postToMessaging",
+          "callee": "currentRequestId",
+          "lineNumber": 157
+        },
+        {
+          "caller": "postToMessaging",
+          "callee": "currentRequestId",
+          "lineNumber": 157
+        },
+        {
+          "caller": "postToMessaging",
+          "callee": "JSON.stringify",
+          "lineNumber": 159
+        },
+        {
+          "caller": "postToMessaging",
+          "callee": "AbortSignal.timeout",
+          "lineNumber": 160
+        },
+        {
+          "caller": "postToMessaging",
+          "callee": "console.error",
+          "lineNumber": 164
+        },
+        {
+          "caller": "enqueueNotificationJob",
+          "callee": "prepare",
+          "lineNumber": 176
+        },
+        {
+          "caller": "enqueueNotificationJob",
+          "callee": "console.warn",
+          "lineNumber": 178
+        },
+        {
+          "caller": "enqueueNotificationJob",
+          "callee": "crypto.randomUUID",
+          "lineNumber": 183
+        },
+        {
+          "caller": "enqueueNotificationJob",
+          "callee": "setTimeout",
+          "lineNumber": 185
+        },
+        {
+          "caller": "enqueueNotificationJob",
+          "callee": "reject",
+          "lineNumber": 185
+        },
+        {
+          "caller": "enqueueNotificationJob",
+          "callee": "publishChannel.sendToQueue",
+          "lineNumber": 186
+        },
+        {
+          "caller": "enqueueNotificationJob",
+          "callee": "Buffer.from",
+          "lineNumber": 186
+        },
+        {
+          "caller": "enqueueNotificationJob",
+          "callee": "JSON.stringify",
+          "lineNumber": 186
+        },
+        {
+          "caller": "enqueueNotificationJob",
+          "callee": "clearTimeout",
+          "lineNumber": 187
+        },
+        {
+          "caller": "enqueueNotificationJob",
+          "callee": "reject",
+          "lineNumber": 188
+        },
+        {
+          "caller": "enqueueNotificationJob",
+          "callee": "resolve",
+          "lineNumber": 188
+        },
+        {
+          "caller": "enqueueNotificationJob",
+          "callee": "console.warn",
+          "lineNumber": 193
+        },
+        {
+          "caller": "enqueueNotificationJob",
+          "callee": "postToMessaging",
+          "lineNumber": 196
+        }
+      ],
+      "metrics": {
+        "importCount": 5,
+        "exportCount": 9,
+        "functionCount": 11,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "catalog/src/services/realtime.ts",
+      "language": "typescript",
+      "fileCategory": "code",
+      "totalLines": 24,
+      "nonEmptyLines": 20,
+      "functions": [
+        {
+          "name": "publish",
+          "startLine": 11,
+          "endLine": 14,
+          "params": [
+            "users",
+            "type",
+            "data"
+          ]
+        },
+        {
+          "name": "emitToUsers",
+          "startLine": 17,
+          "endLine": 19,
+          "params": [
+            "userIds",
+            "event",
+            "payload"
+          ]
+        },
+        {
+          "name": "disconnectUser",
+          "startLine": 22,
+          "endLine": 24,
+          "params": [
+            "userId"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "emitToUsers",
+          "line": 17,
+          "isDefault": false
+        },
+        {
+          "name": "disconnectUser",
+          "line": 22,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "publish",
+          "callee": "redisReady",
+          "lineNumber": 12
+        },
+        {
+          "caller": "publish",
+          "callee": "redis.publish(CHANNEL, JSON.stringify({ users, type, data })).catch",
+          "lineNumber": 13
+        },
+        {
+          "caller": "publish",
+          "callee": "redis.publish",
+          "lineNumber": 13
+        },
+        {
+          "caller": "publish",
+          "callee": "JSON.stringify",
+          "lineNumber": 13
+        },
+        {
+          "caller": "publish",
+          "callee": "console.warn",
+          "lineNumber": 13
+        },
+        {
+          "caller": "emitToUsers",
+          "callee": "publish",
+          "lineNumber": 18
+        },
+        {
+          "caller": "emitToUsers",
+          "callee": "Array.from",
+          "lineNumber": 18
+        },
+        {
+          "caller": "emitToUsers",
+          "callee": "Array.from(userIds).filter",
+          "lineNumber": 18
+        },
+        {
+          "caller": "emitToUsers",
+          "callee": "Array.from",
+          "lineNumber": 18
+        },
+        {
+          "caller": "disconnectUser",
+          "callee": "publish",
+          "lineNumber": 23
+        }
+      ],
+      "metrics": {
+        "importCount": 1,
+        "exportCount": 2,
+        "functionCount": 3,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "catalog/src/services/reconcile.ts",
+      "language": "typescript",
+      "fileCategory": "code",
+      "totalLines": 85,
+      "nonEmptyLines": 80,
+      "functions": [
+        {
+          "name": "reconcile",
+          "startLine": 27,
+          "endLine": 79,
+          "params": []
+        },
+        {
+          "name": "scheduleReconcile",
+          "startLine": 81,
+          "endLine": 85,
+          "params": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "reconcile",
+          "line": 27,
+          "isDefault": false
+        },
+        {
+          "name": "scheduleReconcile",
+          "line": 81,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "reconcile",
+          "callee": "fetch",
+          "lineNumber": 31
+        },
+        {
+          "caller": "reconcile",
+          "callee": "svc.url.replace",
+          "lineNumber": 31
+        },
+        {
+          "caller": "reconcile",
+          "callee": "internalAuthHeader",
+          "lineNumber": 32
+        },
+        {
+          "caller": "reconcile",
+          "callee": "AbortSignal.timeout",
+          "lineNumber": 33
+        },
+        {
+          "caller": "reconcile",
+          "callee": "res.json",
+          "lineNumber": 36
+        },
+        {
+          "caller": "reconcile",
+          "callee": "pool.query",
+          "lineNumber": 37
+        },
+        {
+          "caller": "reconcile",
+          "callee": "Number",
+          "lineNumber": 38
+        },
+        {
+          "caller": "reconcile",
+          "callee": "Number",
+          "lineNumber": 38
+        },
+        {
+          "caller": "reconcile",
+          "callee": "svc.count",
+          "lineNumber": 39
+        },
+        {
+          "caller": "reconcile",
+          "callee": "problems.push",
+          "lineNumber": 40
+        },
+        {
+          "caller": "reconcile",
+          "callee": "svc.count",
+          "lineNumber": 41
+        },
+        {
+          "caller": "reconcile",
+          "callee": "problems.push",
+          "lineNumber": 45
+        },
+        {
+          "caller": "reconcile",
+          "callee": "Math.round",
+          "lineNumber": 46
+        },
+        {
+          "caller": "reconcile",
+          "callee": "problems.push",
+          "lineNumber": 49
+        },
+        {
+          "caller": "reconcile",
+          "callee": "amqp.connect",
+          "lineNumber": 53
+        },
+        {
+          "caller": "reconcile",
+          "callee": "conn.createChannel",
+          "lineNumber": 56
+        },
+        {
+          "caller": "reconcile",
+          "callee": "ch.checkQueue",
+          "lineNumber": 58
+        },
+        {
+          "caller": "reconcile",
+          "callee": "problems.push",
+          "lineNumber": 60
+        },
+        {
+          "caller": "reconcile",
+          "callee": "ch.close",
+          "lineNumber": 63
+        },
+        {
+          "caller": "reconcile",
+          "callee": "conn.close().catch",
+          "lineNumber": 67
+        },
+        {
+          "caller": "reconcile",
+          "callee": "conn.close",
+          "lineNumber": 67
+        },
+        {
+          "caller": "reconcile",
+          "callee": "problems.push",
+          "lineNumber": 70
+        },
+        {
+          "caller": "reconcile",
+          "callee": "new Date().toISOString().slice",
+          "lineNumber": 73
+        },
+        {
+          "caller": "reconcile",
+          "callee": "new Date().toISOString",
+          "lineNumber": 73
+        },
+        {
+          "caller": "reconcile",
+          "callee": "notifyAdmins(`reconcile:${key}:${day}`, title, message).catch",
+          "lineNumber": 75
+        },
+        {
+          "caller": "reconcile",
+          "callee": "notifyAdmins",
+          "lineNumber": 75
+        },
+        {
+          "caller": "reconcile",
+          "callee": "console.error",
+          "lineNumber": 75
+        },
+        {
+          "caller": "reconcile",
+          "callee": "console.log",
+          "lineNumber": 77
+        },
+        {
+          "caller": "reconcile",
+          "callee": "problems.map((p) => p[0]).join",
+          "lineNumber": 77
+        },
+        {
+          "caller": "reconcile",
+          "callee": "problems.map",
+          "lineNumber": 77
+        },
+        {
+          "caller": "reconcile",
+          "callee": "problems.map",
+          "lineNumber": 78
+        },
+        {
+          "caller": "run",
+          "callee": "reconcile().catch",
+          "lineNumber": 82
+        },
+        {
+          "caller": "run",
+          "callee": "reconcile",
+          "lineNumber": 82
+        },
+        {
+          "caller": "run",
+          "callee": "console.error",
+          "lineNumber": 82
+        },
+        {
+          "caller": "scheduleReconcile",
+          "callee": "setTimeout(run, 5 * 60_000).unref",
+          "lineNumber": 83
+        },
+        {
+          "caller": "scheduleReconcile",
+          "callee": "setTimeout",
+          "lineNumber": 83
+        },
+        {
+          "caller": "scheduleReconcile",
+          "callee": "setInterval(run, 6 * 3600_000).unref",
+          "lineNumber": 84
+        },
+        {
+          "caller": "scheduleReconcile",
+          "callee": "setInterval",
+          "lineNumber": 84
+        }
+      ],
+      "metrics": {
+        "importCount": 4,
+        "exportCount": 2,
+        "functionCount": 2,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "catalog/src/services/search.service.ts",
+      "language": "typescript",
+      "fileCategory": "code",
+      "totalLines": 304,
+      "nonEmptyLines": 285,
+      "functions": [
+        {
+          "name": "isSearchEnabled",
+          "startLine": 22,
+          "endLine": 22,
+          "params": []
+        },
+        {
+          "name": "es",
+          "startLine": 24,
+          "endLine": 39,
+          "params": [
+            "method",
+            "path",
+            "body",
+            "contentType"
+          ]
+        },
+        {
+          "name": "toDoc",
+          "startLine": 85,
+          "endLine": 89,
+          "params": [
+            "row"
+          ]
+        },
+        {
+          "name": "createIndex",
+          "startLine": 91,
+          "endLine": 94,
+          "params": []
+        },
+        {
+          "name": "ensureIndex",
+          "startLine": 100,
+          "endLine": 114,
+          "params": [
+            "rebuildIfOutdated"
+          ]
+        },
+        {
+          "name": "reindexAllStories",
+          "startLine": 117,
+          "endLine": 132,
+          "params": []
+        },
+        {
+          "name": "startSearchSync",
+          "startLine": 135,
+          "endLine": 155,
+          "params": []
+        },
+        {
+          "name": "indexStory",
+          "startLine": 158,
+          "endLine": 169,
+          "params": [
+            "storyId"
+          ]
+        },
+        {
+          "name": "removeStoryFromIndex",
+          "startLine": 171,
+          "endLine": 178,
+          "params": [
+            "storyId"
+          ]
+        },
+        {
+          "name": "esSlot",
+          "startLine": 199,
+          "endLine": 213,
+          "params": []
+        },
+        {
+          "name": "releaseEsSlot",
+          "startLine": 215,
+          "endLine": 218,
+          "params": []
+        },
+        {
+          "name": "searchStoryIds",
+          "startLine": 224,
+          "endLine": 248,
+          "params": [
+            "query",
+            "size"
+          ]
+        },
+        {
+          "name": "runEsSearch",
+          "startLine": 250,
+          "endLine": 304,
+          "params": [
+            "query",
+            "size"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "isSearchEnabled",
+          "line": 22,
+          "isDefault": false
+        },
+        {
+          "name": "reindexAllStories",
+          "line": 117,
+          "isDefault": false
+        },
+        {
+          "name": "startSearchSync",
+          "line": 135,
+          "isDefault": false
+        },
+        {
+          "name": "indexStory",
+          "line": 158,
+          "isDefault": false
+        },
+        {
+          "name": "removeStoryFromIndex",
+          "line": 171,
+          "isDefault": false
+        },
+        {
+          "name": "searchStoryIds",
+          "line": 224,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "es",
+          "callee": "fetch",
+          "lineNumber": 25
+        },
+        {
+          "caller": "es",
+          "callee": "JSON.stringify",
+          "lineNumber": 28
+        },
+        {
+          "caller": "es",
+          "callee": "AbortSignal.timeout",
+          "lineNumber": 29
+        },
+        {
+          "caller": "es",
+          "callee": "res.text",
+          "lineNumber": 31
+        },
+        {
+          "caller": "es",
+          "callee": "JSON.parse",
+          "lineNumber": 32
+        },
+        {
+          "caller": "es",
+          "callee": "text.slice",
+          "lineNumber": 34
+        },
+        {
+          "caller": "toDoc",
+          "callee": "richTextToPlain",
+          "lineNumber": 88
+        },
+        {
+          "caller": "createIndex",
+          "callee": "es",
+          "lineNumber": 92
+        },
+        {
+          "caller": "createIndex",
+          "callee": "console.log",
+          "lineNumber": 93
+        },
+        {
+          "caller": "ensureIndex",
+          "callee": "es",
+          "lineNumber": 103
+        },
+        {
+          "caller": "ensureIndex",
+          "callee": "createIndex",
+          "lineNumber": 106
+        },
+        {
+          "caller": "ensureIndex",
+          "callee": "es",
+          "lineNumber": 110
+        },
+        {
+          "caller": "ensureIndex",
+          "callee": "console.log",
+          "lineNumber": 111
+        },
+        {
+          "caller": "ensureIndex",
+          "callee": "createIndex",
+          "lineNumber": 112
+        },
+        {
+          "caller": "reindexAllStories",
+          "callee": "ensureIndex",
+          "lineNumber": 118
+        },
+        {
+          "caller": "reindexAllStories",
+          "callee": "pool.query",
+          "lineNumber": 119
+        },
+        {
+          "caller": "reindexAllStories",
+          "callee": "toDoc",
+          "lineNumber": 124
+        },
+        {
+          "caller": "reindexAllStories",
+          "callee": "lines.push",
+          "lineNumber": 125
+        },
+        {
+          "caller": "reindexAllStories",
+          "callee": "JSON.stringify",
+          "lineNumber": 125
+        },
+        {
+          "caller": "reindexAllStories",
+          "callee": "JSON.stringify",
+          "lineNumber": 125
+        },
+        {
+          "caller": "reindexAllStories",
+          "callee": "es",
+          "lineNumber": 127
+        },
+        {
+          "caller": "reindexAllStories",
+          "callee": "lines.join",
+          "lineNumber": 127
+        },
+        {
+          "caller": "startSearchSync",
+          "callee": "isSearchEnabled",
+          "lineNumber": 136
+        },
+        {
+          "caller": "startSearchSync",
+          "callee": "console.log",
+          "lineNumber": 137
+        },
+        {
+          "caller": "tryOnce",
+          "callee": "reindexAllStories",
+          "lineNumber": 144
+        },
+        {
+          "caller": "tryOnce",
+          "callee": "console.log",
+          "lineNumber": 145
+        },
+        {
+          "caller": "tryOnce",
+          "callee": "console.error",
+          "lineNumber": 148
+        },
+        {
+          "caller": "tryOnce",
+          "callee": "setTimeout(tryOnce, 10000).unref",
+          "lineNumber": 151
+        },
+        {
+          "caller": "tryOnce",
+          "callee": "setTimeout",
+          "lineNumber": 151
+        },
+        {
+          "caller": "startSearchSync",
+          "callee": "tryOnce",
+          "lineNumber": 154
+        },
+        {
+          "caller": "indexStory",
+          "callee": "isSearchEnabled",
+          "lineNumber": 159
+        },
+        {
+          "caller": "indexStory",
+          "callee": "pool.query",
+          "lineNumber": 161
+        },
+        {
+          "caller": "indexStory",
+          "callee": "ensureIndex",
+          "lineNumber": 163
+        },
+        {
+          "caller": "indexStory",
+          "callee": "toDoc",
+          "lineNumber": 164
+        },
+        {
+          "caller": "indexStory",
+          "callee": "es",
+          "lineNumber": 165
+        },
+        {
+          "caller": "indexStory",
+          "callee": "console.error",
+          "lineNumber": 167
+        },
+        {
+          "caller": "removeStoryFromIndex",
+          "callee": "isSearchEnabled",
+          "lineNumber": 172
+        },
+        {
+          "caller": "removeStoryFromIndex",
+          "callee": "es",
+          "lineNumber": 174
+        },
+        {
+          "caller": "removeStoryFromIndex",
+          "callee": "console.error",
+          "lineNumber": 176
+        },
+        {
+          "caller": "take",
+          "callee": "clearTimeout",
+          "lineNumber": 205
+        },
+        {
+          "caller": "take",
+          "callee": "resolve",
+          "lineNumber": 205
+        },
+        {
+          "caller": "esSlot",
+          "callee": "setTimeout",
+          "lineNumber": 206
+        },
+        {
+          "caller": "esSlot",
+          "callee": "esQueue.indexOf",
+          "lineNumber": 207
+        },
+        {
+          "caller": "esSlot",
+          "callee": "esQueue.splice",
+          "lineNumber": 208
+        },
+        {
+          "caller": "esSlot",
+          "callee": "resolve",
+          "lineNumber": 209
+        },
+        {
+          "caller": "esSlot",
+          "callee": "esQueue.push",
+          "lineNumber": 211
+        },
+        {
+          "caller": "releaseEsSlot",
+          "callee": "esQueue.shift()",
+          "lineNumber": 217
+        },
+        {
+          "caller": "releaseEsSlot",
+          "callee": "esQueue.shift",
+          "lineNumber": 217
+        },
+        {
+          "caller": "searchStoryIds",
+          "callee": "isSearchEnabled",
+          "lineNumber": 225
+        },
+        {
+          "caller": "searchStoryIds",
+          "callee": "Date.now",
+          "lineNumber": 225
+        },
+        {
+          "caller": "searchStoryIds",
+          "callee": "query.toLowerCase().replace",
+          "lineNumber": 226
+        },
+        {
+          "caller": "searchStoryIds",
+          "callee": "query.toLowerCase",
+          "lineNumber": 226
+        },
+        {
+          "caller": "searchStoryIds",
+          "callee": "redisReady",
+          "lineNumber": 228
+        },
+        {
+          "caller": "searchStoryIds",
+          "callee": "redis.get",
+          "lineNumber": 228
+        },
+        {
+          "caller": "searchStoryIds",
+          "callee": "JSON.parse",
+          "lineNumber": 229
+        },
+        {
+          "caller": "searchStoryIds",
+          "callee": "sharedSearches.get",
+          "lineNumber": 231
+        },
+        {
+          "caller": "searchStoryIds",
+          "callee": "(async () => {\r\n    if (!(await esSlot())) {\r\n      console.warn('[Search] Elasticsearch busy, using SQL search for this query');\r\n      return null;\r\n    }\r\n    try {\r\n      const ids = await runEsSearch(query, size);\r\n      if (ids && redis && redisReady()) redis.set(key, JSON.stringify(ids), 'EX', ID_CACHE_TTL_S).catch(() => {});\r\n      return ids;\r\n    } finally {\r\n      releaseEsSlot();\r\n    }\r\n  })().finally",
+          "lineNumber": 233
+        },
+        {
+          "caller": "searchStoryIds",
+          "callee": "(async () => {\r\n    if (!(await esSlot())) {\r\n      console.warn('[Search] Elasticsearch busy, using SQL search for this query');\r\n      return null;\r\n    }\r\n    try {\r\n      const ids = await runEsSearch(query, size);\r\n      if (ids && redis && redisReady()) redis.set(key, JSON.stringify(ids), 'EX', ID_CACHE_TTL_S).catch(() => {});\r\n      return ids;\r\n    } finally {\r\n      releaseEsSlot();\r\n    }\r\n  })",
+          "lineNumber": 233
+        },
+        {
+          "caller": "searchStoryIds",
+          "callee": "esSlot",
+          "lineNumber": 234
+        },
+        {
+          "caller": "searchStoryIds",
+          "callee": "console.warn",
+          "lineNumber": 235
+        },
+        {
+          "caller": "searchStoryIds",
+          "callee": "runEsSearch",
+          "lineNumber": 239
+        },
+        {
+          "caller": "searchStoryIds",
+          "callee": "redisReady",
+          "lineNumber": 240
+        },
+        {
+          "caller": "searchStoryIds",
+          "callee": "redis.set(key, JSON.stringify(ids), 'EX', ID_CACHE_TTL_S).catch",
+          "lineNumber": 240
+        },
+        {
+          "caller": "searchStoryIds",
+          "callee": "redis.set",
+          "lineNumber": 240
+        },
+        {
+          "caller": "searchStoryIds",
+          "callee": "JSON.stringify",
+          "lineNumber": 240
+        },
+        {
+          "caller": "searchStoryIds",
+          "callee": "releaseEsSlot",
+          "lineNumber": 243
+        },
+        {
+          "caller": "searchStoryIds",
+          "callee": "sharedSearches.delete",
+          "lineNumber": 245
+        },
+        {
+          "caller": "searchStoryIds",
+          "callee": "sharedSearches.set",
+          "lineNumber": 246
+        },
+        {
+          "caller": "runEsSearch",
+          "callee": "es",
+          "lineNumber": 252
+        },
+        {
+          "caller": "runEsSearch",
+          "callee": "(result.hits?.hits ?? []).map",
+          "lineNumber": 298
+        },
+        {
+          "caller": "runEsSearch",
+          "callee": "Date.now",
+          "lineNumber": 300
+        },
+        {
+          "caller": "runEsSearch",
+          "callee": "console.error",
+          "lineNumber": 301
+        }
+      ],
+      "metrics": {
+        "importCount": 3,
+        "exportCount": 6,
+        "functionCount": 13,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "catalog/src/services/storyPurge.ts",
+      "language": "typescript",
+      "fileCategory": "code",
+      "totalLines": 77,
+      "nonEmptyLines": 73,
+      "functions": [
+        {
+          "name": "purgeStory",
+          "startLine": 13,
+          "endLine": 56,
+          "params": [
+            "id",
+            "removedDays"
+          ]
+        },
+        {
+          "name": "scheduleRemovedPurge",
+          "startLine": 61,
+          "endLine": 77,
+          "params": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "purgeStory",
+          "line": 13,
+          "isDefault": false
+        },
+        {
+          "name": "REMOVED_PURGE_DAYS",
+          "line": 58,
+          "isDefault": false
+        },
+        {
+          "name": "scheduleRemovedPurge",
+          "line": 61,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "purgeStory",
+          "callee": "pool.connect",
+          "lineNumber": 15
+        },
+        {
+          "caller": "purgeStory",
+          "callee": "client.query",
+          "lineNumber": 17
+        },
+        {
+          "caller": "purgeStory",
+          "callee": "client.query",
+          "lineNumber": 19
+        },
+        {
+          "caller": "purgeStory",
+          "callee": "client.query",
+          "lineNumber": 24
+        },
+        {
+          "caller": "purgeStory",
+          "callee": "client.query",
+          "lineNumber": 29
+        },
+        {
+          "caller": "purgeStory",
+          "callee": "client.query",
+          "lineNumber": 30
+        },
+        {
+          "caller": "purgeStory",
+          "callee": "client.query",
+          "lineNumber": 31
+        },
+        {
+          "caller": "purgeStory",
+          "callee": "client.query",
+          "lineNumber": 33
+        },
+        {
+          "caller": "purgeStory",
+          "callee": "client.query",
+          "lineNumber": 34
+        },
+        {
+          "caller": "purgeStory",
+          "callee": "(await client.query(`DELETE FROM chapters WHERE story_id = $1 RETURNING id`, [id])).rows.map",
+          "lineNumber": 35
+        },
+        {
+          "caller": "purgeStory",
+          "callee": "client.query",
+          "lineNumber": 35
+        },
+        {
+          "caller": "purgeStory",
+          "callee": "client.query",
+          "lineNumber": 37
+        },
+        {
+          "caller": "purgeStory",
+          "callee": "client.query",
+          "lineNumber": 39
+        },
+        {
+          "caller": "purgeStory",
+          "callee": "client.query",
+          "lineNumber": 40
+        },
+        {
+          "caller": "purgeStory",
+          "callee": "bumpPublicCache",
+          "lineNumber": 42
+        },
+        {
+          "caller": "purgeStory",
+          "callee": "client.query",
+          "lineNumber": 44
+        },
+        {
+          "caller": "purgeStory",
+          "callee": "client.release",
+          "lineNumber": 47
+        },
+        {
+          "caller": "purgeStory",
+          "callee": "removeStoryFromIndex",
+          "lineNumber": 50
+        },
+        {
+          "caller": "purgeStory",
+          "callee": "callCommunity('POST', '/internal/comments/purge', { story_id: id, chapter_ids: chapterIds })\r\n    .then((r) => { if (r.status !== 200) throw new Error(`HTTP ${r.status}`); })\r\n    .catch",
+          "lineNumber": 51
+        },
+        {
+          "caller": "purgeStory",
+          "callee": "callCommunity('POST', '/internal/comments/purge', { story_id: id, chapter_ids: chapterIds })\r\n    .then",
+          "lineNumber": 51
+        },
+        {
+          "caller": "purgeStory",
+          "callee": "callCommunity",
+          "lineNumber": 51
+        },
+        {
+          "caller": "purgeStory",
+          "callee": "console.error",
+          "lineNumber": 53
+        },
+        {
+          "caller": "purgeStory",
+          "callee": "purgeLibrary",
+          "lineNumber": 54
+        },
+        {
+          "caller": "run",
+          "callee": "pool.query",
+          "lineNumber": 64
+        },
+        {
+          "caller": "run",
+          "callee": "purgeStory",
+          "lineNumber": 69
+        },
+        {
+          "caller": "run",
+          "callee": "console.log",
+          "lineNumber": 69
+        },
+        {
+          "caller": "run",
+          "callee": "console.error",
+          "lineNumber": 72
+        },
+        {
+          "caller": "scheduleRemovedPurge",
+          "callee": "setTimeout(run, 60_000).unref",
+          "lineNumber": 75
+        },
+        {
+          "caller": "scheduleRemovedPurge",
+          "callee": "setTimeout",
+          "lineNumber": 75
+        },
+        {
+          "caller": "scheduleRemovedPurge",
+          "callee": "setInterval(run, 24 * 3600_000).unref",
+          "lineNumber": 76
+        },
+        {
+          "caller": "scheduleRemovedPurge",
+          "callee": "setInterval",
+          "lineNumber": 76
+        }
+      ],
+      "metrics": {
+        "importCount": 5,
+        "exportCount": 3,
+        "functionCount": 2,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "catalog/src/services/viewCounter.ts",
+      "language": "typescript",
+      "fileCategory": "code",
+      "totalLines": 94,
+      "nonEmptyLines": 89,
+      "functions": [
+        {
+          "name": "writeViewDirect",
+          "startLine": 14,
+          "endLine": 21,
+          "params": [
+            "storyId",
+            "chapterId"
+          ]
+        },
+        {
+          "name": "recordView",
+          "startLine": 24,
+          "endLine": 30,
+          "params": [
+            "storyId",
+            "chapterId"
+          ]
+        },
+        {
+          "name": "flushViews",
+          "startLine": 37,
+          "endLine": 94,
+          "params": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "recordView",
+          "line": 24,
+          "isDefault": false
+        },
+        {
+          "name": "flushViews",
+          "line": 37,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "writeViewDirect",
+          "callee": "pool.query",
+          "lineNumber": 15
+        },
+        {
+          "caller": "direct",
+          "callee": "writeViewDirect(storyId, chapterId).catch",
+          "lineNumber": 25
+        },
+        {
+          "caller": "direct",
+          "callee": "writeViewDirect",
+          "lineNumber": 25
+        },
+        {
+          "caller": "direct",
+          "callee": "console.error",
+          "lineNumber": 25
+        },
+        {
+          "caller": "recordView",
+          "callee": "redisReady",
+          "lineNumber": 26
+        },
+        {
+          "caller": "recordView",
+          "callee": "direct",
+          "lineNumber": 26
+        },
+        {
+          "caller": "recordView",
+          "callee": "redis.multi().hincrby(KEYS.stories, storyId, 1).hincrby(KEYS.chapters, chapterId, 1).exec()\r\n    .then((res) => { if (!res || res.some(([err]) => err)) direct(); })\r\n    .catch",
+          "lineNumber": 27
+        },
+        {
+          "caller": "recordView",
+          "callee": "redis.multi().hincrby(KEYS.stories, storyId, 1).hincrby(KEYS.chapters, chapterId, 1).exec()\r\n    .then",
+          "lineNumber": 27
+        },
+        {
+          "caller": "recordView",
+          "callee": "redis.multi().hincrby(KEYS.stories, storyId, 1).hincrby(KEYS.chapters, chapterId, 1).exec",
+          "lineNumber": 27
+        },
+        {
+          "caller": "recordView",
+          "callee": "redis.multi().hincrby(KEYS.stories, storyId, 1).hincrby",
+          "lineNumber": 27
+        },
+        {
+          "caller": "recordView",
+          "callee": "redis.multi().hincrby",
+          "lineNumber": 27
+        },
+        {
+          "caller": "recordView",
+          "callee": "redis.multi",
+          "lineNumber": 27
+        },
+        {
+          "caller": "recordView",
+          "callee": "res.some",
+          "lineNumber": 28
+        },
+        {
+          "caller": "recordView",
+          "callee": "direct",
+          "lineNumber": 28
+        },
+        {
+          "caller": "flushViews",
+          "callee": "redisReady",
+          "lineNumber": 39
+        },
+        {
+          "caller": "flushViews",
+          "callee": "redis.set",
+          "lineNumber": 40
+        },
+        {
+          "caller": "flushViews",
+          "callee": "redis.exists",
+          "lineNumber": 45
+        },
+        {
+          "caller": "flushViews",
+          "callee": "redis.rename",
+          "lineNumber": 47
+        },
+        {
+          "caller": "flushViews",
+          "callee": "redis.hgetall",
+          "lineNumber": 52
+        },
+        {
+          "caller": "flushViews",
+          "callee": "Object.keys",
+          "lineNumber": 53
+        },
+        {
+          "caller": "flushViews",
+          "callee": "ids.map",
+          "lineNumber": 54
+        },
+        {
+          "caller": "flushViews",
+          "callee": "Number",
+          "lineNumber": 54
+        },
+        {
+          "caller": "flushViews",
+          "callee": "pool.query",
+          "lineNumber": 57
+        },
+        {
+          "caller": "flushViews",
+          "callee": "pool.connect",
+          "lineNumber": 63
+        },
+        {
+          "caller": "flushViews",
+          "callee": "client.query",
+          "lineNumber": 65
+        },
+        {
+          "caller": "flushViews",
+          "callee": "client.query",
+          "lineNumber": 66
+        },
+        {
+          "caller": "flushViews",
+          "callee": "client.query",
+          "lineNumber": 72
+        },
+        {
+          "caller": "flushViews",
+          "callee": "client.query",
+          "lineNumber": 78
+        },
+        {
+          "caller": "flushViews",
+          "callee": "client.query('ROLLBACK').catch",
+          "lineNumber": 80
+        },
+        {
+          "caller": "flushViews",
+          "callee": "client.query",
+          "lineNumber": 80
+        },
+        {
+          "caller": "flushViews",
+          "callee": "client.release",
+          "lineNumber": 83
+        },
+        {
+          "caller": "flushViews",
+          "callee": "redis.del",
+          "lineNumber": 87
+        },
+        {
+          "caller": "flushViews",
+          "callee": "redis.del(LOCK_KEY).catch",
+          "lineNumber": 91
+        },
+        {
+          "caller": "flushViews",
+          "callee": "redis.del",
+          "lineNumber": 91
+        }
+      ],
+      "metrics": {
+        "importCount": 2,
+        "exportCount": 2,
+        "functionCount": 3,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "catalog/src/services/workspaceSync.ts",
+      "language": "typescript",
+      "fileCategory": "code",
+      "totalLines": 185,
+      "nonEmptyLines": 170,
+      "functions": [
+        {
+          "name": "callWorkspace",
+          "startLine": 33,
+          "endLine": 45,
+          "params": [
+            "method",
+            "path",
+            "body"
+          ]
+        },
+        {
+          "name": "applyRevision",
+          "startLine": 53,
+          "endLine": 108,
+          "params": [
+            "db",
+            "rev"
+          ]
+        },
+        {
+          "name": "applyRevisionNow",
+          "startLine": 111,
+          "endLine": 129,
+          "params": [
+            "rev"
+          ]
+        },
+        {
+          "name": "notifyTaskOpened",
+          "startLine": 138,
+          "endLine": 162,
+          "params": [
+            "t"
+          ]
+        },
+        {
+          "name": "handleWorkspaceEvent",
+          "startLine": 164,
+          "endLine": 181,
+          "params": [
+            "evt"
+          ]
+        },
+        {
+          "name": "startWorkspaceConsumer",
+          "startLine": 184,
+          "endLine": 185,
+          "params": [
+            "onClose"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "callWorkspace",
+          "line": 33,
+          "isDefault": false
+        },
+        {
+          "name": "applyRevision",
+          "line": 53,
+          "isDefault": false
+        },
+        {
+          "name": "applyRevisionNow",
+          "line": 111,
+          "isDefault": false
+        },
+        {
+          "name": "startWorkspaceConsumer",
+          "line": 184,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "callWorkspace",
+          "callee": "fetch",
+          "lineNumber": 34
+        },
+        {
+          "caller": "callWorkspace",
+          "callee": "internalAuthHeader",
+          "lineNumber": 38
+        },
+        {
+          "caller": "callWorkspace",
+          "callee": "currentRequestId",
+          "lineNumber": 39
+        },
+        {
+          "caller": "callWorkspace",
+          "callee": "currentRequestId",
+          "lineNumber": 39
+        },
+        {
+          "caller": "callWorkspace",
+          "callee": "JSON.stringify",
+          "lineNumber": 41
+        },
+        {
+          "caller": "callWorkspace",
+          "callee": "AbortSignal.timeout",
+          "lineNumber": 42
+        },
+        {
+          "caller": "callWorkspace",
+          "callee": "res.json().catch",
+          "lineNumber": 44
+        },
+        {
+          "caller": "callWorkspace",
+          "callee": "res.json",
+          "lineNumber": 44
+        },
+        {
+          "caller": "applyRevision",
+          "callee": "db.query",
+          "lineNumber": 54
+        },
+        {
+          "caller": "recount",
+          "callee": "db.query",
+          "lineNumber": 62
+        },
+        {
+          "caller": "applyRevision",
+          "callee": "db.query",
+          "lineNumber": 68
+        },
+        {
+          "caller": "applyRevision",
+          "callee": "purgeLibrary",
+          "lineNumber": 69
+        },
+        {
+          "caller": "applyRevision",
+          "callee": "db.query",
+          "lineNumber": 70
+        },
+        {
+          "caller": "applyRevision",
+          "callee": "db.query",
+          "lineNumber": 71
+        },
+        {
+          "caller": "applyRevision",
+          "callee": "recount",
+          "lineNumber": 72
+        },
+        {
+          "caller": "applyRevision",
+          "callee": "db.query",
+          "lineNumber": 76
+        },
+        {
+          "caller": "applyRevision",
+          "callee": "blocksToPlainText",
+          "lineNumber": 79
+        },
+        {
+          "caller": "applyRevision",
+          "callee": "db.query",
+          "lineNumber": 81
+        },
+        {
+          "caller": "applyRevision",
+          "callee": "`chuong-${m.chapter_number}-${slugify(m.title)}`.slice",
+          "lineNumber": 92
+        },
+        {
+          "caller": "applyRevision",
+          "callee": "slugify",
+          "lineNumber": 92
+        },
+        {
+          "caller": "applyRevision",
+          "callee": "JSON.stringify",
+          "lineNumber": 92
+        },
+        {
+          "caller": "applyRevision",
+          "callee": "plain.split(/\\s+/).filter",
+          "lineNumber": 93
+        },
+        {
+          "caller": "applyRevision",
+          "callee": "plain.split",
+          "lineNumber": 93
+        },
+        {
+          "caller": "applyRevision",
+          "callee": "JSON.stringify",
+          "lineNumber": 94
+        },
+        {
+          "caller": "applyRevision",
+          "callee": "blocks.filter((b) => b.note).map",
+          "lineNumber": 94
+        },
+        {
+          "caller": "applyRevision",
+          "callee": "blocks.filter",
+          "lineNumber": 94
+        },
+        {
+          "caller": "applyRevision",
+          "callee": "Boolean",
+          "lineNumber": 97
+        },
+        {
+          "caller": "applyRevision",
+          "callee": "db.query",
+          "lineNumber": 100
+        },
+        {
+          "caller": "applyRevision",
+          "callee": "blocks.filter",
+          "lineNumber": 101
+        },
+        {
+          "caller": "applyRevision",
+          "callee": "db.query",
+          "lineNumber": 103
+        },
+        {
+          "caller": "applyRevision",
+          "callee": "recount",
+          "lineNumber": 106
+        },
+        {
+          "caller": "applyRevisionNow",
+          "callee": "pool.connect",
+          "lineNumber": 112
+        },
+        {
+          "caller": "applyRevisionNow",
+          "callee": "client.query",
+          "lineNumber": 115
+        },
+        {
+          "caller": "applyRevisionNow",
+          "callee": "applyRevision",
+          "lineNumber": 116
+        },
+        {
+          "caller": "applyRevisionNow",
+          "callee": "client.query",
+          "lineNumber": 117
+        },
+        {
+          "caller": "applyRevisionNow",
+          "callee": "bumpPublicCache",
+          "lineNumber": 118
+        },
+        {
+          "caller": "applyRevisionNow",
+          "callee": "client.query('ROLLBACK').catch",
+          "lineNumber": 120
+        },
+        {
+          "caller": "applyRevisionNow",
+          "callee": "client.query",
+          "lineNumber": 120
+        },
+        {
+          "caller": "applyRevisionNow",
+          "callee": "client.release",
+          "lineNumber": 123
+        },
+        {
+          "caller": "applyRevisionNow",
+          "callee": "notifyChapterPublished",
+          "lineNumber": 126
+        },
+        {
+          "caller": "notifyTaskOpened",
+          "callee": "pool.query",
+          "lineNumber": 141
+        },
+        {
+          "caller": "notifyTaskOpened",
+          "callee": "pool.query",
+          "lineNumber": 153
+        },
+        {
+          "caller": "notifyTaskOpened",
+          "callee": "[...new Set(recipients)].filter((id) => id && id !== t.actor_id).map",
+          "lineNumber": 154
+        },
+        {
+          "caller": "notifyTaskOpened",
+          "callee": "[...new Set(recipients)].filter",
+          "lineNumber": 154
+        },
+        {
+          "caller": "notifyTaskOpened",
+          "callee": "Number",
+          "lineNumber": 156
+        },
+        {
+          "caller": "notifyTaskOpened",
+          "callee": "String(t.note).slice",
+          "lineNumber": 157
+        },
+        {
+          "caller": "notifyTaskOpened",
+          "callee": "String",
+          "lineNumber": 157
+        },
+        {
+          "caller": "notifyTaskOpened",
+          "callee": "new Date(t.due_at).toLocaleString",
+          "lineNumber": 157
+        },
+        {
+          "caller": "notifyTaskOpened",
+          "callee": "enqueueNotificationJob",
+          "lineNumber": 161
+        },
+        {
+          "caller": "handleWorkspaceEvent",
+          "callee": "['workspace.revision.merged', 'workspace.task.opened'].includes",
+          "lineNumber": 165
+        },
+        {
+          "caller": "handleWorkspaceEvent",
+          "callee": "notifyTaskOpened",
+          "lineNumber": 168
+        },
+        {
+          "caller": "handleWorkspaceEvent",
+          "callee": "pool.query",
+          "lineNumber": 172
+        },
+        {
+          "caller": "handleWorkspaceEvent",
+          "callee": "applyRevisionNow",
+          "lineNumber": 175
+        },
+        {
+          "caller": "handleWorkspaceEvent",
+          "callee": "pool.query",
+          "lineNumber": 178
+        },
+        {
+          "caller": "startWorkspaceConsumer",
+          "callee": "startEventConsumer",
+          "lineNumber": 185
+        }
+      ],
+      "metrics": {
+        "importCount": 8,
+        "exportCount": 4,
+        "functionCount": 6,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "catalog/src/utils/dbErrors.ts",
+      "language": "typescript",
+      "fileCategory": "code",
+      "totalLines": 18,
+      "nonEmptyLines": 18,
+      "functions": [
+        {
+          "name": "clientDbError",
+          "startLine": 5,
+          "endLine": 18,
+          "params": [
+            "error"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "clientDbError",
+          "line": 5,
+          "isDefault": false
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 1,
+        "functionCount": 1,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "catalog/src/utils/ids.ts",
+      "language": "typescript",
+      "fileCategory": "code",
+      "totalLines": 53,
+      "nonEmptyLines": 49,
+      "functions": [
+        {
+          "name": "nextFreeSlug",
+          "startLine": 15,
+          "endLine": 24,
+          "params": [
+            "db",
+            "table",
+            "base"
+          ]
+        },
+        {
+          "name": "insertWithUniqueSlug",
+          "startLine": 32,
+          "endLine": 53,
+          "params": [
+            "db",
+            "table",
+            "base",
+            "insert",
+            "inTransaction"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "nextFreeSlug",
+          "line": 15,
+          "isDefault": false
+        },
+        {
+          "name": "insertWithUniqueSlug",
+          "line": 32,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "nextFreeSlug",
+          "callee": "base.slice(0, 480).replace",
+          "lineNumber": 16
+        },
+        {
+          "caller": "nextFreeSlug",
+          "callee": "base.slice",
+          "lineNumber": 16
+        },
+        {
+          "caller": "nextFreeSlug",
+          "callee": "db.query",
+          "lineNumber": 17
+        },
+        {
+          "caller": "nextFreeSlug",
+          "callee": "res.rows.map",
+          "lineNumber": 18
+        },
+        {
+          "caller": "nextFreeSlug",
+          "callee": "taken.has",
+          "lineNumber": 19
+        },
+        {
+          "caller": "nextFreeSlug",
+          "callee": "taken.has",
+          "lineNumber": 22
+        },
+        {
+          "caller": "insertWithUniqueSlug",
+          "callee": "nextFreeSlug",
+          "lineNumber": 40
+        },
+        {
+          "caller": "insertWithUniqueSlug",
+          "callee": "db.query",
+          "lineNumber": 41
+        },
+        {
+          "caller": "insertWithUniqueSlug",
+          "callee": "insert",
+          "lineNumber": 43
+        },
+        {
+          "caller": "insertWithUniqueSlug",
+          "callee": "db.query",
+          "lineNumber": 44
+        },
+        {
+          "caller": "insertWithUniqueSlug",
+          "callee": "db.query",
+          "lineNumber": 47
+        },
+        {
+          "caller": "insertWithUniqueSlug",
+          "callee": "String(err.constraint || '').includes",
+          "lineNumber": 48
+        },
+        {
+          "caller": "insertWithUniqueSlug",
+          "callee": "String",
+          "lineNumber": 48
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 2,
+        "functionCount": 2,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "catalog/src/utils/logger.test.ts",
+      "language": "typescript",
+      "fileCategory": "code",
+      "totalLines": 19,
+      "nonEmptyLines": 17,
+      "metrics": {
+        "importCount": 1,
+        "exportCount": 0,
+        "functionCount": 0,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "catalog/src/utils/logger.ts",
+      "language": "typescript",
+      "fileCategory": "code",
+      "totalLines": 59,
+      "nonEmptyLines": 52,
+      "functions": [
+        {
+          "name": "currentRequestId",
+          "startLine": 14,
+          "endLine": 14,
+          "params": []
+        },
+        {
+          "name": "redact",
+          "startLine": 17,
+          "endLine": 24,
+          "params": [
+            "text"
+          ]
+        },
+        {
+          "name": "log",
+          "startLine": 28,
+          "endLine": 31,
+          "params": [
+            "level",
+            "msg",
+            "fields",
+            "unredacted"
+          ]
+        },
+        {
+          "name": "requestContext",
+          "startLine": 44,
+          "endLine": 59,
+          "params": [
+            "req",
+            "res",
+            "next"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "currentRequestId",
+          "line": 14,
+          "isDefault": false
+        },
+        {
+          "name": "redact",
+          "line": 17,
+          "isDefault": false
+        },
+        {
+          "name": "log",
+          "line": 28,
+          "isDefault": false
+        },
+        {
+          "name": "requestContext",
+          "line": 44,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "currentRequestId",
+          "callee": "ctx.getStore",
+          "lineNumber": 14
+        },
+        {
+          "caller": "redact",
+          "callee": "text\r\n    .replace(/\\beyJ[\\w-]+\\.[\\w-]+\\.[\\w-]+/g, '[jwt]')\r\n    .replace(/\\b(Bearer|Basic)\\s+[^\\s\"',]+/gi, '$1 [redacted]')\r\n    .replace(/(\\/\\/[^:/@\\s]+:)[^@\\s]+@/g, '$1[redacted]@') // passwords in connection URLs\r\n    .replace(/((?:password|passwd|token|secret|cookie|authorization)[\"']?\\s*[:=]\\s*[\"']?)[^\\s\"',;&}]+/gi, '$1[redacted]')\r\n    .replace",
+          "lineNumber": 18
+        },
+        {
+          "caller": "redact",
+          "callee": "text\r\n    .replace(/\\beyJ[\\w-]+\\.[\\w-]+\\.[\\w-]+/g, '[jwt]')\r\n    .replace(/\\b(Bearer|Basic)\\s+[^\\s\"',]+/gi, '$1 [redacted]')\r\n    .replace(/(\\/\\/[^:/@\\s]+:)[^@\\s]+@/g, '$1[redacted]@') // passwords in connection URLs\r\n    .replace",
+          "lineNumber": 18
+        },
+        {
+          "caller": "redact",
+          "callee": "text\r\n    .replace(/\\beyJ[\\w-]+\\.[\\w-]+\\.[\\w-]+/g, '[jwt]')\r\n    .replace(/\\b(Bearer|Basic)\\s+[^\\s\"',]+/gi, '$1 [redacted]')\r\n    .replace",
+          "lineNumber": 18
+        },
+        {
+          "caller": "redact",
+          "callee": "text\r\n    .replace(/\\beyJ[\\w-]+\\.[\\w-]+\\.[\\w-]+/g, '[jwt]')\r\n    .replace",
+          "lineNumber": 18
+        },
+        {
+          "caller": "redact",
+          "callee": "text\r\n    .replace",
+          "lineNumber": 18
+        },
+        {
+          "caller": "log",
+          "callee": "JSON.stringify",
+          "lineNumber": 29
+        },
+        {
+          "caller": "log",
+          "callee": "new Date().toISOString",
+          "lineNumber": 29
+        },
+        {
+          "caller": "log",
+          "callee": "ctx.getStore",
+          "lineNumber": 29
+        },
+        {
+          "caller": "log",
+          "callee": "redact",
+          "lineNumber": 29
+        },
+        {
+          "caller": "log",
+          "callee": "(level === 'error' || level === 'warn' ? original.error : original.log)",
+          "lineNumber": 30
+        },
+        {
+          "caller": "requestContext",
+          "callee": "req.get",
+          "lineNumber": 45
+        },
+        {
+          "caller": "requestContext",
+          "callee": "/^[A-Za-z0-9-]{8,64}$/.test",
+          "lineNumber": 46
+        },
+        {
+          "caller": "requestContext",
+          "callee": "randomBytes(16).toString",
+          "lineNumber": 46
+        },
+        {
+          "caller": "requestContext",
+          "callee": "randomBytes",
+          "lineNumber": 46
+        },
+        {
+          "caller": "requestContext",
+          "callee": "res.setHeader",
+          "lineNumber": 47
+        },
+        {
+          "caller": "requestContext",
+          "callee": "process.hrtime.bigint",
+          "lineNumber": 48
+        },
+        {
+          "caller": "requestContext",
+          "callee": "res.on",
+          "lineNumber": 49
+        },
+        {
+          "caller": "requestContext",
+          "callee": "Number",
+          "lineNumber": 51
+        },
+        {
+          "caller": "requestContext",
+          "callee": "process.hrtime.bigint",
+          "lineNumber": 51
+        },
+        {
+          "caller": "requestContext",
+          "callee": "ctx.run",
+          "lineNumber": 52
+        },
+        {
+          "caller": "requestContext",
+          "callee": "log",
+          "lineNumber": 53
+        },
+        {
+          "caller": "requestContext",
+          "callee": "req.originalUrl.split",
+          "lineNumber": 54
+        },
+        {
+          "caller": "requestContext",
+          "callee": "Math.round",
+          "lineNumber": 54
+        },
+        {
+          "caller": "requestContext",
+          "callee": "ctx.run",
+          "lineNumber": 58
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 4,
+        "functionCount": 4,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "catalog/src/utils/richText.ts",
+      "language": "typescript",
+      "fileCategory": "code",
+      "totalLines": 105,
+      "nonEmptyLines": 96,
+      "functions": [
+        {
+          "name": "decodeEntities",
+          "startLine": 18,
+          "endLine": 18,
+          "params": [
+            "text"
+          ]
+        },
+        {
+          "name": "sanitizeRichText",
+          "startLine": 21,
+          "endLine": 44,
+          "params": [
+            "input"
+          ]
+        },
+        {
+          "name": "sanitizeChapterHtml",
+          "startLine": 59,
+          "endLine": 90,
+          "params": [
+            "input"
+          ]
+        },
+        {
+          "name": "richTextToPlain",
+          "startLine": 93,
+          "endLine": 99,
+          "params": [
+            "input"
+          ]
+        },
+        {
+          "name": "hasRichContent",
+          "startLine": 102,
+          "endLine": 105,
+          "params": [
+            "input"
+          ]
+        }
+      ],
+      "exports": [
+        {
+          "name": "sanitizeRichText",
+          "line": 21,
+          "isDefault": false
+        },
+        {
+          "name": "sanitizeChapterHtml",
+          "line": 59,
+          "isDefault": false
+        },
+        {
+          "name": "richTextToPlain",
+          "line": 93,
+          "isDefault": false
+        },
+        {
+          "name": "hasRichContent",
+          "line": 102,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "decodeEntities",
+          "callee": "text.replace",
+          "lineNumber": 18
+        },
+        {
+          "caller": "sanitizeRichText",
+          "callee": "input.trim",
+          "lineNumber": 23
+        },
+        {
+          "caller": "sanitizeRichText",
+          "callee": "HAS_TAG.test",
+          "lineNumber": 25
+        },
+        {
+          "caller": "sanitizeRichText",
+          "callee": "sanitizeHtml(value, {\r\n    allowedTags: ALLOWED_TAGS,\r\n    allowedAttributes: {\r\n      a: ['href', 'target', 'rel'],\r\n      figure: ['class', 'style'],\r\n      img: ['src', 'alt', 'width', 'height'],\r\n    },\r\n    // Editor image classes only (image, resized, alignment styles); size is a percentage on <figure>\r\n    allowedClasses: { figure: ['image', 'image_resized', 'image-style-*'] },\r\n    allowedStyles: { figure: { width: [/^\\d{1,3}(\\.\\d+)?%$/] } },\r\n    // Only images uploaded to this site: no hotlinked or tracking images\r\n    exclusiveFilter: (frame) => frame.tag === 'img' && !/^\\/uploads\\/(?!.*\\.\\.)[\\w./%-]+$/.test(frame.attribs.src || ''),\r\n    allowedSchemes: ['http', 'https', 'mailto'],\r\n    allowProtocolRelative: false,\r\n    transformTags: {\r\n      a: sanitizeHtml.simpleTransform('a', { target: '_blank', rel: 'noopener noreferrer nofollow' }),\r\n    },\r\n  }).trim",
+          "lineNumber": 26
+        },
+        {
+          "caller": "sanitizeRichText",
+          "callee": "sanitizeHtml",
+          "lineNumber": 26
+        },
+        {
+          "caller": "sanitizeRichText",
+          "callee": "/^\\/uploads\\/(?!.*\\.\\.)[\\w./%-]+$/.test",
+          "lineNumber": 37
+        },
+        {
+          "caller": "sanitizeRichText",
+          "callee": "sanitizeHtml.simpleTransform",
+          "lineNumber": 41
+        },
+        {
+          "caller": "sanitizeChapterHtml",
+          "callee": "input.trim",
+          "lineNumber": 60
+        },
+        {
+          "caller": "sanitizeChapterHtml",
+          "callee": "sanitizeHtml(input.trim(), {\r\n    allowedTags: CHAPTER_TAGS,\r\n    allowedAttributes: {\r\n      a: ['href', 'target', 'rel'],\r\n      figure: ['class', 'style'],\r\n      img: ['src', 'alt', 'width', 'height'],\r\n      ol: ['start', 'reversed'],\r\n      td: ['colspan', 'rowspan'],\r\n      th: ['colspan', 'rowspan', 'scope'],\r\n      '*': ['class'],\r\n    },\r\n    allowedClasses: {\r\n      p: ALIGN_CLASSES, h2: ALIGN_CLASSES, h3: ALIGN_CLASSES, h4: ALIGN_CLASSES, blockquote: ALIGN_CLASSES, li: ALIGN_CLASSES,\r\n      span: ['text-tiny', 'text-small', 'text-big', 'text-huge'],\r\n      mark: ['marker-yellow', 'marker-green', 'marker-pink', 'marker-blue', 'pen-red', 'pen-green'],\r\n      figure: ['image', 'image_resized', 'image-style-*', 'table'],\r\n      td: ALIGN_CLASSES, th: ALIGN_CLASSES,\r\n    },\r\n    allowedStyles: { figure: { width: [/^\\d{1,3}(\\.\\d+)?%$/] } },\r\n    exclusiveFilter: (frame) =>\r\n      (frame.tag === 'img' && !/^\\/uploads\\/(?!.*\\.\\.)[\\w./%-]+$/.test(frame.attribs.src || ''))\r\n      // a <span>/<mark> left without its class carries no formatting\r\n      || ((frame.tag === 'span' || frame.tag === 'mark') && !frame.attribs.class && !frame.text.trim()),\r\n    allowedSchemes: ['http', 'https', 'mailto'],\r\n    allowProtocolRelative: false,\r\n    transformTags: {\r\n      a: sanitizeHtml.simpleTransform('a', { target: '_blank', rel: 'noopener noreferrer nofollow' }),\r\n    },\r\n  }).trim",
+          "lineNumber": 61
+        },
+        {
+          "caller": "sanitizeChapterHtml",
+          "callee": "sanitizeHtml",
+          "lineNumber": 61
+        },
+        {
+          "caller": "sanitizeChapterHtml",
+          "callee": "input.trim",
+          "lineNumber": 61
+        },
+        {
+          "caller": "sanitizeChapterHtml",
+          "callee": "/^\\/uploads\\/(?!.*\\.\\.)[\\w./%-]+$/.test",
+          "lineNumber": 81
+        },
+        {
+          "caller": "sanitizeChapterHtml",
+          "callee": "frame.text.trim",
+          "lineNumber": 83
+        },
+        {
+          "caller": "sanitizeChapterHtml",
+          "callee": "sanitizeHtml.simpleTransform",
+          "lineNumber": 87
+        },
+        {
+          "caller": "richTextToPlain",
+          "callee": "HAS_TAG.test",
+          "lineNumber": 95
+        },
+        {
+          "caller": "richTextToPlain",
+          "callee": "input.trim",
+          "lineNumber": 95
+        },
+        {
+          "caller": "richTextToPlain",
+          "callee": "input.replace",
+          "lineNumber": 96
+        },
+        {
+          "caller": "richTextToPlain",
+          "callee": "sanitizeHtml",
+          "lineNumber": 97
+        },
+        {
+          "caller": "richTextToPlain",
+          "callee": "decodeEntities(stripped).replace(/\\s+/g, ' ').trim",
+          "lineNumber": 98
+        },
+        {
+          "caller": "richTextToPlain",
+          "callee": "decodeEntities(stripped).replace",
+          "lineNumber": 98
+        },
+        {
+          "caller": "richTextToPlain",
+          "callee": "decodeEntities",
+          "lineNumber": 98
+        },
+        {
+          "caller": "hasRichContent",
+          "callee": "richTextToPlain",
+          "lineNumber": 104
+        },
+        {
+          "caller": "hasRichContent",
+          "callee": "/<img\\s/i.test",
+          "lineNumber": 104
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 4,
+        "functionCount": 5,
+        "classCount": 0
+      }
+    },
+    {
+      "path": "catalog/src/utils/validation.ts",
+      "language": "typescript",
+      "fileCategory": "code",
+      "totalLines": 61,
+      "nonEmptyLines": 54,
+      "functions": [
+        {
+          "name": "isUuid",
+          "startLine": 8,
+          "endLine": 8,
+          "params": [
+            "value"
+          ]
+        },
+        {
+          "name": "optionalText",
+          "startLine": 21,
+          "endLine": 28,
+          "params": [
+            "value",
+            "max",
+            "label"
+          ]
+        },
+        {
+          "name": "requiredText",
+          "startLine": 31,
+          "endLine": 35,
+          "params": [
+            "value",
+            "max",
+            "label"
+          ]
+        },
+        {
+          "name": "optionalUrl",
+          "startLine": 41,
+          "endLine": 52,
+          "params": [
+            "value",
+            "label"
+          ]
+        },
+        {
+          "name": "optionalEnum",
+          "startLine": 55,
+          "endLine": 61,
+          "params": [
+            "value",
+            "allowed",
+            "label"
+          ]
+        }
+      ],
+      "classes": [
+        {
+          "name": "InputError",
+          "startLine": 11,
+          "endLine": 15,
+          "methods": [
+            "constructor"
+          ],
+          "properties": []
+        }
+      ],
+      "exports": [
+        {
+          "name": "isUuid",
+          "line": 8,
+          "isDefault": false
+        },
+        {
+          "name": "InputError",
+          "line": 11,
+          "isDefault": false
+        },
+        {
+          "name": "optionalText",
+          "line": 21,
+          "isDefault": false
+        },
+        {
+          "name": "requiredText",
+          "line": 31,
+          "isDefault": false
+        },
+        {
+          "name": "optionalUrl",
+          "line": 41,
+          "isDefault": false
+        },
+        {
+          "name": "optionalEnum",
+          "line": 55,
+          "isDefault": false
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "isUuid",
+          "callee": "UUID_RE.test",
+          "lineNumber": 8
+        },
+        {
+          "caller": "constructor",
+          "callee": "super",
+          "lineNumber": 13
+        },
+        {
+          "caller": "optionalText",
+          "callee": "value.trim",
+          "lineNumber": 25
+        },
+        {
+          "caller": "requiredText",
+          "callee": "optionalText",
+          "lineNumber": 32
+        },
+        {
+          "caller": "optionalUrl",
+          "callee": "optionalText",
+          "lineNumber": 42
+        },
+        {
+          "caller": "optionalUrl",
+          "callee": "/^\\/uploads\\/(?!.*\\.\\.)[\\w./%-]+$/.test",
+          "lineNumber": 44
+        },
+        {
+          "caller": "optionalEnum",
+          "callee": "allowed.includes",
+          "lineNumber": 57
+        },
+        {
+          "caller": "optionalEnum",
+          "callee": "allowed.join",
+          "lineNumber": 58
+        }
+      ],
+      "metrics": {
+        "importCount": 0,
+        "exportCount": 6,
+        "functionCount": 5,
+        "classCount": 1
+      }
+    },
+    {
+      "path": "catalog/src/worker.ts",
+      "language": "typescript",
+      "fileCategory": "code",
+      "totalLines": 77,
+      "nonEmptyLines": 67,
+      "functions": [
+        {
+          "name": "main",
+          "startLine": 21,
+          "endLine": 71,
+          "params": []
+        }
+      ],
+      "callGraph": [
+        {
+          "caller": "main",
+          "callee": "connectQueue",
+          "lineNumber": 22
+        },
+        {
+          "caller": "lost",
+          "callee": "console.error",
+          "lineNumber": 28
+        },
+        {
+          "caller": "lost",
+          "callee": "process.exit",
+          "lineNumber": 29
+        },
+        {
+          "caller": "main",
+          "callee": "eventConsumers.push",
+          "lineNumber": 35
+        },
+        {
+          "caller": "main",
+          "callee": "start",
+          "lineNumber": 35
+        },
+        {
+          "caller": "main",
+          "callee": "lost",
+          "lineNumber": 35
+        },
+        {
+          "caller": "main",
+          "callee": "console.warn",
+          "lineNumber": 38
+        },
+        {
+          "caller": "main",
+          "callee": "setTimeout",
+          "lineNumber": 39
+        },
+        {
+          "caller": "main",
+          "callee": "Math.min",
+          "lineNumber": 39
+        },
+        {
+          "caller": "main",
+          "callee": "scheduleReconcile",
+          "lineNumber": 47
+        },
+        {
+          "caller": "main",
+          "callee": "scheduleHotShelf",
+          "lineNumber": 49
+        },
+        {
+          "caller": "main",
+          "callee": "scheduleRemovedPurge",
+          "lineNumber": 51
+        },
+        {
+          "caller": "main",
+          "callee": "console.log",
+          "lineNumber": 53
+        },
+        {
+          "caller": "flushViewCounts",
+          "callee": "flushViews().catch",
+          "lineNumber": 56
+        },
+        {
+          "caller": "flushViewCounts",
+          "callee": "flushViews",
+          "lineNumber": 56
+        },
+        {
+          "caller": "flushViewCounts",
+          "callee": "console.error",
+          "lineNumber": 56
+        },
+        {
+          "caller": "main",
+          "callee": "setInterval(flushViewCounts, Number(process.env.VIEW_FLUSH_MS || 60_000)).unref",
+          "lineNumber": 57
+        },
+        {
+          "caller": "main",
+          "callee": "setInterval",
+          "lineNumber": 57
+        },
+        {
+          "caller": "main",
+          "callee": "Number",
+          "lineNumber": 57
+        },
+        {
+          "caller": "shutdown",
+          "callee": "console.log",
+          "lineNumber": 62
+        },
+        {
+          "caller": "shutdown",
+          "callee": "c.close",
+          "lineNumber": 63
+        },
+        {
+          "caller": "shutdown",
+          "callee": "flushViewCounts",
+          "lineNumber": 64
+        },
+        {
+          "caller": "shutdown",
+          "callee": "closeQueue",
+          "lineNumber": 65
+        },
+        {
+          "caller": "shutdown",
+          "callee": "pool.end().catch",
+          "lineNumber": 66
+        },
+        {
+          "caller": "shutdown",
+          "callee": "pool.end",
+          "lineNumber": 66
+        },
+        {
+          "caller": "shutdown",
+          "callee": "process.exit",
+          "lineNumber": 67
+        },
+        {
+          "caller": "main",
+          "callee": "process.on",
+          "lineNumber": 69
+        },
+        {
+          "caller": "main",
+          "callee": "shutdown",
+          "lineNumber": 69
+        },
+        {
+          "caller": "main",
+          "callee": "process.on",
+          "lineNumber": 70
+        },
+        {
+          "caller": "main",
+          "callee": "shutdown",
+          "lineNumber": 70
+        }
+      ],
+      "metrics": {
+        "importCount": 9,
+        "exportCount": 0,
+        "functionCount": 1,
+        "classCount": 0
+      }
+    }
+  ]
+}

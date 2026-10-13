@@ -1,0 +1,1080 @@
+{
+ "nodes": [
+  {
+   "id": "schema:sql/migrations/001_story_comments.sql",
+   "type": "schema",
+   "name": "001_story_comments.sql",
+   "filePath": "sql/migrations/001_story_comments.sql",
+   "summary": "Allows comments directly on a story.",
+   "tags": [
+    "database",
+    "migration",
+    "sql",
+    "catalog"
+   ],
+   "complexity": "simple",
+   "languageNotes": "Idempotent migration, also mirrored into sql/database.sql."
+  },
+  {
+   "id": "schema:sql/migrations/002_notification_queue.sql",
+   "type": "schema",
+   "name": "002_notification_queue.sql",
+   "filePath": "sql/migrations/002_notification_queue.sql",
+   "summary": "Adds idempotent notification writes for the queue worker.",
+   "tags": [
+    "database",
+    "migration",
+    "sql",
+    "catalog"
+   ],
+   "complexity": "simple",
+   "languageNotes": "Idempotent migration, also mirrored into sql/database.sql."
+  },
+  {
+   "id": "schema:sql/migrations/003_group_join_requests.sql",
+   "type": "schema",
+   "name": "003_group_join_requests.sql",
+   "filePath": "sql/migrations/003_group_join_requests.sql",
+   "summary": "Adds join requests for translation groups with approve/reject workflow.",
+   "tags": [
+    "database",
+    "migration",
+    "sql",
+    "catalog"
+   ],
+   "complexity": "simple",
+   "languageNotes": "Idempotent migration, also mirrored into sql/database.sql."
+  },
+  {
+   "id": "table:sql/migrations/003_group_join_requests.sql:group_join_requests",
+   "type": "table",
+   "name": "group_join_requests",
+   "filePath": "sql/migrations/003_group_join_requests.sql",
+   "lineRange": [
+    8,
+    17
+   ],
+   "summary": "Table group_join_requests created in 003_group_join_requests.sql (8 columns).",
+   "tags": [
+    "database",
+    "table",
+    "catalog"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "schema:sql/migrations/004_group_approval_audit.sql",
+   "type": "schema",
+   "name": "004_group_approval_audit.sql",
+   "filePath": "sql/migrations/004_group_approval_audit.sql",
+   "summary": "Adds audit columns recording who approved a translation group and when.",
+   "tags": [
+    "database",
+    "migration",
+    "sql",
+    "catalog"
+   ],
+   "complexity": "simple",
+   "languageNotes": "Idempotent migration, also mirrored into sql/database.sql."
+  },
+  {
+   "id": "schema:sql/migrations/005_user_soft_delete.sql",
+   "type": "schema",
+   "name": "005_user_soft_delete.sql",
+   "filePath": "sql/migrations/005_user_soft_delete.sql",
+   "summary": "Adds soft-delete columns for anonymized, locked user accounts.",
+   "tags": [
+    "database",
+    "migration",
+    "sql",
+    "catalog"
+   ],
+   "complexity": "simple",
+   "languageNotes": "Idempotent migration, also mirrored into sql/database.sql."
+  },
+  {
+   "id": "schema:sql/migrations/006_story_sources.sql",
+   "type": "schema",
+   "name": "006_story_sources.sql",
+   "filePath": "sql/migrations/006_story_sources.sql",
+   "summary": "Adds source columns so imported stories are not imported twice and can be credited.",
+   "tags": [
+    "database",
+    "migration",
+    "sql",
+    "catalog"
+   ],
+   "complexity": "simple",
+   "languageNotes": "Idempotent migration, also mirrored into sql/database.sql."
+  },
+  {
+   "id": "schema:sql/migrations/007_story_exports.sql",
+   "type": "schema",
+   "name": "007_story_exports.sql",
+   "filePath": "sql/migrations/007_story_exports.sql",
+   "summary": "Adds the story_exports cache for EPUB/PDF downloads with a per-story opt-in.",
+   "tags": [
+    "database",
+    "migration",
+    "sql",
+    "catalog"
+   ],
+   "complexity": "simple",
+   "languageNotes": "Idempotent migration, also mirrored into sql/database.sql."
+  },
+  {
+   "id": "table:sql/migrations/007_story_exports.sql:story_exports",
+   "type": "table",
+   "name": "story_exports",
+   "filePath": "sql/migrations/007_story_exports.sql",
+   "lineRange": [
+    5,
+    24
+   ],
+   "summary": "Table story_exports created in 007_story_exports.sql (16 columns).",
+   "tags": [
+    "database",
+    "table",
+    "catalog"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "schema:sql/migrations/008_chapter_translator_messages.sql",
+   "type": "schema",
+   "name": "008_chapter_translator_messages.sql",
+   "filePath": "sql/migrations/008_chapter_translator_messages.sql",
+   "summary": "Adds optional translator/author messages shown before and after chapter text.",
+   "tags": [
+    "database",
+    "migration",
+    "sql",
+    "catalog"
+   ],
+   "complexity": "simple",
+   "languageNotes": "Idempotent migration, also mirrored into sql/database.sql."
+  },
+  {
+   "id": "schema:sql/migrations/009_story_albums.sql",
+   "type": "schema",
+   "name": "009_story_albums.sql",
+   "filePath": "sql/migrations/009_story_albums.sql",
+   "summary": "Adds albums, album membership and saved shared albums.",
+   "tags": [
+    "database",
+    "migration",
+    "sql",
+    "catalog"
+   ],
+   "complexity": "moderate",
+   "languageNotes": "Idempotent migration, also mirrored into sql/database.sql."
+  },
+  {
+   "id": "table:sql/migrations/009_story_albums.sql:albums",
+   "type": "table",
+   "name": "albums",
+   "filePath": "sql/migrations/009_story_albums.sql",
+   "lineRange": [
+    5,
+    15
+   ],
+   "summary": "Table albums created in 009_story_albums.sql (9 columns).",
+   "tags": [
+    "database",
+    "table",
+    "catalog"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "table:sql/migrations/009_story_albums.sql:album_stories",
+   "type": "table",
+   "name": "album_stories",
+   "filePath": "sql/migrations/009_story_albums.sql",
+   "lineRange": [
+    18,
+    23
+   ],
+   "summary": "Table album_stories created in 009_story_albums.sql (3 columns).",
+   "tags": [
+    "database",
+    "table",
+    "catalog"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "table:sql/migrations/009_story_albums.sql:album_saves",
+   "type": "table",
+   "name": "album_saves",
+   "filePath": "sql/migrations/009_story_albums.sql",
+   "lineRange": [
+    27,
+    33
+   ],
+   "summary": "Table album_saves created in 009_story_albums.sql (3 columns).",
+   "tags": [
+    "database",
+    "table",
+    "catalog"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "schema:sql/migrations/010_recommendations.sql",
+   "type": "schema",
+   "name": "010_recommendations.sql",
+   "filePath": "sql/migrations/010_recommendations.sql",
+   "summary": "Adds recommendation signals and model output tables.",
+   "tags": [
+    "database",
+    "migration",
+    "sql",
+    "catalog"
+   ],
+   "complexity": "moderate",
+   "languageNotes": "Idempotent migration, also mirrored into sql/database.sql."
+  },
+  {
+   "id": "table:sql/migrations/010_recommendations.sql:rec_events",
+   "type": "table",
+   "name": "rec_events",
+   "filePath": "sql/migrations/010_recommendations.sql",
+   "lineRange": [
+    7,
+    17
+   ],
+   "summary": "Table rec_events created in 010_recommendations.sql (6 columns).",
+   "tags": [
+    "database",
+    "table",
+    "catalog"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "table:sql/migrations/010_recommendations.sql:rec_item_similar",
+   "type": "table",
+   "name": "rec_item_similar",
+   "filePath": "sql/migrations/010_recommendations.sql",
+   "lineRange": [
+    23,
+    34
+   ],
+   "summary": "Table rec_item_similar created in 010_recommendations.sql (4 columns).",
+   "tags": [
+    "database",
+    "table",
+    "catalog"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "table:sql/migrations/010_recommendations.sql:rec_user_scores",
+   "type": "table",
+   "name": "rec_user_scores",
+   "filePath": "sql/migrations/010_recommendations.sql",
+   "lineRange": [
+    37,
+    46
+   ],
+   "summary": "Table rec_user_scores created in 010_recommendations.sql (6 columns).",
+   "tags": [
+    "database",
+    "table",
+    "catalog"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "table:sql/migrations/010_recommendations.sql:rec_user_factors",
+   "type": "table",
+   "name": "rec_user_factors",
+   "filePath": "sql/migrations/010_recommendations.sql",
+   "lineRange": [
+    49,
+    52
+   ],
+   "summary": "Table rec_user_factors created in 010_recommendations.sql (2 columns).",
+   "tags": [
+    "database",
+    "table",
+    "catalog"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "table:sql/migrations/010_recommendations.sql:rec_item_factors",
+   "type": "table",
+   "name": "rec_item_factors",
+   "filePath": "sql/migrations/010_recommendations.sql",
+   "lineRange": [
+    53,
+    57
+   ],
+   "summary": "Table rec_item_factors created in 010_recommendations.sql (3 columns).",
+   "tags": [
+    "database",
+    "table",
+    "catalog"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "table:sql/migrations/010_recommendations.sql:rec_model_runs",
+   "type": "table",
+   "name": "rec_model_runs",
+   "filePath": "sql/migrations/010_recommendations.sql",
+   "lineRange": [
+    60,
+    70
+   ],
+   "summary": "Table rec_model_runs created in 010_recommendations.sql (9 columns).",
+   "tags": [
+    "database",
+    "table",
+    "catalog"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "schema:sql/migrations/011_rating_avg_scale.sql",
+   "type": "schema",
+   "name": "011_rating_avg_scale.sql",
+   "filePath": "sql/migrations/011_rating_avg_scale.sql",
+   "summary": "Widens stories.rating_avg so an average of 10 no longer breaks the rating trigger.",
+   "tags": [
+    "database",
+    "migration",
+    "sql",
+    "catalog"
+   ],
+   "complexity": "simple",
+   "languageNotes": "Idempotent migration, also mirrored into sql/database.sql."
+  },
+  {
+   "id": "schema:sql/migrations/012_fandom_posts.sql",
+   "type": "schema",
+   "name": "012_fandom_posts.sql",
+   "filePath": "sql/migrations/012_fandom_posts.sql",
+   "summary": "Adds Fandom post categories, pinning, rejection reason and feed indexes.",
+   "tags": [
+    "database",
+    "migration",
+    "sql",
+    "catalog"
+   ],
+   "complexity": "simple",
+   "languageNotes": "Idempotent migration, also mirrored into sql/database.sql."
+  },
+  {
+   "id": "schema:sql/migrations/013_notification_preferences.sql",
+   "type": "schema",
+   "name": "013_notification_preferences.sql",
+   "filePath": "sql/migrations/013_notification_preferences.sql",
+   "summary": "Adds finer notification preference switches and per-post muting.",
+   "tags": [
+    "database",
+    "migration",
+    "sql",
+    "catalog"
+   ],
+   "complexity": "simple",
+   "languageNotes": "Idempotent migration, also mirrored into sql/database.sql."
+  },
+  {
+   "id": "table:sql/migrations/013_notification_preferences.sql:post_notification_mutes",
+   "type": "table",
+   "name": "post_notification_mutes",
+   "filePath": "sql/migrations/013_notification_preferences.sql",
+   "lineRange": [
+    9,
+    14
+   ],
+   "summary": "Table post_notification_mutes created in 013_notification_preferences.sql (3 columns).",
+   "tags": [
+    "database",
+    "table",
+    "catalog"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "schema:sql/migrations/014_direct_messages.sql",
+   "type": "schema",
+   "name": "014_direct_messages.sql",
+   "filePath": "sql/migrations/014_direct_messages.sql",
+   "summary": "Adds the direct_messages table for user-to-user chat.",
+   "tags": [
+    "database",
+    "migration",
+    "sql",
+    "catalog"
+   ],
+   "complexity": "simple",
+   "languageNotes": "Idempotent migration, also mirrored into sql/database.sql."
+  },
+  {
+   "id": "table:sql/migrations/014_direct_messages.sql:direct_messages",
+   "type": "table",
+   "name": "direct_messages",
+   "filePath": "sql/migrations/014_direct_messages.sql",
+   "lineRange": [
+    3,
+    11
+   ],
+   "summary": "Table direct_messages created in 014_direct_messages.sql (6 columns).",
+   "tags": [
+    "database",
+    "table",
+    "catalog"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "schema:sql/migrations/015_account_security.sql",
+   "type": "schema",
+   "name": "015_account_security.sql",
+   "filePath": "sql/migrations/015_account_security.sql",
+   "summary": "Adds the auth_tokens table and token revocation support.",
+   "tags": [
+    "database",
+    "migration",
+    "sql",
+    "catalog"
+   ],
+   "complexity": "simple",
+   "languageNotes": "Idempotent migration, also mirrored into sql/database.sql."
+  },
+  {
+   "id": "table:sql/migrations/015_account_security.sql:auth_tokens",
+   "type": "table",
+   "name": "auth_tokens",
+   "filePath": "sql/migrations/015_account_security.sql",
+   "lineRange": [
+    7,
+    14
+   ],
+   "summary": "Table auth_tokens created in 015_account_security.sql (6 columns).",
+   "tags": [
+    "database",
+    "table",
+    "catalog"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "schema:sql/migrations/016_dm_labels_block_pin.sql",
+   "type": "schema",
+   "name": "016_dm_labels_block_pin.sql",
+   "filePath": "sql/migrations/016_dm_labels_block_pin.sql",
+   "summary": "Adds DM labels, user blocks and pinned messages.",
+   "tags": [
+    "database",
+    "migration",
+    "sql",
+    "catalog"
+   ],
+   "complexity": "simple",
+   "languageNotes": "Idempotent migration, also mirrored into sql/database.sql."
+  },
+  {
+   "id": "table:sql/migrations/016_dm_labels_block_pin.sql:dm_labels",
+   "type": "table",
+   "name": "dm_labels",
+   "filePath": "sql/migrations/016_dm_labels_block_pin.sql",
+   "lineRange": [
+    4,
+    10
+   ],
+   "summary": "Table dm_labels created in 016_dm_labels_block_pin.sql (5 columns).",
+   "tags": [
+    "database",
+    "table",
+    "catalog"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "table:sql/migrations/016_dm_labels_block_pin.sql:dm_label_conversations",
+   "type": "table",
+   "name": "dm_label_conversations",
+   "filePath": "sql/migrations/016_dm_labels_block_pin.sql",
+   "lineRange": [
+    14,
+    19
+   ],
+   "summary": "Table dm_label_conversations created in 016_dm_labels_block_pin.sql (3 columns).",
+   "tags": [
+    "database",
+    "table",
+    "catalog"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "table:sql/migrations/016_dm_labels_block_pin.sql:user_blocks",
+   "type": "table",
+   "name": "user_blocks",
+   "filePath": "sql/migrations/016_dm_labels_block_pin.sql",
+   "lineRange": [
+    22,
+    28
+   ],
+   "summary": "Table user_blocks created in 016_dm_labels_block_pin.sql (3 columns).",
+   "tags": [
+    "database",
+    "table",
+    "catalog"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "schema:sql/migrations/017_smart_codes.sql",
+   "type": "schema",
+   "name": "017_smart_codes.sql",
+   "filePath": "sql/migrations/017_smart_codes.sql",
+   "summary": "Adds short human-readable smart codes alongside UUID primary keys.",
+   "tags": [
+    "database",
+    "migration",
+    "sql",
+    "catalog"
+   ],
+   "complexity": "complex",
+   "languageNotes": "Idempotent migration, also mirrored into sql/database.sql."
+  },
+  {
+   "id": "schema:sql/migrations/018_drop_ratings.sql",
+   "type": "schema",
+   "name": "018_drop_ratings.sql",
+   "filePath": "sql/migrations/018_drop_ratings.sql",
+   "summary": "Drops story ratings, their trigger and counters, and rebuilds v_trending_stories.",
+   "tags": [
+    "database",
+    "migration",
+    "sql",
+    "catalog"
+   ],
+   "complexity": "simple",
+   "languageNotes": "Idempotent migration, also mirrored into sql/database.sql."
+  },
+  {
+   "id": "schema:sql/migrations/019_no_approval.sql",
+   "type": "schema",
+   "name": "019_no_approval.sql",
+   "filePath": "sql/migrations/019_no_approval.sql",
+   "summary": "Removes the review step so stories, chapters, posts and groups go live immediately.",
+   "tags": [
+    "database",
+    "migration",
+    "sql",
+    "catalog"
+   ],
+   "complexity": "simple",
+   "languageNotes": "Idempotent migration, also mirrored into sql/database.sql."
+  },
+  {
+   "id": "schema:sql/migrations/020_soft_remove.sql",
+   "type": "schema",
+   "name": "020_soft_remove.sql",
+   "filePath": "sql/migrations/020_soft_remove.sql",
+   "summary": "Adds soft-removal columns and indexes for admin/mod takedowns.",
+   "tags": [
+    "database",
+    "migration",
+    "sql",
+    "catalog"
+   ],
+   "complexity": "simple",
+   "languageNotes": "Idempotent migration, also mirrored into sql/database.sql."
+  },
+  {
+   "id": "schema:sql/migrations/021_report_spam.sql",
+   "type": "schema",
+   "name": "021_report_spam.sql",
+   "filePath": "sql/migrations/021_report_spam.sql",
+   "summary": "Adds a database-enforced one-pending-report-per-person guard against spam.",
+   "tags": [
+    "database",
+    "migration",
+    "sql",
+    "catalog"
+   ],
+   "complexity": "simple",
+   "languageNotes": "Idempotent migration, also mirrored into sql/database.sql."
+  },
+  {
+   "id": "schema:sql/migrations/022_identity_copy.sql",
+   "type": "schema",
+   "name": "022_identity_copy.sql",
+   "filePath": "sql/migrations/022_identity_copy.sql",
+   "summary": "Turns users/user_roles into a copy synced from identity events and adds processed_events.",
+   "tags": [
+    "database",
+    "migration",
+    "sql",
+    "catalog"
+   ],
+   "complexity": "simple",
+   "languageNotes": "Idempotent migration, also mirrored into sql/database.sql."
+  },
+  {
+   "id": "table:sql/migrations/022_identity_copy.sql:processed_events",
+   "type": "table",
+   "name": "processed_events",
+   "filePath": "sql/migrations/022_identity_copy.sql",
+   "lineRange": [
+    24,
+    28
+   ],
+   "summary": "Table processed_events created in 022_identity_copy.sql (3 columns).",
+   "tags": [
+    "database",
+    "table",
+    "catalog"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "schema:sql/migrations/023_ws_chapter_versions.sql",
+   "type": "schema",
+   "name": "023_ws_chapter_versions.sql",
+   "filePath": "sql/migrations/023_ws_chapter_versions.sql",
+   "summary": "Adds ws_chapter_versions to track the last workspace version applied per chapter.",
+   "tags": [
+    "database",
+    "migration",
+    "sql",
+    "catalog"
+   ],
+   "complexity": "simple",
+   "languageNotes": "Idempotent migration, also mirrored into sql/database.sql."
+  },
+  {
+   "id": "table:sql/migrations/023_ws_chapter_versions.sql:ws_chapter_versions",
+   "type": "table",
+   "name": "ws_chapter_versions",
+   "filePath": "sql/migrations/023_ws_chapter_versions.sql",
+   "lineRange": [
+    4,
+    8
+   ],
+   "summary": "Table ws_chapter_versions created in 023_ws_chapter_versions.sql (3 columns).",
+   "tags": [
+    "database",
+    "table",
+    "catalog"
+   ],
+   "complexity": "simple"
+  },
+  {
+   "id": "schema:sql/migrations/024_dm_draft_card.sql",
+   "type": "schema",
+   "name": "024_dm_draft_card.sql",
+   "filePath": "sql/migrations/024_dm_draft_card.sql",
+   "summary": "Lets a direct message carry a workspace draft card id.",
+   "tags": [
+    "database",
+    "migration",
+    "sql",
+    "catalog"
+   ],
+   "complexity": "simple",
+   "languageNotes": "Idempotent migration, also mirrored into sql/database.sql."
+  },
+  {
+   "id": "schema:sql/migrations/025_group_workflow.sql",
+   "type": "schema",
+   "name": "025_group_workflow.sql",
+   "filePath": "sql/migrations/025_group_workflow.sql",
+   "summary": "Adds per-group chapter workflow step configuration.",
+   "tags": [
+    "database",
+    "migration",
+    "sql",
+    "catalog"
+   ],
+   "complexity": "simple",
+   "languageNotes": "Idempotent migration, also mirrored into sql/database.sql."
+  },
+  {
+   "id": "schema:sql/migrations/026_drop_legacy_credentials.sql",
+   "type": "schema",
+   "name": "026_drop_legacy_credentials.sql",
+   "filePath": "sql/migrations/026_drop_legacy_credentials.sql",
+   "summary": "Drops legacy credential columns and tables now owned by identity.",
+   "tags": [
+    "database",
+    "migration",
+    "sql",
+    "catalog"
+   ],
+   "complexity": "simple",
+   "languageNotes": "Idempotent migration, also mirrored into sql/database.sql."
+  },
+  {
+   "id": "schema:sql/migrations/027_drop_legacy_tables.sql",
+   "type": "schema",
+   "name": "027_drop_legacy_tables.sql",
+   "filePath": "sql/migrations/027_drop_legacy_tables.sql",
+   "summary": "Drops legacy tables whose data moved to other services.",
+   "tags": [
+    "database",
+    "migration",
+    "sql",
+    "catalog"
+   ],
+   "complexity": "simple",
+   "languageNotes": "Idempotent migration, also mirrored into sql/database.sql."
+  },
+  {
+   "id": "schema:sql/migrations/028_group_mergers.sql",
+   "type": "schema",
+   "name": "028_group_mergers.sql",
+   "filePath": "sql/migrations/028_group_mergers.sql",
+   "summary": "Adds group merger permissions for who may merge proposals.",
+   "tags": [
+    "database",
+    "migration",
+    "sql",
+    "catalog"
+   ],
+   "complexity": "simple",
+   "languageNotes": "Idempotent migration, also mirrored into sql/database.sql."
+  },
+  {
+   "id": "schema:sql/migrations/029_story_sources_repair.sql",
+   "type": "schema",
+   "name": "029_story_sources_repair.sql",
+   "filePath": "sql/migrations/029_story_sources_repair.sql",
+   "summary": "Repair migration adding story source columns missing on fresh installs.",
+   "tags": [
+    "database",
+    "migration",
+    "sql",
+    "catalog"
+   ],
+   "complexity": "simple",
+   "languageNotes": "Idempotent migration, also mirrored into sql/database.sql."
+  },
+  {
+   "id": "schema:sql/migrations/030_allow_download_repair.sql",
+   "type": "schema",
+   "name": "030_allow_download_repair.sql",
+   "filePath": "sql/migrations/030_allow_download_repair.sql",
+   "summary": "Repair migration adding stories.allow_download missing on fresh installs.",
+   "tags": [
+    "database",
+    "migration",
+    "sql",
+    "catalog"
+   ],
+   "complexity": "simple",
+   "languageNotes": "Idempotent migration, also mirrored into sql/database.sql."
+  }
+ ],
+ "edges": [
+  {
+   "source": "schema:sql/migrations/003_group_join_requests.sql",
+   "target": "table:sql/migrations/003_group_join_requests.sql:group_join_requests",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "schema:sql/migrations/003_group_join_requests.sql",
+   "target": "table:sql/migrations/003_group_join_requests.sql:group_join_requests",
+   "type": "migrates",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "schema:sql/migrations/007_story_exports.sql",
+   "target": "table:sql/migrations/007_story_exports.sql:story_exports",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "schema:sql/migrations/007_story_exports.sql",
+   "target": "table:sql/migrations/007_story_exports.sql:story_exports",
+   "type": "migrates",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "schema:sql/migrations/007_story_exports.sql",
+   "target": "schema:services/media/migrations/001_init.sql",
+   "type": "related",
+   "direction": "forward",
+   "weight": 0.5
+  },
+  {
+   "source": "schema:sql/migrations/009_story_albums.sql",
+   "target": "table:sql/migrations/009_story_albums.sql:albums",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "schema:sql/migrations/009_story_albums.sql",
+   "target": "table:sql/migrations/009_story_albums.sql:albums",
+   "type": "migrates",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "schema:sql/migrations/009_story_albums.sql",
+   "target": "table:sql/migrations/009_story_albums.sql:album_stories",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "schema:sql/migrations/009_story_albums.sql",
+   "target": "table:sql/migrations/009_story_albums.sql:album_stories",
+   "type": "migrates",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "schema:sql/migrations/009_story_albums.sql",
+   "target": "table:sql/migrations/009_story_albums.sql:album_saves",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "schema:sql/migrations/009_story_albums.sql",
+   "target": "table:sql/migrations/009_story_albums.sql:album_saves",
+   "type": "migrates",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "schema:sql/migrations/010_recommendations.sql",
+   "target": "table:sql/migrations/010_recommendations.sql:rec_events",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "schema:sql/migrations/010_recommendations.sql",
+   "target": "table:sql/migrations/010_recommendations.sql:rec_events",
+   "type": "migrates",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "schema:sql/migrations/010_recommendations.sql",
+   "target": "table:sql/migrations/010_recommendations.sql:rec_item_similar",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "schema:sql/migrations/010_recommendations.sql",
+   "target": "table:sql/migrations/010_recommendations.sql:rec_item_similar",
+   "type": "migrates",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "schema:sql/migrations/010_recommendations.sql",
+   "target": "table:sql/migrations/010_recommendations.sql:rec_user_scores",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "schema:sql/migrations/010_recommendations.sql",
+   "target": "table:sql/migrations/010_recommendations.sql:rec_user_scores",
+   "type": "migrates",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "schema:sql/migrations/010_recommendations.sql",
+   "target": "table:sql/migrations/010_recommendations.sql:rec_user_factors",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "schema:sql/migrations/010_recommendations.sql",
+   "target": "table:sql/migrations/010_recommendations.sql:rec_user_factors",
+   "type": "migrates",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "schema:sql/migrations/010_recommendations.sql",
+   "target": "table:sql/migrations/010_recommendations.sql:rec_item_factors",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "schema:sql/migrations/010_recommendations.sql",
+   "target": "table:sql/migrations/010_recommendations.sql:rec_item_factors",
+   "type": "migrates",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "schema:sql/migrations/010_recommendations.sql",
+   "target": "table:sql/migrations/010_recommendations.sql:rec_model_runs",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "schema:sql/migrations/010_recommendations.sql",
+   "target": "table:sql/migrations/010_recommendations.sql:rec_model_runs",
+   "type": "migrates",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "schema:sql/migrations/010_recommendations.sql",
+   "target": "schema:services/recommender/rec/migrations/001_init.sql",
+   "type": "related",
+   "direction": "forward",
+   "weight": 0.5
+  },
+  {
+   "source": "schema:sql/migrations/013_notification_preferences.sql",
+   "target": "table:sql/migrations/013_notification_preferences.sql:post_notification_mutes",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "schema:sql/migrations/013_notification_preferences.sql",
+   "target": "table:sql/migrations/013_notification_preferences.sql:post_notification_mutes",
+   "type": "migrates",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "schema:sql/migrations/014_direct_messages.sql",
+   "target": "table:sql/migrations/014_direct_messages.sql:direct_messages",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "schema:sql/migrations/014_direct_messages.sql",
+   "target": "table:sql/migrations/014_direct_messages.sql:direct_messages",
+   "type": "migrates",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "schema:sql/migrations/015_account_security.sql",
+   "target": "table:sql/migrations/015_account_security.sql:auth_tokens",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "schema:sql/migrations/015_account_security.sql",
+   "target": "table:sql/migrations/015_account_security.sql:auth_tokens",
+   "type": "migrates",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "schema:sql/migrations/016_dm_labels_block_pin.sql",
+   "target": "table:sql/migrations/016_dm_labels_block_pin.sql:dm_labels",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "schema:sql/migrations/016_dm_labels_block_pin.sql",
+   "target": "table:sql/migrations/016_dm_labels_block_pin.sql:dm_labels",
+   "type": "migrates",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "schema:sql/migrations/016_dm_labels_block_pin.sql",
+   "target": "table:sql/migrations/016_dm_labels_block_pin.sql:dm_label_conversations",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "schema:sql/migrations/016_dm_labels_block_pin.sql",
+   "target": "table:sql/migrations/016_dm_labels_block_pin.sql:dm_label_conversations",
+   "type": "migrates",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "schema:sql/migrations/016_dm_labels_block_pin.sql",
+   "target": "table:sql/migrations/016_dm_labels_block_pin.sql:user_blocks",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "schema:sql/migrations/016_dm_labels_block_pin.sql",
+   "target": "table:sql/migrations/016_dm_labels_block_pin.sql:user_blocks",
+   "type": "migrates",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "schema:sql/migrations/022_identity_copy.sql",
+   "target": "table:sql/migrations/022_identity_copy.sql:processed_events",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "schema:sql/migrations/022_identity_copy.sql",
+   "target": "table:sql/migrations/022_identity_copy.sql:processed_events",
+   "type": "migrates",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "schema:sql/migrations/022_identity_copy.sql",
+   "target": "schema:services/identity/migrations/001_init.sql",
+   "type": "related",
+   "direction": "forward",
+   "weight": 0.5
+  },
+  {
+   "source": "schema:sql/migrations/023_ws_chapter_versions.sql",
+   "target": "table:sql/migrations/023_ws_chapter_versions.sql:ws_chapter_versions",
+   "type": "contains",
+   "direction": "forward",
+   "weight": 1
+  },
+  {
+   "source": "schema:sql/migrations/023_ws_chapter_versions.sql",
+   "target": "table:sql/migrations/023_ws_chapter_versions.sql:ws_chapter_versions",
+   "type": "migrates",
+   "direction": "forward",
+   "weight": 0.7
+  },
+  {
+   "source": "schema:sql/migrations/023_ws_chapter_versions.sql",
+   "target": "schema:services/workspace/migrations/001_init.sql",
+   "type": "related",
+   "direction": "forward",
+   "weight": 0.5
+  },
+  {
+   "source": "schema:sql/migrations/024_dm_draft_card.sql",
+   "target": "schema:services/workspace/migrations/002_drafts.sql",
+   "type": "related",
+   "direction": "forward",
+   "weight": 0.5
+  }
+ ]
+}

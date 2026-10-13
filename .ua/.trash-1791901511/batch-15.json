@@ -1,0 +1,19 @@
+{
+ "nodes": [
+  {
+   "id": "service:services/library/Dockerfile",
+   "type": "service",
+   "name": "Dockerfile",
+   "filePath": "services/library/Dockerfile",
+   "summary": "Multi-stage Go build producing a static library service binary in a scratch image, running as nobody with a healthcheck.",
+   "tags": [
+    "containerization",
+    "infrastructure",
+    "golang",
+    "minimal-image"
+   ],
+   "complexity": "simple"
+  }
+ ],
+ "edges": []
+}

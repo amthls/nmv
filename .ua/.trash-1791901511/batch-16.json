@@ -1,0 +1,47 @@
+{
+ "nodes": [
+  {
+   "id": "service:services/media/Dockerfile",
+   "type": "service",
+   "name": "Dockerfile",
+   "filePath": "services/media/Dockerfile",
+   "summary": "Multi-stage Docker build for the media service adding CJK and DejaVu fonts for EPUB/PDF export, assets, migrations and a root-then-node entrypoint fixing mount permissions.",
+   "tags": [
+    "containerization",
+    "infrastructure",
+    "fonts",
+    "nodejs"
+   ],
+   "complexity": "moderate"
+  },
+  {
+   "id": "config:services/media/.dockerignore",
+   "type": "config",
+   "name": ".dockerignore",
+   "filePath": "services/media/.dockerignore",
+   "summary": "Dockerignore excluding node_modules and dist for the media service.",
+   "tags": [
+    "configuration",
+    "docker",
+    "build-context"
+   ],
+   "complexity": "simple"
+  }
+ ],
+ "edges": [
+  {
+   "source": "config:services/media/.dockerignore",
+   "target": "service:services/media/Dockerfile",
+   "type": "configures",
+   "direction": "forward",
+   "weight": 0.6
+  },
+  {
+   "source": "service:services/media/Dockerfile",
+   "target": "file:services/media/src/server.ts",
+   "type": "deploys",
+   "direction": "forward",
+   "weight": 0.7
+  }
+ ]
+}
