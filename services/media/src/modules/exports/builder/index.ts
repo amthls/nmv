@@ -1,8 +1,8 @@
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import { EXPORT_DIR, pool } from '../config';
-import { callBackend } from '../auth';
+import { EXPORT_DIR, pool } from '../../../config';
+import { callBackend } from '../../../infra/clients/backend';
 import { ExportBook } from './content';
 import { writeEpub } from './epub';
 import { writePdf } from './pdf';

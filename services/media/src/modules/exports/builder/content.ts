@@ -3,7 +3,7 @@ import fs from 'fs';
 import net from 'net';
 import path from 'path';
 import sharp from 'sharp';
-import { UPLOAD_DIR } from '../config';
+import { UPLOAD_DIR } from '../../../config';
 
 /**
  * What an export contains, as the backend sends it (POST /internal/exports/book, already normalised:
