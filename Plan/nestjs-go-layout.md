@@ -139,7 +139,7 @@ services/library/
 - [x] 8. messaging.
 - [x] 9. workspace (lớn nhất).
   - Ghi chú: gói `tasks` khai báo interface `Drafts` (drafts cài đặt) để drafts import tasks mà không vòng; `GET /board` tách thành gói `board`; Service giữ luôn SQL của các giao dịch (chỉ phần dùng chung nằm trong repository.go); `PublishTx`/`SubmitRound`/`AfterDecision` chuyển nguyên văn. Smoke phải chạy bằng chủ truyện (`--user author_minh`), `admin` không phải keeper của berserker-of-gluttony.
-- [ ] 10. Viết `docs/QUY-UOC.md` (quy chuẩn NestJS và Go ở trên, cách thêm chức năng mới), cập nhật README (kiến trúc, cấu trúc thư mục) và CLAUDE.md (lệnh, bẫy mới). Mỗi PR trước cũng sửa phần README của service đó.
+- [x] 10. Viết `docs/QUY-UOC.md` (quy chuẩn NestJS và Go ở trên, cách thêm chức năng mới), cập nhật README (kiến trúc, cấu trúc thư mục) và CLAUDE.md (lệnh, bẫy mới). Mỗi PR trước cũng sửa phần README của service đó.
 
 ## Rủi ro
 - Viết lại rất nhiều code (Node ~7.000 dòng, Go ~15.000 dòng) trong khi test tự động ít. Bù lại bằng script so hợp đồng, smoke script, test Go sẵn có và thử bằng trình duyệt sau mỗi PR.

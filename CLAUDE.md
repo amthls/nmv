@@ -87,7 +87,7 @@ Việc lớn chia cho agent theo mô hình "Opus chỉ huy, Sonnet làm, Haiku c
 | Migration | Thêm `sql/migrations/NNN_ten.sql` (idempotent), **chép nội dung vào `sql/database.sql`**, chạy `sh scripts/migrate.sh` |
 | nginx đổi cấu hình | `docker exec novel_gateway nginx -s reload` (file được mount, `up -d` không tự nạp) |
 | Gọi API như một người dùng | Qua gateway: đăng nhập `POST /api/identity/login` lưu cookie (`curl -c jar -b jar`), request ghi gửi kèm `X-CSRF-Token: <cookie nh_csrf>`. Thẳng catalog (127.0.0.1:5000): header ký `docker exec novel_catalog node -e "console.log(require('./dist/middlewares/auth.middleware').signIdentityHeaders('<uuid>',['admin']))"` (hạn 2 phút) |
-| Service Go (identity) | `cd services/identity && gofmt -l . && go vet ./... && go test ./...`; thêm `IDENTITY_TEST_DATABASE_URL=postgres://…/identity_test` để chạy test tích hợp (xóa sạch DB đó) |
+| Service Go (identity, workspace, messaging, library) | `cd services/<svc> && gofmt -l . && go vet ./... && go test ./... && go build ./cmd/<svc>`; thêm `IDENTITY_TEST_DATABASE_URL=postgres://…/identity_test` để chạy test tích hợp (xóa sạch DB đó) |
 
 ## Bẫy đã biết
 
@@ -95,8 +95,11 @@ Việc lớn chia cho agent theo mô hình "Opus chỉ huy, Sonnet làm, Haiku c
 - Lỗi 5xx đã được che ở production (`maskServerErrors` trong `catalog/src/middlewares/security.ts`), không cần che lại từng handler.
 - PgBouncer chế độ transaction: không dùng advisory lock theo phiên, `SET` không `LOCAL`, `LISTEN`, nhiều câu SQL có tham số trong một query.
 - Trong container Postgres, kết nối `127.0.0.1` được tin không cần mật khẩu: thử mật khẩu phải từ container khác trên mạng `nmv_data`.
-- Express 4 không tự bắt lỗi của handler async: bọc `try/catch` hoặc `.catch(next)` (như route `/internal/...` trong `server.ts`).
+- Catalog/community/media là NestJS 11 (Express 5): lỗi ném trong controller/service đi qua filter toàn cục (`common/filters/http-exception.filter.ts`); POST mặc định 201 nên đặt `@HttpCode(200)`; không thêm class-validator. Quy ước và cách thêm chức năng: `docs/QUY-UOC.md`.
 - Trên Windows (Git Bash) script nhiều lớp thoát ký tự dễ hỏng: dùng Edit hoặc file script riêng; file `*.sh` luôn LF (`.gitattributes`).
 - Chọn phiên bản thư viện đã phát hành ít nhất 2 tuần.
 - Đăng nhập ở service identity (Go, `identity_db` riêng): mỗi service chỉ tin `X-User-*` có chữ ký bằng khóa riêng của nó (`USER_SIG_KEY_<svc>`), lời gọi nội bộ ký bằng `INTERNAL_KEY_<service nhận>`; bảng `users`/`user_roles` của catalog là **bản sao** (sửa vai trò/khóa/xóa phải qua identity, không UPDATE thẳng). Xem `Plan/identity.md`.
 - Request ghi từ frontend phải qua `authFetch`/`apiFetch` (`src/lib/session.ts`): `fetch` thô thiếu header CSRF nên bị gateway trả 403 khi đã đăng nhập.
+- `go build` phải trỏ `./cmd/<svc>` (main nằm trong `cmd/`), Dockerfile cũng vậy.
+- `scripts/workspace-smoke.py` chạy với `--user author_minh --password password123 --story berserker-of-gluttony` (tài khoản chủ truyện mẫu).
+- `scripts/contract-snapshot.py --compare --only <svc>` phải thêm `catalog`: `--only catalog,<svc>` (service dựa vào truyện do catalog tạo).
