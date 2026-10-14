@@ -1,11 +1,11 @@
-import { pool } from '../config/db';
-import { internalAuthHeader } from '../middlewares/auth.middleware';
-import { bumpPublicCache } from '../middlewares/cache';
-import { currentRequestId } from '../utils/logger';
-import { startEventConsumer } from '../infra/queue/event-consumer';
-import { enqueueNotificationJob } from '../infra/queue/queue.service';
-import { purgeLibrary } from '../infra/clients/library.client';
-import { blocksToPlainText, slugify, notifyChapterPublished, ContentBlock } from '../controllers/chapter.controller';
+import { pool } from '../../config/db';
+import { bumpPublicCache } from '../../middlewares/cache';
+import { startEventConsumer } from '../../infra/queue/event-consumer';
+import { enqueueNotificationJob } from '../../infra/queue/queue.service';
+import { purgeLibrary } from '../../infra/clients/library.client';
+import { Revision } from '../../infra/clients/workspace.client';
+import { slugify } from '../../common/utils/slugify';
+import { blocksToPlainText } from './dto/chapter-content';
 
 /**
  * Chapter content lives in the workspace service (every version, Plan/chapter-workspace.md); `chapters` here is the
@@ -15,33 +15,17 @@ import { blocksToPlainText, slugify, notifyChapterPublished, ContentBlock } from
  * workspace UI only arrive as events.
  */
 
-const WORKSPACE_URL = (process.env.WORKSPACE_INTERNAL_URL || 'http://workspace:8080').replace(/\/+$/, '');
-
-export interface Revision {
-  chapter_id: string;
-  story_id: string;
-  version: number;
-  deleted: boolean;
-  source: 'import' | 'create' | 'edit' | 'rewind' | 'delete' | 'restore';
-  meta: { title: string; chapter_number: number; volume_id: string | null; intro_note: string | null; outro_note: string | null };
-  blocks: ContentBlock[];
-  author_id: string | null;
-  created_at: string;
-}
-
-/** Call the workspace's internal API. Returns the HTTP status and the parsed body (never throws on 4xx). */
-export async function callWorkspace(method: string, path: string, body?: unknown): Promise<{ status: number; json: any }> {
-  const res = await fetch(`${WORKSPACE_URL}${path}`, {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Internal-Auth': internalAuthHeader('workspace'),
-      ...(currentRequestId() ? { 'X-Request-Id': currentRequestId()! } : {}),
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
-    signal: AbortSignal.timeout(10_000),
+/** Fan-out to followers is queue work (RabbitMQ -> worker); call only after the chapter is committed. */
+export function notifyChapterPublished(sub: { story_id: string; title: string; uploader_id: string | null }, chapterId: string) {
+  enqueueNotificationJob({
+    kind: 'chapter_published',
+    storyId: sub.story_id,
+    chapterId,
+    chapterTitle: sub.title,
+    uploaderId: sub.uploader_id || null,
+  }).catch((err: any) => {
+    console.error('[Notification] Failed to enqueue chapter notifications:', err);
   });
-  return { status: res.status, json: await res.json().catch(() => ({})) };
 }
 
 type Db = { query: (text: string, params?: any[]) => Promise<any> };

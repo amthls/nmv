@@ -10,12 +10,11 @@ import { SearchModule } from './modules/search/search.module';
 import { ExportsModule } from './modules/exports/exports.module';
 import { LibrarySyncModule } from './modules/library-sync/library-sync.module';
 import { StoriesModule } from './modules/stories/stories.module';
+import { ChaptersModule } from './modules/chapters/chapters.module';
+import { DraftsModule } from './modules/drafts/drafts.module';
 
-/**
- * Every feature module of the catalog API. Routes not moved to a module yet are still served by the legacy
- * Express routers that server.ts mounts before Nest's own routes (Plan/nestjs-go-layout.md).
- */
+/** Every feature module of the catalog API (server.ts sets the global middleware, prefix and error filter). */
 @Module({
-  imports: [DatabaseModule, SystemModule, TagsModule, CodesModule, UsersModule, GroupsModule, StoriesModule, VolumesModule, SearchModule, ExportsModule, LibrarySyncModule],
+  imports: [DatabaseModule, SystemModule, TagsModule, CodesModule, UsersModule, GroupsModule, StoriesModule, VolumesModule, SearchModule, ExportsModule, LibrarySyncModule, ChaptersModule, DraftsModule],
 })
 export class AppModule {}

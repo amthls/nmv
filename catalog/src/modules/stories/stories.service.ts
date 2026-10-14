@@ -4,7 +4,7 @@ import { publishBehavior } from '../../infra/behavior/behavior-events';
 import { callLibrary, libraryData } from '../../infra/clients/library.client';
 import { enqueueNotificationJob } from '../../infra/queue/queue.service';
 import { indexStory, searchStoryIds } from '../search/search.client';
-import { recordView } from '../../services/viewCounter';
+import { recordView } from '../chapters/view-counter';
 import { slugify } from '../../common/utils/slugify';
 import { InputError, isUuid, optionalText } from '../../utils/validation';
 import { parseStoryInput, StoryInput } from './dto/story-input';

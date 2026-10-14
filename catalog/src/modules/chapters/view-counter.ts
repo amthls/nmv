@@ -1,5 +1,5 @@
-import { pool } from '../config/db';
-import { redis, redisReady } from '../config/redis';
+import { pool } from '../../config/db';
+import { redis, redisReady } from '../../config/redis';
 
 /**
  * Chapter/story view counters. A popular story would otherwise take a row lock on the same

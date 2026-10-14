@@ -7,7 +7,6 @@ import cors from 'cors';
 import './config/env'; // loads .env and validates required secrets first
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
-import apiRoutes from './routes/api.routes';
 import { applySecurity, globalApiLimiter, writeLimiter, writeHourLimiter } from './middlewares/security';
 import { bumpOnWrite } from './middlewares/cache';
 import { connectQueue } from './infra/queue/queue.service';
@@ -33,8 +32,7 @@ process.on('unhandledRejection', (reason, promise) => {
 
 async function bootstrap() {
 // Nest on Express; its own body parser is off so the limits below (2mb JSON) stay as before.
-// Middleware and the legacy routers below are added before Nest registers its routes (at listen), so they run first;
-// a request no legacy route answers falls through to the Nest modules (Plan/nestjs-go-layout.md).
+// Middleware below is added before Nest registers its routes (at listen), so it runs first.
 const nest = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false, logger: ['error', 'warn'] });
 const app: express.Express = nest.getHttpAdapter().getInstance();
 nest.setGlobalPrefix('api/v1', { exclude: [{ path: 'internal/{*path}', method: RequestMethod.ALL }] });
@@ -74,9 +72,8 @@ app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 // RESTful API V1
-// limits and cache bumps for every /api/v1 request, legacy router or Nest module
+// limits and cache bumps for every /api/v1 request
 app.use('/api/v1', globalApiLimiter, writeLimiter, writeHourLimiter, bumpOnWrite);
-app.use('/api/v1', apiRoutes);
 
 // Service-to-service routes (/internal/*) are Nest modules (X-Internal-Auth). The gateway answers 404 for /internal
 // from outside, so only containers on the Docker networks reach them.

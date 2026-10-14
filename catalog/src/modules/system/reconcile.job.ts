@@ -1,8 +1,8 @@
 import amqp from 'amqplib';
-import { pool } from '../config/db';
-import { RABBITMQ_URL } from '../config/env';
-import { internalAuthHeader } from '../middlewares/auth.middleware';
-import { notifyAdmins } from './identitySync';
+import { pool } from '../../config/db';
+import { RABBITMQ_URL } from '../../config/env';
+import { internalAuthHeader } from '../../middlewares/auth.middleware';
+import { notifyAdmins } from '../users/identity-sync.job';
 
 /**
  * Reconcile job (worker, every 6 hours): the copies this backend keeps of other services' data must match the

@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import type { IncomingHttpHeaders } from 'http';
 import { pool } from '../config/db';
-import { readThroughUser } from '../services/identitySync';
+import { readThroughUser } from '../modules/users/identity-sync.job';
 
 /**
  * Who is calling. Sign-in lives in the identity service; the gateway asks it about every request

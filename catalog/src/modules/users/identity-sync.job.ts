@@ -1,8 +1,8 @@
-import { pool } from '../config/db';
-import { startEventConsumer } from '../infra/queue/event-consumer';
-import { internalAuthHeader } from '../middlewares/auth.middleware';
-import { disconnectUser } from '../infra/realtime/realtime';
-import { enqueueNotificationJob } from '../infra/queue/queue.service';
+import { pool } from '../../config/db';
+import { startEventConsumer } from '../../infra/queue/event-consumer';
+import { internalAuthHeader } from '../../middlewares/auth.middleware';
+import { disconnectUser } from '../../infra/realtime/realtime';
+import { enqueueNotificationJob } from '../../infra/queue/queue.service';
 
 /**
  * The backend's `users` / `user_roles` are a copy of identity's accounts (public fields only), kept in step by

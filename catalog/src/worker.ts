@@ -1,10 +1,10 @@
 import './config/env';
 import { pool } from './config/db';
 import { connectQueue, closeQueue } from './infra/queue/queue.service';
-import { flushViews } from './services/viewCounter';
-import { startIdentityConsumer } from './services/identitySync';
-import { startWorkspaceConsumer } from './services/workspaceSync';
-import { scheduleReconcile } from './services/reconcile';
+import { flushViews } from './modules/chapters/view-counter';
+import { startIdentityConsumer } from './modules/users/identity-sync.job';
+import { startWorkspaceConsumer } from './modules/chapters/workspace-sync.job';
+import { scheduleReconcile } from './modules/system/reconcile.job';
 import { scheduleHotShelf } from './modules/stories/hot-shelf.job';
 import { scheduleRemovedPurge } from './modules/stories/story-purge.job';
 
