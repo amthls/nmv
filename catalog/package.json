@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "test": "tsx --test src/**/*.test.ts",
+    "test": "tsx --test \"src/**/*.test.ts\"",
     "start": "node dist/server.js",
     "db:check": "tsx scripts/check-db.ts",
     "db:import": "tsx scripts/import-sql.ts",

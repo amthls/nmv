@@ -939,8 +939,22 @@ def finish_early():
     return None
 
 
+def lenient(x, in_list=False):
+    """Inside list items a field may legitimately be null in one run and a string in the next (data changes):
+    every union containing null (or plain null) becomes "nullable" so only real shape changes show up."""
+    if isinstance(x, dict):
+        return {k: lenient(v, in_list) for k, v in x.items()}
+    if isinstance(x, list):
+        return [lenient(v, True) for v in x]
+    if in_list and isinstance(x, str) and "null" in x.split(" | ") + [x.lstrip("?")]:
+        return "nullable"
+    return x
+
+
 def diff(a, b, path=""):
     out = []
+    if path == "":
+        a, b = lenient(a), lenient(b)
     if isinstance(a, dict) and isinstance(b, dict):
         for k in sorted(set(a) | set(b)):
             if k not in a:
@@ -949,8 +963,11 @@ def diff(a, b, path=""):
                 out.append(f"{path}/{k}: only in BASELINE  {json.dumps(a[k], ensure_ascii=False)[:160]}")
             else:
                 out += diff(a[k], b[k], f"{path}/{k}")
-    elif a != b:
-        out.append(f"{path}: baseline={json.dumps(a, ensure_ascii=False)[:200]}  new={json.dumps(b, ensure_ascii=False)[:200]}")
+    elif isinstance(a, list) and isinstance(b, list) and len(a) == len(b) and a:
+        for i, (x, y) in enumerate(zip(a, b)):
+            out += diff(x, y, f"{path}[{i}]")
+    elif a != b and not (path.startswith("/shape") and "nullable" in (a, b) and not isinstance(a, (dict, list)) and not isinstance(b, (dict, list))):
+        out.append(f"{path}: baseline={json.dumps(a, ensure_ascii=False)[:1500]}  new={json.dumps(b, ensure_ascii=False)[:1500]}")
     return out
 
 

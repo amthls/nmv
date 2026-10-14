@@ -40,7 +40,6 @@ import {
   approveJoinRequest,
   rejectJoinRequest,
 } from '../controllers/group.controller';
-import { resolveCode } from '../controllers/code.controller';
 import { 
   createStory, 
   createVolume, 
@@ -141,7 +140,6 @@ router.get('/profile/me', requireAuth, getCurrentUserProfile);
 router.put('/profile/me', requireAuth, updateUserProfile);
 router.put('/profile/me/settings', requireAuth, updateUserSettings);
 router.get('/users', getUsers);
-router.get('/codes/:code', optionalAuth, resolveCode);
 router.get('/users/:username', optionalAuth, getUserProfile);
 
 // Translation Groups
