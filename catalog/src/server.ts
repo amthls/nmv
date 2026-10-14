@@ -11,14 +11,9 @@ import apiRoutes from './routes/api.routes';
 import { applySecurity, globalApiLimiter, writeLimiter, writeHourLimiter } from './middlewares/security';
 import { bumpOnWrite } from './middlewares/cache';
 import { connectQueue } from './services/queue.service';
-import { startSearchSync } from './services/search.service';
+import { startSearchSync } from './modules/search/search.client';
 import { visitorCookie } from './services/behaviorEvents';
 import { requestContext } from './utils/logger';
-import { internalAuthOK } from './middlewares/auth.middleware';
-import {
-  exportChapters, exportSource, exportBook, commentCounts, librarySync, libraryIds, favoriteCounts,
-} from './controllers/internal.controller';
-
 // Without the keys that verify the gateway's identity headers and internal calls nobody is ever signed in: refuse to start
 for (const k of ['USER_SIG_KEY_CATALOG', 'INTERNAL_KEY_CATALOG', 'INTERNAL_KEY_IDENTITY', 'INTERNAL_KEY_WORKSPACE', 'INTERNAL_KEY_MESSAGING', 'INTERNAL_KEY_COMMUNITY', 'INTERNAL_KEY_LIBRARY']) {
   if (process.env.NODE_ENV === 'production' && (process.env[k] || '').length < 32) {
@@ -83,25 +78,8 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use('/api/v1', globalApiLimiter, writeLimiter, writeHourLimiter, bumpOnWrite);
 app.use('/api/v1', apiRoutes);
 
-// Service-to-service calls (identity -> backend), signed like the gateway's headers. The gateway answers 404 for
-// /internal from outside, so only containers on the Docker networks reach these.
-// Workspace -> backend (X-Internal-Auth): story rights and the one-time chapter import
-const internal = (fn: (req: express.Request, res: express.Response) => Promise<unknown>): express.RequestHandler => (req, res, next) => {
-  if (!internalAuthOK(req.get('x-internal-auth'))) return res.status(401).json({ success: false });
-  fn(req, res).catch(next);
-};
-app.get('/internal/chapters/export', internal(exportChapters));
-// Media -> backend: what an EPUB/PDF may contain, and the content itself
-app.post('/internal/exports/source', internal(exportSource));
-app.post('/internal/exports/book', internal(exportBook));
-// Messaging -> backend: names/avatars to show, and who is in a group (its chat)
-// Community -> backend: stories/chapters it shows or links, removed stories for /da-go, comment counts it keeps fresh
-app.post('/internal/comment-counts', internal(commentCounts));
-// Library -> backend: changed stories/chapters for its read copies, every id (nightly reconcile), follower counts
-app.get('/internal/library/stories', internal(librarySync('stories')));
-app.get('/internal/library/chapters', internal(librarySync('chapters')));
-app.get('/internal/library/ids', internal(libraryIds));
-app.post('/internal/favorite-counts', internal(favoriteCounts));
+// Service-to-service routes (/internal/*) are Nest modules (X-Internal-Auth). The gateway answers 404 for /internal
+// from outside, so only containers on the Docker networks reach them.
 
 // Root endpoint
 app.get('/', (req, res) => {

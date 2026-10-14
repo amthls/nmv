@@ -6,7 +6,7 @@ import { canUserManageStory, checkStoryReferences, sendClientError, grantPublish
 import { parseStoryInput } from '../modules/stories/dto/story-input';
 import { InputError, isUuid, optionalUrl, requiredText } from '../utils/validation';
 import { insertWithUniqueSlug } from '../utils/ids';
-import { indexStory } from '../services/search.service';
+import { indexStory } from '../modules/search/search.client';
 import { sanitizeRichText, sanitizeChapterHtml, richTextToPlain } from '../utils/richText';
 import { callWorkspace, applyRevisionNow, Revision } from '../services/workspaceSync';
 import { storyRole } from '../modules/stories/story-access';

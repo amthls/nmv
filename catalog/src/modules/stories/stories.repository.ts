@@ -540,4 +540,28 @@ export class StoriesRepository {
     ]);
     return { total: total.rows[0].n, rows: rows.rows };
   }
+
+  /**
+   * Fresh comment counts from community. chapters.total_comments = count;
+   * stories.total_comments = comments on the story page + on all its chapters.
+   */
+  async setCommentCounts(chapters: { id: string; count: number }[], stories: { id: string; page_count: number }[]) {
+    if (chapters.length) {
+      await this.db.query(`UPDATE chapters c SET total_comments = x.n FROM unnest($1::uuid[], $2::int[]) AS x(id, n) WHERE c.id = x.id`,
+        [chapters.map((c) => c.id), chapters.map((c) => c.count)]);
+    }
+    if (stories.length) {
+      await this.db.query(`
+      UPDATE stories s SET total_comments = x.n + COALESCE((SELECT sum(total_comments) FROM chapters WHERE story_id = s.id), 0)
+      FROM unnest($1::uuid[], $2::int[]) AS x(id, n) WHERE s.id = x.id`,
+        [stories.map((s) => s.id), stories.map((s) => s.page_count)]);
+    }
+  }
+
+  /** Fresh follower counts from the library (stories.total_favorites). */
+  async setFavoriteCounts(list: { id: string; count: number }[]) {
+    if (!list.length) return;
+    await this.db.query(`UPDATE stories s SET total_favorites = x.n FROM unnest($1::uuid[], $2::int[]) AS x(id, n) WHERE s.id = x.id`,
+      [list.map((s) => s.id), list.map((s) => s.count)]);
+  }
 }

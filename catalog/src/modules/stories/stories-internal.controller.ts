@@ -27,4 +27,20 @@ export class StoriesInternalController {
   async removed(@Query() query: any) {
     return { success: true, data: await this.stories.removedList(query) };
   }
+
+  /** POST /internal/comment-counts {chapters: [{id, count}], stories: [{id, page_count}]}: fresh counts from community. */
+  @Post('comment-counts')
+  @HttpCode(200)
+  async commentCounts(@Body() body: any) {
+    await this.stories.commentCounts(body);
+    return { success: true };
+  }
+
+  /** POST /internal/favorite-counts {stories: [{id, count}]}: fresh follower counts from the library. */
+  @Post('favorite-counts')
+  @HttpCode(200)
+  async favoriteCounts(@Body() body: any) {
+    await this.stories.favoriteCounts(body);
+    return { success: true };
+  }
 }

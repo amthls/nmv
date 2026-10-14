@@ -129,7 +129,7 @@ services/library/
   - ghi status, khóa JSON, câu `message`;
   - chạy trên `main` để có bản mẫu.
 - [x] 1. catalog: khung Nest + `common`/`infra` + router cũ gắn tạm; module `system`, `tags`, `codes`, `users`.
-- [ ] 2. catalog: `groups`, `stories`, `volumes`, `search`, `exports`, `library-sync`.
+- [x] 2. catalog: `groups`, `stories`, `volumes`, `search`, `exports`, `library-sync`.
 - [ ] 3. catalog: `chapters`, `drafts`, worker sang `WorkerModule`; xóa router cũ và thư mục cũ.
 - [x] 4. community → NestJS.
 - [x] 5. media → NestJS.

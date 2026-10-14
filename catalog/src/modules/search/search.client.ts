@@ -1,6 +1,6 @@
-import { pool } from '../config/db';
-import { richTextToPlain } from '../utils/richText';
-import { redis, redisReady } from '../config/redis';
+import { pool } from '../../config/db';
+import { richTextToPlain } from '../../utils/richText';
+import { redis, redisReady } from '../../config/redis';
 
 /**
  * Search integration for stories, backed by Elasticsearch.

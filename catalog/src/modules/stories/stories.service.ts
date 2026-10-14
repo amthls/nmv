@@ -3,7 +3,7 @@ import { cachedPublic } from '../../middlewares/cache';
 import { publishBehavior } from '../../services/behaviorEvents';
 import { callLibrary, libraryData } from '../../services/libraryClient';
 import { enqueueNotificationJob } from '../../services/queue.service';
-import { indexStory, searchStoryIds } from '../../services/search.service';
+import { indexStory, searchStoryIds } from '../search/search.client';
 import { recordView } from '../../services/viewCounter';
 import { InputError, isUuid, optionalText } from '../../utils/validation';
 import { parseStoryInput, StoryInput } from './dto/story-input';
@@ -251,5 +251,16 @@ export class StoriesService {
     const pattern = q ? `%${q.replace(/[\\%_]/g, '\\$&')}%` : null;
     const limit = Math.min(Math.max(Number(query.limit) || 30, 1), 3000);
     return this.repo.removed(pattern, limit, REMOVED_PURGE_DAYS);
+  }
+
+  async commentCounts(body: any) {
+    const chapters = Array.isArray(body?.chapters) ? body.chapters.filter((c: any) => isUuid(c?.id) && Number.isInteger(c.count)) : [];
+    const stories = Array.isArray(body?.stories) ? body.stories.filter((s: any) => isUuid(s?.id) && Number.isInteger(s.page_count)) : [];
+    await this.repo.setCommentCounts(chapters, stories);
+  }
+
+  async favoriteCounts(body: any) {
+    const list = Array.isArray(body?.stories) ? body.stories.filter((s: any) => isUuid(s?.id) && Number.isInteger(s.count)) : [];
+    await this.repo.setFavoriteCounts(list);
   }
 }

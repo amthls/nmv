@@ -1,4 +1,4 @@
-import { pool } from '../config/db';
+import { pool } from '../../config/db';
 
 /**
  * What an export contains, loaded from the database and normalised for the EPUB / PDF writers of the media service:
