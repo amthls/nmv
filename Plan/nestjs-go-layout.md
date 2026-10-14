@@ -137,7 +137,8 @@ services/library/
 - [x] 7. identity.
   - Ghi chú: identity giữ logic và SQL trong handler.go (không tách repository riêng) vì nhạy bảo mật: logic đan trong transaction (xoay refresh, khóa đăng nhập, ký header), chỉ chuyển chỗ để không đổi hành vi.
 - [x] 8. messaging.
-- [ ] 9. workspace (lớn nhất).
+- [x] 9. workspace (lớn nhất).
+  - Ghi chú: gói `tasks` khai báo interface `Drafts` (drafts cài đặt) để drafts import tasks mà không vòng; `GET /board` tách thành gói `board`; Service giữ luôn SQL của các giao dịch (chỉ phần dùng chung nằm trong repository.go); `PublishTx`/`SubmitRound`/`AfterDecision` chuyển nguyên văn. Smoke phải chạy bằng chủ truyện (`--user author_minh`), `admin` không phải keeper của berserker-of-gluttony.
 - [ ] 10. Viết `docs/QUY-UOC.md` (quy chuẩn NestJS và Go ở trên, cách thêm chức năng mới), cập nhật README (kiến trúc, cấu trúc thư mục) và CLAUDE.md (lệnh, bẫy mới). Mỗi PR trước cũng sửa phần README của service đó.
 
 ## Rủi ro
