@@ -257,6 +257,21 @@ def read_env(name):
     return ""
 
 
+restarted_at = 0.0
+
+
+def wait_library_sync(who, sid):
+    """Library copies stories on a 30 s timer: poll until it knows this story (favorite status then names its category)."""
+    for _ in range(80):
+        st, _, raw = who.raw("GET", f"/api/library/favorites/status/{sid}")
+        try:
+            if json.loads(raw).get("category"):
+                return
+        except Exception:
+            pass
+        time.sleep(0.5)
+
+
 def reset_limits():
     """Clear rate-limit counters (Redis `rl:*`) and nginx limit_req zones (gateway restart) so every run starts equal."""
     pw = read_env("REDIS_PASSWORD")
@@ -265,6 +280,8 @@ def reset_limits():
     # per-user limiters of the Go/community/media services live in process memory: restart them too (never catalog)
     subprocess.run(["docker", "restart", "novel_gateway", "novel_community", "novel_media", "novel_identity",
                     "novel_library", "novel_messaging", "novel_workspace"], capture_output=True)
+    global restarted_at
+    restarted_at = time.time()
     for _ in range(60):
         out = subprocess.run(["docker", "ps", "--filter", "health=starting", "--format", "{{.Names}}"], capture_output=True, text=True).stdout
         if not out.strip():
@@ -299,6 +316,19 @@ def run():
     owner.login("tanuki_san")
     admin.login("admin")
     tag = secrets.token_hex(3)
+    # earlier runs may have left open drafts (workspace allows 50 per person): discard them so every run starts equal
+    for who in (reader, outsider, owner, admin):
+        for _ in range(3):
+            st, raw = who.raw("GET", "/api/ws/drafts")[0::2]
+            try:
+                rows = json.loads(raw).get("data") or []
+            except Exception:
+                rows = []
+            ids = [r["id"] for r in rows if isinstance(r, dict) and r.get("id")]
+            if not ids:
+                break
+            for i in ids:
+                who.raw("DELETE", f"/api/ws/drafts/{i}")
     uid_missing = "99999999-9999-4999-8999-999999999999"
 
     # ============================================================ catalog: read side
@@ -650,6 +680,7 @@ def run():
 
     # ============================================================ library (via /api/library)
     G = "library"
+    wait_library_sync(reader, sid)
     L = "/api/library"
     call(G, "health", guest, "GET", f"{L}/health")
     call(G, "ready", guest, "GET", f"{L}/ready")
@@ -963,6 +994,8 @@ def diff(a, b, path=""):
                 out.append(f"{path}/{k}: only in BASELINE  {json.dumps(a[k], ensure_ascii=False)[:160]}")
             else:
                 out += diff(a[k], b[k], f"{path}/{k}")
+    elif isinstance(a, list) and isinstance(b, list) and (not a or not b):
+        pass  # an empty list says nothing about the item shape (data differs between runs)
     elif isinstance(a, list) and isinstance(b, list) and len(a) == len(b) and a:
         for i, (x, y) in enumerate(zip(a, b)):
             out += diff(x, y, f"{path}[{i}]")

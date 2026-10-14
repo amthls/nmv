@@ -187,16 +187,6 @@ export const commentCounts = async (req: Request, res: Response) => {
   res.json({ success: true });
 };
 
-/** GET /internal/groups/:id/members -> [{user_id, role}] (404 when the group does not exist): who may use the group's chat. */
-export const groupMembers = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  if (!isUuid(id)) return res.status(404).json({ success: false });
-  const g = await pool.query(`SELECT 1 FROM translation_groups WHERE id = $1`, [id]);
-  if (!g.rowCount) return res.status(404).json({ success: false });
-  const r = await pool.query(`SELECT user_id, role FROM group_members WHERE group_id = $1`, [id]);
-  res.json({ success: true, data: r.rows });
-};
-
 /**
  * GET /internal/library/{stories|chapters}?since=&after=&limit= -> rows changed since (updated_at, id), oldest first: the
  * library service's read copies (Plan/library.md). updated_at comes back as Postgres text (microseconds kept) and is

@@ -16,7 +16,7 @@ import { visitorCookie } from './services/behaviorEvents';
 import { requestContext } from './utils/logger';
 import { internalAuthOK } from './middlewares/auth.middleware';
 import {
-  permissions, exportChapters, exportSource, exportBook, groupMembers, storiesBrief, removedStories, commentCounts, librarySync, libraryIds, favoriteCounts,
+  permissions, exportChapters, exportSource, exportBook, storiesBrief, removedStories, commentCounts, librarySync, libraryIds, favoriteCounts,
 } from './controllers/internal.controller';
 
 // Without the keys that verify the gateway's identity headers and internal calls nobody is ever signed in: refuse to start
@@ -96,7 +96,6 @@ app.get('/internal/chapters/export', internal(exportChapters));
 app.post('/internal/exports/source', internal(exportSource));
 app.post('/internal/exports/book', internal(exportBook));
 // Messaging -> backend: names/avatars to show, and who is in a group (its chat)
-app.get('/internal/groups/:id/members', internal(groupMembers));
 // Community -> backend: stories/chapters it shows or links, removed stories for /da-go, comment counts it keeps fresh
 app.post('/internal/stories/brief', internal(storiesBrief));
 app.get('/internal/stories/removed', internal(removedStories));

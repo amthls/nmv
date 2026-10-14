@@ -18,21 +18,6 @@ import {
 } from '../controllers/story.controller';
 import { requireAuth, optionalAuth, requireRole } from '../middlewares/auth.middleware';
 import { 
-  getGroups, 
-  getGroupBySlug, 
-  createGroup, 
-  updateGroup,
-  updateGroupWorkflow,
-  addGroupMember,
-  updateGroupMemberRole,
-  removeGroupMember,
-  requestToJoinGroup,
-  cancelMyJoinRequest,
-  getGroupJoinRequests,
-  approveJoinRequest,
-  rejectJoinRequest,
-} from '../controllers/group.controller';
-import { 
   createStory, 
   createVolume, 
   updateVolume,
@@ -60,7 +45,6 @@ const router = Router();
 
 // Spam control for user-generated content, per signed-in user
 const albumLimiter = perUserLimiter({ windowMs: 60 * 60_000, limit: 60, message: 'Bạn tạo/sao chép album quá nhiều. Vui lòng thử lại sau.' });
-const joinRequestLimiter = perUserLimiter({ windowMs: 60 * 60_000, limit: 10, message: 'Bạn gửi quá nhiều yêu cầu gia nhập. Vui lòng thử lại sau.' });
 
 // Health check: modules/system (Nest)
 
@@ -127,21 +111,7 @@ router.post('/drafts/:id/offer', requireAuth, offerDraft);
 
 // Users & Profile Settings
 
-// Translation Groups
-router.get('/groups', optionalAuth, getGroups);
-router.get('/groups/:slug', optionalAuth, getGroupBySlug);
-router.post('/groups', requireAuth, createGroup);
-router.put('/groups/:id', requireAuth, updateGroup);
-router.put('/groups/:id/workflow', requireAuth, updateGroupWorkflow);
-router.post('/groups/:id/members', requireAuth, addGroupMember);
-router.put('/groups/:id/members/:memberUserId', requireAuth, updateGroupMemberRole);
-router.delete('/groups/:id/members/:memberUserId', requireAuth, removeGroupMember);
-// Join requests: user asks, group leader/mod (or admin) approves or rejects
-router.post('/groups/:id/join-requests', requireAuth, joinRequestLimiter, requestToJoinGroup);
-router.delete('/groups/:id/join-requests/me', requireAuth, cancelMyJoinRequest);
-router.get('/groups/:id/join-requests', requireAuth, getGroupJoinRequests);
-router.post('/groups/:id/join-requests/:requestId/approve', requireAuth, approveJoinRequest);
-router.post('/groups/:id/join-requests/:requestId/reject', requireAuth, rejectJoinRequest);
+// Translation groups: modules/groups (Nest)
 
 // Direct messages and group chat: the messaging service (/api/msg/*)
 
