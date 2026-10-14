@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import BackLink from '@/components/common/BackLink';
 import Link from '@/components/common/Link';
 import { useParams } from 'next/navigation';
-import { Activity, ArrowLeft, BookOpen, GitMerge, MessageCircle, Settings, Users } from 'lucide-react';
+import { Activity, ArrowLeft, Edit3, BookOpen, GitMerge, MessageCircle, Settings, Users } from 'lucide-react';
 import SmartImage from '@/components/common/SmartImage';
 import { useAuth } from '@/context/AuthContext';
 import PageLoader from '@/components/common/PageLoader';
@@ -180,6 +180,7 @@ export default function GroupWorkspacePage() {
         <div className="ml-auto flex flex-wrap gap-2 text-xs font-bold">
           <Link href={`/nhom-dich/${group.slug}`} className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-200 flex items-center gap-1.5"><Users className="w-3.5 h-3.5" /> Thành viên</Link>
           <Link href={`/nhom-dich/${group.slug}#chat`} className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-200 flex items-center gap-1.5"><MessageCircle className="w-3.5 h-3.5" /> Chat nhóm</Link>
+          {manager && <Link href={`/nhom-dich/${group.slug}#sua-ho-so`} className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-200 flex items-center gap-1.5"><Edit3 className="w-3.5 h-3.5" /> Sửa hồ sơ nhóm</Link>}
           {manager && <Link href={`/nhom-dich/${group.slug}#quy-trinh`} className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-200 flex items-center gap-1.5"><Settings className="w-3.5 h-3.5" /> Quy trình</Link>}
         </div>
       </div>

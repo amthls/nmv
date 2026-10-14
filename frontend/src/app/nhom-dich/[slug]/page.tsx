@@ -36,6 +36,7 @@ import { stripHtml } from '@/lib/richText';
 import { chapterUploadHref } from '@/lib/chapterUpload';
 import { useRealtime } from '@/lib/realtime';
 import CodeBadge from '@/components/common/CodeBadge';
+import CreateGroupModal from '@/components/groups/CreateGroupModal';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -45,11 +46,13 @@ export default function GroupDetailPage() {
   const { user, isAuthenticated, authFetch, openAuthModal } = useAuth();
 
   const [group, setGroup] = useState<any>(null);
+  const [editOpen, setEditOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'stories' | 'chat' | 'members' | 'info'>('stories');
   // links from the group workspace: #chat opens the chat, #quy-trinh the workflow settings
   useEffect(() => {
     const tab = { '#chat': 'chat', '#quy-trinh': 'info' }[window.location.hash] as 'chat' | 'info' | undefined;
     if (tab) setActiveTab(tab);
+    if (window.location.hash === '#sua-ho-so') setEditOpen(true);
   }, []);
   // The steps a chapter of this group goes through before a story keeper merges it (stage 4b)
   const [workflowDraft, setWorkflowDraft] = useState<string[] | null>(null);
@@ -456,6 +459,15 @@ export default function GroupDetailPage() {
                   <span>{isJoinBusy ? 'Đang gửi...' : 'Xin Gia Nhập Nhóm'}</span>
                 </button>
               )
+            )}
+
+            {isLeaderOrMod && (
+              <button
+                onClick={() => setEditOpen(true)}
+                className="px-3 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-200 text-xs font-bold flex items-center gap-1.5 transition"
+              >
+                <Edit3 className="w-3.5 h-3.5" /> Sửa hồ sơ
+              </button>
             )}
 
             {isMember && (
@@ -966,6 +978,15 @@ export default function GroupDetailPage() {
               : 'Nhóm chưa thiết lập nội quy riêng. Vui lòng tuân thủ quy chuẩn chung của NovelHub.'}
           </div>
         </div>
+      )}
+
+      {editOpen && isLeaderOrMod && (
+        <CreateGroupModal
+          isOpen
+          group={group}
+          onClose={() => setEditOpen(false)}
+          onSuccess={(updated) => updated && setGroup((g: any) => ({ ...g, ...updated }))}
+        />
       )}
 
     </div>
