@@ -161,10 +161,14 @@ services/library/
 
 ## Khi gặp vấn đề quá khó
 
-Quy tắc của chủ dự án (2026-10-14):
-- **Vấn đề nhẹ hoặc vừa** (lỗi kiểu, vòng import, khác biệt Express 5, lệch mã HTTP, test hỏng có nguyên nhân rõ): tự giải quyết, không cần hỏi.
-- **Vấn đề quá khó hoặc quá lớn**: quyết định thiết kế làm đổi hành vi/bất biến; lỗi không tìm ra sau 2–3 cách thử nghiêm túc; tách package Go phải đổi cấu trúc trạng thái dùng chung trên nhiều file; nguy cơ mất dữ liệu; đụng schema/migration hoặc bảo mật (ký xác thực, CSRF, giới hạn tốc độ).
-  Khi đó: DỪNG phần đó, commit + push phần an toàn, ghi vấn đề vào mục này (đã thử gì, lỗi chính xác, file liên quan), rồi kết thúc lượt với báo cáo có dòng đầu `CẦN OPUS:` kèm vấn đề. Không đoán, không lách bất biến.
+Quy tắc của chủ dự án (2026-10-14, bản sửa):
+- **Vấn đề nhẹ hoặc vừa** (lỗi kiểu, vòng import, khác biệt Express 5, lệch mã HTTP, test hỏng có nguyên nhân rõ): tự giải quyết.
+- **Vấn đề quá khó hoặc quá lớn** (quyết định thiết kế đổi hành vi/bất biến; lỗi không tìm ra sau 2–3 cách thử; tách package Go phải đổi trạng thái dùng chung nhiều file; nguy cơ mất dữ liệu; đụng schema/migration hoặc bảo mật như ký xác thực, CSRF, giới hạn tốc độ):
+  1. KHÔNG dừng cả lượt. Ghi vào mục "Vấn đề đang chờ" dưới đây: đã thử gì, lỗi chính xác, file liên quan, các phương án.
+  2. Gửi cho Opus (phiên đã giao việc) bằng SendMessage, mở đầu `CẦN OPUS:`, nêu câu hỏi cụ thể (phương án + đề xuất của mình).
+  3. Làm tiếp các mục khác không phụ thuộc; commit/push như thường. Không lách bất biến trong lúc chờ.
+  4. Có câu trả lời thì áp dụng, ghi quyết định vào plan.
+  Nếu không gửi được tin: ghi vào plan, làm tiếp, và liệt kê mọi câu `CẦN OPUS` còn mở ở đầu báo cáo cuối.
 
 ### Vấn đề đang chờ
 (chưa có)
