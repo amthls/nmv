@@ -1,4 +1,4 @@
-import { redis, redisReady } from '../config/redis';
+import { redis, redisReady } from '../../config/redis';
 
 /**
  * Realtime "something changed" pings. The messaging service holds the browsers' WebSockets; any process here

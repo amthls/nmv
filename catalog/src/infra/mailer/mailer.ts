@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer';
-import { log } from '../utils/logger';
+import { log } from '../../utils/logger';
 
 // SMTP_URL e.g. smtps://user:app-password@smtp.gmail.com:465. Without it, mails are not sent and the
 // link is written to the backend log instead, so password reset still works for the site owner.

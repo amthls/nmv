@@ -1,5 +1,5 @@
-import { internalAuthHeader } from '../middlewares/auth.middleware';
-import { currentRequestId } from '../utils/logger';
+import { internalAuthHeader } from '../../middlewares/auth.middleware';
+import { currentRequestId } from '../../utils/logger';
 
 /** Direct messages live in the messaging service (Plan/messaging.md, E2); the backend only sends workspace draft cards. */
 const MESSAGING_URL = (process.env.MESSAGING_INTERNAL_URL || 'http://messaging:8080').replace(/\/+$/, '');

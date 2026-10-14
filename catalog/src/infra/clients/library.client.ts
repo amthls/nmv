@@ -1,5 +1,5 @@
-import { internalAuthHeader } from '../middlewares/auth.middleware';
-import { currentRequestId } from '../utils/logger';
+import { internalAuthHeader } from '../../middlewares/auth.middleware';
+import { currentRequestId } from '../../utils/logger';
 
 /** Follows, bookmarks, reading history, albums live in the library service (Plan/library.md); the backend asks it. */
 const LIBRARY_URL = (process.env.LIBRARY_INTERNAL_URL || 'http://library:8080').replace(/\/+$/, '');

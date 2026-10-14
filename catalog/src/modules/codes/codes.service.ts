@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { callCommunity } from '../../services/communityClient';
-import { callLibrary } from '../../services/libraryClient';
+import { callCommunity } from '../../infra/clients/community.client';
+import { callLibrary } from '../../infra/clients/library.client';
 import { InputError } from '../../utils/validation';
 import { CodesRepository } from './codes.repository';
 import { parseCode } from './parse-code';

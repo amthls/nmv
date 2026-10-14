@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { slugify } from '../../common/utils/slugify';
-import { enqueueNotificationJob } from '../../services/queue.service';
-import { NotifyItem } from '../../services/notification.service';
+import { enqueueNotificationJob } from '../../infra/queue/queue.service';
+import { NotifyItem } from '../../infra/notification/notification.service';
 import { InputError, isUuid, requiredText } from '../../utils/validation';
 import { GROUP_ROLES, MANAGER_ROLES, MERGER_ROLES, WORKFLOW_STEPS, readGroupFields } from './dto/group-input';
 import { GroupsRepository } from './groups.repository';

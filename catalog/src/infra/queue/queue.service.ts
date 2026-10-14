@@ -1,10 +1,10 @@
 import amqp from 'amqplib';
 import crypto from 'crypto';
-import { RABBITMQ_URL } from '../config/env';
-import { pool } from '../config/db';
-import { internalAuthHeader } from '../middlewares/auth.middleware';
-import { currentRequestId } from '../utils/logger';
-import type { NotificationJob, NotifyItem } from './notification.service';
+import { RABBITMQ_URL } from '../../config/env';
+import { pool } from '../../config/db';
+import { internalAuthHeader } from '../../middlewares/auth.middleware';
+import { currentRequestId } from '../../utils/logger';
+import type { NotificationJob, NotifyItem } from '../notification/notification.service';
 
 /**
  * Notification jobs go to the messaging service (Plan/messaging.md, E3):

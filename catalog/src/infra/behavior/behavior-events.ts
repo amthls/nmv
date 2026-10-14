@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
-import { publishEvent } from './queue.service';
+import { publishEvent } from '../queue/queue.service';
 
 /**
  * Anonymous visitor id (cookie `nh_vid`), so guests get session-based recommendations and their

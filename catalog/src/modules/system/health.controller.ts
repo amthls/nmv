@@ -1,5 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
-import { queueStatus } from '../../services/queue.service';
+import { queueStatus } from '../../infra/queue/queue.service';
 
 /** GET /api/v1/health: liveness plus the RabbitMQ publisher state. */
 @Controller('health')

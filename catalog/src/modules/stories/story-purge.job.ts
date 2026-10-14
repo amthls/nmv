@@ -1,6 +1,6 @@
 import { pool } from '../../config/db';
-import { callCommunity } from '../../services/communityClient';
-import { purgeLibrary } from '../../services/libraryClient';
+import { callCommunity } from '../../infra/clients/community.client';
+import { purgeLibrary } from '../../infra/clients/library.client';
 import { removeStoryFromIndex } from '../search/search.client';
 import { bumpPublicCache } from '../../middlewares/cache';
 

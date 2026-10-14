@@ -10,9 +10,9 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import apiRoutes from './routes/api.routes';
 import { applySecurity, globalApiLimiter, writeLimiter, writeHourLimiter } from './middlewares/security';
 import { bumpOnWrite } from './middlewares/cache';
-import { connectQueue } from './services/queue.service';
+import { connectQueue } from './infra/queue/queue.service';
 import { startSearchSync } from './modules/search/search.client';
-import { visitorCookie } from './services/behaviorEvents';
+import { visitorCookie } from './infra/behavior/behavior-events';
 import { requestContext } from './utils/logger';
 // Without the keys that verify the gateway's identity headers and internal calls nobody is ever signed in: refuse to start
 for (const k of ['USER_SIG_KEY_CATALOG', 'INTERNAL_KEY_CATALOG', 'INTERNAL_KEY_IDENTITY', 'INTERNAL_KEY_WORKSPACE', 'INTERNAL_KEY_MESSAGING', 'INTERNAL_KEY_COMMUNITY', 'INTERNAL_KEY_LIBRARY']) {

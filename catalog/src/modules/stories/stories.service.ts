@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { cachedPublic } from '../../middlewares/cache';
-import { publishBehavior } from '../../services/behaviorEvents';
-import { callLibrary, libraryData } from '../../services/libraryClient';
-import { enqueueNotificationJob } from '../../services/queue.service';
+import { publishBehavior } from '../../infra/behavior/behavior-events';
+import { callLibrary, libraryData } from '../../infra/clients/library.client';
+import { enqueueNotificationJob } from '../../infra/queue/queue.service';
 import { indexStory, searchStoryIds } from '../search/search.client';
 import { recordView } from '../../services/viewCounter';
 import { slugify } from '../../common/utils/slugify';

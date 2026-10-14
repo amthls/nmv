@@ -2,9 +2,9 @@ import { pool } from '../config/db';
 import { internalAuthHeader } from '../middlewares/auth.middleware';
 import { bumpPublicCache } from '../middlewares/cache';
 import { currentRequestId } from '../utils/logger';
-import { startEventConsumer } from './eventConsumer';
-import { enqueueNotificationJob } from './queue.service';
-import { purgeLibrary } from './libraryClient';
+import { startEventConsumer } from '../infra/queue/event-consumer';
+import { enqueueNotificationJob } from '../infra/queue/queue.service';
+import { purgeLibrary } from '../infra/clients/library.client';
 import { blocksToPlainText, slugify, notifyChapterPublished, ContentBlock } from '../controllers/chapter.controller';
 
 /**

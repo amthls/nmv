@@ -1,4 +1,4 @@
-import { enqueueNotificationJob } from '../services/queue.service';
+import { enqueueNotificationJob } from '../infra/queue/queue.service';
 ﻿import { Request, Response } from 'express';
 import { pool } from '../config/db';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
@@ -10,8 +10,8 @@ import { indexStory } from '../modules/search/search.client';
 import { sanitizeRichText, sanitizeChapterHtml, richTextToPlain } from '../utils/richText';
 import { callWorkspace, applyRevisionNow, Revision } from '../services/workspaceSync';
 import { storyRole } from '../modules/stories/story-access';
-import { draftNotifications } from '../services/notification.service';
-import { dmBlocked, sendDraftCard } from '../services/messagingClient';
+import { draftNotifications } from '../infra/notification/notification.service';
+import { dmBlocked, sendDraftCard } from '../infra/clients/messaging.client';
 
 export function slugify(text: string) {
   return text

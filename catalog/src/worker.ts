@@ -1,6 +1,6 @@
 import './config/env';
 import { pool } from './config/db';
-import { connectQueue, closeQueue } from './services/queue.service';
+import { connectQueue, closeQueue } from './infra/queue/queue.service';
 import { flushViews } from './services/viewCounter';
 import { startIdentityConsumer } from './services/identitySync';
 import { startWorkspaceConsumer } from './services/workspaceSync';

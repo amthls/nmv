@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DbService } from '../../infra/database/db.service';
-import { enqueueNotificationJob } from '../../services/queue.service';
-import { groupJoinRequestNotifications, groupJoinDecisionNotification } from '../../services/notification.service';
+import { enqueueNotificationJob } from '../../infra/queue/queue.service';
+import { groupJoinRequestNotifications, groupJoinDecisionNotification } from '../../infra/notification/notification.service';
 import { InputError, isUuid } from '../../utils/validation';
 import { GroupUser, GroupsService } from './groups.service';
 import { GroupsRepository } from './groups.repository';

@@ -5,7 +5,7 @@ import { AuthGuard, OptionalAuthGuard } from '../../common/guards/auth.guard';
 import { Mw } from '../../common/guards/express-middleware.guard';
 import { cacheJson } from '../../middlewares/cache';
 import { searchLimiter } from '../../middlewares/security';
-import { visitorIdOf } from '../../services/behaviorEvents';
+import { visitorIdOf } from '../../infra/behavior/behavior-events';
 import { StoriesService, StoryUser } from './stories.service';
 
 /**

@@ -1,5 +1,5 @@
-import { internalAuthHeader } from '../middlewares/auth.middleware';
-import { currentRequestId } from '../utils/logger';
+import { internalAuthHeader } from '../../middlewares/auth.middleware';
+import { currentRequestId } from '../../utils/logger';
 
 /** Posts, comments and reports live in the community service (Plan/community.md); the backend asks its internal API. */
 const COMMUNITY_URL = (process.env.COMMUNITY_INTERNAL_URL || 'http://community:8080').replace(/\/+$/, '');

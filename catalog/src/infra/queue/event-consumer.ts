@@ -1,5 +1,5 @@
 import amqp from 'amqplib';
-import { RABBITMQ_URL } from '../config/env';
+import { RABBITMQ_URL } from '../../config/env';
 
 /**
  * Consumer side of the novelhub.events exchange (other services' outboxes publish there; schemas in events/).

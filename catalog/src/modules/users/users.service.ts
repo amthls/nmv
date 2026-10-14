@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ENABLE_DEMO_ACCOUNTS } from '../../config/env';
-import { communityStats } from '../../services/communityClient';
-import { libraryData } from '../../services/libraryClient';
+import { communityStats } from '../../infra/clients/community.client';
+import { libraryData } from '../../infra/clients/library.client';
 import { InputError, isUuid } from '../../utils/validation';
 import { parseProfileInput, parseSettingsInput } from './dto/user-input';
 import { UsersRepository } from './users.repository';
