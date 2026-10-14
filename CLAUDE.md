@@ -41,6 +41,34 @@ Việc nhiều bước: **viết `Plan/<tên>.md` có checklist `[ ]` trước k
 Xong mục nào đổi ngay thành `[x]`. Phiên mới: đọc plan đang dở trước, làm tiếp mục `[ ]` đầu tiên.
 Plan nằm trong nhánh của việc đó và được commit cùng code.
 
+## Phối hợp agent Opus ↔ Sonnet (tiết kiệm token)
+
+Việc lớn chia cho agent theo mô hình "Opus chỉ huy, Sonnet làm":
+
+- **Opus (phiên chính) chỉ làm phần cần suy nghĩ:**
+  - đọc code để chia việc, viết **phiếu giao việc**;
+  - tự viết những mảnh nhỏ quyết định thiết kế (khung, một module mẫu);
+  - duyệt kết quả và trả lời câu `CẦN OPUS`.
+- **Sonnet làm mọi việc tốn token:** viết/chuyển code theo mẫu, build Docker, chạy test, chạy snapshot.
+- **Phiếu giao việc** tối đa ~15 dòng, theo mẫu: `VIỆC / FILE (chỉ đọc những file này) / LÀM / KHÔNG / KIỂM / XONG KHI`.
+  - Gộp vài phiếu liên quan vào một tin nhắn, kèm giới hạn "xong là dừng, không chau chuốt".
+  - Không gửi lại bối cảnh dài: trỏ tới mục trong `Plan/*.md`.
+- **Sonnet đọc ít:**
+  - chỉ đọc file trong phiếu, tìm bằng `grep -n`, đọc theo đoạn;
+  - đầu ra luôn cắt ngắn: `logs --tail 50 | grep -iE "error|warn"`, test `| tail -20`, `tsc | head -30`.
+- **Báo cáo** tối đa ~10 dòng: `TRẠNG THÁI / COMMIT / KIỂM / GHI CHÚ / CẦN OPUS`. Không dán diff hay log dài.
+- **Opus duyệt rẻ:** `git show --stat <hash>`, chỉ đọc diff ở chỗ rủi ro (quyền, SQL, mã HTTP, transaction).
+- **Việc quá khó:** Sonnet ghi vào plan, nhắn `CẦN OPUS:` (câu hỏi + phương án + đề xuất), rồi làm tiếp phần khác trong lúc chờ. Việc nhẹ/vừa thì tự giải quyết.
+- **Giữ hay mở agent:**
+  - việc tiếp theo cùng chỗ thì nhắn tiếp agent đang chạy (khỏi đọc lại code);
+  - sang service khác thì mở agent mới.
+- **Chạy song song** nhiều Sonnet chỉ khi mỗi agent một thư mục riêng. Mỗi agent:
+  - chỉ `git add` thư mục của mình (không `-A`);
+  - `pull --rebase` khi push bị từ chối.
+
+  Build Docker và chạy snapshot phải giữ khóa chung `.agent-lock` (`until mkdir .agent-lock; do sleep 10; done` … `rmdir`, nhả bằng trap). Song song không tốn thêm nhiều token (cùng khối lượng việc), chỉ thêm phần đọc bối cảnh ban đầu của mỗi agent.
+- **Kiểm tra nặng** (snapshot, smoke, rebuild) chỉ chạy ở cuối mỗi mốc. Giữa các việc nhỏ chỉ `tsc` + test của phần vừa sửa.
+
 ## Lệnh hay dùng
 
 | Việc | Lệnh |
