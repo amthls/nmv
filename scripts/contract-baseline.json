@@ -44,7 +44,7 @@
   "type": "application/json"
  },
  "catalog: chapter by slug": {
-  "request": "guest GET /api/v1/stories/hachi-nan-tte-sore-wa-nai-deshou/chapters/chuong-3-valvrareteam",
+  "request": "guest GET /api/v1/stories/contract-<hex>/chapters/chuong-1-chuong-thu-<hex>",
   "shape": {
    "data": {
     "all_chapters": [
@@ -53,8 +53,8 @@
       "id": "str",
       "slug": "str",
       "title": "str",
-      "volume_number": "null",
-      "volume_title": "null"
+      "volume_number": "null | num",
+      "volume_title": "null | str"
      }
     ],
     "approval_status": "str",
@@ -69,27 +69,27 @@
      }
     ],
     "created_at": "str",
-    "group_id": "str",
+    "group_id": "null",
     "id": "str",
     "intro_note": "null",
     "is_published": "bool",
-    "next_chapter": "null",
-    "outro_note": "null",
-    "prev_chapter": {
+    "next_chapter": {
      "chapter_number": "str",
      "slug": "str",
      "title": "str"
     },
+    "outro_note": "null",
+    "prev_chapter": "null",
     "published_at": "str",
     "slug": "str",
-    "source_group": "str",
+    "source_group": "null",
     "story": {
      "allow_download": "bool",
      "author_name": "str",
      "code": "str",
-     "cover_image_url": "str",
-     "group_name": "str",
-     "group_slug": "str",
+     "cover_image_url": "null",
+     "group_name": "null",
+     "group_slug": "null",
      "id": "str",
      "slug": "str",
      "story_type": "str",
@@ -99,14 +99,14 @@
     "title": "str",
     "total_comments": "str",
     "total_views": "str",
-    "translator_notes": "null",
+    "translator_notes": [],
     "updated_at": "str",
     "uploader_id": "str",
     "uploader_name": "str",
     "uploader_username": "str",
-    "volume_id": "null",
-    "volume_number": "null",
-    "volume_title": "null",
+    "volume_id": "str",
+    "volume_number": "num",
+    "volume_title": "str",
     "word_count": "num"
    },
    "success": "bool"
@@ -116,7 +116,7 @@
  },
  "catalog: chapter delete denied": {
   "message": "Bạn không có quyền xóa chương này. Chỉ người đăng chương, chủ thầu truyện hoặc Trưởng nhóm/Mod của nhóm mới có quyền xóa.",
-  "request": "reader DELETE /api/v1/chapters/e1dd870d-2ce1-452c-ad6b-781e1fa9e03c",
+  "request": "reader DELETE /api/v1/chapters/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -136,7 +136,7 @@
  },
  "catalog: chapter edit denied": {
   "message": "Bạn không có quyền sửa chương này.",
-  "request": "reader GET /api/v1/chapters/6c48cc5a-4fde-44ca-9375-18a2a7740cf0",
+  "request": "reader GET /api/v1/chapters/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -146,7 +146,7 @@
  },
  "catalog: chapter edit guest": {
   "message": "Bạn chưa đăng nhập hoặc phiên đăng nhập đã hết hạn.",
-  "request": "guest GET /api/v1/chapters/6c48cc5a-4fde-44ca-9375-18a2a7740cf0",
+  "request": "guest GET /api/v1/chapters/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -155,7 +155,7 @@
   "type": "application/json"
  },
  "catalog: chapter edit load": {
-  "request": "owner GET /api/v1/chapters/6c48cc5a-4fde-44ca-9375-18a2a7740cf0",
+  "request": "owner GET /api/v1/chapters/<uuid>",
   "shape": {
    "data": {
     "chapter_number": "num",
@@ -186,7 +186,7 @@
  },
  "catalog: chapter edit missing": {
   "message": "Chương không tồn tại.",
-  "request": "owner GET /api/v1/chapters/99999999-9999-4999-8999-999999999999",
+  "request": "owner GET /api/v1/chapters/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -234,7 +234,7 @@
  },
  "catalog: chapter missing": {
   "message": "Không tìm thấy chương",
-  "request": "guest GET /api/v1/stories/hachi-nan-tte-sore-wa-nai-deshou/chapters/khong-co",
+  "request": "guest GET /api/v1/stories/contract-<hex>/chapters/khong-co",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -339,7 +339,7 @@
   "type": "application/json"
  },
  "catalog: chapter read": {
-  "request": "guest GET /api/v1/stories/contract-4280a8/chapters/chuong-1-chuong-thu-4280a8",
+  "request": "guest GET /api/v1/stories/contract-<hex>/chapters/chuong-1-chuong-thu-<hex>",
   "shape": {
    "data": {
     "all_chapters": [
@@ -411,7 +411,7 @@
  },
  "catalog: chapter update": {
   "message": "Đã cập nhật chương (phiên bản 2).",
-  "request": "owner PUT /api/v1/chapters/6c48cc5a-4fde-44ca-9375-18a2a7740cf0",
+  "request": "owner PUT /api/v1/chapters/<uuid>",
   "shape": {
    "data": {
     "chapter_number": "num",
@@ -430,7 +430,7 @@
  },
  "catalog: chapter update bad": {
   "message": "Tiêu đề chương không được để trống.",
-  "request": "owner PUT /api/v1/chapters/6c48cc5a-4fde-44ca-9375-18a2a7740cf0",
+  "request": "owner PUT /api/v1/chapters/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -440,7 +440,7 @@
  },
  "catalog: chapter update denied": {
   "message": "Bạn không có quyền sửa chương này.",
-  "request": "reader PUT /api/v1/chapters/6c48cc5a-4fde-44ca-9375-18a2a7740cf0",
+  "request": "reader PUT /api/v1/chapters/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -450,7 +450,7 @@
  },
  "catalog: chapter update stale": {
   "message": "Chương vừa được người khác sửa. Hãy tải lại để xem bản mới nhất rồi sửa tiếp.",
-  "request": "owner PUT /api/v1/chapters/6c48cc5a-4fde-44ca-9375-18a2a7740cf0",
+  "request": "owner PUT /api/v1/chapters/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -653,7 +653,7 @@
  },
  "catalog: draft offer not copy": {
   "message": "Đây không phải bản sao của nháp người khác.",
-  "request": "owner POST /api/v1/drafts/14feffff-028d-4c5c-857f-e8bb044f263e/offer",
+  "request": "owner POST /api/v1/drafts/<uuid>/offer",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -663,7 +663,7 @@
  },
  "catalog: draft publish": {
   "message": "Đã cập nhật chương (phiên bản 3).",
-  "request": "owner POST /api/v1/drafts/14feffff-028d-4c5c-857f-e8bb044f263e/publish",
+  "request": "owner POST /api/v1/drafts/<uuid>/publish",
   "shape": {
    "data": {
     "chapter_id": "str",
@@ -679,7 +679,7 @@
  },
  "catalog: draft publish again": {
   "message": "Bản nháp này đã gửi đề xuất, đã đăng hoặc đã bỏ nên không sửa được. Đã gửi thì rút lại để sửa tiếp.",
-  "request": "owner POST /api/v1/drafts/14feffff-028d-4c5c-857f-e8bb044f263e/publish",
+  "request": "owner POST /api/v1/drafts/<uuid>/publish",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -689,7 +689,7 @@
  },
  "catalog: draft publish denied": {
   "message": "Đây không phải bản nháp của bạn.",
-  "request": "reader POST /api/v1/drafts/14feffff-028d-4c5c-857f-e8bb044f263e/publish",
+  "request": "reader POST /api/v1/drafts/<uuid>/publish",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -699,7 +699,7 @@
  },
  "catalog: draft publish schedule bad": {
   "message": "Giờ đăng phải từ 1 phút tới 1 năm nữa.",
-  "request": "owner POST /api/v1/drafts/14feffff-028d-4c5c-857f-e8bb044f263e/publish",
+  "request": "owner POST /api/v1/drafts/<uuid>/publish",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -709,7 +709,7 @@
  },
  "catalog: draft return": {
   "message": "Đã trả lại đề xuất cho người viết.",
-  "request": "owner POST /api/v1/drafts/6dd01318-f17f-4ccb-8ef4-76bbb6c82445/return",
+  "request": "owner POST /api/v1/drafts/<uuid>/return",
   "shape": {
    "data": {
     "base_version": "null",
@@ -757,7 +757,7 @@
  },
  "catalog: draft return denied": {
   "message": "Chỉ người giữ truyện trả lại được đề xuất.",
-  "request": "outsider POST /api/v1/drafts/6dd01318-f17f-4ccb-8ef4-76bbb6c82445/return",
+  "request": "outsider POST /api/v1/drafts/<uuid>/return",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -766,7 +766,7 @@
   "type": "application/json"
  },
  "catalog: draft save": {
-  "request": "owner PUT /api/v1/drafts/14feffff-028d-4c5c-857f-e8bb044f263e",
+  "request": "owner PUT /api/v1/drafts/<uuid>",
   "shape": {
    "data": {
     "id": "str",
@@ -790,7 +790,7 @@
  },
  "catalog: draft save stale": {
   "message": "Bản nháp vừa được lưu ở nơi khác (tab hoặc máy khác). Hãy tải lại để xem bản mới nhất.",
-  "request": "owner PUT /api/v1/drafts/14feffff-028d-4c5c-857f-e8bb044f263e",
+  "request": "owner PUT /api/v1/drafts/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -800,7 +800,7 @@
  },
  "catalog: draft save stranger": {
   "message": "Bạn không có quyền sửa bản nháp này.",
-  "request": "reader PUT /api/v1/drafts/14feffff-028d-4c5c-857f-e8bb044f263e",
+  "request": "reader PUT /api/v1/drafts/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -810,7 +810,7 @@
  },
  "catalog: draft share": {
   "message": "Đã chia sẻ với Yuki ❄️ qua tin nhắn.",
-  "request": "owner POST /api/v1/drafts/14feffff-028d-4c5c-857f-e8bb044f263e/share",
+  "request": "owner POST /api/v1/drafts/<uuid>/share",
   "shape": {
    "data": {
     "can_edit": "bool",
@@ -825,7 +825,7 @@
  },
  "catalog: draft share bad": {
   "message": "Người dùng không tồn tại.",
-  "request": "owner POST /api/v1/drafts/14feffff-028d-4c5c-857f-e8bb044f263e/share",
+  "request": "owner POST /api/v1/drafts/<uuid>/share",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -835,7 +835,7 @@
  },
  "catalog: draft share missing user": {
   "message": "Người dùng không tồn tại.",
-  "request": "owner POST /api/v1/drafts/14feffff-028d-4c5c-857f-e8bb044f263e/share",
+  "request": "owner POST /api/v1/drafts/<uuid>/share",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -845,7 +845,7 @@
  },
  "catalog: draft submit": {
   "message": "Đã gửi đề xuất cho người giữ truyện.",
-  "request": "outsider POST /api/v1/drafts/6dd01318-f17f-4ccb-8ef4-76bbb6c82445/submit",
+  "request": "outsider POST /api/v1/drafts/<uuid>/submit",
   "shape": {
    "data": {
     "base_version": "null",
@@ -893,7 +893,7 @@
  },
  "catalog: draft submit guest": {
   "message": "Bạn chưa đăng nhập hoặc phiên đăng nhập đã hết hạn.",
-  "request": "guest POST /api/v1/drafts/6dd01318-f17f-4ccb-8ef4-76bbb6c82445/submit",
+  "request": "guest POST /api/v1/drafts/<uuid>/submit",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -903,7 +903,7 @@
  },
  "catalog: draft transfer bad": {
   "message": "Người dùng không tồn tại.",
-  "request": "owner POST /api/v1/drafts/14feffff-028d-4c5c-857f-e8bb044f263e/transfer",
+  "request": "owner POST /api/v1/drafts/<uuid>/transfer",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -913,7 +913,7 @@
  },
  "catalog: draft withdraw missing": {
   "message": "Bản nháp không tồn tại.",
-  "request": "owner POST /api/v1/drafts/99999999-9999-4999-8999-999999999999/withdraw",
+  "request": "owner POST /api/v1/drafts/<uuid>/withdraw",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -923,7 +923,7 @@
  },
  "catalog: draft withdraw not submitted": {
   "message": "Bản nháp này không ở trạng thái chờ duyệt.",
-  "request": "outsider POST /api/v1/drafts/6dd01318-f17f-4ccb-8ef4-76bbb6c82445/withdraw",
+  "request": "outsider POST /api/v1/drafts/<uuid>/withdraw",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -932,7 +932,7 @@
   "type": "application/json"
  },
  "catalog: group by slug": {
-  "request": "guest GET /api/v1/groups/neko-translation",
+  "request": "guest GET /api/v1/groups/nhom-thu-<hex>",
   "shape": {
    "data": {
     "approval_status": "str",
@@ -948,7 +948,7 @@
     "creator_name": "str",
     "creator_username": "str",
     "description": "str",
-    "discord_url": "str",
+    "discord_url": "null",
     "id": "str",
     "is_active": "bool",
     "members": [
@@ -969,23 +969,10 @@
     "name": "str",
     "rules": "null",
     "slug": "str",
-    "stories": [
-     {
-      "author_name": "null | null | null | null | null | null | null | null | null | null | null | null | null | null | null | str | str | str | str | str | str | str",
-      "cover_image_url": "str",
-      "id": "str",
-      "last_chapter_at": "str",
-      "slug": "str",
-      "status": "str",
-      "story_type": "str",
-      "title": "str",
-      "total_chapters": "num",
-      "total_views": "str"
-     }
-    ],
+    "stories": [],
     "story_count": "num",
     "updated_at": "str",
-    "website_url": "str",
+    "website_url": "null",
     "workflow": [
      "str"
     ]
@@ -1053,7 +1040,7 @@
  },
  "catalog: group join request": {
   "message": "Đã gửi yêu cầu gia nhập. Vui lòng chờ trưởng nhóm duyệt.",
-  "request": "owner POST /api/v1/groups/f1879af6-34b7-4961-8f32-b1238e6cdc42/join-requests",
+  "request": "owner POST /api/v1/groups/<uuid>/join-requests",
   "shape": {
    "data": {
     "created_at": "str",
@@ -1068,7 +1055,7 @@
  },
  "catalog: group join request again": {
   "message": "Bạn đã gửi yêu cầu, vui lòng chờ trưởng nhóm duyệt.",
-  "request": "owner POST /api/v1/groups/f1879af6-34b7-4961-8f32-b1238e6cdc42/join-requests",
+  "request": "owner POST /api/v1/groups/<uuid>/join-requests",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -1078,7 +1065,7 @@
  },
  "catalog: group join request approve again": {
   "message": "Yêu cầu này đã được xử lý.",
-  "request": "outsider POST /api/v1/groups/f1879af6-34b7-4961-8f32-b1238e6cdc42/join-requests/3539a729-d046-464b-a663-9de1fdb9a059/approve",
+  "request": "outsider POST /api/v1/groups/<uuid>/join-requests/<uuid>/approve",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -1088,7 +1075,7 @@
  },
  "catalog: group join request approve denied": {
   "message": "Chỉ Trưởng nhóm hoặc Quản lý mới có quyền thực hiện thao tác này",
-  "request": "reader POST /api/v1/groups/e0000000-0000-0000-0000-000000000001/join-requests/99999999-9999-4999-8999-999999999999/approve",
+  "request": "reader POST /api/v1/groups/<uuid>/join-requests/<uuid>/approve",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -1098,7 +1085,7 @@
  },
  "catalog: group join request cancel": {
   "message": "Bạn không có yêu cầu nào đang chờ duyệt.",
-  "request": "owner DELETE /api/v1/groups/f1879af6-34b7-4961-8f32-b1238e6cdc42/join-requests/me",
+  "request": "owner DELETE /api/v1/groups/<uuid>/join-requests/me",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -1108,7 +1095,7 @@
  },
  "catalog: group join request cancel none": {
   "message": "Bạn không có yêu cầu nào đang chờ duyệt.",
-  "request": "reader DELETE /api/v1/groups/e0000000-0000-0000-0000-000000000001/join-requests/me",
+  "request": "reader DELETE /api/v1/groups/<uuid>/join-requests/me",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -1118,7 +1105,7 @@
  },
  "catalog: group join request guest": {
   "message": "Bạn chưa đăng nhập hoặc phiên đăng nhập đã hết hạn.",
-  "request": "guest POST /api/v1/groups/e0000000-0000-0000-0000-000000000001/join-requests",
+  "request": "guest POST /api/v1/groups/<uuid>/join-requests",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -1128,7 +1115,7 @@
  },
  "catalog: group join request missing group": {
   "message": "Nhóm dịch không tồn tại",
-  "request": "reader POST /api/v1/groups/99999999-9999-4999-8999-999999999999/join-requests",
+  "request": "reader POST /api/v1/groups/<uuid>/join-requests",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -1138,7 +1125,7 @@
  },
  "catalog: group join request reject": {
   "message": "Đã từ chối yêu cầu gia nhập.",
-  "request": "outsider POST /api/v1/groups/f1879af6-34b7-4961-8f32-b1238e6cdc42/join-requests/3539a729-d046-464b-a663-9de1fdb9a059/reject",
+  "request": "outsider POST /api/v1/groups/<uuid>/join-requests/<uuid>/reject",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -1148,7 +1135,7 @@
  },
  "catalog: group join request reject denied": {
   "message": "Chỉ Trưởng nhóm hoặc Quản lý mới có quyền thực hiện thao tác này",
-  "request": "reader POST /api/v1/groups/e0000000-0000-0000-0000-000000000001/join-requests/99999999-9999-4999-8999-999999999999/reject",
+  "request": "reader POST /api/v1/groups/<uuid>/join-requests/<uuid>/reject",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -1157,7 +1144,7 @@
   "type": "application/json"
  },
  "catalog: group join requests list": {
-  "request": "outsider GET /api/v1/groups/f1879af6-34b7-4961-8f32-b1238e6cdc42/join-requests",
+  "request": "outsider GET /api/v1/groups/<uuid>/join-requests",
   "shape": {
    "data": [
     {
@@ -1178,7 +1165,7 @@
  },
  "catalog: group join requests list denied": {
   "message": "Chỉ Trưởng nhóm hoặc Quản lý mới có quyền thực hiện thao tác này",
-  "request": "reader GET /api/v1/groups/e0000000-0000-0000-0000-000000000001/join-requests",
+  "request": "reader GET /api/v1/groups/<uuid>/join-requests",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -1188,7 +1175,7 @@
  },
  "catalog: group member add": {
   "message": "Tên đăng nhập không được để trống.",
-  "request": "outsider POST /api/v1/groups/f1879af6-34b7-4961-8f32-b1238e6cdc42/members",
+  "request": "outsider POST /api/v1/groups/<uuid>/members",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -1198,7 +1185,7 @@
  },
  "catalog: group member add denied": {
   "message": "Chỉ Trưởng nhóm hoặc Quản lý mới có quyền thêm thành viên",
-  "request": "reader POST /api/v1/groups/e0000000-0000-0000-0000-000000000001/members",
+  "request": "reader POST /api/v1/groups/<uuid>/members",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -1208,7 +1195,7 @@
  },
  "catalog: group member add missing": {
   "message": "Tên đăng nhập không được để trống.",
-  "request": "outsider POST /api/v1/groups/f1879af6-34b7-4961-8f32-b1238e6cdc42/members",
+  "request": "outsider POST /api/v1/groups/<uuid>/members",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -1218,7 +1205,7 @@
  },
  "catalog: group member remove": {
   "message": "Thành viên không tồn tại trong nhóm",
-  "request": "outsider DELETE /api/v1/groups/f1879af6-34b7-4961-8f32-b1238e6cdc42/members/a0000000-0000-0000-0000-000000000009",
+  "request": "outsider DELETE /api/v1/groups/<uuid>/members/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -1228,7 +1215,7 @@
  },
  "catalog: group member remove denied": {
   "message": "Chỉ Trưởng nhóm hoặc Quản lý mới có quyền thực hiện thao tác này",
-  "request": "reader DELETE /api/v1/groups/e0000000-0000-0000-0000-000000000001/members/a0000000-0000-0000-0000-000000000011",
+  "request": "reader DELETE /api/v1/groups/<uuid>/members/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -1238,7 +1225,7 @@
  },
  "catalog: group member role": {
   "message": "Thành viên không tồn tại trong nhóm",
-  "request": "outsider PUT /api/v1/groups/f1879af6-34b7-4961-8f32-b1238e6cdc42/members/a0000000-0000-0000-0000-000000000009",
+  "request": "outsider PUT /api/v1/groups/<uuid>/members/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -1248,7 +1235,7 @@
  },
  "catalog: group member role denied": {
   "message": "Chỉ Trưởng nhóm hoặc Quản lý mới có quyền thực hiện thao tác này",
-  "request": "reader PUT /api/v1/groups/e0000000-0000-0000-0000-000000000001/members/a0000000-0000-0000-0000-000000000009",
+  "request": "reader PUT /api/v1/groups/<uuid>/members/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -1267,7 +1254,7 @@
   "type": "application/json"
  },
  "catalog: group read": {
-  "request": "guest GET /api/v1/groups/nhom-thu-4280a8",
+  "request": "guest GET /api/v1/groups/nhom-thu-<hex>",
   "shape": {
    "data": {
     "approval_status": "str",
@@ -1319,7 +1306,7 @@
  },
  "catalog: group update": {
   "message": "Cập nhật thông tin nhóm dịch thành công",
-  "request": "outsider PUT /api/v1/groups/f1879af6-34b7-4961-8f32-b1238e6cdc42",
+  "request": "outsider PUT /api/v1/groups/<uuid>",
   "shape": {
    "data": {
     "approval_status": "str",
@@ -1355,7 +1342,7 @@
  },
  "catalog: group update denied": {
   "message": "Bạn không có quyền chỉnh sửa nhóm này",
-  "request": "reader PUT /api/v1/groups/e0000000-0000-0000-0000-000000000001",
+  "request": "reader PUT /api/v1/groups/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -1365,7 +1352,7 @@
  },
  "catalog: group workflow": {
   "message": "Đã lưu quy trình của nhóm.",
-  "request": "outsider PUT /api/v1/groups/f1879af6-34b7-4961-8f32-b1238e6cdc42/workflow",
+  "request": "outsider PUT /api/v1/groups/<uuid>/workflow",
   "shape": {
    "data": {
     "mergers": [
@@ -1383,7 +1370,7 @@
  },
  "catalog: group workflow bad": {
   "message": "Bước quy trình không hợp lệ.",
-  "request": "outsider PUT /api/v1/groups/f1879af6-34b7-4961-8f32-b1238e6cdc42/workflow",
+  "request": "outsider PUT /api/v1/groups/<uuid>/workflow",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -1393,7 +1380,7 @@
  },
  "catalog: group workflow denied": {
   "message": "Chỉ Trưởng nhóm/Mod nhóm đổi được quy trình.",
-  "request": "reader PUT /api/v1/groups/e0000000-0000-0000-0000-000000000001/workflow",
+  "request": "reader PUT /api/v1/groups/<uuid>/workflow",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -1419,7 +1406,7 @@
      "creator_name": "str",
      "creator_username": "str",
      "description": "str",
-     "discord_url": "str",
+     "discord_url": "null",
      "id": "str",
      "is_active": "bool",
      "leader": {
@@ -1435,7 +1422,7 @@
      "slug": "str",
      "story_count": "str",
      "updated_at": "str",
-     "website_url": "null | str",
+     "website_url": "null",
      "workflow": [
       "str"
      ]
@@ -1471,7 +1458,7 @@
      "creator_name": "str",
      "creator_username": "str",
      "description": "str",
-     "discord_url": "str",
+     "discord_url": "null | str | str | str",
      "id": "str",
      "is_active": "bool",
      "leader": {
@@ -1487,7 +1474,7 @@
      "slug": "str",
      "story_count": "str",
      "updated_at": "str",
-     "website_url": "null | str",
+     "website_url": "null | null | str | str",
      "workflow": [
       "str"
      ]
@@ -1646,7 +1633,15 @@
     "created_at": "str",
     "display_name": "str",
     "email_verified": "bool",
-    "groups": [],
+    "groups": [
+     {
+      "avatar_url": "null",
+      "joined_at": "str",
+      "name": "str",
+      "role": "str",
+      "slug": "str"
+     }
+    ],
     "id": "str",
     "my_stories": [],
     "recent_reads": [],
@@ -1806,15 +1801,15 @@
   "shape": {
    "data": [
     {
-     "artist_name": "str",
+     "artist_name": "null | str",
      "author_name": "str",
      "banner_image_url": "null",
-     "cover_image_url": "str",
+     "cover_image_url": "null | str",
      "created_at": "str",
-     "group_name": "str",
-     "group_slug": "str",
+     "group_name": "null | str",
+     "group_slug": "null | str",
      "id": "str",
-     "illustrations": "[\"str\"] | null",
+     "illustrations": "null",
      "last_chapter_at": "str",
      "latest_chapter": {
       "chapter_number": "num",
@@ -1823,18 +1818,12 @@
       "title": "str"
      },
      "original_language": "str",
-     "original_title": "str",
+     "original_title": "null | str",
      "slug": "str",
      "status": "str",
      "story_type": "str",
      "synopsis": "str",
-     "tags": [
-      {
-       "id": "str",
-       "name": "str",
-       "slug": "str"
-      }
-     ],
+     "tags": [],
      "title": "str",
      "total_bookmarks": "str",
      "total_chapters": "num",
@@ -1845,7 +1834,7 @@
      "translated_language": "str",
      "uploader_name": "str",
      "uploader_username": "str",
-     "year_published": "null | num"
+     "year_published": "null"
     }
    ],
    "pagination": {
@@ -1951,15 +1940,15 @@
   "shape": {
    "data": [
     {
-     "artist_name": "str",
+     "artist_name": "null | str",
      "author_name": "str",
      "banner_image_url": "null",
-     "cover_image_url": "str",
+     "cover_image_url": "null | str",
      "created_at": "str",
-     "group_name": "str",
-     "group_slug": "str",
+     "group_name": "null | str",
+     "group_slug": "null | str",
      "id": "str",
-     "illustrations": "[\"str\"] | null",
+     "illustrations": "null",
      "last_chapter_at": "str",
      "latest_chapter": {
       "chapter_number": "num",
@@ -1968,18 +1957,12 @@
       "title": "str"
      },
      "original_language": "str",
-     "original_title": "str",
+     "original_title": "null | str",
      "slug": "str",
      "status": "str",
      "story_type": "str",
      "synopsis": "str",
-     "tags": [
-      {
-       "id": "str",
-       "name": "str",
-       "slug": "str"
-      }
-     ],
+     "tags": [],
      "title": "str",
      "total_bookmarks": "str",
      "total_chapters": "num",
@@ -1990,7 +1973,7 @@
      "translated_language": "str",
      "uploader_name": "str",
      "uploader_username": "str",
-     "year_published": "null | num"
+     "year_published": "null"
     }
    ],
    "pagination": {
@@ -2075,10 +2058,10 @@
   "shape": {
    "data": [
     {
-     "cover_image_url": "str",
-     "group_id": "null | str | str | str | str | str | str",
-     "group_name": "null | str | str | str | str | str | str",
-     "group_slug": "null | str | str | str | str | str | str",
+     "cover_image_url": "null | null | str | str | str | str | str | str | str | str | str | str | str | str | str | str | str | str | str | str | str",
+     "group_id": "null | null | null | str | str | str | str | str | str | str | str | str | str | str | str | str | str | str | str | str | str",
+     "group_name": "null | null | null | str | str | str | str | str | str | str | str | str | str | str | str | str | str | str | str | str | str",
+     "group_slug": "null | null | null | str | str | str | str | str | str | str | str | str | str | str | str | str | str | str | str | str | str",
      "id": "str",
      "slug": "str",
      "status": "str",
@@ -2098,15 +2081,15 @@
   "shape": {
    "data": [
     {
-     "artist_name": "null | null | null | null | str | str | str | str | str | str",
-     "author_name": "null | null | null | null | str | str | str | str | str | str",
+     "artist_name": "null | null | null | str | str | str | str | str | str | str | str | str | str | str | str",
+     "author_name": "null | null | str | str | str | str | str | str",
      "banner_image_url": "null",
-     "cover_image_url": "str",
+     "cover_image_url": "null | str | str | str | str | str | str | str | str | str | str | str | str | str | str",
      "created_at": "str",
-     "group_name": "null | str | str | str | str | str | str | str | str | str",
-     "group_slug": "null | str | str | str | str | str | str | str | str | str",
+     "group_name": "null | null | str | str | str | str | str | str | str | str | str | str | str | str | str",
+     "group_slug": "null | null | str | str | str | str | str | str | str | str | str | str | str | str | str",
      "id": "str",
-     "illustrations": "[\\\\\\\"str\\\\\\\"] | [\\\\\\\\\\\\\\\"str\\\\\\\\\\\\\\\"] | [\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"str\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"] | [\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"str\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"] | [\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"str\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"] | [\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"str\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"] | null | null | null | null | null | null | null | null | null",
+     "illustrations": "[\"str\"] | [\\\"str\\\"] | [\\\\\\\"str\\\\\\\"] | [\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"str\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"] | [\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"str\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"] | [\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"str\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"] | null | null | null | null | null | null | null",
      "last_chapter_at": "str",
      "latest_chapter": {
       "chapter_number": "num",
@@ -2115,11 +2098,11 @@
       "title": "str"
      },
      "original_language": "str",
-     "original_title": "null | null | null | null | str | str | str | str | str | str",
+     "original_title": "null | null | null | str | str | str | str | str | str | str | str | str | str | str | str",
      "slug": "str",
      "status": "str",
      "story_type": "str",
-     "synopsis": "null | str | str | str",
+     "synopsis": "null | str",
      "tags": [
       {
        "id": "str",
@@ -2196,22 +2179,30 @@
   "type": "application/json"
  },
  "catalog: story by slug guest": {
-  "request": "guest GET /api/v1/stories/hachi-nan-tte-sore-wa-nai-deshou",
+  "request": "guest GET /api/v1/stories/contract-<hex>",
   "shape": {
    "data": {
     "allow_download": "bool",
     "approval_status": "str",
-    "approved_at": "str",
-    "approved_by": "str",
-    "artist_name": "str",
+    "approved_at": "null",
+    "approved_by": "null",
+    "artist_name": "null",
     "author_name": "str",
     "banner_image_url": "null",
     "can_manage": "bool",
     "can_moderate": "bool",
     "code": "str",
     "code_no": "str",
-    "collaborators": [],
-    "cover_image_url": "str",
+    "collaborators": [
+     {
+      "avatar_url": "str",
+      "display_name": "str",
+      "role": "str",
+      "user_id": "str",
+      "username": "str"
+     }
+    ],
+    "cover_image_url": "null",
     "created_at": "str",
     "favorite_category": "null",
     "first_chapter": {
@@ -2221,10 +2212,10 @@
      "title": "str"
     },
     "group_avatar": "null",
-    "group_description": "str",
-    "group_id": "str",
-    "group_name": "str",
-    "group_slug": "str",
+    "group_description": "null",
+    "group_id": "null",
+    "group_name": "null",
+    "group_slug": "null",
     "id": "str",
     "is_favorite": "bool",
     "last_chapter_at": "str",
@@ -2235,14 +2226,14 @@
      "title": "str"
     },
     "original_language": "str",
-    "original_title": "str",
+    "original_title": "null",
     "rejection_reason": "null",
     "removed_at": "null",
     "removed_by": "null",
     "slug": "str",
-    "source_id": "str",
-    "source_name": "str",
-    "source_url": "str",
+    "source_id": "null",
+    "source_name": "null",
+    "source_url": "null",
     "status": "str",
     "story_type": "str",
     "synopsis": "str",
@@ -2272,7 +2263,27 @@
     "uploader_id": "str",
     "uploader_name": "str",
     "uploader_username": "str",
-    "volumes": [],
+    "volumes": [
+     {
+      "chapters": [
+       {
+        "chapter_number": "num",
+        "id": "str",
+        "published_at": "str",
+        "slug": "str",
+        "title": "str",
+        "total_comments": "num",
+        "total_views": "num",
+        "word_count": "num"
+       }
+      ],
+      "cover_image_url": "null",
+      "description": "null | str",
+      "id": "str",
+      "title": "str",
+      "volume_number": "num"
+     }
+    ],
     "year_published": "null"
    },
    "success": "bool"
@@ -2281,22 +2292,30 @@
   "type": "application/json"
  },
  "catalog: story by slug reader": {
-  "request": "reader GET /api/v1/stories/hachi-nan-tte-sore-wa-nai-deshou",
+  "request": "reader GET /api/v1/stories/contract-<hex>",
   "shape": {
    "data": {
     "allow_download": "bool",
     "approval_status": "str",
-    "approved_at": "str",
-    "approved_by": "str",
-    "artist_name": "str",
+    "approved_at": "null",
+    "approved_by": "null",
+    "artist_name": "null",
     "author_name": "str",
     "banner_image_url": "null",
     "can_manage": "bool",
     "can_moderate": "bool",
     "code": "str",
     "code_no": "str",
-    "collaborators": [],
-    "cover_image_url": "str",
+    "collaborators": [
+     {
+      "avatar_url": "str",
+      "display_name": "str",
+      "role": "str",
+      "user_id": "str",
+      "username": "str"
+     }
+    ],
+    "cover_image_url": "null",
     "created_at": "str",
     "favorite_category": "null",
     "first_chapter": {
@@ -2306,10 +2325,10 @@
      "title": "str"
     },
     "group_avatar": "null",
-    "group_description": "str",
-    "group_id": "str",
-    "group_name": "str",
-    "group_slug": "str",
+    "group_description": "null",
+    "group_id": "null",
+    "group_name": "null",
+    "group_slug": "null",
     "id": "str",
     "is_favorite": "bool",
     "last_chapter_at": "str",
@@ -2320,14 +2339,14 @@
      "title": "str"
     },
     "original_language": "str",
-    "original_title": "str",
+    "original_title": "null",
     "rejection_reason": "null",
     "removed_at": "null",
     "removed_by": "null",
     "slug": "str",
-    "source_id": "str",
-    "source_name": "str",
-    "source_url": "str",
+    "source_id": "null",
+    "source_name": "null",
+    "source_url": "null",
     "status": "str",
     "story_type": "str",
     "synopsis": "str",
@@ -2357,7 +2376,27 @@
     "uploader_id": "str",
     "uploader_name": "str",
     "uploader_username": "str",
-    "volumes": [],
+    "volumes": [
+     {
+      "chapters": [
+       {
+        "chapter_number": "num",
+        "id": "str",
+        "published_at": "str",
+        "slug": "str",
+        "title": "str",
+        "total_comments": "num",
+        "total_views": "num",
+        "word_count": "num"
+       }
+      ],
+      "cover_image_url": "null",
+      "description": "null | str",
+      "id": "str",
+      "title": "str",
+      "volume_number": "num"
+     }
+    ],
     "year_published": "null"
    },
    "success": "bool"
@@ -2366,9 +2405,18 @@
   "type": "application/json"
  },
  "catalog: story collaborators": {
-  "request": "guest GET /api/v1/stories/9bc30577-6fec-434d-b241-912d32e7da4b/collaborators",
+  "request": "guest GET /api/v1/stories/<uuid>/collaborators",
   "shape": {
-   "data": [],
+   "data": [
+    {
+     "avatar_url": "str",
+     "created_at": "str",
+     "display_name": "str",
+     "role": "str",
+     "user_id": "str",
+     "username": "str"
+    }
+   ],
    "success": "bool"
   },
   "status": 200,
@@ -2376,7 +2424,7 @@
  },
  "catalog: story collaborators add": {
   "message": "Đã thêm Yuki ❄️ làm cộng tác viên quản lý truyện thành công!",
-  "request": "owner POST /api/v1/stories/c7c346a8-a933-474a-967d-0339485651ca/collaborators",
+  "request": "owner POST /api/v1/stories/<uuid>/collaborators",
   "shape": {
    "data": {
     "role": "str",
@@ -2391,7 +2439,7 @@
  },
  "catalog: story collaborators add missing user": {
   "message": "Không tìm thấy người dùng này.",
-  "request": "owner POST /api/v1/stories/c7c346a8-a933-474a-967d-0339485651ca/collaborators",
+  "request": "owner POST /api/v1/stories/<uuid>/collaborators",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -2401,7 +2449,7 @@
  },
  "catalog: story collaborators add outsider-denied": {
   "message": "Bạn không có quyền quản lý cộng tác viên của bộ truyện này.",
-  "request": "outsider POST /api/v1/stories/c7c346a8-a933-474a-967d-0339485651ca/collaborators",
+  "request": "outsider POST /api/v1/stories/<uuid>/collaborators",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -2420,7 +2468,7 @@
   "type": "application/json"
  },
  "catalog: story collaborators list": {
-  "request": "guest GET /api/v1/stories/c7c346a8-a933-474a-967d-0339485651ca/collaborators",
+  "request": "guest GET /api/v1/stories/<uuid>/collaborators",
   "shape": {
    "data": [
     {
@@ -2435,26 +2483,6 @@
    "success": "bool"
   },
   "status": 200,
-  "type": "application/json"
- },
- "catalog: story collaborators remove": {
-  "message": "Đã xóa quyền cộng tác viên quản lý truyện thành công!",
-  "request": "owner DELETE /api/v1/stories/c7c346a8-a933-474a-967d-0339485651ca/collaborators/a0000000-0000-0000-0000-000000000011",
-  "shape": {
-   "message": "str",
-   "success": "bool"
-  },
-  "status": 200,
-  "type": "application/json"
- },
- "catalog: story collaborators remove denied": {
-  "message": "Bạn không có quyền quản lý cộng tác viên của bộ truyện này.",
-  "request": "reader DELETE /api/v1/stories/c7c346a8-a933-474a-967d-0339485651ca/collaborators/a0000000-0000-0000-0000-000000000011",
-  "shape": {
-   "message": "str",
-   "success": "bool"
-  },
-  "status": 403,
   "type": "application/json"
  },
  "catalog: story create": {
@@ -2557,7 +2585,7 @@
   "type": "application/json"
  },
  "catalog: story read own": {
-  "request": "owner GET /api/v1/stories/contract-4280a8",
+  "request": "owner GET /api/v1/stories/contract-<hex>",
   "shape": {
    "data": {
     "allow_download": "bool",
@@ -2631,7 +2659,7 @@
  },
  "catalog: story remove": {
   "message": "Đã gỡ truyện \"Contract <hex> v2\".",
-  "request": "admin POST /api/v1/stories/c7c346a8-a933-474a-967d-0339485651ca/remove",
+  "request": "admin POST /api/v1/stories/<uuid>/remove",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -2641,7 +2669,7 @@
  },
  "catalog: story remove denied": {
   "message": "Chỉ Admin hoặc Mod mới làm được thao tác này.",
-  "request": "reader POST /api/v1/stories/c7c346a8-a933-474a-967d-0339485651ca/remove",
+  "request": "reader POST /api/v1/stories/<uuid>/remove",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -2651,7 +2679,7 @@
  },
  "catalog: story removed read": {
   "message": "Không tìm thấy truyện",
-  "request": "guest GET /api/v1/stories/contract-4280a8",
+  "request": "guest GET /api/v1/stories/contract-<hex>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -2661,7 +2689,7 @@
  },
  "catalog: story restore": {
   "message": "Đã khôi phục truyện \"Contract <hex> v2\".",
-  "request": "admin POST /api/v1/stories/c7c346a8-a933-474a-967d-0339485651ca/restore",
+  "request": "admin POST /api/v1/stories/<uuid>/restore",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -2671,7 +2699,7 @@
  },
  "catalog: story restore denied": {
   "message": "Chỉ Admin hoặc Mod mới làm được thao tác này.",
-  "request": "reader POST /api/v1/stories/c7c346a8-a933-474a-967d-0339485651ca/restore",
+  "request": "reader POST /api/v1/stories/<uuid>/restore",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -2681,7 +2709,7 @@
  },
  "catalog: story update": {
   "message": "Cập nhật thông tin truyện thành công!",
-  "request": "owner PUT /api/v1/stories/c7c346a8-a933-474a-967d-0339485651ca",
+  "request": "owner PUT /api/v1/stories/<uuid>",
   "shape": {
    "data": {
     "allow_download": "bool",
@@ -2730,7 +2758,7 @@
  },
  "catalog: story update bad": {
   "message": "Tên truyện không được để trống.",
-  "request": "owner PUT /api/v1/stories/c7c346a8-a933-474a-967d-0339485651ca",
+  "request": "owner PUT /api/v1/stories/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -2740,7 +2768,7 @@
  },
  "catalog: story update guest": {
   "message": "Bạn chưa đăng nhập hoặc phiên đăng nhập đã hết hạn.",
-  "request": "guest PUT /api/v1/stories/c7c346a8-a933-474a-967d-0339485651ca",
+  "request": "guest PUT /api/v1/stories/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -2750,7 +2778,7 @@
  },
  "catalog: story update missing": {
   "message": "Bạn không phải chủ thầu của truyện này (người đăng, nhóm dịch hoặc cộng tác viên) nên không có quyền chỉnh sửa.",
-  "request": "owner PUT /api/v1/stories/99999999-9999-4999-8999-999999999999",
+  "request": "owner PUT /api/v1/stories/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -2760,7 +2788,7 @@
  },
  "catalog: story update outsider": {
   "message": "Bạn không phải chủ thầu của truyện này (người đăng, nhóm dịch hoặc cộng tác viên) nên không có quyền chỉnh sửa.",
-  "request": "outsider PUT /api/v1/stories/c7c346a8-a933-474a-967d-0339485651ca",
+  "request": "outsider PUT /api/v1/stories/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -2912,7 +2940,7 @@
  },
  "catalog: volume create": {
   "message": "Tạo Tập thử thành công",
-  "request": "owner POST /api/v1/stories/c7c346a8-a933-474a-967d-0339485651ca/volumes",
+  "request": "owner POST /api/v1/stories/<uuid>/volumes",
   "shape": {
    "data": {
     "cover_image_url": "null",
@@ -2933,7 +2961,7 @@
  },
  "catalog: volume create 3": {
   "message": "Tạo Tập ba thành công",
-  "request": "owner POST /api/v1/stories/c7c346a8-a933-474a-967d-0339485651ca/volumes",
+  "request": "owner POST /api/v1/stories/<uuid>/volumes",
   "shape": {
    "data": {
     "cover_image_url": "null",
@@ -2954,7 +2982,7 @@
  },
  "catalog: volume create bad number": {
   "message": "Số tập không hợp lệ.",
-  "request": "owner POST /api/v1/stories/c7c346a8-a933-474a-967d-0339485651ca/volumes",
+  "request": "owner POST /api/v1/stories/<uuid>/volumes",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -2964,7 +2992,7 @@
  },
  "catalog: volume create denied": {
   "message": "Bạn không phải chủ thầu của truyện này để thêm tập mới.",
-  "request": "reader POST /api/v1/stories/c7c346a8-a933-474a-967d-0339485651ca/volumes",
+  "request": "reader POST /api/v1/stories/<uuid>/volumes",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -2974,7 +3002,7 @@
  },
  "catalog: volume create dup": {
   "message": "Tập 1 đã tồn tại trong bộ truyện này.",
-  "request": "owner POST /api/v1/stories/c7c346a8-a933-474a-967d-0339485651ca/volumes",
+  "request": "owner POST /api/v1/stories/<uuid>/volumes",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -2984,7 +3012,7 @@
  },
  "catalog: volume create guest": {
   "message": "Bạn chưa đăng nhập hoặc phiên đăng nhập đã hết hạn.",
-  "request": "guest POST /api/v1/stories/c7c346a8-a933-474a-967d-0339485651ca/volumes",
+  "request": "guest POST /api/v1/stories/<uuid>/volumes",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -2994,7 +3022,7 @@
  },
  "catalog: volume delete": {
   "message": "Đã xóa \"Tập ba\". 0 chương của tập được giữ lại và chuyển sang \"chưa phân tập\".",
-  "request": "owner DELETE /api/v1/volumes/a53ec8a4-0aac-4562-a82e-758cc0879056",
+  "request": "owner DELETE /api/v1/volumes/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -3004,7 +3032,7 @@
  },
  "catalog: volume delete denied": {
   "message": "Bạn không có quyền xóa tập của truyện này.",
-  "request": "reader DELETE /api/v1/volumes/a53ec8a4-0aac-4562-a82e-758cc0879056",
+  "request": "reader DELETE /api/v1/volumes/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -3014,7 +3042,7 @@
  },
  "catalog: volume reorder": {
   "message": "Thiếu danh sách thứ tự tập (order).",
-  "request": "owner PUT /api/v1/stories/c7c346a8-a933-474a-967d-0339485651ca/volumes/reorder",
+  "request": "owner PUT /api/v1/stories/<uuid>/volumes/reorder",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -3024,7 +3052,7 @@
  },
  "catalog: volume reorder bad": {
   "message": "Thiếu danh sách thứ tự tập (order).",
-  "request": "owner PUT /api/v1/stories/c7c346a8-a933-474a-967d-0339485651ca/volumes/reorder",
+  "request": "owner PUT /api/v1/stories/<uuid>/volumes/reorder",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -3034,7 +3062,7 @@
  },
  "catalog: volume update": {
   "message": "Đã cập nhật tập.",
-  "request": "owner PUT /api/v1/volumes/52c8c4b6-7f87-40f5-a9b6-7b126257f088",
+  "request": "owner PUT /api/v1/volumes/<uuid>",
   "shape": {
    "data": {
     "cover_image_url": "null",
@@ -3055,7 +3083,7 @@
  },
  "catalog: volume update denied": {
   "message": "Bạn không có quyền sửa tập của truyện này.",
-  "request": "reader PUT /api/v1/volumes/52c8c4b6-7f87-40f5-a9b6-7b126257f088",
+  "request": "reader PUT /api/v1/volumes/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -3065,7 +3093,7 @@
  },
  "catalog: volume update missing": {
   "message": "Tập không tồn tại.",
-  "request": "owner PUT /api/v1/volumes/99999999-9999-4999-8999-999999999999",
+  "request": "owner PUT /api/v1/volumes/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -3075,7 +3103,7 @@
  },
  "cleanup: chapter delete": {
   "message": "Đã xóa Chương 2.00: \"Chương hai\". Người giữ truyện có thể khôi phục trong lịch sử chương.",
-  "request": "owner DELETE /api/v1/chapters/e1dd870d-2ce1-452c-ad6b-781e1fa9e03c",
+  "request": "owner DELETE /api/v1/chapters/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -3085,7 +3113,7 @@
  },
  "cleanup: chapter delete first": {
   "message": "Đã xóa Chương 1.00: \"Chương thử <hex>\". Người giữ truyện có thể khôi phục trong lịch sử chương.",
-  "request": "owner DELETE /api/v1/chapters/6c48cc5a-4fde-44ca-9375-18a2a7740cf0",
+  "request": "owner DELETE /api/v1/chapters/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -3093,9 +3121,29 @@
   "status": 200,
   "type": "application/json"
  },
+ "cleanup: collaborator remove": {
+  "message": "Đã xóa quyền cộng tác viên quản lý truyện thành công!",
+  "request": "owner DELETE /api/v1/stories/<uuid>/collaborators/<uuid>",
+  "shape": {
+   "message": "str",
+   "success": "bool"
+  },
+  "status": 200,
+  "type": "application/json"
+ },
+ "cleanup: collaborator remove denied": {
+  "message": "Bạn không có quyền quản lý cộng tác viên của bộ truyện này.",
+  "request": "reader DELETE /api/v1/stories/<uuid>/collaborators/<uuid>",
+  "shape": {
+   "message": "str",
+   "success": "bool"
+  },
+  "status": 403,
+  "type": "application/json"
+ },
  "cleanup: story after delete": {
   "message": "Không tìm thấy truyện",
-  "request": "guest GET /api/v1/stories/contract-4280a8",
+  "request": "guest GET /api/v1/stories/contract-<hex>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -3105,7 +3153,7 @@
  },
  "cleanup: story delete": {
   "message": "Đã xóa truyện \"Contract <hex> v2\" thành công!",
-  "request": "owner DELETE /api/v1/stories/c7c346a8-a933-474a-967d-0339485651ca",
+  "request": "owner DELETE /api/v1/stories/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -3115,7 +3163,7 @@
  },
  "cleanup: story delete denied": {
   "message": "Chỉ người đăng truyện mới xóa được truyện. Ban quản trị chỉ gỡ truyện vi phạm.",
-  "request": "reader DELETE /api/v1/stories/c7c346a8-a933-474a-967d-0339485651ca",
+  "request": "reader DELETE /api/v1/stories/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -3125,7 +3173,7 @@
  },
  "cleanup: volume delete": {
   "message": "Đã xóa \"Tập thử 2\". 0 chương của tập được giữ lại và chuyển sang \"chưa phân tập\".",
-  "request": "owner DELETE /api/v1/volumes/52c8c4b6-7f87-40f5-a9b6-7b126257f088",
+  "request": "owner DELETE /api/v1/volumes/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -3243,7 +3291,7 @@
  },
  "community: comment delete": {
   "message": "Đã xóa bình luận.",
-  "request": "outsider DELETE /api/community/comments/b58b644d-db38-4b18-87aa-c864d69e0989",
+  "request": "outsider DELETE /api/community/comments/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -3253,7 +3301,7 @@
  },
  "community: comment delete denied": {
   "message": "Bạn không có quyền xóa bình luận này.",
-  "request": "reader DELETE /api/community/comments/c942081b-7d44-4831-8768-29b6c76437f8",
+  "request": "reader DELETE /api/community/comments/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -3263,7 +3311,7 @@
  },
  "community: comment delete missing": {
   "message": "Bình luận không tồn tại hoặc đã bị xóa.",
-  "request": "outsider DELETE /api/community/comments/99999999-9999-4999-8999-999999999999",
+  "request": "outsider DELETE /api/community/comments/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -3273,7 +3321,7 @@
  },
  "community: comment delete reply": {
   "message": "Đã xóa bình luận.",
-  "request": "reader DELETE /api/community/comments/91567b56-0f1d-4262-862e-bce72694757d",
+  "request": "reader DELETE /api/community/comments/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -3283,7 +3331,7 @@
  },
  "community: comment delete story": {
   "message": "Đã xóa bình luận.",
-  "request": "outsider DELETE /api/community/comments/c942081b-7d44-4831-8768-29b6c76437f8",
+  "request": "outsider DELETE /api/community/comments/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -3292,7 +3340,7 @@
   "type": "application/json"
  },
  "community: comment like": {
-  "request": "reader POST /api/community/comments/b58b644d-db38-4b18-87aa-c864d69e0989/like",
+  "request": "reader POST /api/community/comments/<uuid>/like",
   "shape": {
    "like_count": "num",
    "liked": "bool",
@@ -3303,7 +3351,7 @@
  },
  "community: comment like guest": {
   "message": "Bạn chưa đăng nhập.",
-  "request": "guest POST /api/community/comments/b58b644d-db38-4b18-87aa-c864d69e0989/like",
+  "request": "guest POST /api/community/comments/<uuid>/like",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -3380,7 +3428,7 @@
   "type": "application/json"
  },
  "community: comment unlike": {
-  "request": "reader POST /api/community/comments/b58b644d-db38-4b18-87aa-c864d69e0989/like",
+  "request": "reader POST /api/community/comments/<uuid>/like",
   "shape": {
    "like_count": "num",
    "liked": "bool",
@@ -3391,7 +3439,7 @@
  },
  "community: comment update": {
   "message": "Đã cập nhật bình luận.",
-  "request": "outsider PUT /api/community/comments/b58b644d-db38-4b18-87aa-c864d69e0989",
+  "request": "outsider PUT /api/community/comments/<uuid>",
   "shape": {
    "data": {
     "content": "str",
@@ -3407,7 +3455,7 @@
  },
  "community: comment update bad": {
   "message": "Nội dung bình luận không được để trống.",
-  "request": "outsider PUT /api/community/comments/b58b644d-db38-4b18-87aa-c864d69e0989",
+  "request": "outsider PUT /api/community/comments/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -3417,7 +3465,7 @@
  },
  "community: comment update denied": {
   "message": "Bạn chỉ có thể sửa bình luận của chính mình.",
-  "request": "reader PUT /api/community/comments/b58b644d-db38-4b18-87aa-c864d69e0989",
+  "request": "reader PUT /api/community/comments/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -3521,7 +3569,7 @@
  },
  "community: post approve": {
   "message": "Đã khôi phục 1 bài viết.",
-  "request": "admin POST /api/community/posts/6023f3b6-3dbf-4e58-b5a3-792075f0bf04/approve",
+  "request": "admin POST /api/community/posts/<uuid>/approve",
   "shape": {
    "count": "num",
    "message": "str",
@@ -3532,7 +3580,7 @@
  },
  "community: post approve denied": {
   "message": "Chỉ Admin hoặc Mod mới làm được thao tác này.",
-  "request": "reader POST /api/community/posts/6023f3b6-3dbf-4e58-b5a3-792075f0bf04/approve",
+  "request": "reader POST /api/community/posts/<uuid>/approve",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -3601,7 +3649,7 @@
  },
  "community: post delete": {
   "message": "Đã xóa bài viết.",
-  "request": "reader DELETE /api/community/posts/6023f3b6-3dbf-4e58-b5a3-792075f0bf04",
+  "request": "reader DELETE /api/community/posts/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -3611,7 +3659,7 @@
  },
  "community: post delete again": {
   "message": "Bài viết không tồn tại hoặc đã bị xóa.",
-  "request": "reader DELETE /api/community/posts/6023f3b6-3dbf-4e58-b5a3-792075f0bf04",
+  "request": "reader DELETE /api/community/posts/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -3621,7 +3669,7 @@
  },
  "community: post delete denied": {
   "message": "Chỉ tác giả mới xóa được bài viết. Ban quản trị chỉ gỡ bài vi phạm.",
-  "request": "outsider DELETE /api/community/posts/6023f3b6-3dbf-4e58-b5a3-792075f0bf04",
+  "request": "outsider DELETE /api/community/posts/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -3641,7 +3689,7 @@
  },
  "community: post mute": {
   "message": "Đã tắt thông báo về bài viết này.",
-  "request": "outsider POST /api/community/posts/6023f3b6-3dbf-4e58-b5a3-792075f0bf04/mute",
+  "request": "outsider POST /api/community/posts/<uuid>/mute",
   "shape": {
    "message": "str",
    "muted": "bool",
@@ -3652,7 +3700,7 @@
  },
  "community: post pin": {
   "message": "Đã ghim bài viết.",
-  "request": "admin POST /api/community/posts/6023f3b6-3dbf-4e58-b5a3-792075f0bf04/pin",
+  "request": "admin POST /api/community/posts/<uuid>/pin",
   "shape": {
    "is_pinned": "bool",
    "message": "str",
@@ -3663,7 +3711,7 @@
  },
  "community: post pin denied": {
   "message": "Chỉ Admin hoặc Mod mới làm được thao tác này.",
-  "request": "reader POST /api/community/posts/6023f3b6-3dbf-4e58-b5a3-792075f0bf04/pin",
+  "request": "reader POST /api/community/posts/<uuid>/pin",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -3672,7 +3720,7 @@
   "type": "application/json"
  },
  "community: post react": {
-  "request": "outsider POST /api/community/posts/6023f3b6-3dbf-4e58-b5a3-792075f0bf04/react",
+  "request": "outsider POST /api/community/posts/<uuid>/react",
   "shape": {
    "action": "str",
    "data": {
@@ -3689,7 +3737,7 @@
  },
  "community: post react bad": {
   "message": "Cảm xúc không hợp lệ",
-  "request": "outsider POST /api/community/posts/6023f3b6-3dbf-4e58-b5a3-792075f0bf04/react",
+  "request": "outsider POST /api/community/posts/<uuid>/react",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -3699,7 +3747,7 @@
  },
  "community: post react guest": {
   "message": "Bạn chưa đăng nhập.",
-  "request": "guest POST /api/community/posts/6023f3b6-3dbf-4e58-b5a3-792075f0bf04/react",
+  "request": "guest POST /api/community/posts/<uuid>/react",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -3708,7 +3756,7 @@
   "type": "application/json"
  },
  "community: post react remove": {
-  "request": "outsider POST /api/community/posts/6023f3b6-3dbf-4e58-b5a3-792075f0bf04/react",
+  "request": "outsider POST /api/community/posts/<uuid>/react",
   "shape": {
    "action": "str",
    "data": {
@@ -3722,7 +3770,7 @@
   "type": "application/json"
  },
  "community: post read": {
-  "request": "guest GET /api/community/posts/bai-thu-4280a8",
+  "request": "guest GET /api/community/posts/bai-thu-<hex>",
   "shape": {
    "data": {
     "approval_status": "str",
@@ -3775,7 +3823,7 @@
  },
  "community: post reject": {
   "message": "Đã gỡ 1 bài viết.",
-  "request": "admin POST /api/community/posts/6023f3b6-3dbf-4e58-b5a3-792075f0bf04/reject",
+  "request": "admin POST /api/community/posts/<uuid>/reject",
   "shape": {
    "count": "num",
    "message": "str",
@@ -3786,7 +3834,7 @@
  },
  "community: post reject denied": {
   "message": "Chỉ Admin hoặc Mod mới làm được thao tác này.",
-  "request": "reader POST /api/community/posts/6023f3b6-3dbf-4e58-b5a3-792075f0bf04/reject",
+  "request": "reader POST /api/community/posts/<uuid>/reject",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -3796,7 +3844,7 @@
  },
  "community: post removed read": {
   "message": "Bài viết không tồn tại hoặc đã bị xóa.",
-  "request": "guest GET /api/community/posts/bai-thu-4280a8",
+  "request": "guest GET /api/community/posts/bai-thu-<hex>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -3806,7 +3854,7 @@
  },
  "community: post unmute": {
   "message": "Đã bật lại thông báo cho bài viết này.",
-  "request": "outsider POST /api/community/posts/6023f3b6-3dbf-4e58-b5a3-792075f0bf04/mute",
+  "request": "outsider POST /api/community/posts/<uuid>/mute",
   "shape": {
    "message": "str",
    "muted": "bool",
@@ -3817,7 +3865,7 @@
  },
  "community: post unpin": {
   "message": "Đã bỏ ghim.",
-  "request": "admin POST /api/community/posts/6023f3b6-3dbf-4e58-b5a3-792075f0bf04/pin",
+  "request": "admin POST /api/community/posts/<uuid>/pin",
   "shape": {
    "is_pinned": "bool",
    "message": "str",
@@ -3828,7 +3876,7 @@
  },
  "community: post update": {
   "message": "Đã cập nhật bài viết.",
-  "request": "reader PUT /api/community/posts/6023f3b6-3dbf-4e58-b5a3-792075f0bf04",
+  "request": "reader PUT /api/community/posts/<uuid>",
   "shape": {
    "data": {
     "approval_status": "str",
@@ -3867,7 +3915,7 @@
  },
  "community: post update bad": {
   "message": "Tiêu đề bài viết không được để trống.",
-  "request": "reader PUT /api/community/posts/6023f3b6-3dbf-4e58-b5a3-792075f0bf04",
+  "request": "reader PUT /api/community/posts/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -3877,7 +3925,7 @@
  },
  "community: post update denied": {
   "message": "Bạn không có quyền chỉnh sửa bài viết của người khác.",
-  "request": "outsider PUT /api/community/posts/6023f3b6-3dbf-4e58-b5a3-792075f0bf04",
+  "request": "outsider PUT /api/community/posts/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -3887,7 +3935,7 @@
  },
  "community: post update missing": {
   "message": "Bài viết không tồn tại hoặc đã bị xóa.",
-  "request": "reader PUT /api/community/posts/99999999-9999-4999-8999-999999999999",
+  "request": "reader PUT /api/community/posts/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -3901,8 +3949,8 @@
    "data": [
     {
      "approval_status": "str",
-     "approved_at": "null",
-     "approved_by": "null",
+     "approved_at": "null | null | null | str",
+     "approved_by": "null | null | null | str",
      "author_avatar": "str",
      "author_name": "str",
      "author_roles": [
@@ -3914,7 +3962,7 @@
      "code_no": "str",
      "comment_count": "num",
      "content": "str",
-     "cover_image_url": "null | null | null | str",
+     "cover_image_url": "null | null | str | str",
      "created_at": "str",
      "id": "str",
      "images": [],
@@ -3927,21 +3975,20 @@
      "published_at": "str",
      "reaction_count": "num",
      "reaction_summary": {
-      "like": "?\\\\\\\"num\\\\ | num | num",
-      "love": "?\\\"num\\ | num",
-      "wow": "?\"?\\\"?\\\\\\\"num\\\\\\\"\\\"\""
+      "like": "?\"num\"",
+      "wow": "?\"num\""
      },
      "real_comment_count": "num",
      "rejection_reason": "null",
      "removed_at": "null",
      "removed_by": "null",
      "slug": "str",
-     "story_author": "null | null | null | str",
-     "story_cover": "null | null | null | str",
-     "story_id": "null | null | null | str",
-     "story_slug": "null | null | null | str",
-     "story_title": "null | null | null | str",
-     "story_type": "null | null | null | str",
+     "story_author": "null | null | str | str",
+     "story_cover": "null | null | str | str",
+     "story_id": "null | null | str | str",
+     "story_slug": "null | null | str | str",
+     "story_title": "null | null | str | str",
+     "story_type": "null | null | str | str",
      "title": "str",
      "updated_at": "str",
      "user_id": "str",
@@ -4186,7 +4233,7 @@
  },
  "community: report resolve": {
   "message": "Đã cập nhật báo cáo.",
-  "request": "admin PUT /api/community/reports/df2203d2-201c-407d-8486-043965f17599/resolve",
+  "request": "admin PUT /api/community/reports/<uuid>/resolve",
   "shape": {
    "data": {
     "id": "str",
@@ -4201,7 +4248,7 @@
  },
  "community: report resolve bad": {
   "message": "status phải là resolved hoặc dismissed.",
-  "request": "admin PUT /api/community/reports/df2203d2-201c-407d-8486-043965f17599/resolve",
+  "request": "admin PUT /api/community/reports/<uuid>/resolve",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -4211,7 +4258,7 @@
  },
  "community: report resolve denied": {
   "message": "Chỉ Admin/Mod mới xử lý được báo cáo.",
-  "request": "reader PUT /api/community/reports/df2203d2-201c-407d-8486-043965f17599/resolve",
+  "request": "reader PUT /api/community/reports/<uuid>/resolve",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -4221,7 +4268,7 @@
  },
  "community: report resolve missing": {
   "message": "Báo cáo không tồn tại.",
-  "request": "admin PUT /api/community/reports/99999999-9999-4999-8999-999999999999/resolve",
+  "request": "admin PUT /api/community/reports/<uuid>/resolve",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -4352,7 +4399,7 @@
  },
  "identity: ban denied": {
   "message": "Bạn không có quyền thực hiện thao tác này.",
-  "request": "reader POST /api/identity/users/a0000000-0000-0000-0000-000000000011/ban",
+  "request": "reader POST /api/identity/users/<uuid>/ban",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -4362,7 +4409,7 @@
  },
  "identity: ban self-protection": {
   "message": "Bạn không có quyền thực hiện thao tác này với tài khoản này.",
-  "request": "admin POST /api/identity/users/a0000000-0000-0000-0000-000000000001/ban",
+  "request": "admin POST /api/identity/users/<uuid>/ban",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -4371,33 +4418,36 @@
   "type": "application/json"
  },
  "identity: change email wrong": {
-  "message": "Email mới không đúng định dạng.",
+  "message": "Bạn thao tác hơi nhanh, vui lòng chờ một chút.",
   "request": "fresh POST /api/identity/change-email",
   "shape": {
    "message": "str",
+   "retry_after_seconds": "num",
    "success": "bool"
   },
-  "status": 400,
+  "status": 429,
   "type": "application/json"
  },
  "identity: change password": {
-  "message": "Đã đổi mật khẩu. Các thiết bị khác đã bị đăng xuất.",
+  "message": "Bạn thao tác hơi nhanh, vui lòng chờ một chút.",
   "request": "fresh POST /api/identity/change-password",
   "shape": {
    "message": "str",
+   "retry_after_seconds": "num",
    "success": "bool"
   },
-  "status": 200,
+  "status": 429,
   "type": "application/json"
  },
  "identity: change password wrong": {
-  "message": "Mật khẩu hiện tại không đúng.",
+  "message": "Bạn thao tác hơi nhanh, vui lòng chờ một chút.",
   "request": "fresh POST /api/identity/change-password",
   "shape": {
    "message": "str",
+   "retry_after_seconds": "num",
    "success": "bool"
   },
-  "status": 400,
+  "status": 429,
   "type": "application/json"
  },
  "identity: confirm email change bad": {
@@ -4410,29 +4460,9 @@
   "status": 400,
   "type": "application/json"
  },
- "identity: delete user": {
-  "message": "Đã xóa tài khoản contract_4280a8.",
-  "request": "admin DELETE /api/identity/users/437c1aa7-3505-4168-b11f-52830095dbaf",
-  "shape": {
-   "message": "str",
-   "success": "bool"
-  },
-  "status": 200,
-  "type": "application/json"
- },
  "identity: delete user denied": {
   "message": "Bạn không có quyền xóa tài khoản này.",
-  "request": "reader DELETE /api/identity/users/a0000000-0000-0000-0000-000000000011",
-  "shape": {
-   "message": "str",
-   "success": "bool"
-  },
-  "status": 403,
-  "type": "application/json"
- },
- "identity: delete user wrong pw": {
-  "message": "Mật khẩu xác nhận không đúng.",
-  "request": "admin DELETE /api/identity/users/437c1aa7-3505-4168-b11f-52830095dbaf",
+  "request": "reader DELETE /api/identity/users/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -4479,29 +4509,13 @@
   "type": "application/json"
  },
  "identity: login fresh": {
-  "message": "Đăng nhập thành công! Phiên đăng nhập lưu 30 ngày.",
+  "message": "Tài khoản hoặc mật khẩu không chính xác.",
   "request": "fresh POST /api/identity/login",
   "shape": {
-   "data": {
-    "user": {
-     "created_at": "str",
-     "display_name": "str",
-     "email": "str",
-     "email_verified": "bool",
-     "id": "str",
-     "roles": [
-      {
-       "is_visible": "bool",
-       "role": "str"
-      }
-     ],
-     "username": "str"
-    }
-   },
    "message": "str",
    "success": "bool"
   },
-  "status": 200,
+  "status": 400,
   "type": "application/json"
  },
  "identity: login wrong": {
@@ -4589,7 +4603,7 @@
   "type": "application/json"
  },
  "identity: private admin wrong pw": {
-  "request": "admin GET /api/identity/users/a0000000-0000-0000-0000-000000000011/private",
+  "request": "admin GET /api/identity/users/<uuid>/private",
   "shape": {
    "data": {
     "email": "str",
@@ -4604,7 +4618,7 @@
  },
  "identity: private denied": {
   "message": "Bạn không có quyền xem thông tin này.",
-  "request": "reader GET /api/identity/users/a0000000-0000-0000-0000-000000000011/private",
+  "request": "reader GET /api/identity/users/<uuid>/private",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -4713,7 +4727,7 @@
  },
  "identity: roles denied": {
   "message": "Hành động không hợp lệ. Vui lòng chọn 'grant' hoặc 'revoke'.",
-  "request": "reader POST /api/identity/users/a0000000-0000-0000-0000-000000000011/roles",
+  "request": "reader POST /api/identity/users/<uuid>/roles",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -4723,7 +4737,7 @@
  },
  "identity: session revoke missing": {
   "message": "Không tìm thấy phiên đăng nhập.",
-  "request": "reader DELETE /api/identity/sessions/99999999-9999-4999-8999-999999999999",
+  "request": "reader DELETE /api/identity/sessions/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -4761,7 +4775,7 @@
  },
  "identity: unban denied": {
   "message": "Bạn không có quyền thực hiện thao tác này.",
-  "request": "reader POST /api/identity/users/a0000000-0000-0000-0000-000000000011/unban",
+  "request": "reader POST /api/identity/users/<uuid>/unban",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -4833,7 +4847,7 @@
   "type": "application/json"
  },
  "internal: catalog delete-check": {
-  "request": "internal(catalog) GET /internal/users/a0000000-0000-0000-0000-000000000009/delete-check",
+  "request": "internal(catalog) GET /internal/users/<uuid>/delete-check",
   "shape": {
    "ok": "bool"
   },
@@ -4869,7 +4883,7 @@
   "type": "application/json"
  },
  "internal: catalog group members": {
-  "request": "internal(catalog) GET /internal/groups/e0000000-0000-0000-0000-000000000001/members",
+  "request": "internal(catalog) GET /internal/groups/<uuid>/members",
   "shape": {
    "data": [
     {
@@ -5009,8 +5023,11 @@
  },
  "internal: catalog unauthorized": {
   "request": "internal(none) GET /internal/permissions",
-  "status": 0,
-  "type": ""
+  "shape": {
+   "success": "bool"
+  },
+  "status": 401,
+  "type": "application/json"
  },
  "internal: catalog user profiles": {
   "request": "internal(catalog) POST /internal/users/profiles",
@@ -5065,7 +5082,7 @@
   "type": "application/json"
  },
  "internal: community user stats": {
-  "request": "internal(community) GET /internal/users/a0000000-0000-0000-0000-000000000009/stats",
+  "request": "internal(community) GET /internal/users/<uuid>/stats",
   "shape": {
    "data": {
     "approved_posts": "num",
@@ -5080,7 +5097,7 @@
  },
  "internal: identity grant bad": {
   "message": "invalid",
-  "request": "internal(identity) POST /internal/users/99999999-9999-4999-8999-999999999999/roles",
+  "request": "internal(identity) POST /internal/users/<uuid>/roles",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -5103,7 +5120,7 @@
   "type": "application/json"
  },
  "internal: identity user": {
-  "request": "internal(identity) GET /internal/users/a0000000-0000-0000-0000-000000000009",
+  "request": "internal(identity) GET /internal/users/<uuid>",
   "shape": {
    "data": {
     "ban_reason": "null",
@@ -5132,7 +5149,7 @@
  },
  "internal: identity user missing": {
   "message": "not found",
-  "request": "internal(identity) GET /internal/users/99999999-9999-4999-8999-999999999999",
+  "request": "internal(identity) GET /internal/users/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -5152,7 +5169,7 @@
   "type": "application/json"
  },
  "internal: library favorite": {
-  "request": "internal(library) GET /internal/favorites/a0000000-0000-0000-0000-000000000009/c7c346a8-a933-474a-967d-0339485651ca",
+  "request": "internal(library) GET /internal/favorites/<uuid>/<uuid>",
   "shape": {
    "data": {
     "category": "null",
@@ -5164,7 +5181,7 @@
   "type": "application/json"
  },
  "internal: library followers": {
-  "request": "internal(library) GET /internal/stories/c7c346a8-a933-474a-967d-0339485651ca/followers",
+  "request": "internal(library) GET /internal/stories/<uuid>/followers",
   "shape": {
    "data": [],
    "success": "bool"
@@ -5183,7 +5200,7 @@
   "type": "application/json"
  },
  "internal: library overview": {
-  "request": "internal(library) GET /internal/users/a0000000-0000-0000-0000-000000000009/overview",
+  "request": "internal(library) GET /internal/users/<uuid>/overview",
   "shape": {
    "data": {
     "albums": [
@@ -5281,7 +5298,7 @@
   "type": "application/json"
  },
  "internal: library reco user": {
-  "request": "internal(library) GET /internal/reco/user/a0000000-0000-0000-0000-000000000009",
+  "request": "internal(library) GET /internal/reco/user/<uuid>",
   "shape": {
    "data": {
     "continue": [
@@ -5340,7 +5357,7 @@
   "type": "application/json"
  },
  "internal: workspace chapter current": {
-  "request": "internal(workspace) GET /internal/chapters/6c48cc5a-4fde-44ca-9375-18a2a7740cf0",
+  "request": "internal(workspace) GET /internal/chapters/<uuid>",
   "shape": {
    "data": {
     "author_id": "str",
@@ -5374,7 +5391,7 @@
  },
  "internal: workspace chapter missing": {
   "message": "Chương không tồn tại.",
-  "request": "internal(workspace) GET /internal/chapters/99999999-9999-4999-8999-999999999999",
+  "request": "internal(workspace) GET /internal/chapters/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -5384,7 +5401,7 @@
  },
  "internal: workspace draft missing": {
   "message": "Bản nháp không tồn tại.",
-  "request": "internal(workspace) GET /internal/drafts/99999999-9999-4999-8999-999999999999",
+  "request": "internal(workspace) GET /internal/drafts/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -5407,13 +5424,18 @@
   "type": "application/json"
  },
  "internal: workspace unauthorized": {
+  "message": "unauthorized",
   "request": "internal(none) GET /internal/stats",
-  "status": 0,
-  "type": ""
+  "shape": {
+   "message": "str",
+   "success": "bool"
+  },
+  "status": 401,
+  "type": "application/json"
  },
  "library: album add story": {
   "message": "Đã lưu vào album \"Album <hex> sửa\".",
-  "request": "reader POST /api/library/albums/06f930d6-e291-4077-8946-db7c07b518c2/stories",
+  "request": "reader POST /api/library/albums/<uuid>/stories",
   "shape": {
    "action": "str",
    "message": "str",
@@ -5424,7 +5446,7 @@
  },
  "library: album add story bad": {
   "message": "Truyện không hợp lệ.",
-  "request": "reader POST /api/library/albums/06f930d6-e291-4077-8946-db7c07b518c2/stories",
+  "request": "reader POST /api/library/albums/<uuid>/stories",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -5434,7 +5456,7 @@
  },
  "library: album copy": {
   "message": "Album \"Album <hex> sửa\" đã có đủ các truyện này.",
-  "request": "outsider POST /api/library/albums/06f930d6-e291-4077-8946-db7c07b518c2/copy",
+  "request": "outsider POST /api/library/albums/<uuid>/copy",
   "shape": {
    "data": {
     "added": "num",
@@ -5489,7 +5511,7 @@
  },
  "library: album delete": {
   "message": "Đã xóa album.",
-  "request": "reader DELETE /api/library/albums/06f930d6-e291-4077-8946-db7c07b518c2",
+  "request": "reader DELETE /api/library/albums/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -5499,7 +5521,7 @@
  },
  "library: album delete denied": {
   "message": "Album không tồn tại hoặc không thuộc về bạn.",
-  "request": "outsider DELETE /api/library/albums/06f930d6-e291-4077-8946-db7c07b518c2",
+  "request": "outsider DELETE /api/library/albums/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -5508,7 +5530,7 @@
   "type": "application/json"
  },
  "library: album read guest": {
-  "request": "guest GET /api/library/albums/06f930d6-e291-4077-8946-db7c07b518c2",
+  "request": "guest GET /api/library/albums/<uuid>",
   "shape": {
    "data": {
     "code": "str",
@@ -5558,7 +5580,7 @@
  },
  "library: album read missing": {
   "message": "Album không tồn tại hoặc là album riêng tư.",
-  "request": "guest GET /api/library/albums/99999999-9999-4999-8999-999999999999",
+  "request": "guest GET /api/library/albums/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -5568,7 +5590,7 @@
  },
  "library: album remove story": {
   "message": "Đã bỏ truyện khỏi album \"Album <hex> sửa\".",
-  "request": "reader DELETE /api/library/albums/06f930d6-e291-4077-8946-db7c07b518c2/stories/c7c346a8-a933-474a-967d-0339485651ca",
+  "request": "reader DELETE /api/library/albums/<uuid>/stories/<uuid>",
   "shape": {
    "action": "str",
    "message": "str",
@@ -5579,7 +5601,7 @@
  },
  "library: album save": {
   "message": "Đã lưu album vào mục \"Album đã lưu\".",
-  "request": "outsider POST /api/library/albums/06f930d6-e291-4077-8946-db7c07b518c2/save",
+  "request": "outsider POST /api/library/albums/<uuid>/save",
   "shape": {
    "action": "str",
    "message": "str",
@@ -5590,7 +5612,7 @@
  },
  "library: album share reset": {
   "message": "Đã tạo link chia sẻ mới, link cũ không còn dùng được.",
-  "request": "reader POST /api/library/albums/06f930d6-e291-4077-8946-db7c07b518c2/share-link/reset",
+  "request": "reader POST /api/library/albums/<uuid>/share-link/reset",
   "shape": {
    "data": {
     "share_token": "str"
@@ -5603,7 +5625,7 @@
  },
  "library: album update": {
   "message": "Đã cập nhật album.",
-  "request": "reader PUT /api/library/albums/06f930d6-e291-4077-8946-db7c07b518c2",
+  "request": "reader PUT /api/library/albums/<uuid>",
   "shape": {
    "data": {
     "description": "str",
@@ -5621,7 +5643,7 @@
  },
  "library: album update denied": {
   "message": "Album không tồn tại hoặc không thuộc về bạn.",
-  "request": "outsider PUT /api/library/albums/06f930d6-e291-4077-8946-db7c07b518c2",
+  "request": "outsider PUT /api/library/albums/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -5643,7 +5665,7 @@
   "type": "application/json"
  },
  "library: albums by story": {
-  "request": "reader GET /api/library/albums/by-story/c7c346a8-a933-474a-967d-0339485651ca",
+  "request": "reader GET /api/library/albums/by-story/<uuid>",
   "shape": {
    "data": {
     "mine": [],
@@ -5655,7 +5677,7 @@
   "type": "application/json"
  },
  "library: albums by story guest": {
-  "request": "guest GET /api/library/albums/by-story/c7c346a8-a933-474a-967d-0339485651ca",
+  "request": "guest GET /api/library/albums/by-story/<uuid>",
   "shape": {
    "data": {
     "mine": [],
@@ -5674,7 +5696,7 @@
      "code": "str",
      "copied_from": "null",
      "created_at": "str",
-     "description": "null | str",
+     "description": "null | str | str",
      "has_story": "bool",
      "id": "str",
      "is_public": "bool",
@@ -5856,7 +5878,7 @@
  },
  "library: bookmark delete": {
   "message": "Đã xóa bookmark thành công.",
-  "request": "reader DELETE /api/library/bookmarks/c94f6cfc-7f5f-40ce-9cf7-16b80d11e36b",
+  "request": "reader DELETE /api/library/bookmarks/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -5866,7 +5888,7 @@
  },
  "library: bookmark delete denied": {
   "message": "Bookmark không tồn tại hoặc không thuộc về bạn.",
-  "request": "outsider DELETE /api/library/bookmarks/c94f6cfc-7f5f-40ce-9cf7-16b80d11e36b",
+  "request": "outsider DELETE /api/library/bookmarks/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -5876,7 +5898,7 @@
  },
  "library: bookmark delete missing": {
   "message": "Bookmark không tồn tại hoặc không thuộc về bạn.",
-  "request": "reader DELETE /api/library/bookmarks/99999999-9999-4999-8999-999999999999",
+  "request": "reader DELETE /api/library/bookmarks/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -5904,7 +5926,7 @@
   "type": "application/json"
  },
  "library: favorite status": {
-  "request": "reader GET /api/library/favorites/status/c7c346a8-a933-474a-967d-0339485651ca",
+  "request": "reader GET /api/library/favorites/status/<uuid>",
   "shape": {
    "category": "str",
    "is_favorite": "bool",
@@ -5914,7 +5936,7 @@
   "type": "application/json"
  },
  "library: favorite status guest": {
-  "request": "guest GET /api/library/favorites/status/c7c346a8-a933-474a-967d-0339485651ca",
+  "request": "guest GET /api/library/favorites/status/<uuid>",
   "shape": {
    "category": "null",
    "is_favorite": "bool",
@@ -6150,8 +6172,8 @@
     "personalized": "bool",
     "stories": [
      {
-      "author_name": "null | null | null | null | str | str | str | str | str | str | str | str | str | str | str | str",
-      "cover_image_url": "str",
+      "author_name": "null | null | null | null | null | null | null | str | str | str | str | str | str | str | str",
+      "cover_image_url": "null | str | str | str | str | str | str | str | str | str | str | str | str | str | str | str | str",
       "created_at": "str",
       "id": "str",
       "last_chapter_at": "str",
@@ -6179,8 +6201,27 @@
   "type": "text/plain"
  },
  "media: export create": {
-  "message": "Hãy chọn gộp thành 1 tệp hoặc mỗi chương 1 tệp.",
-  "request": "reader POST /api/media/stories/contract-4280a8/exports",
+  "request": "reader POST /api/media/stories/contract-<hex>/exports",
+  "shape": {
+   "data": {
+    "chapter_count": "num",
+    "error": "null",
+    "file_name": "null",
+    "file_size": "null",
+    "format": "str",
+    "id": "str",
+    "mode": "str",
+    "progress": "num",
+    "status": "str"
+   },
+   "success": "bool"
+  },
+  "status": 200,
+  "type": "application/json"
+ },
+ "media: export create bad": {
+  "message": "Định dạng phải là EPUB hoặc PDF.",
+  "request": "guest POST /api/media/stories/contract-<hex>/exports",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -6188,9 +6229,9 @@
   "status": 400,
   "type": "application/json"
  },
- "media: export create bad": {
-  "message": "Định dạng phải là EPUB hoặc PDF.",
-  "request": "guest POST /api/media/stories/contract-4280a8/exports",
+ "media: export create bad mode": {
+  "message": "Hãy chọn gộp thành 1 tệp hoặc mỗi chương 1 tệp.",
+  "request": "guest POST /api/media/stories/contract-<hex>/exports",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -6199,23 +6240,48 @@
   "type": "application/json"
  },
  "media: export create missing story": {
-  "message": "Hãy chọn gộp thành 1 tệp hoặc mỗi chương 1 tệp.",
+  "message": "Không tìm thấy truyện.",
   "request": "guest POST /api/media/stories/khong-co-truyen/exports",
   "shape": {
    "message": "str",
    "success": "bool"
   },
-  "status": 400,
+  "status": 404,
   "type": "application/json"
+ },
+ "media: export download": {
+  "bytes": "some",
+  "request": "reader GET /api/media/exports/<uuid>/download",
+  "status": 200,
+  "type": "application/epub+zip"
  },
  "media: export download missing": {
   "message": "Không tìm thấy tệp.",
-  "request": "guest GET /api/media/exports/99999999-9999-4999-8999-999999999999/download",
+  "request": "guest GET /api/media/exports/<uuid>/download",
   "shape": {
    "message": "str",
    "success": "bool"
   },
   "status": 404,
+  "type": "application/json"
+ },
+ "media: export get": {
+  "request": "reader GET /api/media/exports/<uuid>",
+  "shape": {
+   "data": {
+    "chapter_count": "num",
+    "error": "null",
+    "file_name": "str",
+    "file_size": "num",
+    "format": "str",
+    "id": "str",
+    "mode": "str",
+    "progress": "num",
+    "status": "str"
+   },
+   "success": "bool"
+  },
+  "status": 200,
   "type": "application/json"
  },
  "media: export get bad": {
@@ -6230,7 +6296,7 @@
  },
  "media: export get missing": {
   "message": "Không tìm thấy yêu cầu tải.",
-  "request": "guest GET /api/media/exports/99999999-9999-4999-8999-999999999999",
+  "request": "guest GET /api/media/exports/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -6307,13 +6373,22 @@
   "type": "application/json"
  },
  "media: upload image for serving": {
-  "message": "Lỗi hệ thống.",
+  "message": "Tải lên hình ảnh thành công",
   "request": "reader POST /api/media/upload/image",
   "shape": {
+   "data": {
+    "filename": "str",
+    "height": "num",
+    "mimetype": "str",
+    "originalName": "str",
+    "size": "num",
+    "url": "str",
+    "width": "num"
+   },
    "message": "str",
    "success": "bool"
   },
-  "status": 500,
+  "status": 200,
   "type": "application/json"
  },
  "media: upload image guest": {
@@ -6361,13 +6436,23 @@
   "type": "application/json"
  },
  "media: upload manga pages": {
-  "message": "Thiếu hoặc sai story_id.",
+  "message": "Bạn không có quyền đăng chương cho truyện này.",
   "request": "reader POST /api/media/upload/manga-pages",
   "shape": {
    "message": "str",
    "success": "bool"
   },
-  "status": 400,
+  "status": 403,
+  "type": "application/json"
+ },
+ "media: upload manga pages missing story": {
+  "message": "Bạn không có quyền đăng chương cho truyện này.",
+  "request": "reader POST /api/media/upload/manga-pages",
+  "shape": {
+   "message": "str",
+   "success": "bool"
+  },
+  "status": 403,
   "type": "application/json"
  },
  "media: uploads missing": {
@@ -6379,6 +6464,32 @@
   },
   "status": 404,
   "type": "application/json"
+ },
+ "media: uploads resized": {
+  "message": "w phải là một trong: 480, 800, 1280, 1920",
+  "request": "guest GET /uploads/posts/b-<hex>-<hex>.png",
+  "shape": {
+   "message": "str",
+   "success": "bool"
+  },
+  "status": 400,
+  "type": "application/json"
+ },
+ "media: uploads resized bad": {
+  "message": "w phải là một trong: 480, 800, 1280, 1920",
+  "request": "guest GET /uploads/posts/b-<hex>-<hex>.png",
+  "shape": {
+   "message": "str",
+   "success": "bool"
+  },
+  "status": 400,
+  "type": "application/json"
+ },
+ "media: uploads static": {
+  "bytes": "some",
+  "request": "guest GET /uploads/posts/b-<hex>-<hex>.png",
+  "status": 200,
+  "type": "image/png"
  },
  "messaging: block": {
   "message": "Đã chặn Hana 🌸.",
@@ -6402,7 +6513,7 @@
  },
  "messaging: broadcast delete missing": {
   "message": "Đã xóa thông báo toàn site.",
-  "request": "admin DELETE /api/msg/admin/broadcasts/99999999-9999-4999-8999-999999999999",
+  "request": "admin DELETE /api/msg/admin/broadcasts/<uuid>",
   "shape": {
    "data": "null",
    "message": "str",
@@ -6442,7 +6553,7 @@
  },
  "messaging: group message delete": {
   "message": "Đã xóa tin nhắn",
-  "request": "outsider DELETE /api/msg/groups/f1879af6-34b7-4961-8f32-b1238e6cdc42/messages/389df246-3a64-4eea-9578-4b1f076f059a",
+  "request": "outsider DELETE /api/msg/groups/<uuid>/messages/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -6452,7 +6563,7 @@
  },
  "messaging: group message delete denied": {
   "message": "Bạn chỉ có thể xóa tin nhắn của chính mình.",
-  "request": "reader DELETE /api/msg/groups/f1879af6-34b7-4961-8f32-b1238e6cdc42/messages/389df246-3a64-4eea-9578-4b1f076f059a",
+  "request": "reader DELETE /api/msg/groups/<uuid>/messages/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -6461,7 +6572,7 @@
   "type": "application/json"
  },
  "messaging: group messages": {
-  "request": "outsider GET /api/msg/groups/f1879af6-34b7-4961-8f32-b1238e6cdc42/messages",
+  "request": "outsider GET /api/msg/groups/<uuid>/messages",
   "shape": {
    "data": [
     {
@@ -6484,7 +6595,7 @@
  },
  "messaging: group messages denied": {
   "message": "Chỉ thành viên nhóm mới xem được chatroom nội bộ.",
-  "request": "reader GET /api/msg/groups/e0000000-0000-0000-0000-000000000001/messages",
+  "request": "reader GET /api/msg/groups/<uuid>/messages",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -6494,7 +6605,7 @@
  },
  "messaging: group messages guest": {
   "message": "Bạn chưa đăng nhập.",
-  "request": "guest GET /api/msg/groups/e0000000-0000-0000-0000-000000000001/messages",
+  "request": "guest GET /api/msg/groups/<uuid>/messages",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -6503,7 +6614,7 @@
   "type": "application/json"
  },
  "messaging: group send": {
-  "request": "outsider POST /api/msg/groups/f1879af6-34b7-4961-8f32-b1238e6cdc42/messages",
+  "request": "outsider POST /api/msg/groups/<uuid>/messages",
   "shape": {
    "data": {
     "attachments": [],
@@ -6524,7 +6635,7 @@
  },
  "messaging: group send bad": {
   "message": "Nội dung tin nhắn không được để trống.",
-  "request": "outsider POST /api/msg/groups/f1879af6-34b7-4961-8f32-b1238e6cdc42/messages",
+  "request": "outsider POST /api/msg/groups/<uuid>/messages",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -6534,7 +6645,7 @@
  },
  "messaging: group send denied": {
   "message": "Chỉ thành viên trong nhóm mới có quyền gửi tin nhắn trong chatroom nội bộ.",
-  "request": "reader POST /api/msg/groups/e0000000-0000-0000-0000-000000000001/messages",
+  "request": "reader POST /api/msg/groups/<uuid>/messages",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -6622,7 +6733,7 @@
  },
  "messaging: label delete": {
   "message": "Đã xóa nhãn.",
-  "request": "reader DELETE /api/msg/messages/labels/5ef80649-2397-4063-934a-6aaa269b5b2d",
+  "request": "reader DELETE /api/msg/messages/labels/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -6631,7 +6742,7 @@
   "type": "application/json"
  },
  "messaging: label update": {
-  "request": "reader PATCH /api/msg/messages/labels/5ef80649-2397-4063-934a-6aaa269b5b2d",
+  "request": "reader PATCH /api/msg/messages/labels/<uuid>",
   "shape": {
    "data": {
     "color": "str",
@@ -6645,7 +6756,7 @@
  },
  "messaging: label update missing": {
   "message": "Không tìm thấy nhãn.",
-  "request": "reader PATCH /api/msg/messages/labels/99999999-9999-4999-8999-999999999999",
+  "request": "reader PATCH /api/msg/messages/labels/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -6657,7 +6768,14 @@
   "request": "reader GET /api/msg/messages/labels",
   "shape": {
    "data": {
-    "labels": []
+    "labels": [
+     {
+      "color": "str",
+      "conversation_count": "num",
+      "id": "str",
+      "name": "str"
+     }
+    ]
    },
    "success": "bool"
   },
@@ -6702,7 +6820,7 @@
  },
  "messaging: notifications delete missing": {
   "message": "Thông báo không tồn tại.",
-  "request": "reader DELETE /api/msg/notifications/99999999-9999-4999-8999-999999999999",
+  "request": "reader DELETE /api/msg/notifications/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -6722,7 +6840,7 @@
  },
  "messaging: notifications read missing": {
   "message": "Thông báo không tồn tại.",
-  "request": "reader PUT /api/msg/notifications/99999999-9999-4999-8999-999999999999/read",
+  "request": "reader PUT /api/msg/notifications/<uuid>/read",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -6813,7 +6931,7 @@
  },
  "messaging: pin": {
   "message": "Đã ghim tin nhắn.",
-  "request": "reader POST /api/msg/messages/reader_yuki/pins/cdfb6d14-ff55-4b97-b8c7-78ad4d3925ed",
+  "request": "reader POST /api/msg/messages/reader_yuki/pins/<uuid>",
   "shape": {
    "data": {
     "id": "str",
@@ -6980,7 +7098,7 @@
  },
  "messaging: unpin": {
   "message": "Đã bỏ ghim.",
-  "request": "reader DELETE /api/msg/messages/reader_yuki/pins/cdfb6d14-ff55-4b97-b8c7-78ad4d3925ed",
+  "request": "reader DELETE /api/msg/messages/reader_yuki/pins/<uuid>",
   "shape": {
    "data": {
     "id": "str",
@@ -7012,11 +7130,11 @@
       "actor_name": "str",
       "created_at": "str",
       "detail": {
-       "assignee_name": "?\"?\\\"?\\\\\\\"null\\\\\\\"\\\"\"",
+       "assignee_name": "?\"?\\\"?\\\\\\\"?\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"str\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ | str | null | str | null\\\\\\\"\\\"\"",
        "chapter_number": "num",
-       "draft_id": "?\\\\\\\"str\\\\ | str | str",
-       "kind": "?\"?\\\"?\\\\\\\"str\\\\\\\"\\\"\"",
-       "task_id": "?\"?\\\"?\\\\\\\"str\\\\\\\"\\\"\"",
+       "draft_id": "?\\\\\\\\\\\\\\\"?\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"?\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"?\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"?\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"str\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"\\\\\\\\ | str | str | str",
+       "kind": "?\"?\\\"?\\\\\\\"?\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"str\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ | str | str | str | str\\\\\\\"\\\"\"",
+       "task_id": "?\"?\\\"?\\\\\\\"?\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"str\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ | str | str | str | str\\\\\\\"\\\"\"",
        "title": "str"
       },
       "id": "num",
@@ -7026,25 +7144,59 @@
     "keeper_of": [
      "str"
     ],
-    "proposals": [],
+    "proposals": [
+     {
+      "base_version": "num",
+      "chapter_deleted": "bool",
+      "chapter_id": "str",
+      "copied_from": "null",
+      "created_at": "str",
+      "current_version": "num",
+      "id": "str",
+      "last_round": "num",
+      "lock_name": "null",
+      "lock_until": "null",
+      "lock_user": "null",
+      "meta": {
+       "chapter_number": "num",
+       "intro_note": "null",
+       "outro_note": "null",
+       "title": "str",
+       "volume_id": "str"
+      },
+      "note": "str",
+      "owner_id": "str",
+      "owner_name": "str",
+      "publish_at": "null",
+      "published_version": "null",
+      "schedule_error": "null",
+      "schedule_prev": "null",
+      "scheduled_name": "null",
+      "status": "str",
+      "story_id": "str",
+      "submitted_at": "str",
+      "updated_at": "str",
+      "version": "num"
+     }
+    ],
     "stories": [
      "str"
     ],
     "tasks": [
      {
-      "assignee_id": "null",
-      "assignee_name": "null",
+      "assignee_id": "null | str",
+      "assignee_name": "null | str",
       "chapter_id": "str",
       "chapter_number": "num",
       "created_at": "str",
       "created_name": "str",
-      "done_at": "null",
-      "draft_id": "null",
+      "done_at": "null | str",
+      "draft_id": "str",
       "due_at": "null",
       "id": "str",
       "job_id": "str",
       "kind": "str",
-      "note": "str",
+      "note": "null | str",
       "status": "str",
       "step": "num",
       "steps": [
@@ -7072,7 +7224,7 @@
   "type": "application/json"
  },
  "workspace: compare": {
-  "request": "owner GET /api/ws/chapters/6c48cc5a-4fde-44ca-9375-18a2a7740cf0/compare",
+  "request": "owner GET /api/ws/chapters/<uuid>/compare",
   "shape": {
    "data": {
     "blocks": {
@@ -7131,7 +7283,7 @@
  },
  "workspace: compare bad": {
   "message": "Không có phiên bản này.",
-  "request": "owner GET /api/ws/chapters/6c48cc5a-4fde-44ca-9375-18a2a7740cf0/compare",
+  "request": "owner GET /api/ws/chapters/<uuid>/compare",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -7140,7 +7292,7 @@
   "type": "application/json"
  },
  "workspace: draft card": {
-  "request": "owner GET /api/ws/drafts/d827fbd9-c153-47ea-b983-74e6f5179df2/card",
+  "request": "owner GET /api/ws/drafts/<uuid>/card",
   "shape": {
    "data": {
     "access": "str",
@@ -7165,7 +7317,7 @@
   "type": "application/json"
  },
  "workspace: draft card denied": {
-  "request": "reader GET /api/ws/drafts/d827fbd9-c153-47ea-b983-74e6f5179df2/card",
+  "request": "reader GET /api/ws/drafts/<uuid>/card",
   "shape": {
    "data": {
     "access": "str",
@@ -7177,18 +7329,19 @@
   "type": "application/json"
  },
  "workspace: draft comment": {
-  "message": "Bản nháp này chưa gửi đề xuất lần nào.",
-  "request": "owner POST /api/ws/drafts/d827fbd9-c153-47ea-b983-74e6f5179df2/comments",
+  "request": "owner POST /api/ws/drafts/<uuid>/comments",
   "shape": {
-   "message": "str",
+   "data": {
+    "id": "num"
+   },
    "success": "bool"
   },
-  "status": 404,
+  "status": 201,
   "type": "application/json"
  },
  "workspace: draft comment bad": {
   "message": "Góp ý cần có nội dung (tối đa 2000 ký tự).",
-  "request": "owner POST /api/ws/drafts/d827fbd9-c153-47ea-b983-74e6f5179df2/comments",
+  "request": "owner POST /api/ws/drafts/<uuid>/comments",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -7198,7 +7351,7 @@
  },
  "workspace: draft copy denied": {
   "message": "Bạn không có quyền xem bản nháp này.",
-  "request": "reader POST /api/ws/drafts/d827fbd9-c153-47ea-b983-74e6f5179df2/copy",
+  "request": "reader POST /api/ws/drafts/<uuid>/copy",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -7253,7 +7406,7 @@
   "type": "application/json"
  },
  "workspace: draft discard": {
-  "request": "owner DELETE /api/ws/drafts/d827fbd9-c153-47ea-b983-74e6f5179df2",
+  "request": "owner DELETE /api/ws/drafts/<uuid>",
   "shape": {
    "data": {
     "id": "str"
@@ -7265,7 +7418,7 @@
  },
  "workspace: draft discard denied": {
   "message": "Đây không phải bản nháp của bạn.",
-  "request": "reader DELETE /api/ws/drafts/d827fbd9-c153-47ea-b983-74e6f5179df2",
+  "request": "reader DELETE /api/ws/drafts/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -7274,7 +7427,7 @@
   "type": "application/json"
  },
  "workspace: draft discard proposal": {
-  "request": "outsider DELETE /api/ws/drafts/6dd01318-f17f-4ccb-8ef4-76bbb6c82445",
+  "request": "outsider DELETE /api/ws/drafts/<uuid>",
   "shape": {
    "data": {
     "id": "str"
@@ -7285,7 +7438,7 @@
   "type": "application/json"
  },
  "workspace: draft get": {
-  "request": "owner GET /api/ws/drafts/d827fbd9-c153-47ea-b983-74e6f5179df2",
+  "request": "owner GET /api/ws/drafts/<uuid>",
   "shape": {
    "data": {
     "access": "str",
@@ -7338,7 +7491,7 @@
  },
  "workspace: draft get denied": {
   "message": "Bạn không có quyền xem bản nháp này.",
-  "request": "reader GET /api/ws/drafts/d827fbd9-c153-47ea-b983-74e6f5179df2",
+  "request": "reader GET /api/ws/drafts/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -7348,7 +7501,7 @@
  },
  "workspace: draft get missing": {
   "message": "Bản nháp không tồn tại.",
-  "request": "owner GET /api/ws/drafts/99999999-9999-4999-8999-999999999999",
+  "request": "owner GET /api/ws/drafts/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -7357,7 +7510,7 @@
   "type": "application/json"
  },
  "workspace: draft lock": {
-  "request": "owner POST /api/ws/drafts/d827fbd9-c153-47ea-b983-74e6f5179df2/lock",
+  "request": "owner POST /api/ws/drafts/<uuid>/lock",
   "shape": {
    "data": {
     "lock_until": "str"
@@ -7368,7 +7521,7 @@
   "type": "application/json"
  },
  "workspace: draft lock again": {
-  "request": "owner POST /api/ws/drafts/d827fbd9-c153-47ea-b983-74e6f5179df2/lock",
+  "request": "owner POST /api/ws/drafts/<uuid>/lock",
   "shape": {
    "data": {
     "lock_until": "str"
@@ -7380,7 +7533,7 @@
  },
  "workspace: draft pull apply bad": {
   "message": "Bản nháp vừa được lưu ở nơi khác (tab hoặc máy khác). Hãy tải lại để xem bản mới nhất.",
-  "request": "owner POST /api/ws/drafts/d827fbd9-c153-47ea-b983-74e6f5179df2/pull",
+  "request": "owner POST /api/ws/drafts/<uuid>/pull",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -7389,7 +7542,7 @@
   "type": "application/json"
  },
  "workspace: draft pull preview": {
-  "request": "owner GET /api/ws/drafts/d827fbd9-c153-47ea-b983-74e6f5179df2/pull",
+  "request": "owner GET /api/ws/drafts/<uuid>/pull",
   "shape": {
    "data": {
     "blocks": {},
@@ -7421,7 +7574,7 @@
  },
  "workspace: draft reclaim denied": {
   "message": "Chỉ người giữ truyện nhận lại được nháp.",
-  "request": "reader POST /api/ws/drafts/d827fbd9-c153-47ea-b983-74e6f5179df2/reclaim",
+  "request": "reader POST /api/ws/drafts/<uuid>/reclaim",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -7430,17 +7583,94 @@
   "type": "application/json"
  },
  "workspace: draft review": {
-  "message": "Bản nháp này chưa gửi đề xuất lần nào.",
-  "request": "owner GET /api/ws/drafts/d827fbd9-c153-47ea-b983-74e6f5179df2/review",
+  "request": "owner GET /api/ws/drafts/<uuid>/review",
   "shape": {
-   "message": "str",
+   "data": {
+    "blocks": {
+     "8920577f7383f8e55c1381701380edb0a4c08d0b63ae96e8ef6aa50861acaa7f": {
+      "text": "str",
+      "type": "str"
+     }
+    },
+    "can_merge": "bool",
+    "changes": [
+     {
+      "hash": "str",
+      "op": "str"
+     }
+    ],
+    "comments": [],
+    "draft": {
+     "base_version": "null",
+     "chapter_deleted": "bool",
+     "chapter_id": "null",
+     "copied_from": "null",
+     "created_at": "str",
+     "current_version": "null",
+     "id": "str",
+     "last_round": "num",
+     "lock_name": "null",
+     "lock_until": "null",
+     "lock_user": "null",
+     "meta": {
+      "chapter_number": "num",
+      "intro_note": "null",
+      "outro_note": "null",
+      "title": "str",
+      "volume_id": "null"
+     },
+     "owner_id": "str",
+     "owner_name": "str",
+     "publish_at": "null",
+     "published_version": "null",
+     "schedule_error": "null",
+     "schedule_prev": "null",
+     "scheduled_name": "null",
+     "status": "str",
+     "story_id": "str",
+     "updated_at": "str",
+     "version": "num"
+    },
+    "is_owner": "bool",
+    "merge_conflicts": "num",
+    "meta": {
+     "chapter_number": "num",
+     "intro_note": "null",
+     "outro_note": "null",
+     "title": "str",
+     "volume_id": "null"
+    },
+    "round": "num",
+    "rounds": [
+     {
+      "base_version": "null",
+      "decided_at": "str",
+      "decided_name": "str",
+      "decision": "str",
+      "decision_note": "str",
+      "merged_version": "null",
+      "meta": {
+       "chapter_number": "num",
+       "intro_note": "null",
+       "outro_note": "null",
+       "title": "str",
+       "volume_id": "null"
+      },
+      "note": "str",
+      "round": "num",
+      "submitted_at": "str"
+     }
+    ],
+    "since_previous": "null",
+    "story_removed": "bool"
+   },
    "success": "bool"
   },
-  "status": 404,
+  "status": 200,
   "type": "application/json"
  },
  "workspace: draft unlock": {
-  "request": "owner DELETE /api/ws/drafts/d827fbd9-c153-47ea-b983-74e6f5179df2/lock",
+  "request": "owner DELETE /api/ws/drafts/<uuid>/lock",
   "shape": {
    "data": "null",
    "success": "bool"
@@ -7450,7 +7680,7 @@
  },
  "workspace: draft unschedule none": {
   "message": "Bản nháp này không còn hẹn giờ (có thể vừa được đăng).",
-  "request": "owner DELETE /api/ws/drafts/d827fbd9-c153-47ea-b983-74e6f5179df2/schedule",
+  "request": "owner DELETE /api/ws/drafts/<uuid>/schedule",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -7459,7 +7689,7 @@
   "type": "application/json"
  },
  "workspace: draft unshare missing": {
-  "request": "owner DELETE /api/ws/drafts/d827fbd9-c153-47ea-b983-74e6f5179df2/shares/99999999-9999-4999-8999-999999999999",
+  "request": "owner DELETE /api/ws/drafts/<uuid>/shares/<uuid>",
   "shape": {
    "data": "null",
    "success": "bool"
@@ -7470,7 +7700,40 @@
  "workspace: drafts": {
   "request": "owner GET /api/ws/drafts",
   "shape": {
-   "data": [],
+   "data": [
+    {
+     "base_version": "num",
+     "block_count": "num",
+     "chapter_deleted": "bool",
+     "chapter_id": "str",
+     "copied_from": "null",
+     "created_at": "str",
+     "current_version": "num",
+     "id": "str",
+     "last_round": "num",
+     "lock_name": "null | str | str",
+     "lock_until": "null | str | str",
+     "lock_user": "null | str | str",
+     "meta": {
+      "chapter_number": "num",
+      "intro_note": "null",
+      "outro_note": "null",
+      "title": "str",
+      "volume_id": "str"
+     },
+     "owner_id": "str",
+     "owner_name": "str",
+     "publish_at": "null",
+     "published_version": "null",
+     "schedule_error": "null",
+     "schedule_prev": "null",
+     "scheduled_name": "null",
+     "status": "str",
+     "story_id": "str",
+     "updated_at": "str",
+     "version": "num"
+    }
+   ],
    "success": "bool"
   },
   "status": 200,
@@ -7516,7 +7779,7 @@
  },
  "workspace: offer decline missing": {
   "message": "Bản gửi này không còn chờ bạn nhận.",
-  "request": "owner DELETE /api/ws/drafts/d827fbd9-c153-47ea-b983-74e6f5179df2/offers/99999999-9999-4999-8999-999999999999",
+  "request": "owner DELETE /api/ws/drafts/<uuid>/offers/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -7526,7 +7789,7 @@
  },
  "workspace: offer preview missing": {
   "message": "Bản gửi này không còn chờ bạn nhận.",
-  "request": "owner GET /api/ws/drafts/d827fbd9-c153-47ea-b983-74e6f5179df2/offers/99999999-9999-4999-8999-999999999999",
+  "request": "owner GET /api/ws/drafts/<uuid>/offers/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -7566,7 +7829,7 @@
  },
  "workspace: revision missing": {
   "message": "Không có phiên bản này.",
-  "request": "owner GET /api/ws/chapters/6c48cc5a-4fde-44ca-9375-18a2a7740cf0/revisions/99",
+  "request": "owner GET /api/ws/chapters/<uuid>/revisions/99",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -7575,7 +7838,7 @@
   "type": "application/json"
  },
  "workspace: revision one": {
-  "request": "owner GET /api/ws/chapters/6c48cc5a-4fde-44ca-9375-18a2a7740cf0/revisions/1",
+  "request": "owner GET /api/ws/chapters/<uuid>/revisions/1",
   "shape": {
    "data": {
     "author_id": "str",
@@ -7608,7 +7871,7 @@
   "type": "application/json"
  },
  "workspace: revisions": {
-  "request": "owner GET /api/ws/chapters/6c48cc5a-4fde-44ca-9375-18a2a7740cf0/revisions",
+  "request": "owner GET /api/ws/chapters/<uuid>/revisions",
   "shape": {
    "data": [
     {
@@ -7641,7 +7904,7 @@
  },
  "workspace: revisions denied": {
   "message": "Bạn không tham gia truyện này nên không xem được lịch sử chương.",
-  "request": "reader GET /api/ws/chapters/6c48cc5a-4fde-44ca-9375-18a2a7740cf0/revisions",
+  "request": "reader GET /api/ws/chapters/<uuid>/revisions",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -7651,7 +7914,7 @@
  },
  "workspace: revisions guest": {
   "message": "Bạn chưa đăng nhập hoặc phiên đăng nhập đã hết hạn.",
-  "request": "guest GET /api/ws/chapters/6c48cc5a-4fde-44ca-9375-18a2a7740cf0/revisions",
+  "request": "guest GET /api/ws/chapters/<uuid>/revisions",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -7661,7 +7924,7 @@
  },
  "workspace: rewind bad": {
   "message": "Không có phiên bản này (hoặc đó là bản đã xóa).",
-  "request": "owner POST /api/ws/chapters/6c48cc5a-4fde-44ca-9375-18a2a7740cf0/rewind",
+  "request": "owner POST /api/ws/chapters/<uuid>/rewind",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -7671,7 +7934,7 @@
  },
  "workspace: rewind denied": {
   "message": "Chỉ người giữ truyện (chủ truyện, Trưởng nhóm/Mod của nhóm) mới khôi phục được phiên bản.",
-  "request": "reader POST /api/ws/chapters/6c48cc5a-4fde-44ca-9375-18a2a7740cf0/rewind",
+  "request": "reader POST /api/ws/chapters/<uuid>/rewind",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -7680,11 +7943,21 @@
   "type": "application/json"
  },
  "workspace: task cancel": {
-  "request": "owner POST /api/ws/tasks/5c33c4eb-bdfb-4eb9-aa34-dd8b4c0b7fb5/cancel",
+  "message": "Việc này không còn ở trạng thái đó (có người vừa nhận, đã xong hoặc đã hủy).",
+  "request": "owner POST /api/ws/tasks/<uuid>/cancel",
+  "shape": {
+   "message": "str",
+   "success": "bool"
+  },
+  "status": 409,
+  "type": "application/json"
+ },
+ "workspace: task claim": {
+  "request": "outsider POST /api/ws/tasks/<uuid>/claim",
   "shape": {
    "data": {
-    "assignee_id": "null",
-    "assignee_name": "null",
+    "assignee_id": "str",
+    "assignee_name": "str",
     "chapter_id": "str",
     "chapter_number": "num",
     "created_at": "str",
@@ -7710,24 +7983,35 @@
   "status": 200,
   "type": "application/json"
  },
- "workspace: task claim": {
-  "message": "Bạn không tham gia truyện này.",
-  "request": "outsider POST /api/ws/tasks/5c33c4eb-bdfb-4eb9-aa34-dd8b4c0b7fb5/claim",
-  "shape": {
-   "message": "str",
-   "success": "bool"
-  },
-  "status": 403,
-  "type": "application/json"
- },
  "workspace: task claim again": {
-  "message": "Bạn không tham gia truyện này.",
-  "request": "outsider POST /api/ws/tasks/5c33c4eb-bdfb-4eb9-aa34-dd8b4c0b7fb5/claim",
+  "request": "outsider POST /api/ws/tasks/<uuid>/claim",
   "shape": {
-   "message": "str",
+   "data": {
+    "assignee_id": "str",
+    "assignee_name": "str",
+    "chapter_id": "str",
+    "chapter_number": "num",
+    "created_at": "str",
+    "created_name": "str",
+    "done_at": "null",
+    "draft_id": "null",
+    "due_at": "null",
+    "id": "str",
+    "job_id": "str",
+    "kind": "str",
+    "note": "str",
+    "status": "str",
+    "step": "num",
+    "steps": [
+     "str"
+    ],
+    "story_id": "str",
+    "title": "str",
+    "updated_at": "str"
+   },
    "success": "bool"
   },
-  "status": 403,
+  "status": 200,
   "type": "application/json"
  },
  "workspace: task create": {
@@ -7782,17 +8066,38 @@
   "type": "application/json"
  },
  "workspace: task done early": {
-  "message": "Bạn không tham gia truyện này.",
-  "request": "outsider POST /api/ws/tasks/5c33c4eb-bdfb-4eb9-aa34-dd8b4c0b7fb5/done",
+  "request": "outsider POST /api/ws/tasks/<uuid>/done",
   "shape": {
-   "message": "str",
+   "data": {
+    "assignee_id": "str",
+    "assignee_name": "str",
+    "chapter_id": "str",
+    "chapter_number": "num",
+    "created_at": "str",
+    "created_name": "str",
+    "done_at": "str",
+    "draft_id": "str",
+    "due_at": "null",
+    "id": "str",
+    "job_id": "str",
+    "kind": "str",
+    "note": "str",
+    "status": "str",
+    "step": "num",
+    "steps": [
+     "str"
+    ],
+    "story_id": "str",
+    "title": "str",
+    "updated_at": "str"
+   },
    "success": "bool"
   },
-  "status": 403,
+  "status": 200,
   "type": "application/json"
  },
  "workspace: task edit": {
-  "request": "owner PATCH /api/ws/tasks/5c33c4eb-bdfb-4eb9-aa34-dd8b4c0b7fb5",
+  "request": "owner PATCH /api/ws/tasks/<uuid>",
   "shape": {
    "data": {
     "assignee_id": "null",
@@ -7824,7 +8129,7 @@
  },
  "workspace: task edit denied": {
   "message": "Bạn không tham gia truyện này.",
-  "request": "reader PATCH /api/ws/tasks/5c33c4eb-bdfb-4eb9-aa34-dd8b4c0b7fb5",
+  "request": "reader PATCH /api/ws/tasks/<uuid>",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -7834,7 +8139,7 @@
  },
  "workspace: task missing": {
   "message": "Không có việc này.",
-  "request": "owner POST /api/ws/tasks/99999999-9999-4999-8999-999999999999/claim",
+  "request": "owner POST /api/ws/tasks/<uuid>/claim",
   "shape": {
    "message": "str",
    "success": "bool"
@@ -7843,23 +8148,65 @@
   "type": "application/json"
  },
  "workspace: task start": {
-  "message": "Bạn không tham gia truyện này.",
-  "request": "outsider POST /api/ws/tasks/5c33c4eb-bdfb-4eb9-aa34-dd8b4c0b7fb5/start",
+  "request": "outsider POST /api/ws/tasks/<uuid>/start",
   "shape": {
-   "message": "str",
+   "data": {
+    "assignee_id": "str",
+    "assignee_name": "str",
+    "chapter_id": "str",
+    "chapter_number": "num",
+    "created_at": "str",
+    "created_name": "str",
+    "done_at": "null",
+    "draft_id": "str",
+    "due_at": "null",
+    "id": "str",
+    "job_id": "str",
+    "kind": "str",
+    "note": "str",
+    "status": "str",
+    "step": "num",
+    "steps": [
+     "str"
+    ],
+    "story_id": "str",
+    "title": "str",
+    "updated_at": "str"
+   },
    "success": "bool"
   },
-  "status": 403,
+  "status": 200,
   "type": "application/json"
  },
  "workspace: task unclaim": {
-  "message": "Bạn không tham gia truyện này.",
-  "request": "outsider POST /api/ws/tasks/5c33c4eb-bdfb-4eb9-aa34-dd8b4c0b7fb5/unclaim",
+  "request": "outsider POST /api/ws/tasks/<uuid>/unclaim",
   "shape": {
-   "message": "str",
+   "data": {
+    "assignee_id": "null",
+    "assignee_name": "null",
+    "chapter_id": "str",
+    "chapter_number": "num",
+    "created_at": "str",
+    "created_name": "str",
+    "done_at": "null",
+    "draft_id": "null",
+    "due_at": "null",
+    "id": "str",
+    "job_id": "str",
+    "kind": "str",
+    "note": "str",
+    "status": "str",
+    "step": "num",
+    "steps": [
+     "str"
+    ],
+    "story_id": "str",
+    "title": "str",
+    "updated_at": "str"
+   },
    "success": "bool"
   },
-  "status": 403,
+  "status": 200,
   "type": "application/json"
  },
  "workspace: tasks guest": {

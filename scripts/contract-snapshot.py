@@ -34,7 +34,7 @@ ap.add_argument("--base", default="http://127.0.0.1:3000")  # not localhost: Win
 ap.add_argument("--compare", action="store_true")
 ap.add_argument("--only", default="")
 ap.add_argument("--password", default="password123")
-ap.add_argument("--delay", type=float, default=0.12, help="seconds between calls (gateway/app rate limits)")
+ap.add_argument("--delay", type=float, default=0.06, help="seconds between calls (nginx limit_req allows 20 requests/s per IP)")
 args = ap.parse_args()
 sys.stdout.reconfigure(encoding="utf-8")
 ONLY = {x for x in args.only.split(",") if x}
@@ -121,18 +121,14 @@ class Client:
             h["X-CSRF-Token"] = self.cookie("nh_csrf")
         h.update(headers or {})
         r = urllib.request.Request((base or args.base) + path, method=method, headers=h, data=data)
-        for attempt in range(6):
-            time.sleep(args.delay)
-            try:
-                with self.op.open(r, timeout=60) as res:
-                    return res.status, res.headers.get("Content-Type", ""), res.read()
-            except urllib.error.HTTPError as e:
-                if e.code == 429 and attempt < 5:
-                    time.sleep(min(int(e.headers.get("Retry-After") or 2), 20))
-                    continue
-                return e.code, e.headers.get("Content-Type", ""), e.read()
-            except Exception as e:  # connection problem: recorded, not fatal
-                return 0, "", str(e).encode()
+        time.sleep(args.delay)
+        try:
+            with self.op.open(r, timeout=15) as res:
+                return res.status, res.headers.get("Content-Type", ""), res.read()
+        except urllib.error.HTTPError as e:  # 429 is recorded like any other status
+            return e.code, e.headers.get("Content-Type", ""), e.read()
+        except Exception as e:  # connection problem: recorded, not fatal
+            return 0, "", str(e).encode()
         return 0, "", b""
 
     def login(self, user):
@@ -161,7 +157,7 @@ def call(group, name, who, method, path, body=None, **kw):
             js = json.loads(raw or b"null")
         except ValueError:
             js = None
-    rec = {"request": f"{who.name} {method} {path.split('?')[0]}", "status": st, "type": ctype}
+    rec = {"request": norm_msg(f"{who.name} {method} {path.split('?')[0]}"), "status": st, "type": ctype}
     if js is not None:
         rec["shape"] = shape(js)
         if isinstance(js, dict) and "message" in js:
@@ -232,7 +228,7 @@ def flush_internal():
     if p.returncode != 0:
         sys.exit("internal calls failed: " + p.stderr.decode(errors="replace")[:500])
     for c, r in zip(queued_internal, json.loads(p.stdout)):
-        rec = {"request": f"internal({c['svc']}) {c['method']} {c['path'].split('?')[0]}", "status": r["status"], "type": r["type"]}
+        rec = {"request": norm_msg(f"internal({c['svc']}) {c['method']} {c['path'].split('?')[0]}"), "status": r["status"], "type": r["type"]}
         try:
             js = json.loads(r["text"])
             rec["shape"] = shape(js)
@@ -251,7 +247,52 @@ def blocks(*texts):
     return [{"type": "paragraph", "text": t} for t in texts]
 
 
+def read_env(name):
+    try:
+        for line in open(os.path.join(HERE, "..", ".env"), encoding="utf-8"):
+            if line.startswith(name + "="):
+                return line.split("=", 1)[1].strip()
+    except OSError:
+        pass
+    return ""
+
+
+def reset_limits():
+    """Clear rate-limit counters (Redis `rl:*`) and nginx limit_req zones (gateway restart) so every run starts equal."""
+    pw = read_env("REDIS_PASSWORD")
+    cmd = "redis-cli --no-auth-warning --scan --pattern 'rl:*' | xargs -r redis-cli --no-auth-warning DEL >/dev/null"
+    subprocess.run(["docker", "exec", "-e", "REDISCLI_AUTH=" + pw, "novel_redis", "sh", "-c", cmd], capture_output=True)
+    # per-user limiters of the Go/community/media services live in process memory: restart them too (never catalog)
+    subprocess.run(["docker", "restart", "novel_gateway", "novel_community", "novel_media", "novel_identity",
+                    "novel_library", "novel_messaging", "novel_workspace"], capture_output=True)
+    for _ in range(60):
+        out = subprocess.run(["docker", "ps", "--filter", "health=starting", "--format", "{{.Names}}"], capture_output=True, text=True).stdout
+        if not out.strip():
+            break
+        time.sleep(1)
+    for _ in range(40):
+        try:
+            if urllib.request.urlopen(args.base + "/api/v1/health", timeout=3).status == 200:
+                return
+        except Exception:
+            time.sleep(0.5)
+
+
+def clean_uploads(since):
+    """Delete files the run uploaded (anything under ./uploads newer than the start of the run)."""
+    root = os.path.join(HERE, "..", "uploads")
+    for dp, _, fs in os.walk(root):
+        for f in fs:
+            fp = os.path.join(dp, f)
+            try:
+                if os.path.getmtime(fp) >= since:
+                    os.remove(fp)
+            except OSError:
+                pass
+
+
 def run():
+    reset_limits()
     guest, reader, outsider, owner, admin = Client("guest"), Client("reader"), Client("outsider"), Client("owner"), Client("admin")
     reader.login("reader_hana")
     outsider.login("reader_yuki")
@@ -594,7 +635,7 @@ def run():
     call(G, "export get bad", guest, "GET", f"{M}/exports/zzz")
     call(G, "export get missing", guest, "GET", f"{M}/exports/{uid_missing}")
     if eid:
-        for _ in range(40):
+        for _ in range(15):
             st, js = reader.raw("GET", f"{M}/exports/{eid}")[0], None
             s2, _, raw = reader.raw("GET", f"{M}/exports/{eid}")
             try:
@@ -602,7 +643,7 @@ def run():
                     break
             except Exception:
                 break
-            time.sleep(1)
+            time.sleep(0.5)
         call(G, "export get", reader, "GET", f"{M}/exports/{eid}")
         call(G, "export download", reader, "GET", f"{M}/exports/{eid}/download")
     call(G, "export download missing", guest, "GET", f"{M}/exports/{uid_missing}/download")
@@ -914,8 +955,13 @@ def diff(a, b, path=""):
 
 
 def main():
-    run()
-    flush_internal()
+    t0 = time.time()
+    try:
+        run()
+        flush_internal()
+    finally:
+        clean_uploads(t0 - 1)
+    print(f"run took {time.time() - t0:.0f}s")
     print(f"{len(results)} calls recorded")
     if args.compare:
         base = json.load(open(BASELINE, encoding="utf-8"))
