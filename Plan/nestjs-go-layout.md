@@ -130,7 +130,7 @@ services/library/
   - chạy trên `main` để có bản mẫu.
 - [x] 1. catalog: khung Nest + `common`/`infra` + router cũ gắn tạm; module `system`, `tags`, `codes`, `users`.
 - [x] 2. catalog: `groups`, `stories`, `volumes`, `search`, `exports`, `library-sync`.
-- [ ] 3. catalog: `chapters`, `drafts`, worker sang `WorkerModule`; xóa router cũ và thư mục cũ.
+- [x] 3. catalog: `chapters`, `drafts`, worker sang `WorkerModule`; xóa router cũ và thư mục cũ.
 - [x] 4. community → NestJS.
 - [x] 5. media → NestJS.
 - [x] 6. library → bố cục Go chuẩn (nhỏ nhất, làm mẫu).
