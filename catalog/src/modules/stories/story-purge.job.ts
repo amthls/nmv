@@ -1,8 +1,8 @@
-import { pool } from '../config/db';
-import { callCommunity } from './communityClient';
-import { purgeLibrary } from './libraryClient';
-import { removeStoryFromIndex } from './search.service';
-import { bumpPublicCache } from '../middlewares/cache';
+import { pool } from '../../config/db';
+import { callCommunity } from '../../services/communityClient';
+import { purgeLibrary } from '../../services/libraryClient';
+import { removeStoryFromIndex } from '../../services/search.service';
+import { bumpPublicCache } from '../../middlewares/cache';
 
 /**
  * Delete a story for good: its rows here in one transaction, then its search entry, its comments (community) and its

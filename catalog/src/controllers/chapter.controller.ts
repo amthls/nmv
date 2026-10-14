@@ -2,16 +2,14 @@ import { enqueueNotificationJob } from '../services/queue.service';
 ﻿import { Request, Response } from 'express';
 import { pool } from '../config/db';
 import { AuthenticatedRequest } from '../middlewares/auth.middleware';
-import {
-  canUserManageStory, checkStoryReferences, parseStoryInput, sendClientError,
-  grantPublisherRole,
-} from './story.controller';
+import { canUserManageStory, checkStoryReferences, sendClientError, grantPublisherRole } from '../modules/stories/story-access';
+import { parseStoryInput } from '../modules/stories/dto/story-input';
 import { InputError, isUuid, optionalUrl, requiredText } from '../utils/validation';
 import { insertWithUniqueSlug } from '../utils/ids';
 import { indexStory } from '../services/search.service';
 import { sanitizeRichText, sanitizeChapterHtml, richTextToPlain } from '../utils/richText';
 import { callWorkspace, applyRevisionNow, Revision } from '../services/workspaceSync';
-import { storyRole } from './internal.controller';
+import { storyRole } from '../modules/stories/story-access';
 import { draftNotifications } from '../services/notification.service';
 import { dmBlocked, sendDraftCard } from '../services/messagingClient';
 
@@ -429,66 +427,6 @@ export const createStory = async (req: AuthenticatedRequest, res: Response) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
-export const createVolume = async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    if (!req.user || !req.user.id) {
-      return res.status(401).json({ success: false, message: 'Bạn chưa đăng nhập.' });
-    }
-
-    const { storyId } = req.params;
-    const { title, volume_number, cover_image_url, description } = req.body;
-
-    const isAuthorized = await canUserManageStory(req.user.id, storyId);
-    if (!isAuthorized) {
-      return res.status(403).json({
-        success: false,
-        message: 'Bạn không phải chủ thầu của truyện này để thêm tập mới.',
-      });
-    }
-
-    // No number given: take the next free one. A taken number is refused (updateVolume edits volumes).
-    let num: number;
-    if (volume_number === undefined || volume_number === null || volume_number === '') {
-      const maxRes = await pool.query(`SELECT COALESCE(MAX(volume_number), 0) + 1 AS next FROM volumes WHERE story_id = $1`, [storyId]);
-      num = Number(maxRes.rows[0].next);
-    } else {
-      num = Number(volume_number);
-      if (!Number.isInteger(num) || num < 1 || num > 100000) {
-        return res.status(400).json({ success: false, message: 'Số tập không hợp lệ.' });
-      }
-    }
-    const volTitle = (typeof title === 'string' && title.trim()) ? title.trim().slice(0, 500) : `Tập ${num}`;
-    const coverUrl = optionalUrl(cover_image_url, 'Ảnh bìa tập') ?? null;
-    const desc = typeof description === 'string' ? description.trim() || null : null;
-
-    const volRes = await pool.query(`
-      INSERT INTO volumes (story_id, title, volume_number, cover_image_url, description)
-      VALUES ($1, $2, $3, $4, $5)
-      ON CONFLICT (story_id, volume_number) DO NOTHING
-      RETURNING *;
-    `, [storyId, volTitle, num, coverUrl, desc]);
-    if (volRes.rows.length === 0) {
-      return res.status(409).json({ success: false, message: `Tập ${num} đã tồn tại trong bộ truyện này.` });
-    }
-
-    // Update total_volumes
-    await pool.query(`
-      UPDATE stories SET total_volumes = (SELECT count(*) FROM volumes WHERE story_id = $1)
-      WHERE id = $1;
-    `, [storyId]);
-
-    res.status(201).json({
-      success: true,
-      message: `Tạo ${volTitle} thành công`,
-      data: volRes.rows[0],
-    });
-  } catch (error: any) {
-    if (sendClientError(res, error)) return;
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
 
 const CHAPTER_WITH_OWNERS_SQL = `
   SELECT c.*, s.uploader_id AS story_uploader_id, s.slug AS story_slug, s.title AS story_title, s.story_type,
@@ -962,138 +900,6 @@ export const offerDraft = async (req: AuthenticatedRequest, res: Response) => {
     if (r.status !== 200) return relayWorkspace(res, r);
     notifyDraft('offered', { ...d, id: d.copied_from }, [r.json.data.original_owner_id], req);
     res.json({ success: true, message: 'Đã gửi bản sửa cho chủ nháp.', data: r.json.data });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-/**
- * Edit a volume (title, description, cover).
- */
-export const updateVolume = async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    if (!req.user || !req.user.id) {
-      return res.status(401).json({ success: false, message: 'Bạn chưa đăng nhập.' });
-    }
-    const { id } = req.params;
-    const volRes = await pool.query(`SELECT * FROM volumes WHERE id = $1`, [id]);
-    if (volRes.rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Tập không tồn tại.' });
-    }
-    const vol = volRes.rows[0];
-    if (!(await canUserManageStory(req.user.id, vol.story_id))) {
-      return res.status(403).json({ success: false, message: 'Bạn không có quyền sửa tập của truyện này.' });
-    }
-
-    const { title, description, cover_image_url } = req.body;
-    if (title !== undefined && !String(title).trim()) {
-      return res.status(400).json({ success: false, message: 'Tên tập không được để trống.' });
-    }
-    const updRes = await pool.query(`
-      UPDATE volumes SET
-        title = $1, description = $2, cover_image_url = $3, updated_at = NOW()
-      WHERE id = $4 RETURNING *;
-    `, [
-      title === undefined ? vol.title : String(title).trim(),
-      description === undefined ? vol.description : (description || null),
-      cover_image_url === undefined ? vol.cover_image_url : (cover_image_url || null),
-      id,
-    ]);
-    res.json({ success: true, message: 'Đã cập nhật tập.', data: updRes.rows[0] });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-/**
- * Delete a volume. Its chapters are kept and simply become "unassigned" (volume_id = NULL).
- */
-export const deleteVolume = async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    if (!req.user || !req.user.id) {
-      return res.status(401).json({ success: false, message: 'Bạn chưa đăng nhập.' });
-    }
-    const { id } = req.params;
-    const volRes = await pool.query(`SELECT * FROM volumes WHERE id = $1`, [id]);
-    if (volRes.rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Tập không tồn tại.' });
-    }
-    const vol = volRes.rows[0];
-    if (!(await canUserManageStory(req.user.id, vol.story_id))) {
-      return res.status(403).json({ success: false, message: 'Bạn không có quyền xóa tập của truyện này.' });
-    }
-
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      await client.query(`UPDATE chapter_submissions SET volume_id = NULL WHERE volume_id = $1`, [id]);
-      const moved = await client.query(`UPDATE chapters SET volume_id = NULL WHERE volume_id = $1`, [id]);
-      await client.query(`DELETE FROM volumes WHERE id = $1`, [id]);
-      await client.query(
-        `UPDATE stories SET total_volumes = (SELECT count(*) FROM volumes WHERE story_id = $1) WHERE id = $1`,
-        [vol.story_id]
-      );
-      await client.query('COMMIT');
-      res.json({
-        success: true,
-        message: `Đã xóa "${vol.title}". ${moved.rowCount} chương của tập được giữ lại và chuyển sang "chưa phân tập".`,
-      });
-    } catch (txErr) {
-      await client.query('ROLLBACK');
-      throw txErr;
-    } finally {
-      client.release();
-    }
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-/**
- * Re-order volumes of a story. Body: { order: [volumeId, ...] } (must list every volume once).
- * volume_number and sort_order are rewritten as 1..n in that order.
- */
-export const reorderVolumes = async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    if (!req.user || !req.user.id) {
-      return res.status(401).json({ success: false, message: 'Bạn chưa đăng nhập.' });
-    }
-    const { storyId } = req.params;
-    const { order } = req.body;
-    if (!(await canUserManageStory(req.user.id, storyId))) {
-      return res.status(403).json({ success: false, message: 'Bạn không có quyền sắp xếp tập của truyện này.' });
-    }
-    if (!Array.isArray(order) || order.length === 0) {
-      return res.status(400).json({ success: false, message: 'Thiếu danh sách thứ tự tập (order).' });
-    }
-
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      const existing = await client.query(`SELECT id FROM volumes WHERE story_id = $1`, [storyId]);
-      const existingIds = new Set<string>(existing.rows.map((r) => r.id));
-      if (order.length !== existingIds.size || new Set(order).size !== order.length || !order.every((v: string) => existingIds.has(v))) {
-        await client.query('ROLLBACK');
-        return res.status(400).json({ success: false, message: 'Danh sách phải gồm đúng tất cả các tập của truyện, mỗi tập một lần.' });
-      }
-      // Two phases: (story_id, volume_number) is UNIQUE, so park numbers out of range first.
-      await client.query(`UPDATE volumes SET volume_number = volume_number + 100000 WHERE story_id = $1`, [storyId]);
-      for (let i = 0; i < order.length; i++) {
-        await client.query(
-          `UPDATE volumes SET volume_number = $1, sort_order = $1, updated_at = NOW() WHERE id = $2 AND story_id = $3`,
-          [i + 1, order[i], storyId]
-        );
-      }
-      await client.query('COMMIT');
-    } catch (txErr) {
-      await client.query('ROLLBACK');
-      throw txErr;
-    } finally {
-      client.release();
-    }
-
-    const result = await pool.query(`SELECT * FROM volumes WHERE story_id = $1 ORDER BY volume_number`, [storyId]);
-    res.json({ success: true, message: 'Đã sắp xếp lại các tập.', data: result.rows });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

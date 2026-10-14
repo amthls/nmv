@@ -1,5 +1,5 @@
-import { redis, redisReady } from '../config/redis';
-import { pool } from '../config/db';
+import { redis, redisReady } from '../../config/redis';
+import { pool } from '../../config/db';
 
 // Same key and body as cacheJson on GET /api/v1/stories/trending: the worker keeps it filled, so readers never wait for the
 // query (a miss, e.g. the worker down, still computes it in the API)

@@ -16,7 +16,7 @@ import { visitorCookie } from './services/behaviorEvents';
 import { requestContext } from './utils/logger';
 import { internalAuthOK } from './middlewares/auth.middleware';
 import {
-  permissions, exportChapters, exportSource, exportBook, storiesBrief, removedStories, commentCounts, librarySync, libraryIds, favoriteCounts,
+  exportChapters, exportSource, exportBook, commentCounts, librarySync, libraryIds, favoriteCounts,
 } from './controllers/internal.controller';
 
 // Without the keys that verify the gateway's identity headers and internal calls nobody is ever signed in: refuse to start
@@ -90,15 +90,12 @@ const internal = (fn: (req: express.Request, res: express.Response) => Promise<u
   if (!internalAuthOK(req.get('x-internal-auth'))) return res.status(401).json({ success: false });
   fn(req, res).catch(next);
 };
-app.get('/internal/permissions', internal(permissions));
 app.get('/internal/chapters/export', internal(exportChapters));
 // Media -> backend: what an EPUB/PDF may contain, and the content itself
 app.post('/internal/exports/source', internal(exportSource));
 app.post('/internal/exports/book', internal(exportBook));
 // Messaging -> backend: names/avatars to show, and who is in a group (its chat)
 // Community -> backend: stories/chapters it shows or links, removed stories for /da-go, comment counts it keeps fresh
-app.post('/internal/stories/brief', internal(storiesBrief));
-app.get('/internal/stories/removed', internal(removedStories));
 app.post('/internal/comment-counts', internal(commentCounts));
 // Library -> backend: changed stories/chapters for its read copies, every id (nightly reconcile), follower counts
 app.get('/internal/library/stories', internal(librarySync('stories')));

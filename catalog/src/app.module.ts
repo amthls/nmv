@@ -5,12 +5,14 @@ import { CodesModule } from './modules/codes/codes.module';
 import { GroupsModule } from './modules/groups/groups.module';
 import { UsersModule } from './modules/users/users.module';
 import { TagsModule } from './modules/tags/tags.module';
+import { VolumesModule } from './modules/volumes/volumes.module';
+import { StoriesModule } from './modules/stories/stories.module';
 
 /**
  * Every feature module of the catalog API. Routes not moved to a module yet are still served by the legacy
  * Express routers that server.ts mounts before Nest's own routes (Plan/nestjs-go-layout.md).
  */
 @Module({
-  imports: [DatabaseModule, SystemModule, TagsModule, CodesModule, UsersModule, GroupsModule],
+  imports: [DatabaseModule, SystemModule, TagsModule, CodesModule, UsersModule, GroupsModule, StoriesModule, VolumesModule],
 })
 export class AppModule {}

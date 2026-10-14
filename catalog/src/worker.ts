@@ -5,8 +5,8 @@ import { flushViews } from './services/viewCounter';
 import { startIdentityConsumer } from './services/identitySync';
 import { startWorkspaceConsumer } from './services/workspaceSync';
 import { scheduleReconcile } from './services/reconcile';
-import { scheduleHotShelf } from './services/hotShelf';
-import { scheduleRemovedPurge } from './services/storyPurge';
+import { scheduleHotShelf } from './modules/stories/hot-shelf.job';
+import { scheduleRemovedPurge } from './modules/stories/story-purge.job';
 
 /**
  * Background worker: `node dist/worker.js` (its own container in docker-compose, same image as the API).

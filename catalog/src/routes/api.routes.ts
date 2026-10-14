@@ -1,28 +1,7 @@
 import express, { Router } from 'express';
-import { 
-  getStories, 
-  exploreStories, 
-  getTrendingStories, 
-  getRecentlyUpdatedStories, 
-  getFeaturedIllustrations,
-  getStoryBySlug,
-  getChapterBySlug,
-  updateStory,
-  deleteStory,
-  removeStory,
-  restoreStory,
-  getStoryCollaborators,
-  addStoryCollaborator,
-  removeStoryCollaborator,
-  getManageableStories,
-} from '../controllers/story.controller';
 import { requireAuth, optionalAuth, requireRole } from '../middlewares/auth.middleware';
 import { 
   createStory, 
-  createVolume, 
-  updateVolume,
-  deleteVolume,
-  reorderVolumes,
   submitChapter, 
   getChapterForEdit,
   updateChapter,
@@ -56,29 +35,9 @@ const albumLimiter = perUserLimiter({ windowMs: 60 * 60_000, limit: 60, message:
 // Tags & Categories
 // /tags: modules/tags (Nest)
 
-// Stories
-router.get('/stories', searchLimiter, getStories);
-// same answer for everyone: popular queries (and the search-as-you-type suggestions) hit Redis, not Elasticsearch
-router.get('/stories/explore', searchLimiter, cacheJson(30), exploreStories);
-router.get('/stories/trending', cacheJson(120), getTrendingStories);
-router.get('/stories/recently-updated', cacheJson(60), getRecentlyUpdatedStories);
-router.get('/stories/illustrations', cacheJson(300), getFeaturedIllustrations);
-router.get('/stories/manageable', requireAuth, getManageableStories);
-router.get('/stories/:slug', optionalAuth, getStoryBySlug);
-router.get('/stories/:slug/chapters/:chapterSlug', optionalAuth, getChapterBySlug);
+// Stories: modules/stories (Nest); creating a story is still here
 router.post('/stories', requireAuth, createStory);
-router.put('/stories/:id', requireAuth, updateStory);
-router.delete('/stories/:id', requireAuth, deleteStory);
-// Admin/Mod take a story down (soft) or restore it; listed at GET /moderation/removed
-router.post('/stories/:id/remove', requireAuth, removeStory);
-router.post('/stories/:id/restore', requireAuth, restoreStory);
-router.get('/stories/:id/collaborators', getStoryCollaborators);
-router.post('/stories/:id/collaborators', requireAuth, addStoryCollaborator);
-router.delete('/stories/:id/collaborators/:userId', requireAuth, removeStoryCollaborator);
-router.post('/stories/:storyId/volumes', requireAuth, createVolume);
-router.put('/stories/:storyId/volumes/reorder', requireAuth, reorderVolumes);
-router.put('/volumes/:id', requireAuth, updateVolume);
-router.delete('/volumes/:id', requireAuth, deleteVolume);
+// Volumes: modules/volumes (Nest)
 
 // Chapters (published straight away, no review)
 router.post('/chapters/submissions', requireAuth, submitChapter);

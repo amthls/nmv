@@ -1,55 +1,10 @@
 import { Request, Response } from 'express';
 import { pool } from '../config/db';
 import { isUuid } from '../utils/validation';
-import { REMOVED_PURGE_DAYS } from '../services/storyPurge';
 import { listExportableChapters, loadBook, storyFingerprint } from '../services/exportSource';
 
 // Service-to-service endpoints (X-Internal-Auth, mounted under /internal in server.ts; the gateway answers 404
-// for /internal from outside). Stories and groups live here, so the workspace and the media service ask.
-
-export interface StoryRole {
-  keeper: boolean; contributor: boolean; removed: boolean; name: string; keeperIds: string[];
-  role: string;       // owner | the group role (leader, mod, member, translator, editor, raw_provider, proofreader) | collaborator | ''
-  workflow: string[]; // the group's steps before a merge (stage 4b); a story without a group: translate only
-  groupId: string | null;
-}
-
-/**
- * A user's place in a story's workspace. keeper: story owner, the leader of the story's group, or a member whose role
- * the group lets merge (translation_groups.mergers, default mod) (merges, rewinds);
- * contributor: keeper, any member of that group or a collaborator (drafts, proposals, history).
- * keeperIds: everyone who keeps the story (who to tell about a proposal).
- */
-export async function storyRole(user: string, story: string): Promise<StoryRole> {
-  const none = { keeper: false, contributor: false, removed: false, name: '', keeperIds: [], role: '', workflow: ['translate'], groupId: null };
-  if (!isUuid(user) || !isUuid(story)) return none;
-  const r = await pool.query(`
-    SELECT s.uploader_id = $1 AS owner,
-           s.approval_status = 'rejected' AS removed,
-           (SELECT role FROM group_members WHERE group_id = s.group_id AND user_id = $1) AS group_role,
-           EXISTS (SELECT 1 FROM story_collaborators WHERE story_id = s.id AND user_id = $1) AS collaborator,
-           (SELECT COALESCE(display_name, username) FROM users WHERE id = $1) AS name,
-           ARRAY(SELECT s.uploader_id UNION SELECT user_id FROM group_members
-                 WHERE group_id = s.group_id AND (role = 'leader' OR role::text = ANY(g.mergers)))::text[] AS keepers,
-           g.workflow, g.mergers, s.group_id
-    FROM stories s LEFT JOIN translation_groups g ON g.id = s.group_id WHERE s.id = $2`, [user, story]);
-  const row = r.rows[0];
-  if (!row) return none;
-  const keeper = row.owner || row.group_role === 'leader' || (row.mergers || []).includes(row.group_role);
-  return {
-    keeper, contributor: keeper || Boolean(row.group_role) || row.collaborator, removed: row.removed, name: row.name || '',
-    keeperIds: (row.keepers || []).filter(Boolean),
-    role: row.owner ? 'owner' : row.group_role || (row.collaborator ? 'collaborator' : ''),
-    workflow: row.workflow || ['translate'],
-    groupId: row.group_id,
-  };
-}
-
-/** GET /internal/permissions?user=&story= -> {keeper, contributor, removed, name, role, workflow} (cached 30 s by the workspace). */
-export const permissions = async (req: Request, res: Response) => {
-  const { keeper, contributor, removed, name, role, workflow } = await storyRole(String(req.query.user || ''), String(req.query.story || ''));
-  res.json({ success: true, data: { keeper, contributor, removed, name, role, workflow } });
-};
+// for /internal from outside). Stories and groups live here (the story/group routes are in modules/*), so the workspace and the media service ask.
 
 /**
  * GET /internal/chapters/export?after=<id>&limit=100: every published chapter with its content, in id order,
@@ -126,45 +81,6 @@ export const exportBook = async (req: Request, res: Response) => {
     return res.status(400).json({ success: false, message: 'story_id, chapter_ids' });
   }
   res.json({ success: true, data: await loadBook(story_id, chapter_ids) });
-};
-
-/**
- * POST /internal/stories/brief {story_ids?, chapter_ids?} (at most 1000 each) -> {stories, chapters}: what community shows
- * or links for a story/chapter (any status: approval_status tells whether it was taken down).
- */
-export const storiesBrief = async (req: Request, res: Response) => {
-  const ids = (v: unknown) => (Array.isArray(v) ? v.filter(isUuid).slice(0, 1000) : []);
-  const [stories, chapters] = await Promise.all([
-    pool.query(`SELECT id, title, slug, cover_image_url, story_type, author_name, code, approval_status FROM stories WHERE id = ANY($1::uuid[])`,
-      [ids(req.body?.story_ids)]),
-    pool.query(`SELECT id, story_id, title, slug, trim_scale(chapter_number)::text AS chapter_number FROM chapters WHERE id = ANY($1::uuid[])`,
-      [ids(req.body?.chapter_ids)]),
-  ]);
-  res.json({ success: true, data: { stories: stories.rows, chapters: chapters.rows } });
-};
-
-/**
- * GET /internal/stories/removed?q=&limit= -> {total, rows}: stories taken down by Admin/Mod (purge_at: deleted for good then), newest first, in the row
- * shape of the "Đã gỡ" page (community merges them with removed posts). `q` matches code, titles, author, synopsis, uploader.
- */
-export const removedStories = async (req: Request, res: Response) => {
-  const q = typeof req.query.q === 'string' ? req.query.q.trim().slice(0, 100) : '';
-  const pattern = q ? `%${q.replace(/[\\%_]/g, '\\$&')}%` : null;
-  const limit = Math.min(Math.max(Number(req.query.limit) || 30, 1), 3000);
-  const where = `s.approval_status = 'rejected'
-    AND ($1::text IS NULL OR s.code ILIKE $1 OR s.title ILIKE $1 OR s.original_title ILIKE $1
-         OR s.author_name ILIKE $1 OR s.synopsis ILIKE $1 OR u.username ILIKE $1)`;
-  const [total, rows] = await Promise.all([
-    pool.query(`SELECT count(*)::int AS n FROM stories s JOIN users u ON u.id = s.uploader_id WHERE ${where}`, [pattern]),
-    pool.query(`
-      SELECT 'story' AS type, s.id, s.code, s.title, s.slug, s.cover_image_url AS image,
-             u.username AS author_username, u.display_name AS author_name,
-             s.rejection_reason AS reason, s.removed_at, s.removed_at + make_interval(days => $3) AS purge_at,
-             r.username AS removed_by_username, r.display_name AS removed_by_name
-      FROM stories s JOIN users u ON u.id = s.uploader_id LEFT JOIN users r ON r.id = s.removed_by
-      WHERE ${where} ORDER BY s.removed_at DESC NULLS LAST LIMIT $2`, [pattern, limit, REMOVED_PURGE_DAYS]),
-  ]);
-  res.json({ success: true, data: { total: total.rows[0].n, rows: rows.rows } });
 };
 
 /**
