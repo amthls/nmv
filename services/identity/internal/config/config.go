@@ -1,4 +1,5 @@
-package main
+// Package config reads the service settings from the environment.
+package config
 
 import (
 	"fmt"
@@ -6,7 +7,8 @@ import (
 	"strings"
 )
 
-type config struct {
+// Config is everything identity reads from environment variables.
+type Config struct {
 	Port            string
 	DatabaseURL     string // identity_db, as role identity
 	RedisURL        string
@@ -29,9 +31,10 @@ type config struct {
 	TurnstileSecret string // optional: register and forgot-password then need a Cloudflare Turnstile token
 }
 
-func loadConfig() (config, error) {
-	c := config{
-		Port:            env("PORT", "8080"),
+// Load reads the environment and checks the required values.
+func Load() (Config, error) {
+	c := Config{
+		Port:            Env("PORT", "8080"),
 		DatabaseURL:     os.Getenv("IDENTITY_DATABASE_URL"),
 		RedisURL:        os.Getenv("REDIS_URL"),
 		RabbitURL:       os.Getenv("RABBITMQ_URL"),
@@ -44,10 +47,10 @@ func loadConfig() (config, error) {
 		SigKeyLibrary:   []byte(os.Getenv("USER_SIG_KEY_LIBRARY")),
 		SigKeyRec:       []byte(os.Getenv("USER_SIG_KEY_RECOMMENDER")),
 		InternalKey:     []byte(os.Getenv("INTERNAL_KEY_IDENTITY")),
-		BackendURL:      env("CATALOG_INTERNAL_URL", "http://catalog:5000"),
+		BackendURL:      Env("CATALOG_INTERNAL_URL", "http://catalog:5000"),
 		SMTPURL:         os.Getenv("SMTP_URL"),
-		MailFrom:        env("MAIL_FROM", "NovelHub <no-reply@novelhub.local>"),
-		SiteURL:         strings.TrimRight(env("SITE_URL", "http://localhost:3000"), "/"),
+		MailFrom:        Env("MAIL_FROM", "NovelHub <no-reply@novelhub.local>"),
+		SiteURL:         strings.TrimRight(Env("SITE_URL", "http://localhost:3000"), "/"),
 		CookieSecure:    os.Getenv("COOKIE_SECURE") == "true",
 		EnableDemoUsers: os.Getenv("ENABLE_DEMO_ACCOUNTS") == "true",
 		TurnstileSecret: os.Getenv("TURNSTILE_SECRET"),
@@ -66,7 +69,8 @@ func loadConfig() (config, error) {
 	return c, nil
 }
 
-func env(k, def string) string {
+// Env returns the variable k, or def when it is empty.
+func Env(k, def string) string {
 	if v := os.Getenv(k); v != "" {
 		return v
 	}

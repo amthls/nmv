@@ -1,4 +1,4 @@
-package main
+package email
 
 import (
 	"context"
@@ -13,6 +13,10 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"nmv/identity/internal/platform/logger"
+	"nmv/identity/internal/tokens"
 )
 
 // Account mails are written to mail_outbox in the same transaction as their token, then sent by mailLoop with
@@ -22,7 +26,16 @@ import (
 
 const mailsPerDay = 10
 
-func enqueueMail(ctx context.Context, tx pgx.Tx, to, subject, intro, linkText, link string) error {
+// Mailer sends the queued mails.
+type Mailer struct {
+	DB      *pgxpool.Pool
+	SMTPURL string
+	From    string
+	Alert   func(ctx context.Context, key, title, message string) error
+}
+
+// Enqueue writes a mail to mail_outbox inside tx (link "" = a notice without a button).
+func Enqueue(ctx context.Context, tx pgx.Tx, to, subject, intro, linkText, link string) error {
 	text := intro + "\n\n" + linkText + ": " + link + "\n\nNếu bạn không yêu cầu, hãy bỏ qua email này."
 	body := "<p>" + html.EscapeString(intro) + "</p><p><a href=\"" + html.EscapeString(link) + "\">" + html.EscapeString(linkText) + "</a></p>" +
 		`<p style="color:#888;font-size:12px">Nếu bạn không yêu cầu, hãy bỏ qua email này.</p>`
@@ -36,7 +49,7 @@ func enqueueMail(ctx context.Context, tx pgx.Tx, to, subject, intro, linkText, l
 		return err
 	}
 	if sent >= mailsPerDay {
-		logf(ctx, "warn", fmt.Sprintf("mail dropped: %d mails to one address in 24 hours (%q)", sent, subject))
+		logger.Logf(ctx, "warn", fmt.Sprintf("mail dropped: %d mails to one address in 24 hours (%q)", sent, subject))
 		return nil
 	}
 	_, err := tx.Exec(ctx, `INSERT INTO mail_outbox (to_addr, subject, body_text, body_html) VALUES ($1, $2, $3, $4)`, to, subject, text, body)
@@ -46,15 +59,15 @@ func enqueueMail(ctx context.Context, tx pgx.Tx, to, subject, intro, linkText, l
 // Retry delays after each failed attempt; after the last one the mail is marked failed and admins are alerted.
 var mailBackoff = []time.Duration{time.Minute, 2 * time.Minute, 5 * time.Minute, 10 * time.Minute, 20 * time.Minute, 30 * time.Minute}
 
-func (s *server) mailLoop(ctx context.Context) {
-	if s.cfg.SMTPURL == "" {
-		logf(ctx, "warn", "SMTP_URL empty: account mails stay in mail_outbox (see mail.go to read them)")
+func (s *Mailer) Run(ctx context.Context) {
+	if s.SMTPURL == "" {
+		logger.Logf(ctx, "warn", "SMTP_URL empty: account mails stay in mail_outbox (see mail.go to read them)")
 		return
 	}
 	for ctx.Err() == nil {
 		sent, err := s.sendNextMail(ctx)
 		if err != nil {
-			logError(ctx, "mail: "+err.Error())
+			logger.Error(ctx, "mail: "+err.Error())
 		}
 		if !sent {
 			select {
@@ -66,11 +79,11 @@ func (s *server) mailLoop(ctx context.Context) {
 	}
 }
 
-func (s *server) sendNextMail(ctx context.Context) (bool, error) {
+func (s *Mailer) sendNextMail(ctx context.Context) (bool, error) {
 	var id int64
 	var attempts int
 	var to, subject, text, body string
-	tx, err := s.db.Begin(ctx)
+	tx, err := s.DB.Begin(ctx)
 	if err != nil {
 		return false, err
 	}
@@ -84,7 +97,7 @@ func (s *server) sendNextMail(ctx context.Context) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	sendErr := sendSMTP(s.cfg.SMTPURL, s.cfg.MailFrom, to, subject, text, body)
+	sendErr := sendSMTP(s.SMTPURL, s.From, to, subject, text, body)
 	if sendErr == nil {
 		_, err = tx.Exec(ctx, `UPDATE mail_outbox SET sent_at = NOW(), attempts = attempts + 1, last_error = NULL WHERE id = $1`, id)
 		if err == nil {
@@ -103,7 +116,7 @@ func (s *server) sendNextMail(ctx context.Context) (bool, error) {
 		err = tx.Commit(ctx)
 	}
 	if gaveUp && err == nil {
-		err = s.alert(ctx, "mail-failed", "Không gửi được email tài khoản",
+		err = s.Alert(ctx, "mail-failed", "Không gửi được email tài khoản",
 			"Một email \""+subject+"\" không gửi được sau ~1 giờ thử lại. Kiểm tra SMTP_URL. Lỗi: "+sendErr.Error())
 	}
 	return false, err
@@ -163,7 +176,7 @@ func sendSMTP(rawURL, from, to, subject, text, body string) error {
 	if err != nil {
 		return err
 	}
-	boundary := randomToken()[:24]
+	boundary := tokens.RandomToken()[:24]
 	msg := "From: " + from + "\r\nTo: " + to + "\r\nSubject: " + mime.QEncoding.Encode("utf-8", subject) +
 		"\r\nMIME-Version: 1.0\r\nDate: " + time.Now().Format(time.RFC1123Z) +
 		"\r\nContent-Type: multipart/alternative; boundary=" + boundary + "\r\n\r\n" +

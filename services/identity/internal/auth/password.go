@@ -1,4 +1,4 @@
-package main
+package auth
 
 import (
 	"crypto/rand"
@@ -22,7 +22,8 @@ const (
 	argonKeyLen  = 32
 )
 
-func hashPassword(pw string) string {
+// HashPassword hashes with argon2id.
+func HashPassword(pw string) string {
 	salt := make([]byte, 16)
 	rand.Read(salt)
 	key := argon2.IDKey([]byte(pw), salt, argonTime, argonMemory, argonThreads, argonKeyLen)
@@ -30,8 +31,9 @@ func hashPassword(pw string) string {
 	return fmt.Sprintf("$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s", argon2.Version, argonMemory, argonTime, argonThreads, b64.EncodeToString(salt), b64.EncodeToString(key))
 }
 
-// checkPassword compares in constant time. '!' (deleted accounts) and unknown formats never match.
-func checkPassword(pw, hash string) bool {
+// CheckPassword compares in constant time. '!' (deleted accounts) and unknown formats never match.
+// CheckPassword compares in constant time.
+func CheckPassword(pw, hash string) bool {
 	switch {
 	case strings.HasPrefix(hash, "$argon2id$"):
 		var v, m, t int
@@ -59,12 +61,13 @@ func checkPassword(pw, hash string) bool {
 	return false
 }
 
-func needsRehash(hash string) bool {
+// NeedsRehash: a hash that is not argon2id with the current parameters.
+func NeedsRehash(hash string) bool {
 	return !strings.HasPrefix(hash, fmt.Sprintf("$argon2id$v=%d$m=%d,t=%d,p=%d$", argon2.Version, argonMemory, argonTime, argonThreads))
 }
 
 // A real hash to compare against when the account doesn't exist, so "no such user" takes as long as "wrong password".
-var dummyHash = hashPassword("timing-equaliser")
+var dummyHash = HashPassword("timing-equaliser")
 
 //go:embed commonpasswords.txt
 var commonList string
@@ -79,8 +82,8 @@ var commonPasswords = func() map[string]bool {
 	return m
 }()
 
-// passwordProblem returns a message for the user, or "" when a NEW password is acceptable.
-func passwordProblem(pw, username, email string) string {
+// PasswordProblem returns a message for the user, or "" when a NEW password is acceptable.
+func PasswordProblem(pw, username, email string) string {
 	n := utf8.RuneCountInString(pw)
 	low := strings.ToLower(pw)
 	switch {

@@ -1,4 +1,6 @@
-package main
+// Package admin: roles, bans, account deletion, lookups and revoking every session. Dangerous actions ask for the
+// actor's password again.
+package admin
 
 import (
 	"context"
@@ -9,58 +11,36 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"nmv/identity/internal/auth"
+	"nmv/identity/internal/platform/db"
+	"nmv/identity/internal/platform/events"
+	"nmv/identity/internal/platform/httpx"
+	"nmv/identity/internal/platform/logger"
+	"nmv/identity/internal/seclog"
+	"nmv/identity/internal/sessions"
+	"nmv/identity/internal/tokens"
 )
 
-// Same rules as the backend's moderationRights:
-//   - nobody acts on themselves or on an admin;
-//   - admins act on everyone else, mods only on regular users (not on other mods);
-//   - admins and mods may make a regular user a mod; only admins take the mod role away.
-type target struct {
-	ID       string
-	Username string
-	Roles    []string
-	Banned   bool
-	Deleted  bool
+// Handler serves the moderation routes.
+type Handler struct {
+	db         *pgxpool.Pool
+	sess       *sessions.Service
+	signer     *tokens.Signer
+	backendURL string
 }
 
-func (t target) has(role string) bool {
-	for _, r := range t.Roles {
-		if r == role {
-			return true
-		}
-	}
-	return false
-}
-
-type rights struct{ Ban, Unban, Delete, GrantMod, RevokeMod bool }
-
-func moderationRights(actor caller, t target) rights {
-	actorAdmin, actorMod := actor.has("admin"), actor.has("mod")
-	self := actor.ID == t.ID
-	outranks := !self && !t.has("admin") && (actorAdmin || (actorMod && !t.has("mod")))
-	alive := !t.Deleted
-	return rights{
-		Ban:       alive && outranks && !t.Banned,
-		Unban:     alive && outranks && t.Banned,
-		Delete:    alive && outranks,
-		GrantMod:  alive && !self && !t.Banned && !t.has("admin") && !t.has("mod") && (actorAdmin || actorMod),
-		RevokeMod: alive && !self && actorAdmin && t.has("mod"),
-	}
-}
-
-func loadTarget(ctx context.Context, q pgx.Tx, id string) (target, error) {
-	t := target{ID: id}
-	err := q.QueryRow(ctx, `SELECT username::text, is_banned, deleted_at IS NOT NULL,
-		COALESCE((SELECT array_agg(role ORDER BY role) FROM user_roles WHERE user_id = users.id), '{}')
-		FROM users WHERE id = $1 FOR UPDATE`, id).Scan(&t.Username, &t.Banned, &t.Deleted, &t.Roles)
-	return t, err
+// NewHandler wires the handler.
+func NewHandler(db *pgxpool.Pool, sess *sessions.Service, signer *tokens.Signer, backendURL string) *Handler {
+	return &Handler{db: db, sess: sess, signer: signer, backendURL: backendURL}
 }
 
 // confirmPassword: dangerous actions ask the actor for their password again (a stolen session alone isn't enough).
-func (s *server) confirmPassword(ctx context.Context, r *http.Request, c caller, pw string) bool {
+func (h *Handler) confirmPassword(ctx context.Context, r *http.Request, c sessions.Caller, pw string) bool {
 	var hash string
-	if pw == "" || s.db.QueryRow(ctx, `SELECT password_hash FROM users WHERE id = $1`, c.ID).Scan(&hash) != nil || !checkPassword(pw, hash) {
-		securityLog(ctx, s.db, c.ID, "", "reauth_failed", r, map[string]any{"path": r.URL.Path})
+	if pw == "" || h.db.QueryRow(ctx, `SELECT password_hash FROM users WHERE id = $1`, c.ID).Scan(&hash) != nil || !auth.CheckPassword(pw, hash) {
+		seclog.Log(ctx, h.db, c.ID, "", "reauth_failed", r, map[string]any{"path": r.URL.Path})
 		return false
 	}
 	return true
@@ -71,50 +51,51 @@ const msgReauth = "Mật khẩu xác nhận không đúng."
 var roleNameVi = map[string]string{"admin": "Quản trị viên (Admin)", "mod": "Kiểm duyệt viên (Mod)", "translator": "Dịch giả", "author": "Tác giả", "reader": "Độc giả"}
 
 // POST /users/{id}/roles {role, action: grant|revoke, password}
-func (s *server) handleRoles(w http.ResponseWriter, r *http.Request, c caller) {
+// Roles handles the Roles route.
+func (h *Handler) Roles(w http.ResponseWriter, r *http.Request, c sessions.Caller) {
 	var b struct {
 		Role, Action, Password string
 	}
-	if readJSON(w, r, &b) != nil {
-		fail(w, 400, "Dữ liệu gửi lên không hợp lệ.")
+	if httpx.ReadJSON(w, r, &b) != nil {
+		httpx.Fail(w, 400, "Dữ liệu gửi lên không hợp lệ.")
 		return
 	}
 	id := r.PathValue("id")
 	if _, okRole := roleNameVi[b.Role]; !okRole {
-		fail(w, 400, "Vai trò không hợp lệ. Các vai trò hợp lệ: admin, mod, translator, author, reader")
+		httpx.Fail(w, 400, "Vai trò không hợp lệ. Các vai trò hợp lệ: admin, mod, translator, author, reader")
 		return
 	}
 	if b.Action != "grant" && b.Action != "revoke" {
-		fail(w, 400, "Hành động không hợp lệ. Vui lòng chọn 'grant' hoặc 'revoke'.")
+		httpx.Fail(w, 400, "Hành động không hợp lệ. Vui lòng chọn 'grant' hoặc 'revoke'.")
 		return
 	}
-	if !isUUID(id) {
-		fail(w, 404, "Người dùng không tồn tại.")
+	if !httpx.IsUUID(id) {
+		httpx.Fail(w, 404, "Người dùng không tồn tại.")
 		return
 	}
-	if !c.has("admin") && !(c.has("mod") && b.Role == "mod" && b.Action == "grant") {
-		fail(w, 403, "Chỉ Quản trị viên (Admin) mới có quyền phân quyền người dùng này.")
+	if !c.Has("admin") && !(c.Has("mod") && b.Role == "mod" && b.Action == "grant") {
+		httpx.Fail(w, 403, "Chỉ Quản trị viên (Admin) mới có quyền phân quyền người dùng này.")
 		return
 	}
 	ctx := r.Context()
-	if !s.confirmPassword(ctx, r, c, b.Password) {
-		fail(w, 403, msgReauth)
+	if !h.confirmPassword(ctx, r, c, b.Password) {
+		httpx.Fail(w, 403, msgReauth)
 		return
 	}
 	var status int
 	var msg string
-	var roles []roleView
-	err := pgx.BeginFunc(ctx, s.db, func(tx pgx.Tx) error {
+	var roles []auth.RoleView
+	err := pgx.BeginFunc(ctx, h.db, func(tx pgx.Tx) error {
 		t, err := loadTarget(ctx, tx, id)
 		if errors.Is(err, pgx.ErrNoRows) || (err == nil && t.Deleted) {
 			status, msg = 404, "Người dùng không tồn tại."
-			return errRollback
+			return db.ErrRollback
 		}
 		if err != nil {
 			return err
 		}
 		switch {
-		case !c.has("admin") && !moderationRights(c, t).GrantMod:
+		case !c.Has("admin") && !moderationRights(c, t).GrantMod:
 			status, msg = 403, "Chỉ Quản trị viên (Admin) mới có quyền phân quyền người dùng này."
 		case b.Action == "grant" && t.Banned:
 			status, msg = 400, "Không thể cấp quyền cho tài khoản đang bị khóa."
@@ -122,7 +103,7 @@ func (s *server) handleRoles(w http.ResponseWriter, r *http.Request, c caller) {
 			status, msg = 400, "Bạn không thể tự gỡ bỏ quyền Admin của chính mình."
 		}
 		if status != 0 {
-			return errRollback
+			return db.ErrRollback
 		}
 		if b.Action == "grant" {
 			_, err = tx.Exec(ctx, `INSERT INTO user_roles (user_id, role, granted_by) VALUES ($1, $2, $3)
@@ -133,10 +114,10 @@ func (s *server) handleRoles(w http.ResponseWriter, r *http.Request, c caller) {
 		if err != nil {
 			return err
 		}
-		if err = securityLog(ctx, tx, id, c.ID, "role_"+b.Action, r, map[string]any{"role": b.Role}); err != nil {
+		if err = seclog.Log(ctx, tx, id, c.ID, "role_"+b.Action, r, map[string]any{"role": b.Role}); err != nil {
 			return err
 		}
-		if err = userEvent(ctx, tx, id, "updated", nil); err != nil {
+		if err = events.UserEvent(ctx, tx, id, "updated", nil); err != nil {
 			return err
 		}
 		if b.Action == "grant" {
@@ -144,57 +125,58 @@ func (s *server) handleRoles(w http.ResponseWriter, r *http.Request, c caller) {
 		} else {
 			msg = "Đã thu hồi quyền " + roleNameVi[b.Role] + " của người dùng " + t.Username + "!"
 		}
-		u, err := loadUserView(ctx, tx, id)
+		u, err := auth.LoadUserView(ctx, tx, id)
 		roles = u.Roles
 		return err
 	})
 	if status != 0 {
-		fail(w, status, msg)
+		httpx.Fail(w, status, msg)
 		return
 	}
 	if err != nil {
-		internalError(w, r, err)
+		httpx.InternalError(w, r, err)
 		return
 	}
-	s.forgetRoles(ctx, id)
-	ok(w, msg, map[string]any{"userId": id, "roles": roles})
+	h.sess.ForgetRoles(ctx, id)
+	httpx.OK(w, msg, map[string]any{"userId": id, "roles": roles})
 }
 
 // POST /users/{id}/ban {reason, password} and /unban {password}. A ban ends every session at once.
-func (s *server) handleBan(ban bool) func(http.ResponseWriter, *http.Request, caller) {
-	return func(w http.ResponseWriter, r *http.Request, c caller) {
+// Ban handles the Ban route.
+func (h *Handler) Ban(ban bool) func(http.ResponseWriter, *http.Request, sessions.Caller) {
+	return func(w http.ResponseWriter, r *http.Request, c sessions.Caller) {
 		var b struct{ Reason, Password string }
-		readJSON(w, r, &b)
+		httpx.ReadJSON(w, r, &b)
 		id := r.PathValue("id")
-		if !isUUID(id) {
-			fail(w, 404, "Người dùng không tồn tại.")
+		if !httpx.IsUUID(id) {
+			httpx.Fail(w, 404, "Người dùng không tồn tại.")
 			return
 		}
-		if !c.has("admin") && !c.has("mod") {
-			fail(w, 403, "Bạn không có quyền thực hiện thao tác này.")
+		if !c.Has("admin") && !c.Has("mod") {
+			httpx.Fail(w, 403, "Bạn không có quyền thực hiện thao tác này.")
 			return
 		}
 		reason := strings.TrimSpace(b.Reason)
 		if len([]rune(reason)) > 500 {
-			fail(w, 400, "Lý do tối đa 500 ký tự.")
+			httpx.Fail(w, 400, "Lý do tối đa 500 ký tự.")
 			return
 		}
 		if reason == "" {
 			reason = "Vi phạm điều khoản cộng đồng"
 		}
 		ctx := r.Context()
-		if !s.confirmPassword(ctx, r, c, b.Password) {
-			fail(w, 403, msgReauth)
+		if !h.confirmPassword(ctx, r, c, b.Password) {
+			httpx.Fail(w, 403, msgReauth)
 			return
 		}
 		var status int
 		var msg string
 		var sids []string
-		err := pgx.BeginFunc(ctx, s.db, func(tx pgx.Tx) error {
+		err := pgx.BeginFunc(ctx, h.db, func(tx pgx.Tx) error {
 			t, err := loadTarget(ctx, tx, id)
 			if errors.Is(err, pgx.ErrNoRows) {
 				status, msg = 404, "Người dùng không tồn tại."
-				return errRollback
+				return db.ErrRollback
 			}
 			if err != nil {
 				return err
@@ -207,12 +189,12 @@ func (s *server) handleBan(ban bool) func(http.ResponseWriter, *http.Request, ca
 					status = 409
 					msg = map[bool]string{true: "Tài khoản này đã bị khóa.", false: "Tài khoản này không bị khóa."}[ban]
 				}
-				return errRollback
+				return db.ErrRollback
 			}
 			if ban {
 				_, err = tx.Exec(ctx, `UPDATE users SET is_banned = TRUE, ban_reason = $2, banned_at = NOW(), banned_by = $3 WHERE id = $1`, id, reason, c.ID)
 				if err == nil {
-					sids, err = revokeUserSessions(ctx, tx, id, "", "banned")
+					sids, err = sessions.RevokeUserSessions(ctx, tx, id, "", "banned")
 				}
 				msg = "Đã khóa tài khoản " + t.Username + "."
 			} else {
@@ -222,61 +204,62 @@ func (s *server) handleBan(ban bool) func(http.ResponseWriter, *http.Request, ca
 			if err != nil {
 				return err
 			}
-			if err = securityLog(ctx, tx, id, c.ID, map[bool]string{true: "banned", false: "unbanned"}[ban], r, map[string]any{"reason": reason}); err != nil {
+			if err = seclog.Log(ctx, tx, id, c.ID, map[bool]string{true: "banned", false: "unbanned"}[ban], r, map[string]any{"reason": reason}); err != nil {
 				return err
 			}
-			return userEvent(ctx, tx, id, "updated", nil)
+			return events.UserEvent(ctx, tx, id, "updated", nil)
 		})
 		if status != 0 {
-			fail(w, status, msg)
+			httpx.Fail(w, status, msg)
 			return
 		}
 		if err != nil {
-			internalError(w, r, err)
+			httpx.InternalError(w, r, err)
 			return
 		}
-		s.markRevoked(ctx, sids...)
-		ok(w, msg, nil)
+		h.sess.MarkRevoked(ctx, sids...)
+		httpx.OK(w, msg, nil)
 	}
 }
 
 // DELETE /users/{id} {purge_content, password}: anonymise and lock the account. Content stays (the backend hides
 // posts/comments when purge_content). The backend is asked first whether it can let the user go (sole group leader).
-func (s *server) handleDeleteUser(w http.ResponseWriter, r *http.Request, c caller) {
+// DeleteUser handles the DeleteUser route.
+func (h *Handler) DeleteUser(w http.ResponseWriter, r *http.Request, c sessions.Caller) {
 	var b struct {
 		PurgeContent bool   `json:"purge_content"`
 		Password     string `json:"password"`
 	}
-	readJSON(w, r, &b)
+	httpx.ReadJSON(w, r, &b)
 	id := r.PathValue("id")
-	if !isUUID(id) {
-		fail(w, 404, "Người dùng không tồn tại.")
+	if !httpx.IsUUID(id) {
+		httpx.Fail(w, 404, "Người dùng không tồn tại.")
 		return
 	}
-	if !c.has("admin") && !c.has("mod") {
-		fail(w, 403, "Bạn không có quyền xóa tài khoản này.")
+	if !c.Has("admin") && !c.Has("mod") {
+		httpx.Fail(w, 403, "Bạn không có quyền xóa tài khoản này.")
 		return
 	}
 	ctx := r.Context()
-	if !s.confirmPassword(ctx, r, c, b.Password) {
-		fail(w, 403, msgReauth)
+	if !h.confirmPassword(ctx, r, c, b.Password) {
+		httpx.Fail(w, 403, msgReauth)
 		return
 	}
-	if blocked, err := s.backendDeleteCheck(ctx, c, id); err != nil {
-		internalError(w, r, err)
+	if blocked, err := h.backendDeleteCheck(ctx, c, id); err != nil {
+		httpx.InternalError(w, r, err)
 		return
 	} else if blocked != "" {
-		fail(w, 409, blocked)
+		httpx.Fail(w, 409, blocked)
 		return
 	}
 	var status int
 	var msg string
 	var sids []string
-	err := pgx.BeginFunc(ctx, s.db, func(tx pgx.Tx) error {
+	err := pgx.BeginFunc(ctx, h.db, func(tx pgx.Tx) error {
 		t, err := loadTarget(ctx, tx, id)
 		if errors.Is(err, pgx.ErrNoRows) {
 			status, msg = 404, "Người dùng không tồn tại."
-			return errRollback
+			return db.ErrRollback
 		}
 		if err != nil {
 			return err
@@ -286,7 +269,7 @@ func (s *server) handleDeleteUser(w http.ResponseWriter, r *http.Request, c call
 			if t.Deleted {
 				status, msg = 409, "Tài khoản này đã bị xóa."
 			}
-			return errRollback
+			return db.ErrRollback
 		}
 		short := strings.ReplaceAll(id, "-", "")[:12]
 		if _, err = tx.Exec(ctx, `UPDATE users SET username = $2, email = $3, password_hash = '!', display_name = 'Người dùng đã xóa',
@@ -300,10 +283,10 @@ func (s *server) handleDeleteUser(w http.ResponseWriter, r *http.Request, c call
 		if _, err = tx.Exec(ctx, `DELETE FROM account_tokens WHERE user_id = $1`, id); err != nil {
 			return err
 		}
-		if sids, err = revokeUserSessions(ctx, tx, id, "", "deleted"); err != nil {
+		if sids, err = sessions.RevokeUserSessions(ctx, tx, id, "", "deleted"); err != nil {
 			return err
 		}
-		if err = securityLog(ctx, tx, id, c.ID, "deleted", r, map[string]any{"purge_content": b.PurgeContent}); err != nil {
+		if err = seclog.Log(ctx, tx, id, c.ID, "deleted", r, map[string]any{"purge_content": b.PurgeContent}); err != nil {
 			return err
 		}
 		msg = "Đã xóa tài khoản " + t.Username
@@ -311,27 +294,27 @@ func (s *server) handleDeleteUser(w http.ResponseWriter, r *http.Request, c call
 			msg += " cùng các bài viết và bình luận"
 		}
 		msg += "."
-		return userEvent(ctx, tx, id, "deleted", map[string]any{"purge_content": b.PurgeContent})
+		return events.UserEvent(ctx, tx, id, "deleted", map[string]any{"purge_content": b.PurgeContent})
 	})
 	if status != 0 {
-		fail(w, status, msg)
+		httpx.Fail(w, status, msg)
 		return
 	}
 	if err != nil {
-		internalError(w, r, err)
+		httpx.InternalError(w, r, err)
 		return
 	}
-	s.markRevoked(ctx, sids...)
-	s.forgetRoles(ctx, id)
-	ok(w, msg, nil)
+	h.sess.MarkRevoked(ctx, sids...)
+	h.sess.ForgetRoles(ctx, id)
+	httpx.OK(w, msg, nil)
 }
 
 // backendDeleteCheck asks the backend (it owns groups) whether deleting the user would leave a group without a
 // leader. The request carries the actor's signed identity headers, like a request coming through the gateway.
-func (s *server) backendDeleteCheck(ctx context.Context, c caller, id string) (string, error) {
-	req, _ := http.NewRequestWithContext(ctx, "GET", s.cfg.BackendURL+"/internal/users/"+id+"/delete-check", nil)
-	s.signHeaders(req.Header, c.ID, strings.Join(c.Roles, ","))
-	if rid, _ := ctx.Value(requestIDKey).(string); rid != "" {
+func (h *Handler) backendDeleteCheck(ctx context.Context, c sessions.Caller, id string) (string, error) {
+	req, _ := http.NewRequestWithContext(ctx, "GET", h.backendURL+"/internal/users/"+id+"/delete-check", nil)
+	h.signer.SignHeaders(req.Header, c.ID, strings.Join(c.Roles, ","))
+	if rid, _ := ctx.Value(logger.RequestIDKey).(string); rid != "" {
 		req.Header.Set("X-Request-Id", rid)
 	}
 	res, err := (&http.Client{Timeout: 5 * time.Second}).Do(req)
@@ -353,9 +336,10 @@ func (s *server) backendDeleteCheck(ctx context.Context, c caller, id string) (s
 }
 
 // GET /admin/users?q= (Admin/Mod): find accounts by username or email; the only place emails are listed.
-func (s *server) handleLookup(w http.ResponseWriter, r *http.Request, c caller) {
-	if !c.has("admin") && !c.has("mod") {
-		fail(w, 403, "Bạn không có quyền xem danh sách này.")
+// Lookup handles the Lookup route.
+func (h *Handler) Lookup(w http.ResponseWriter, r *http.Request, c sessions.Caller) {
+	if !c.Has("admin") && !c.Has("mod") {
+		httpx.Fail(w, 403, "Bạn không có quyền xem danh sách này.")
 		return
 	}
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
@@ -363,11 +347,11 @@ func (s *server) handleLookup(w http.ResponseWriter, r *http.Request, c caller) 
 		q = string([]rune(q)[:100])
 	}
 	like := "%" + strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`).Replace(q) + "%"
-	rows, err := s.db.Query(r.Context(), `SELECT id::text, username::text, email::text, email_verified, is_banned, deleted_at IS NOT NULL, last_login_at, created_at,
+	rows, err := h.db.Query(r.Context(), `SELECT id::text, username::text, email::text, email_verified, is_banned, deleted_at IS NOT NULL, last_login_at, created_at,
 		COALESCE((SELECT array_agg(role ORDER BY role) FROM user_roles WHERE user_id = users.id), '{}')
 		FROM users WHERE $1 = '' OR username ILIKE $2 OR email ILIKE $2 ORDER BY created_at DESC LIMIT 50`, q, like)
 	if err != nil {
-		internalError(w, r, err)
+		httpx.InternalError(w, r, err)
 		return
 	}
 	type item struct {
@@ -386,54 +370,56 @@ func (s *server) handleLookup(w http.ResponseWriter, r *http.Request, c caller) 
 		return x, row.Scan(&x.ID, &x.Username, &x.Email, &x.EmailVerified, &x.IsBanned, &x.Deleted, &x.LastLogin, &x.Created, &x.Roles)
 	})
 	if err != nil {
-		internalError(w, r, err)
+		httpx.InternalError(w, r, err)
 		return
 	}
-	ok(w, "", list)
+	httpx.OK(w, "", list)
 }
 
 // GET /users/{id}/private (Admin/Mod): email and login facts for the moderation block on a profile page.
-func (s *server) handlePrivate(w http.ResponseWriter, r *http.Request, c caller) {
-	if !c.has("admin") && !c.has("mod") {
-		fail(w, 403, "Bạn không có quyền xem thông tin này.")
+// Private handles the Private route.
+func (h *Handler) Private(w http.ResponseWriter, r *http.Request, c sessions.Caller) {
+	if !c.Has("admin") && !c.Has("mod") {
+		httpx.Fail(w, 403, "Bạn không có quyền xem thông tin này.")
 		return
 	}
 	id := r.PathValue("id")
-	if !isUUID(id) {
-		fail(w, 404, "Người dùng không tồn tại.")
+	if !httpx.IsUUID(id) {
+		httpx.Fail(w, 404, "Người dùng không tồn tại.")
 		return
 	}
 	var email string
 	var verified bool
 	var lastLogin, lockedUntil *time.Time
-	err := s.db.QueryRow(r.Context(), `SELECT email::text, email_verified, last_login_at, locked_until FROM users WHERE id = $1`, id).
+	err := h.db.QueryRow(r.Context(), `SELECT email::text, email_verified, last_login_at, locked_until FROM users WHERE id = $1`, id).
 		Scan(&email, &verified, &lastLogin, &lockedUntil)
 	if errors.Is(err, pgx.ErrNoRows) {
-		fail(w, 404, "Người dùng không tồn tại.")
+		httpx.Fail(w, 404, "Người dùng không tồn tại.")
 		return
 	}
 	if err != nil {
-		internalError(w, r, err)
+		httpx.InternalError(w, r, err)
 		return
 	}
-	ok(w, "", map[string]any{"email": email, "email_verified": verified, "last_login_at": lastLogin, "locked_until": lockedUntil})
+	httpx.OK(w, "", map[string]any{"email": email, "email_verified": verified, "last_login_at": lastLogin, "locked_until": lockedUntil})
 }
 
 // POST /admin/revoke-all-sessions {password} (Admin): everyone signs in again (e.g. after a suspected breach).
-func (s *server) handleRevokeAll(w http.ResponseWriter, r *http.Request, c caller) {
+// RevokeAll handles the RevokeAll route.
+func (h *Handler) RevokeAll(w http.ResponseWriter, r *http.Request, c sessions.Caller) {
 	var b struct{ Password string }
-	readJSON(w, r, &b)
-	if !c.has("admin") {
-		fail(w, 403, "Chỉ Quản trị viên (Admin) mới làm được việc này.")
+	httpx.ReadJSON(w, r, &b)
+	if !c.Has("admin") {
+		httpx.Fail(w, 403, "Chỉ Quản trị viên (Admin) mới làm được việc này.")
 		return
 	}
 	ctx := r.Context()
-	if !s.confirmPassword(ctx, r, c, b.Password) {
-		fail(w, 403, msgReauth)
+	if !h.confirmPassword(ctx, r, c, b.Password) {
+		httpx.Fail(w, 403, msgReauth)
 		return
 	}
 	var sids []string
-	err := pgx.BeginFunc(ctx, s.db, func(tx pgx.Tx) error {
+	err := pgx.BeginFunc(ctx, h.db, func(tx pgx.Tx) error {
 		rows, err := tx.Query(ctx, `UPDATE sessions SET revoked_at = NOW(), revoke_reason = 'revoke_all' WHERE revoked_at IS NULL RETURNING id::text`)
 		if err != nil {
 			return err
@@ -441,13 +427,13 @@ func (s *server) handleRevokeAll(w http.ResponseWriter, r *http.Request, c calle
 		if sids, err = pgx.CollectRows(rows, pgx.RowTo[string]); err != nil {
 			return err
 		}
-		return securityLog(ctx, tx, "", c.ID, "revoke_all_sessions", r, map[string]any{"sessions": len(sids)})
+		return seclog.Log(ctx, tx, "", c.ID, "revoke_all_sessions", r, map[string]any{"sessions": len(sids)})
 	})
 	if err != nil {
-		internalError(w, r, err)
+		httpx.InternalError(w, r, err)
 		return
 	}
-	s.markRevoked(ctx, sids...)
-	s.clearSessionCookies(w, r)
-	ok(w, "Đã đăng xuất mọi tài khoản trên mọi thiết bị ("+itoa(len(sids))+" phiên).", nil)
+	h.sess.MarkRevoked(ctx, sids...)
+	h.sess.ClearSessionCookies(w, r)
+	httpx.OK(w, "Đã đăng xuất mọi tài khoản trên mọi thiết bị ("+httpx.Itoa(len(sids))+" phiên).", nil)
 }

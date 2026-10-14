@@ -134,7 +134,7 @@ services/library/
 - [x] 4. community → NestJS.
 - [ ] 5. media → NestJS.
 - [x] 6. library → bố cục Go chuẩn (nhỏ nhất, làm mẫu).
-- [ ] 7. identity.
+- [x] 7. identity.
 - [ ] 8. messaging.
 - [ ] 9. workspace (lớn nhất).
 - [ ] 10. Viết `docs/QUY-UOC.md` (quy chuẩn NestJS và Go ở trên, cách thêm chức năng mới), cập nhật README (kiến trúc, cấu trúc thư mục) và CLAUDE.md (lệnh, bẫy mới). Mỗi PR trước cũng sửa phần README của service đó.

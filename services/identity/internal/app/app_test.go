@@ -1,4 +1,4 @@
-package main
+package app
 
 // End-to-end tests against a real Postgres (+ Redis when given). They wipe the database they get, so point them
 // at a throwaway one:
@@ -20,16 +20,26 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/redis/go-redis/v9"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 	"golang.org/x/crypto/bcrypt"
+
+	"nmv/identity/internal/auth"
+	"nmv/identity/internal/config"
+	"nmv/identity/internal/demo"
+	"nmv/identity/internal/platform/db"
+	"nmv/identity/internal/platform/events"
+	"nmv/identity/internal/platform/logger"
+	"nmv/identity/internal/platform/redis"
+	"nmv/identity/internal/sessions"
+	"nmv/identity/internal/tokens"
 )
 
 const testPW = "Doc-Truyen-Moi-Ngay"
 
 type harness struct {
 	t   *testing.T
-	s   *server
+	s   *App
+	now func() time.Time // the clock the app reads; tests move it
 	srv *httptest.Server
 }
 
@@ -39,19 +49,19 @@ func newHarness(t *testing.T) *harness {
 		t.Skip("IDENTITY_TEST_DATABASE_URL not set")
 	}
 	ctx := context.Background()
-	db, err := pgxpool.New(ctx, dbURL)
+	pool, err := pgxpool.New(ctx, dbURL)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(db.Close)
-	if _, err := db.Exec(ctx, `DROP SCHEMA public CASCADE; CREATE SCHEMA public`); err != nil {
+	t.Cleanup(pool.Close)
+	if _, err := pool.Exec(ctx, `DROP SCHEMA public CASCADE; CREATE SCHEMA public`); err != nil {
 		t.Fatal(err)
 	}
-	if err := migrate(ctx, db); err != nil {
+	if err := db.Migrate(ctx, pool); err != nil {
 		t.Fatal(err)
 	}
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !verifyUserHeaders([]byte(strings.Repeat("k", 32)), r.Header.Get("X-User-Id"), r.Header.Get("X-User-Roles"),
+		if !tokens.VerifyUserHeaders([]byte(strings.Repeat("k", 32)), r.Header.Get("X-User-Id"), r.Header.Get("X-User-Roles"),
 			r.Header.Get("X-User-Exp"), r.Header.Get("X-User-Sig"), time.Now()) {
 			w.WriteHeader(401)
 			return
@@ -59,26 +69,29 @@ func newHarness(t *testing.T) *harness {
 		w.Write([]byte(`{"ok":true}`))
 	}))
 	t.Cleanup(backend.Close)
-	s := &server{db: db, now: time.Now, cfg: config{
+	h := &harness{t: t, now: time.Now}
+	cfg := config.Config{
 		JWTSecret: []byte(strings.Repeat("j", 32)), SigKeyBackend: []byte(strings.Repeat("k", 32)),
 		SigKeyWorkspace: []byte(strings.Repeat("w", 32)), SigKeyMedia: []byte(strings.Repeat("m", 32)), SigKeyMsg: []byte(strings.Repeat("g", 32)), InternalKey: []byte(strings.Repeat("i", 32)),
 		SiteURL: "http://site", BackendURL: backend.URL,
-	}}
-	if rURL := os.Getenv("IDENTITY_TEST_REDIS_URL"); rURL != "" {
-		opt, err := redis.ParseURL(rURL)
-		if err != nil {
-			t.Fatal(err)
-		}
-		s.rdb = redis.NewClient(opt)
-		s.rdb.FlushDB(ctx)
-		t.Cleanup(func() { s.rdb.Close() })
 	}
+	rdb, err := redis.Connect(os.Getenv("IDENTITY_TEST_REDIS_URL"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rdb != nil {
+		rdb.FlushDB(ctx)
+		t.Cleanup(func() { rdb.Close() })
+	}
+	s := New(cfg, pool, rdb, func() time.Time { return h.now() })
+	h.s = s
 	// Mounted like the gateway does it, so the refresh cookie's path matches
 	mux := http.NewServeMux()
-	mux.Handle("/api/identity/", http.StripPrefix("/api/identity", s.routes()))
-	srv := httptest.NewServer(withRequestLog(mux))
+	mux.Handle("/api/identity/", http.StripPrefix("/api/identity", s.Routes()))
+	srv := httptest.NewServer(logger.WithRequestLog(mux))
 	t.Cleanup(srv.Close)
-	return &harness{t: t, s: s, srv: srv}
+	h.srv = srv
+	return h
 }
 
 type client struct {
@@ -113,7 +126,7 @@ func (c *client) do(method, path string, body any, csrf bool) (int, map[string]a
 	req, _ := http.NewRequest(method, c.h.srv.URL+"/api/identity"+path, rd)
 	req.Header.Set("Content-Type", "application/json")
 	if csrf {
-		req.Header.Set("X-CSRF-Token", c.cookie(cookieCSRF))
+		req.Header.Set("X-CSRF-Token", c.cookie(sessions.CookieCSRF))
 	}
 	res, err := c.hc.Do(req)
 	if err != nil {
@@ -185,9 +198,9 @@ func TestCSRFRequiredForWrites(t *testing.T) {
 func TestRefreshRotationAndReuse(t *testing.T) {
 	h := newHarness(t)
 	c := h.register("ryu")
-	first := c.cookie(cookieRefresh)
+	first := c.cookie(sessions.CookieRefresh)
 	c.want(200, "POST", "/refresh", nil, false)
-	second := c.cookie(cookieRefresh)
+	second := c.cookie(sessions.CookieRefresh)
 	if second == "" || second == first {
 		t.Fatal("refresh token not rotated")
 	}
@@ -195,15 +208,15 @@ func TestRefreshRotationAndReuse(t *testing.T) {
 	// Another tab with the old token a moment later: tolerated, no new refresh token handed out
 	tab := h.client()
 	u, _ := url.Parse(h.srv.URL + "/api/identity/")
-	tab.jar.SetCookies(u, []*http.Cookie{{Name: cookieRefresh, Value: first, Path: "/api/identity"}})
+	tab.jar.SetCookies(u, []*http.Cookie{{Name: sessions.CookieRefresh, Value: first, Path: "/api/identity"}})
 	tab.want(200, "POST", "/refresh", nil, false)
 
 	// The same old token much later = it was copied: the whole session dies
-	h.s.now = func() time.Time { return time.Now().Add(time.Minute) }
+	h.now = func() time.Time { return time.Now().Add(time.Minute) }
 	thief := h.client()
-	thief.jar.SetCookies(u, []*http.Cookie{{Name: cookieRefresh, Value: first, Path: "/api/identity"}})
+	thief.jar.SetCookies(u, []*http.Cookie{{Name: sessions.CookieRefresh, Value: first, Path: "/api/identity"}})
 	thief.want(401, "POST", "/refresh", nil, false)
-	h.s.now = time.Now
+	h.now = time.Now
 	c.want(401, "POST", "/refresh", nil, false) // the legitimate current token is dead too
 	c.want(401, "GET", "/me", nil, false)       // and so is the access token (revocation is immediate)
 }
@@ -212,7 +225,7 @@ func TestLockoutAfterFailedLogins(t *testing.T) {
 	h := newHarness(t)
 	h.register("sakura")
 	c := h.client()
-	for i := 0; i < lockAfter; i++ {
+	for i := 0; i < auth.LockAfter; i++ {
 		c.want(400, "POST", "/login", map[string]any{"identifier": "sakura", "password": "wrong-" + fmt.Sprint(i)}, false)
 	}
 	c.want(429, "POST", "/login", map[string]any{"identifier": "sakura", "password": testPW}, false)
@@ -226,7 +239,7 @@ func TestVerifyEndpoint(t *testing.T) {
 		req, _ := http.NewRequest("GET", h.srv.URL+"/api/identity/internal/verify", nil)
 		req.Header.Set("X-Original-Method", method)
 		if csrf {
-			req.Header.Set("X-CSRF-Token", c.cookie(cookieCSRF))
+			req.Header.Set("X-CSRF-Token", c.cookie(sessions.CookieCSRF))
 		}
 		res, err := c.hc.Do(req)
 		if err != nil {
@@ -237,9 +250,9 @@ func TestVerifyEndpoint(t *testing.T) {
 	}
 	st, hd := get("GET", false)
 	if st != 200 || hd.Get("X-User-Id") != h.userID("kai") || hd.Get("X-User-Roles") != "reader" ||
-		!verifyUserHeaders(h.s.cfg.SigKeyBackend, hd.Get("X-User-Id"), hd.Get("X-User-Roles"), hd.Get("X-User-Exp"), hd.Get("X-User-Sig"), time.Now()) ||
-		!verifyUserHeaders(h.s.cfg.SigKeyWorkspace, hd.Get("X-User-Id"), hd.Get("X-User-Roles"), hd.Get("X-User-Exp"), hd.Get("X-User-Sig-Ws"), time.Now()) ||
-		verifyUserHeaders(h.s.cfg.SigKeyWorkspace, hd.Get("X-User-Id"), hd.Get("X-User-Roles"), hd.Get("X-User-Exp"), hd.Get("X-User-Sig"), time.Now()) {
+		!tokens.VerifyUserHeaders(h.s.cfg.SigKeyBackend, hd.Get("X-User-Id"), hd.Get("X-User-Roles"), hd.Get("X-User-Exp"), hd.Get("X-User-Sig"), time.Now()) ||
+		!tokens.VerifyUserHeaders(h.s.cfg.SigKeyWorkspace, hd.Get("X-User-Id"), hd.Get("X-User-Roles"), hd.Get("X-User-Exp"), hd.Get("X-User-Sig-Ws"), time.Now()) ||
+		tokens.VerifyUserHeaders(h.s.cfg.SigKeyWorkspace, hd.Get("X-User-Id"), hd.Get("X-User-Roles"), hd.Get("X-User-Exp"), hd.Get("X-User-Sig"), time.Now()) {
 		t.Fatalf("signed-in GET: %d %v", st, hd)
 	}
 	if st, _ := get("POST", false); st != 403 {
@@ -249,7 +262,7 @@ func TestVerifyEndpoint(t *testing.T) {
 		t.Fatalf("write with CSRF: %d", st)
 	}
 	req, _ := http.NewRequest("GET", h.srv.URL+"/api/identity/internal/verify", nil)
-	req.Header.Set("Cookie", cookieAccess+"=not-a-jwt; X-User-Id=x")
+	req.Header.Set("Cookie", sessions.CookieAccess+"=not-a-jwt; X-User-Id=x")
 	res, _ := http.DefaultClient.Do(req)
 	if res.StatusCode != 200 || res.Header.Get("X-User-Id") != "" {
 		t.Fatalf("guest: %d %v", res.StatusCode, res.Header)
@@ -270,7 +283,7 @@ func TestLogoutAllAndBan(t *testing.T) {
 
 	admin := h.register("boss")
 	h.s.db.Exec(context.Background(), `INSERT INTO user_roles (user_id, role) VALUES ($1, 'admin')`, h.userID("boss"))
-	h.s.forgetRoles(context.Background(), h.userID("boss"))
+	h.s.sess.ForgetRoles(context.Background(), h.userID("boss"))
 	again := h.client()
 	again.want(200, "POST", "/login", map[string]any{"identifier": "minh", "password": testPW}, false)
 	minh := h.userID("minh")
@@ -283,7 +296,7 @@ func TestLogoutAllAndBan(t *testing.T) {
 	// a mod may not touch an admin, nor delete with a wrong password
 	mod := h.register("modo")
 	h.s.db.Exec(context.Background(), `INSERT INTO user_roles (user_id, role) VALUES ($1, 'mod')`, h.userID("modo"))
-	h.s.forgetRoles(context.Background(), h.userID("modo"))
+	h.s.sess.ForgetRoles(context.Background(), h.userID("modo"))
 	mod.want(403, "POST", "/users/"+h.userID("boss")+"/ban", map[string]any{"password": testPW}, true)
 	admin.want(200, "DELETE", "/users/"+minh, map[string]any{"password": testPW, "purge_content": true}, true)
 	var deleted int
@@ -296,7 +309,7 @@ func TestLogoutAllAndBan(t *testing.T) {
 func TestLegacyBcryptUpgradedOnLogin(t *testing.T) {
 	h := newHarness(t)
 	hash, _ := bcrypt.GenerateFromPassword([]byte("password123"), 10)
-	id := newUUID()
+	id := tokens.NewUUID()
 	h.s.db.Exec(context.Background(), `INSERT INTO users (id, username, email, password_hash) VALUES ($1, 'old_user', 'old@mail.vn', $2)`, id, string(hash))
 	h.client().want(200, "POST", "/login", map[string]any{"identifier": "old_user", "password": "password123"}, false)
 	var now string
@@ -309,22 +322,22 @@ func TestLegacyBcryptUpgradedOnLogin(t *testing.T) {
 func TestSeedDemoOnlyIntoEmptyDB(t *testing.T) {
 	h := newHarness(t)
 	ctx := context.Background()
-	if err := seedDemo(ctx, h.s.db); err != nil {
+	if err := demo.Seed(ctx, h.s.db); err != nil {
 		t.Fatal(err)
 	}
 	h.client().want(200, "POST", "/login", map[string]any{"identifier": "admin", "password": "password123"}, false)
 	h.s.db.Exec(ctx, `DELETE FROM users WHERE username = 'reader_sora'`)
-	if err := seedDemo(ctx, h.s.db); err != nil {
+	if err := demo.Seed(ctx, h.s.db); err != nil {
 		t.Fatal(err)
 	}
 	var n int
 	h.s.db.QueryRow(ctx, `SELECT COUNT(*) FROM users`).Scan(&n)
-	if n != len(demoAccounts)-1 {
+	if n != len(demo.Accounts)-1 {
 		t.Fatalf("seed-demo re-added accounts into a non-empty database: %d", n)
 	}
 	// Stats for the backend's reconcile job: 11 users, each at version 2 (insert + created event)
 	rec := httptest.NewRecorder()
-	h.s.handleStats(rec, httptest.NewRequest("GET", "/internal/stats", nil))
+	h.s.internalH.Stats(rec, httptest.NewRequest("GET", "/internal/stats", nil))
 	var stats struct{ Data map[string]float64 }
 	json.Unmarshal(rec.Body.Bytes(), &stats)
 	if stats.Data["users"] != 11 || stats.Data["version_sum"] != 22 || stats.Data["outbox_pending"] != 12 {
@@ -355,16 +368,16 @@ func TestEventContracts(t *testing.T) {
 	h := newHarness(t)
 	admin := h.register("chief")
 	h.s.db.Exec(context.Background(), `INSERT INTO user_roles (user_id, role) VALUES ($1, 'admin')`, h.userID("chief"))
-	h.s.forgetRoles(context.Background(), h.userID("chief"))
+	h.s.sess.ForgetRoles(context.Background(), h.userID("chief"))
 	h.register("member")
 	id := h.userID("member")
 	admin.want(200, "POST", "/users/"+id+"/roles", map[string]any{"role": "translator", "action": "grant", "password": testPW}, true)
 	admin.want(200, "POST", "/users/"+id+"/ban", map[string]any{"reason": "spam", "password": testPW}, true)
 	admin.want(200, "DELETE", "/users/"+id, map[string]any{"password": testPW}, true)
-	if err := h.s.alert(context.Background(), "test", "Tiêu đề", "Nội dung"); err != nil {
+	if err := events.Alert(context.Background(), h.s.db, "test", "Tiêu đề", "Nội dung"); err != nil {
 		t.Fatal(err)
 	}
-	if err := republish(context.Background(), h.s.db, ""); err != nil { // re-sent snapshots, the deleted user's included
+	if err := events.Republish(context.Background(), h.s.db, ""); err != nil { // re-sent snapshots, the deleted user's included
 		t.Fatal(err)
 	}
 
@@ -372,7 +385,7 @@ func TestEventContracts(t *testing.T) {
 	comp.AssertFormat()
 	schemas := map[string]*jsonschema.Schema{}
 	for prefix, file := range map[string]string{"identity.user.": "identity.user.v1.json", "identity.alert": "identity.alert.v1.json"} {
-		sch, err := comp.Compile("../../events/" + file)
+		sch, err := comp.Compile("../../../../events/" + file)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -466,10 +479,8 @@ func TestTurnstile(t *testing.T) {
 		fmt.Fprintf(w, `{"success":%v}`, r.Form.Get("secret") == "sec" && r.Form.Get("response") == "human")
 	}))
 	defer cf.Close()
-	old := turnstileURL
-	turnstileURL = cf.URL
-	defer func() { turnstileURL = old }()
-	h.s.cfg.TurnstileSecret = "sec"
+	h.s.turnstile.URL = cf.URL
+	h.s.turnstile.Secret = "sec"
 	body := map[string]any{"username": "bot", "email": "bot@mail.vn", "password": testPW}
 	h.client().want(400, "POST", "/register", body, false)
 	body["turnstile_token"] = "human"
