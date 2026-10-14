@@ -5,6 +5,7 @@ import { callLibrary, libraryData } from '../../services/libraryClient';
 import { enqueueNotificationJob } from '../../services/queue.service';
 import { indexStory, searchStoryIds } from '../search/search.client';
 import { recordView } from '../../services/viewCounter';
+import { slugify } from '../../common/utils/slugify';
 import { InputError, isUuid, optionalText } from '../../utils/validation';
 import { parseStoryInput, StoryInput } from './dto/story-input';
 import { trendingStories } from './hot-shelf.job';
@@ -111,6 +112,21 @@ export class StoriesService {
     publishBehavior({ userId: currentUserId, visitorId, storyId: story.id, chapterId: chapter.id });
     recordView(story.id, chapter.id);
     return chapter;
+  }
+
+  /** Publish a new story (POST /stories); the creator becomes its owner. */
+  create(user: StoryUser, body: any) {
+    return clientErrors(async () => {
+      const input = parseStoryInput(body || {}, true);
+      const baseSlug = slugify(input.title as string) || 'truyen-moi';
+      const story = await this.repo.createInTransaction(
+        baseSlug, input, user.id,
+        (tx) => checkStoryReferences(tx, input, user.id),
+        (created, tx) => grantPublisherRole(tx, user.id, created.group_id),
+      );
+      await indexStory(story.id);
+      return story;
+    });
   }
 
   /** Update story metadata, owner or assigned group (story team only). */

@@ -1,7 +1,6 @@
 import express, { Router } from 'express';
 import { requireAuth, optionalAuth, requireRole } from '../middlewares/auth.middleware';
 import { 
-  createStory, 
   submitChapter, 
   getChapterForEdit,
   updateChapter,
@@ -36,7 +35,6 @@ const albumLimiter = perUserLimiter({ windowMs: 60 * 60_000, limit: 60, message:
 // /tags: modules/tags (Nest)
 
 // Stories: modules/stories (Nest); creating a story is still here
-router.post('/stories', requireAuth, createStory);
 // Volumes: modules/volumes (Nest)
 
 // Chapters (published straight away, no review)

@@ -9,8 +9,7 @@ import { visitorIdOf } from '../../services/behaviorEvents';
 import { StoriesService, StoryUser } from './stories.service';
 
 /**
- * Stories under /api/v1/stories. Static paths come before :slug. Creating a story (POST /stories) and the
- * chapters/drafts routes are still the legacy Express router's.
+ * Stories under /api/v1/stories. Static paths come before :slug. Chapters and drafts routes live in their own modules.
  */
 @Controller('stories')
 export class StoriesController {
@@ -23,6 +22,12 @@ export class StoriesController {
   }
 
   // same answer for everyone: popular queries (and the search-as-you-type suggestions) hit Redis, not Elasticsearch
+  @Post()
+  @UseGuards(AuthGuard)
+  async create(@CurrentUser() user: StoryUser, @Body() body: any) {
+    return { success: true, message: 'Đăng bộ truyện mới thành công!', data: await this.stories.create(user, body) };
+  }
+
   @Get('explore')
   @UseGuards(Mw(searchLimiter, cacheJson(30)))
   explore(@Query() query: any) {
