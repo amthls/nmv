@@ -1,11 +1,11 @@
 import { Response } from 'express';
-import { pool } from './config';
-import { AuthedRequest, isStaff } from './auth';
-import { sanitizeRichText, hasRichContent } from './richText';
-import { InputError, isUuid, optionalEnum, optionalText, optionalUrl } from './validation';
-import { clientDbError } from './dbErrors';
-import { profiles, stories } from './backend';
-import { notify, postReactionNotification, postReviewNotifications } from './notify';
+import { pool } from '../../config';
+import { AuthedRequest, isStaff } from '../../common/utils/auth';
+import { sanitizeRichText, hasRichContent } from '../../common/utils/rich-text';
+import { InputError, isUuid, optionalEnum, optionalText, optionalUrl } from '../../common/utils/validation';
+import { clientDbError } from '../../common/utils/db-errors';
+import { profiles, stories } from '../../infra/clients/backend';
+import { notify, postReactionNotification, postReviewNotifications } from '../notify/notify.service';
 
 // Moved from the backend's post.controller.ts (Plan/community.md): same routes and JSON under /api/community.
 

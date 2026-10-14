@@ -1,7 +1,7 @@
 import crypto from 'crypto';
-import type { Request, Response, NextFunction } from 'express';
+import type { Request } from 'express';
 import rateLimit from 'express-rate-limit';
-import { INTERNAL_KEY, USER_SIG_KEY } from './config';
+import { INTERNAL_KEY, USER_SIG_KEY } from '../../config';
 
 export interface Viewer {
   id: string;
@@ -24,17 +24,6 @@ export function userFromHeaders(req: Request, now = Date.now()): Viewer | null {
 }
 
 export const isStaff = (req: AuthedRequest) => Boolean(req.user?.roles.some((r) => r === 'admin' || r === 'mod'));
-
-export function optionalAuth(req: AuthedRequest, _res: Response, next: NextFunction) {
-  req.user = userFromHeaders(req) || undefined;
-  next();
-}
-
-export function requireAuth(req: AuthedRequest, res: Response, next: NextFunction) {
-  req.user = userFromHeaders(req) || undefined;
-  if (!req.user) return res.status(401).json({ success: false, message: 'Bạn chưa đăng nhập.' });
-  next();
-}
 
 /** X-Internal-Auth "<exp>.<hmac(key, 'internal|'+exp)>" signed with `key` (two minutes). */
 export function internalHeader(key: string, now = Date.now()): string {

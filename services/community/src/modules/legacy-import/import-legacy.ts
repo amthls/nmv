@@ -1,5 +1,5 @@
 import { Client } from 'pg';
-import { pool } from './config';
+import { pool } from '../../config';
 
 /**
  * `node dist/server.js import-legacy`: copy posts, reactions, post mutes, comments, likes and reports from the

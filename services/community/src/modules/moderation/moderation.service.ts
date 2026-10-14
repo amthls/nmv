@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
-import { pool } from './config';
-import { AuthedRequest, isStaff } from './auth';
-import { callBackend, profileByUsername, profiles } from './backend';
-import { purgeUserComments } from './comments';
+import { pool } from '../../config';
+import { AuthedRequest, isStaff } from '../../common/utils/auth';
+import { callBackend, profileByUsername, profiles } from '../../infra/clients/backend';
+import { purgeUserComments } from '../comments/comments.service';
 
 const PAGE = 30;
 

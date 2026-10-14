@@ -131,7 +131,7 @@ services/library/
 - [ ] 1. catalog: khung Nest + `common`/`infra` + router cũ gắn tạm; module `system`, `tags`, `codes`, `users`.
 - [ ] 2. catalog: `groups`, `stories`, `volumes`, `search`, `exports`, `library-sync`.
 - [ ] 3. catalog: `chapters`, `drafts`, worker sang `WorkerModule`; xóa router cũ và thư mục cũ.
-- [ ] 4. community → NestJS.
+- [x] 4. community → NestJS.
 - [ ] 5. media → NestJS.
 - [ ] 6. library → bố cục Go chuẩn (nhỏ nhất, làm mẫu).
 - [ ] 7. identity.

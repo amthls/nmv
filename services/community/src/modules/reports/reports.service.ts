@@ -1,7 +1,7 @@
 import { Response } from 'express';
-import { pool } from './config';
-import { AuthedRequest, isStaff } from './auth';
-import { chapters, profiles, stories } from './backend';
+import { pool } from '../../config';
+import { AuthedRequest, isStaff } from '../../common/utils/auth';
+import { chapters, profiles, stories } from '../../infra/clients/backend';
 
 // Moved from the backend's report.controller.ts (Plan/community.md): same routes and JSON under /api/community.
 

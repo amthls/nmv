@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
-import { pool } from './config';
-import { AuthedRequest, isStaff } from './auth';
-import { authorFields, callBackend, chapters, profiles } from './backend';
-import { commentNotifications, notify } from './notify';
+import { pool } from '../../config';
+import { AuthedRequest, isStaff } from '../../common/utils/auth';
+import { authorFields, callBackend, chapters, profiles } from '../../infra/clients/backend';
+import { commentNotifications, notify } from '../notify/notify.service';
 
 // Moved from the backend's comment.controller.ts (Plan/community.md): same routes and JSON under /api/community.
 

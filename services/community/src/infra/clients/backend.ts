@@ -1,6 +1,6 @@
-import { BACKEND_KEY, BACKEND_URL } from './config';
-import { internalHeader } from './auth';
-import { currentRequestId } from './logger';
+import { BACKEND_KEY, BACKEND_URL } from '../../config';
+import { internalHeader } from '../../common/utils/auth';
+import { currentRequestId } from '../../common/utils/logger';
 
 /**
  * People (names, avatars, roles) and stories/chapters live in the backend; community asks its internal API and keeps the

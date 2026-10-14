@@ -1,9 +1,9 @@
 import amqp from 'amqplib';
 import crypto from 'crypto';
-import { MESSAGING_KEY, MESSAGING_URL, RABBITMQ_URL, pool } from './config';
-import { internalHeader } from './auth';
-import { chapters, stories } from './backend';
-import { currentRequestId } from './logger';
+import { MESSAGING_KEY, MESSAGING_URL, RABBITMQ_URL, pool } from '../../config';
+import { internalHeader } from '../../common/utils/auth';
+import { chapters, stories } from '../../infra/clients/backend';
+import { currentRequestId } from '../../common/utils/logger';
 
 /**
  * Notifications about posts and comments. Built here (who gets what), delivered by the messaging service: jobs go on

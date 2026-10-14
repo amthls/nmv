@@ -5,7 +5,7 @@ import crypto from 'crypto';
 process.env.USER_SIG_KEY_COMMUNITY = 'c'.repeat(32);
 process.env.INTERNAL_KEY_COMMUNITY = 'i'.repeat(32);
 const auth = import('./auth'); // reads the keys once, at load
-const notify = import('./notify');
+const notify = import('../../modules/notify/notify.service');
 
 const headers = (key: string, id = 'u1', roles = 'reader,mod', exp = String(Math.floor(Date.now() / 1000) + 60)) => ({
   'x-user-id': id, 'x-user-roles': roles, 'x-user-exp': exp,
