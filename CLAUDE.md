@@ -43,13 +43,21 @@ Plan nằm trong nhánh của việc đó và được commit cùng code.
 
 ## Phối hợp agent Opus ↔ Sonnet (tiết kiệm token)
 
-Việc lớn chia cho agent theo mô hình "Opus chỉ huy, Sonnet làm":
+Việc lớn chia cho agent theo mô hình "Opus chỉ huy, Sonnet làm, Haiku chạy việc cơ học":
 
 - **Opus (phiên chính) chỉ làm phần cần suy nghĩ:**
   - đọc code để chia việc, viết **phiếu giao việc**;
   - tự viết những mảnh nhỏ quyết định thiết kế (khung, một module mẫu);
   - duyệt kết quả và trả lời câu `CẦN OPUS`.
-- **Sonnet làm mọi việc tốn token:** viết/chuyển code theo mẫu, build Docker, chạy test, chạy snapshot.
+- **Sonnet làm việc cần hiểu code:** viết/chuyển code theo mẫu, sửa lỗi build/test, giữ đúng hành vi (mã HTTP, transaction, quyền, SQL).
+- **Haiku (rẻ nhất cả token đầu vào lẫn đầu ra) làm việc cơ học, không cần suy luận:**
+  - chạy lệnh kiểm tra (`tsc`, test, `go vet`, build Docker, snapshot, smoke) rồi trả về **chỉ** đạt/hỏng + tối đa ~10 dòng lỗi;
+  - đọc log dài, tóm tắt lỗi;
+  - đổi tên hoặc chuyển file hàng loạt và sửa đường import theo danh sách cho sẵn;
+  - cập nhật README/plan theo khuôn có sẵn, tick checklist.
+
+  Không giao Haiku việc chuyển logic, tách package, sửa lỗi khó: làm sai thì sửa lại còn tốn hơn.
+- **Ai gọi Haiku:** Opus hoặc Sonnet, với phiếu ngắn (`VIỆC / LỆNH / TRẢ VỀ`). Sonnet giao phần "chạy kiểm tra + đọc log" cho Haiku thay vì tự đọc đầu ra dài.
 - **Phiếu giao việc** tối đa ~15 dòng, theo mẫu: `VIỆC / FILE (chỉ đọc những file này) / LÀM / KHÔNG / KIỂM / XONG KHI`.
   - Gộp vài phiếu liên quan vào một tin nhắn, kèm giới hạn "xong là dừng, không chau chuốt".
   - Không gửi lại bối cảnh dài: trỏ tới mục trong `Plan/*.md`.
