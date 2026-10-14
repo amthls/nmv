@@ -1,25 +1,28 @@
-import { Controller, Delete, Get, HttpCode, Post, Put, Req, Res, UseGuards } from '@nestjs/common';
-import type { Request, Response } from 'express';
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put, Query, UseFilters, UseGuards } from '@nestjs/common';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { ExposeMessageFilter } from '../../common/filters/http-exception.filter';
 import { AuthGuard } from '../../common/guards/auth.guard';
 import { Mw } from '../../common/guards/express-middleware.guard';
-import { commentLimiter } from '../../common/utils/auth';
-import type { AuthedRequest } from '../../common/utils/auth';
-import * as comments from './comments.service';
+import { commentLimiter, Viewer } from '../../common/utils/auth';
+import { CommentsService } from './comments.service';
 
 @Controller('comments')
+@UseFilters(ExposeMessageFilter)
 export class CommentsController {
-  @Get()
-  list(@Req() req: Request, @Res() res: Response) { return comments.getComments(req, res); }
+  constructor(private readonly comments: CommentsService) {}
 
-  @Post() @HttpCode(200) @UseGuards(AuthGuard, Mw(commentLimiter))
-  create(@Req() req: AuthedRequest, @Res() res: Response) { return comments.createComment(req, res); }
+  @Get()
+  list(@Query() query: Record<string, any>) { return this.comments.list(query); }
+
+  @Post() @HttpCode(201) @UseGuards(AuthGuard, Mw(commentLimiter))
+  create(@CurrentUser() user: Viewer, @Body() body: any) { return this.comments.create(user, body); }
 
   @Post(':id/like') @HttpCode(200) @UseGuards(AuthGuard)
-  like(@Req() req: AuthedRequest, @Res() res: Response) { return comments.likeComment(req, res); }
+  like(@CurrentUser() user: Viewer, @Param('id') id: string) { return this.comments.like(user, id); }
 
   @Put(':id') @UseGuards(AuthGuard)
-  update(@Req() req: AuthedRequest, @Res() res: Response) { return comments.updateComment(req, res); }
+  update(@CurrentUser() user: Viewer, @Param('id') id: string, @Body() body: any) { return this.comments.update(user, id, body); }
 
   @Delete(':id') @UseGuards(AuthGuard)
-  remove(@Req() req: AuthedRequest, @Res() res: Response) { return comments.deleteComment(req, res); }
+  remove(@CurrentUser() user: Viewer, @Param('id') id: string) { return this.comments.remove(user, id); }
 }

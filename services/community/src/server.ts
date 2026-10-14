@@ -4,7 +4,7 @@ import express from 'express';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { requestContext } from './common/utils/logger';
-import { handleIdentityEvent } from './modules/moderation/moderation.service';
+import { ModerationService } from './modules/moderation/moderation.service';
 import { connectQueue } from './modules/notify/notify.service';
 import { startEventConsumer } from './infra/queue/events';
 import { importLegacy } from './modules/legacy-import/import-legacy';
@@ -41,6 +41,7 @@ async function bootstrap() {
 async function main() {
   await migrate();
   const nest = await bootstrap();
+  const handleIdentityEvent = (evt: any) => nest.get(ModerationService).handleIdentityEvent(evt);
   connectQueue();
   // identity.user.deleted (purge_content): hide that account's posts and comments
   const lost = () => {

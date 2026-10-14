@@ -23,7 +23,7 @@ export function userFromHeaders(req: Request, now = Date.now()): Viewer | null {
   return crypto.timingSafeEqual(want, Buffer.from(sig, 'hex')) ? { id, roles: roles ? roles.split(',') : [] } : null;
 }
 
-export const isStaff = (req: AuthedRequest) => Boolean(req.user?.roles.some((r) => r === 'admin' || r === 'mod'));
+export const isStaff = (user?: Viewer) => Boolean(user?.roles.some((r) => r === 'admin' || r === 'mod'));
 
 /** X-Internal-Auth "<exp>.<hmac(key, 'internal|'+exp)>" signed with `key` (two minutes). */
 export function internalHeader(key: string, now = Date.now()): string {

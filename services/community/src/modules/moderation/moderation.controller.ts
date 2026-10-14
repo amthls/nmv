@@ -1,11 +1,15 @@
-import { Controller, Get, Req, Res, UseGuards } from '@nestjs/common';
-import type { Response } from 'express';
+import { Controller, Get, Query, UseFilters, UseGuards } from '@nestjs/common';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { ExposeMessageFilter } from '../../common/filters/http-exception.filter';
 import { AuthGuard } from '../../common/guards/auth.guard';
-import type { AuthedRequest } from '../../common/utils/auth';
-import * as moderation from './moderation.service';
+import { Viewer } from '../../common/utils/auth';
+import { ModerationService } from './moderation.service';
 
 @Controller('moderation')
+@UseFilters(ExposeMessageFilter)
 export class ModerationController {
+  constructor(private readonly moderation: ModerationService) {}
+
   @Get('removed') @UseGuards(AuthGuard)
-  removed(@Req() req: AuthedRequest, @Res() res: Response) { return moderation.getRemovedContent(req, res); }
+  removed(@CurrentUser() user: Viewer, @Query() query: Record<string, any>) { return this.moderation.removed(user, query); }
 }

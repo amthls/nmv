@@ -1,11 +1,10 @@
-import { Response } from 'express';
-import { pool } from '../../config';
-import { AuthedRequest, isStaff } from '../../common/utils/auth';
+import { Injectable } from '@nestjs/common';
+import { isStaff, Viewer } from '../../common/utils/auth';
 import { sanitizeRichText, hasRichContent } from '../../common/utils/rich-text';
 import { InputError, isUuid, optionalEnum, optionalText, optionalUrl } from '../../common/utils/validation';
-import { clientDbError } from '../../common/utils/db-errors';
 import { profiles, stories } from '../../infra/clients/backend';
 import { notify, postReactionNotification, postReviewNotifications } from '../notify/notify.service';
+import { PostsRepository } from './posts.repository';
 
 // Moved from the backend's post.controller.ts (Plan/community.md): same routes and JSON under /api/community.
 
@@ -22,45 +21,6 @@ function slugify(text: string) {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
 }
-
-/** Insert with the first free slug (`base`, `base-2`, ...), retrying when another request took it meanwhile. */
-async function insertWithUniqueSlug<T>(base: string, insert: (slug: string) => Promise<T>): Promise<T> {
-  const clean = base.slice(0, 480).replace(/-+$/, '') || 'bai-viet-fandom';
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const taken = new Set((await pool.query(`SELECT slug FROM posts WHERE slug = $1 OR slug LIKE $2`, [clean, `${clean}-%`])).rows.map((r: any) => r.slug));
-    let slug = clean;
-    for (let n = 2; taken.has(slug); n++) slug = `${clean}-${n}`;
-    try {
-      return await insert(slug);
-    } catch (err: any) {
-      if (err?.code === '23505' && String(err.constraint || '').includes('slug')) continue;
-      throw err;
-    }
-  }
-  throw new Error(`Không tìm được slug trống cho "${base}"`);
-}
-
-export const fail = (res: Response, error: any, label: string) => {
-  if (error instanceof InputError) return res.status(error.status).json({ success: false, message: error.message });
-  const clientErr = clientDbError(error);
-  if (clientErr) return res.status(clientErr.status).json({ success: false, message: clientErr.message });
-  console.error(`${label} error:`, error);
-  return res.status(500).json({ success: false, message: error.message });
-};
-
-/** Post columns + reaction summary and the viewer's own reaction ($1 = viewer id or null); author/story via withPeople. */
-const POST_SELECT = `
-  SELECT
-    p.*,
-    COALESCE((
-      SELECT json_object_agg(reaction, cnt) FROM (
-        SELECT reaction, count(*) AS cnt FROM post_reactions WHERE post_id = p.id GROUP BY reaction
-      ) r
-    ), '{}'::json) AS reaction_summary,
-    (SELECT pr.reaction FROM post_reactions pr WHERE pr.post_id = p.id AND pr.user_id = $1::uuid) AS my_reaction,
-    (SELECT COUNT(*)::int FROM comments c WHERE c.target_type = 'post' AND c.target_id = p.id AND c.is_deleted = false) AS real_comment_count,
-    EXISTS (SELECT 1 FROM post_notification_mutes m WHERE m.post_id = p.id AND m.user_id = $1::uuid) AS notifications_muted
-  FROM posts p`;
 
 /** Adds the author and the linked story fields the backend's JOINs used to give. */
 async function withPeople(rows: any[]) {
@@ -79,8 +39,8 @@ async function withPeople(rows: any[]) {
 }
 
 /** Only the author and staff see why a post was refused. */
-function hidePrivate<T extends { user_id: string; rejection_reason?: string | null }>(post: T, req: AuthedRequest): T {
-  if (req.user?.id !== post.user_id && !isStaff(req)) post.rejection_reason = null;
+function hidePrivate<T extends { user_id: string; rejection_reason?: string | null }>(post: T, viewer?: Viewer): T {
+  if (viewer?.id !== post.user_id && !isStaff(viewer)) post.rejection_reason = null;
   return post;
 }
 
@@ -124,21 +84,53 @@ async function readPostBody(body: any, partial: boolean) {
   return out;
 }
 
-// ------------------------------------------------------------------ read
+const requireStaff = (viewer?: Viewer) => {
+  if (!isStaff(viewer)) throw new InputError('Chỉ Admin hoặc Mod mới làm được thao tác này.', 403);
+};
 
-export const getPosts = async (req: AuthedRequest, res: Response) => {
-  try {
-    const { story_id, sort = 'newest', q, filter_status, category } = req.query;
-    const page = Math.max(1, parseInt(String(req.query.page)) || 1);
-    const limit = Math.min(50, Math.max(1, parseInt(String(req.query.limit)) || 20));
+const targetIdsOf = (id: string | undefined, body: any): string[] => {
+  const ids = id ? [id] : (body?.post_ids || body?.ids || []);
+  if (!Array.isArray(ids) || ids.length === 0) throw new InputError('Vui lòng chọn ít nhất một bài viết.');
+  if (ids.length > 100) throw new InputError('Mỗi lần xử lý tối đa 100 bài viết.');
+  if (!ids.every(isUuid)) throw new InputError('Danh sách bài viết không hợp lệ.');
+  return ids;
+};
+
+@Injectable()
+export class PostsService {
+  constructor(private readonly repo: PostsRepository) {}
+
+  /** Insert with the first free slug (`base`, `base-2`, ...), retrying when another request took it meanwhile. */
+  private async insertWithUniqueSlug<T>(base: string, insert: (slug: string) => Promise<T>): Promise<T> {
+    const clean = base.slice(0, 480).replace(/-+$/, '') || 'bai-viet-fandom';
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const taken = await this.repo.takenSlugs(clean);
+      let slug = clean;
+      for (let n = 2; taken.has(slug); n++) slug = `${clean}-${n}`;
+      try {
+        return await insert(slug);
+      } catch (err: any) {
+        if (err?.code === '23505' && String(err.constraint || '').includes('slug')) continue;
+        throw err;
+      }
+    }
+    throw new Error(`Không tìm được slug trống cho "${base}"`);
+  }
+
+  // ------------------------------------------------------------------ read
+
+  async list(viewer: Viewer | undefined, query: Record<string, any>) {
+    const { story_id, sort = 'newest', q, filter_status, category } = query;
+    const page = Math.max(1, parseInt(String(query.page)) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(String(query.limit)) || 20));
     const offset = (page - 1) * limit;
 
-    const viewerId = req.user?.id || null;
+    const viewerId = viewer?.id || null;
     // $1 is always the viewer (used for "my_reaction"); referenced here so the count query can type it
     const conditions: string[] = ['p.is_deleted = false', '($1::uuid IS NULL OR TRUE)'];
     const values: any[] = [viewerId];
     const add = (sql: (n: number) => string, v: any) => { values.push(v); conditions.push(sql(values.length)); };
-    const empty = () => res.json({ success: true, data: [], pagination: { page, limit, total: 0, totalPages: 1 } });
+    const empty = () => ({ success: true, data: [], pagination: { page, limit, total: 0, totalPages: 1 } });
 
     let publicFeed = false;
     if (filter_status === 'drafts') {
@@ -181,67 +173,36 @@ export const getPosts = async (req: AuthedRequest, res: Response) => {
     if (publicFeed && !q && !story_id && (!category || category === 'all')) orderBy = `p.is_pinned DESC, ${orderBy}`;
 
     const whereClause = conditions.join(' AND ');
-    const countRes = await pool.query(`SELECT COUNT(*)::int AS n FROM posts p WHERE ${whereClause}`, values);
-    const total = countRes.rows[0].n;
+    const total = await this.repo.count(whereClause, values);
+    const rows = await this.repo.list(whereClause, orderBy, limit, offset, values);
 
-    const result = await pool.query(`${POST_SELECT} WHERE ${whereClause} ORDER BY ${orderBy} LIMIT ${limit} OFFSET ${offset}`, values);
-
-    return res.json({
+    return {
       success: true,
-      data: (await withPeople(result.rows)).map((p) => hidePrivate(p, req)),
+      data: (await withPeople(rows)).map((p) => hidePrivate(p, viewer)),
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) || 1 },
-    });
-  } catch (error: any) {
-    return fail(res, error, 'getPosts');
+    };
   }
-};
 
-export const getPostBySlug = async (req: AuthedRequest, res: Response) => {
-  try {
-    const result = await pool.query(`${POST_SELECT} WHERE p.slug = $2 AND p.is_deleted = false`, [req.user?.id || null, req.params.slug]);
-    const post = result.rows[0];
-    const isAuthor = !!post && req.user?.id === post.user_id;
+  async bySlug(viewer: Viewer | undefined, slug: string) {
+    const post = await this.repo.bySlug(viewer?.id || null, slug);
+    const isAuthor = !!post && viewer?.id === post.user_id;
     const visible = post && post.approval_status === 'approved' && post.is_published;
-    if (!post || (!visible && !isAuthor && !isStaff(req))) {
-      return res.status(404).json({ success: false, message: 'Bài viết không tồn tại hoặc đã bị xóa.' });
+    if (!post || (!visible && !isAuthor && !isStaff(viewer))) {
+      throw new InputError('Bài viết không tồn tại hoặc đã bị xóa.', 404);
     }
-    if (visible) pool.query('UPDATE posts SET view_count = view_count + 1 WHERE id = $1', [post.id]).catch(console.error);
-    return res.json({ success: true, data: hidePrivate((await withPeople([post]))[0], req) });
-  } catch (error: any) {
-    return fail(res, error, 'getPostBySlug');
+    if (visible) this.repo.incrementViews(post.id).catch(console.error);
+    return { success: true, data: hidePrivate((await withPeople([post]))[0], viewer) };
   }
-};
 
-/**
- * GET /posts/sidebar : the real data for the fandom sidebars.
- *  - leaderboard: most active members of the last 30 days (posts, reactions and comments received)
- *  - stories: stories with the most approved discussions
- *  - counts: the viewer's drafts / posts
- */
-export const getFandomSidebar = async (req: AuthedRequest, res: Response) => {
-  try {
-    const viewerId = req.user?.id || null;
-    const [leaders, top, counts] = await Promise.all([
-      // a few extra: deleted or banned people are dropped after asking the backend
-      pool.query(`
-        SELECT p.user_id, count(p.id)::int AS posts,
-          COALESCE(sum(p.reaction_count), 0)::int AS reactions, COALESCE(sum(p.comment_count), 0)::int AS comments
-        FROM posts p
-        WHERE p.is_deleted = false AND p.approval_status = 'approved' AND p.is_published AND p.published_at > NOW() - INTERVAL '30 days'
-        GROUP BY p.user_id
-        ORDER BY count(p.id) * 3 + COALESCE(sum(p.reaction_count), 0) + COALESCE(sum(p.comment_count), 0) * 2 DESC
-        LIMIT 20`),
-      pool.query(`
-        SELECT story_id, count(*)::int AS post_count
-        FROM posts WHERE story_id IS NOT NULL AND is_deleted = false AND approval_status = 'approved' AND is_published
-        GROUP BY story_id ORDER BY count(*) DESC, max(published_at) DESC LIMIT 30`),
-      pool.query(`
-        SELECT
-          (SELECT count(*)::int FROM posts WHERE is_deleted = false AND is_draft AND user_id = $1::uuid) AS drafts,
-          (SELECT count(*)::int FROM posts WHERE is_deleted = false AND NOT is_draft AND user_id = $1::uuid) AS mine,
-          (SELECT count(*)::int FROM posts WHERE is_deleted = false AND approval_status = 'approved' AND is_published) AS total`,
-        [viewerId]),
-    ]);
+  /**
+   * GET /posts/sidebar : the real data for the fandom sidebars.
+   *  - leaderboard: most active members of the last 30 days (posts, reactions and comments received)
+   *  - stories: stories with the most approved discussions
+   *  - counts: the viewer's drafts / posts
+   */
+  async sidebar(viewer: Viewer | undefined) {
+    const viewerId = viewer?.id || null;
+    const [leaders, top, counts] = await Promise.all([this.repo.leaders(), this.repo.topStories(), this.repo.viewerCounts(viewerId)]);
     const [people, linked] = await Promise.all([profiles(leaders.rows.map((r) => r.user_id)), stories(top.rows.map((r) => r.story_id))]);
     const leaderboard = leaders.rows
       .map((r) => ({ r, u: people.get(r.user_id) }))
@@ -257,222 +218,126 @@ export const getFandomSidebar = async (req: AuthedRequest, res: Response) => {
       .slice(0, 12)
       .map(({ r, s }) => ({ id: s!.id, title: s!.title, slug: s!.slug, cover_image_url: s!.cover_image_url, story_type: s!.story_type, post_count: r.post_count }));
     const c = counts.rows[0];
-    return res.json({
+    return {
       success: true,
       data: {
         leaderboard,
         stories: storyList,
         counts: { total: c.total, drafts: viewerId ? c.drafts : 0, mine: viewerId ? c.mine : 0 },
       },
-    });
-  } catch (error: any) {
-    return fail(res, error, 'getFandomSidebar');
+    };
   }
-};
 
-// ------------------------------------------------------------------ write
+  // ------------------------------------------------------------------ write
 
-export const createPost = async (req: AuthedRequest, res: Response) => {
-  try {
-    const f = await readPostBody(req.body || {}, false);
+  async create(viewer: Viewer, body: any) {
+    const f = await readPostBody(body || {}, false);
     // posts go live immediately; moderators can still take them down (reject) afterwards
     const status = f.is_draft ? 'draft' : 'approved';
     const published = status === 'approved';
 
-    const insertRes = await insertWithUniqueSlug(slugify(f.title!) || 'bai-viet-fandom', (slug) => pool.query(
-      `INSERT INTO posts (user_id, story_id, title, slug, content, category, cover_image_url, images, is_draft,
-                          approval_status, is_published, published_at, approved_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10, $11,
-               CASE WHEN $11 THEN NOW() END, CASE WHEN $11 THEN NOW() END)
-       RETURNING *`,
-      [req.user!.id, f.story_id, f.title, slug, f.content, f.category, f.images![0] || null, JSON.stringify(f.images),
-        f.is_draft, status, published],
-    ));
+    const row = await this.insertWithUniqueSlug(slugify(f.title!) || 'bai-viet-fandom', (slug) => this.repo.insert(viewer.id, f, slug, status, published));
 
     const message = f.is_draft ? 'Đã lưu bản nháp.' : 'Đã đăng bài viết.';
-    return res.status(201).json({ success: true, message, data: insertRes.rows[0] });
-  } catch (error: any) {
-    return fail(res, error, 'createPost');
+    return { success: true, message, data: row };
   }
-};
 
-/** Author only. Only the fields sent are changed. Edits publish immediately, except on a post a moderator took down. */
-export const updatePost = async (req: AuthedRequest, res: Response) => {
-  try {
-    if (!isUuid(req.params.id)) return res.status(404).json({ success: false, message: 'Bài viết không tồn tại.' });
-    const checkRes = await pool.query(`SELECT * FROM posts WHERE id = $1 AND is_deleted = false`, [req.params.id]);
-    const post = checkRes.rows[0];
-    if (!post) return res.status(404).json({ success: false, message: 'Bài viết không tồn tại hoặc đã bị xóa.' });
-    if (post.user_id !== req.user!.id) {
-      return res.status(403).json({ success: false, message: 'Bạn không có quyền chỉnh sửa bài viết của người khác.' });
-    }
+  /** Author only. Only the fields sent are changed. Edits publish immediately, except on a post a moderator took down. */
+  async update(viewer: Viewer, id: string, body: any) {
+    if (!isUuid(id)) throw new InputError('Bài viết không tồn tại.', 404);
+    const post = await this.repo.findLive(id);
+    if (!post) throw new InputError('Bài viết không tồn tại hoặc đã bị xóa.', 404);
+    if (post.user_id !== viewer.id) throw new InputError('Bạn không có quyền chỉnh sửa bài viết của người khác.', 403);
 
-    const f = await readPostBody(req.body || {}, true);
+    const f = await readPostBody(body || {}, true);
     const draft = f.is_draft ?? post.is_draft;
     // a post taken down by a moderator stays down until a moderator restores it
     const status = post.approval_status === 'rejected' ? 'rejected' : draft ? 'draft' : 'approved';
     const published = status === 'approved';
 
-    const updateRes = await pool.query(
-      `UPDATE posts SET
-         title = COALESCE($2, title),
-         content = COALESCE($3, content),
-         category = COALESCE($4, category),
-         story_id = CASE WHEN $5::boolean THEN $6::uuid ELSE story_id END,
-         images = COALESCE($7::jsonb, images),
-         cover_image_url = CASE WHEN $7::jsonb IS NULL THEN cover_image_url ELSE ($7::jsonb ->> 0) END,
-         is_draft = $8::boolean,
-         approval_status = $9::varchar,
-         is_published = $10::boolean,
-         published_at = CASE WHEN $10 THEN COALESCE(published_at, NOW()) ELSE published_at END,
-         rejection_reason = CASE WHEN $9::varchar = 'rejected' THEN rejection_reason ELSE NULL END,
-         updated_at = NOW()
-       WHERE id = $1
-       RETURNING *`,
-      [post.id, f.title ?? null, f.content ?? null, f.category ?? null, f.story_id !== undefined, f.story_id ?? null,
-        f.images ? JSON.stringify(f.images) : null, draft, status, published],
-    );
+    const row = await this.repo.update(post, f, draft, status, published);
 
     const message = draft ? 'Đã lưu bản nháp.'
       : status === 'rejected' ? 'Đã lưu. Bài viết đang bị Ban quản trị gỡ nên chưa hiển thị lại.'
         : 'Đã cập nhật bài viết.';
-    return res.json({ success: true, message, data: updateRes.rows[0] });
-  } catch (error: any) {
-    return fail(res, error, 'updatePost');
+    return { success: true, message, data: row };
   }
-};
 
-export const deletePost = async (req: AuthedRequest, res: Response) => {
-  try {
-    if (!isUuid(req.params.id)) return res.status(404).json({ success: false, message: 'Bài viết không tồn tại.' });
-    const checkRes = await pool.query(`SELECT id, user_id FROM posts WHERE id = $1 AND is_deleted = false`, [req.params.id]);
-    const post = checkRes.rows[0];
-    if (!post) return res.status(404).json({ success: false, message: 'Bài viết không tồn tại hoặc đã bị xóa.' });
+  async remove(viewer: Viewer, id: string) {
+    if (!isUuid(id)) throw new InputError('Bài viết không tồn tại.', 404);
+    const post = await this.repo.findLiveOwner(id);
+    if (!post) throw new InputError('Bài viết không tồn tại hoặc đã bị xóa.', 404);
     // Admin/Mod don't delete other people's posts, they take them down (reject) so it can be undone
-    if (post.user_id !== req.user!.id) {
-      return res.status(403).json({ success: false, message: 'Chỉ tác giả mới xóa được bài viết. Ban quản trị chỉ gỡ bài vi phạm.' });
-    }
-    await pool.query(`UPDATE posts SET is_deleted = true, is_pinned = false, updated_at = NOW() WHERE id = $1`, [post.id]);
-    return res.json({ success: true, message: 'Đã xóa bài viết.' });
-  } catch (error: any) {
-    return fail(res, error, 'deletePost');
+    if (post.user_id !== viewer.id) throw new InputError('Chỉ tác giả mới xóa được bài viết. Ban quản trị chỉ gỡ bài vi phạm.', 403);
+    await this.repo.softDelete(post.id);
+    return { success: true, message: 'Đã xóa bài viết.' };
   }
-};
 
-// ------------------------------------------------------------------ moderation
+  // ------------------------------------------------------------------ moderation
 
-const requireStaff = (req: AuthedRequest, res: Response) => {
-  if (!isStaff(req)) { res.status(403).json({ success: false, message: 'Chỉ Admin hoặc Mod mới làm được thao tác này.' }); return false; }
-  return true;
-};
+  /** Staff: take a post down (reject, with an optional reason) or restore it (approve). */
+  async review(viewer: Viewer, id: string | undefined, body: any, approve: boolean) {
+    requireStaff(viewer);
+    const ids = targetIdsOf(id, body);
+    const reason = approve ? null : optionalText(body?.reason, 500, 'Lý do') ?? null;
+    const rows = approve ? await this.repo.approve(viewer.id, ids) : await this.repo.reject(viewer.id, ids, reason);
 
-const targetIdsOf = (req: AuthedRequest): string[] => {
-  const ids = req.params.id ? [req.params.id] : (req.body?.post_ids || req.body?.ids || []);
-  if (!Array.isArray(ids) || ids.length === 0) throw new InputError('Vui lòng chọn ít nhất một bài viết.');
-  if (ids.length > 100) throw new InputError('Mỗi lần xử lý tối đa 100 bài viết.');
-  if (!ids.every(isUuid)) throw new InputError('Danh sách bài viết không hợp lệ.');
-  return ids;
-};
+    void notify(postReviewNotifications(rows, approve, viewer.id, reason));
 
-async function review(req: AuthedRequest, res: Response, approve: boolean) {
-  try {
-    if (!requireStaff(req, res)) return;
-    const ids = targetIdsOf(req);
-    const reason = approve ? null : optionalText(req.body?.reason, 500, 'Lý do') ?? null;
-    const rows = (approve
-      ? await pool.query(
-        `UPDATE posts SET approval_status = 'approved', approved_by = $1, approved_at = NOW(), is_published = true, is_draft = false,
-           published_at = COALESCE(published_at, NOW()), rejection_reason = NULL, removed_by = NULL, removed_at = NULL, updated_at = NOW()
-         WHERE id = ANY($2::uuid[]) AND is_deleted = false AND approval_status = 'rejected'
-         RETURNING id, user_id, title`, [req.user!.id, ids])
-      : await pool.query(
-        `UPDATE posts SET approval_status = 'rejected', is_published = false, is_pinned = false, rejection_reason = $2,
-           removed_by = $3, removed_at = NOW(), updated_at = NOW()
-         WHERE id = ANY($1::uuid[]) AND is_deleted = false AND approval_status <> 'draft'
-         RETURNING id, user_id, title`, [ids, reason, req.user!.id])).rows;
-
-    void notify(postReviewNotifications(rows, approve, req.user!.id, reason));
-
-    if (req.params.id && rows.length === 0) return res.status(404).json({ success: false, message: 'Bài viết không tồn tại.' });
-    return res.json({
+    if (id && rows.length === 0) throw new InputError('Bài viết không tồn tại.', 404);
+    return {
       success: true,
       count: rows.length,
       message: approve ? `Đã khôi phục ${rows.length} bài viết.` : `Đã gỡ ${rows.length} bài viết.`,
-    });
-  } catch (error: any) {
-    return fail(res, error, approve ? 'approvePost' : 'rejectPost');
+    };
   }
-}
 
-/** Staff: take a post down (reject, with an optional reason) or restore it (approve). */
-export const approvePost = (req: AuthedRequest, res: Response) => review(req, res, true);
-export const rejectPost = (req: AuthedRequest, res: Response) => review(req, res, false);
-
-/** POST /posts/:id/pin (staff): pin / unpin a published post at the top of the feed. */
-export const togglePinPost = async (req: AuthedRequest, res: Response) => {
-  try {
-    if (!requireStaff(req, res)) return;
-    if (!isUuid(req.params.id)) return res.status(404).json({ success: false, message: 'Bài viết không tồn tại.' });
-    const r = await pool.query(
-      `UPDATE posts SET is_pinned = NOT is_pinned WHERE id = $1 AND is_deleted = false AND approval_status = 'approved'
-       RETURNING is_pinned`, [req.params.id]);
-    if (r.rows.length === 0) return res.status(404).json({ success: false, message: 'Chỉ ghim được bài viết đã duyệt.' });
-    return res.json({ success: true, is_pinned: r.rows[0].is_pinned, message: r.rows[0].is_pinned ? 'Đã ghim bài viết.' : 'Đã bỏ ghim.' });
-  } catch (error: any) {
-    return fail(res, error, 'togglePinPost');
+  /** POST /posts/:id/pin (staff): pin / unpin a published post at the top of the feed. */
+  async togglePin(viewer: Viewer, id: string) {
+    requireStaff(viewer);
+    if (!isUuid(id)) throw new InputError('Bài viết không tồn tại.', 404);
+    const rows = await this.repo.togglePin(id);
+    if (rows.length === 0) throw new InputError('Chỉ ghim được bài viết đã duyệt.', 404);
+    return { success: true, is_pinned: rows[0].is_pinned, message: rows[0].is_pinned ? 'Đã ghim bài viết.' : 'Đã bỏ ghim.' };
   }
-};
 
-/** POST /posts/:id/mute : stop / resume notifications about this post (comments, replies, reactions). */
-export const togglePostMute = async (req: AuthedRequest, res: Response) => {
-  try {
-    if (!isUuid(req.params.id)) return res.status(404).json({ success: false, message: 'Bài viết không tồn tại.' });
-    const removed = await pool.query(`DELETE FROM post_notification_mutes WHERE user_id = $1 AND post_id = $2 RETURNING 1`, [req.user!.id, req.params.id]);
-    if (removed.rows.length > 0) {
-      return res.json({ success: true, muted: false, message: 'Đã bật lại thông báo cho bài viết này.' });
-    }
-    await pool.query(
-      `INSERT INTO post_notification_mutes (user_id, post_id) SELECT $1, id FROM posts WHERE id = $2 AND is_deleted = false ON CONFLICT DO NOTHING`,
-      [req.user!.id, req.params.id]);
-    return res.json({ success: true, muted: true, message: 'Đã tắt thông báo về bài viết này.' });
-  } catch (error: any) {
-    return fail(res, error, 'togglePostMute');
+  /** POST /posts/:id/mute : stop / resume notifications about this post (comments, replies, reactions). */
+  async toggleMute(viewer: Viewer, id: string) {
+    if (!isUuid(id)) throw new InputError('Bài viết không tồn tại.', 404);
+    const removed = await this.repo.removeMute(viewer.id, id);
+    if (removed.length > 0) return { success: true, muted: false, message: 'Đã bật lại thông báo cho bài viết này.' };
+    await this.repo.addMute(viewer.id, id);
+    return { success: true, muted: true, message: 'Đã tắt thông báo về bài viết này.' };
   }
-};
 
-// ------------------------------------------------------------------ reactions
+  // ------------------------------------------------------------------ reactions
 
-export const reactToPost = async (req: AuthedRequest, res: Response) => {
-  try {
-    const { id } = req.params;
-    const userId = req.user!.id;
-    const { reaction } = req.body || {};
-    if (!isUuid(id)) return res.status(404).json({ success: false, message: 'Bài viết không tồn tại.' });
-    if (!['like', 'love', 'haha', 'wow', 'sad', 'angry'].includes(reaction)) {
-      return res.status(400).json({ success: false, message: 'Cảm xúc không hợp lệ' });
-    }
+  async react(viewer: Viewer, id: string, body: any) {
+    const userId = viewer.id;
+    const { reaction } = body || {};
+    if (!isUuid(id)) throw new InputError('Bài viết không tồn tại.', 404);
+    if (!['like', 'love', 'haha', 'wow', 'sad', 'angry'].includes(reaction)) throw new InputError('Cảm xúc không hợp lệ', 400);
 
-    const postRes = await pool.query(`SELECT user_id, title, approval_status, is_published FROM posts WHERE id = $1 AND is_deleted = false`, [id]);
-    const target = postRes.rows[0];
+    const target = await this.repo.reactionTarget(id);
     const visible = target && target.approval_status === 'approved' && target.is_published;
-    if (!target || (!visible && target.user_id !== userId && !isStaff(req))) {
-      return res.status(404).json({ success: false, message: 'Bài viết không tồn tại hoặc đã bị xóa.' });
+    if (!target || (!visible && target.user_id !== userId && !isStaff(viewer))) {
+      throw new InputError('Bài viết không tồn tại hoặc đã bị xóa.', 404);
     }
 
-    const existing = await pool.query(`SELECT reaction FROM post_reactions WHERE post_id = $1 AND user_id = $2`, [id, userId]);
+    const existing = await this.repo.reactionOf(id, userId);
     let action: 'added' | 'changed' | 'removed' = 'added';
-    if (existing.rows.length > 0) {
-      if (existing.rows[0].reaction === reaction) {
-        await pool.query(`DELETE FROM post_reactions WHERE post_id = $1 AND user_id = $2`, [id, userId]);
+    if (existing.length > 0) {
+      if (existing[0].reaction === reaction) {
+        await this.repo.deleteReaction(id, userId);
         action = 'removed';
       } else {
-        await pool.query(`UPDATE post_reactions SET reaction = $1 WHERE post_id = $2 AND user_id = $3`, [reaction, id, userId]);
+        await this.repo.changeReaction(id, userId, reaction);
         action = 'changed';
       }
     } else {
-      await pool.query(`INSERT INTO post_reactions (post_id, user_id, reaction) VALUES ($1, $2, $3)`, [id, userId, reaction]);
+      await this.repo.addReaction(id, userId, reaction);
     }
-    await pool.query(`UPDATE posts SET reaction_count = (SELECT count(*) FROM post_reactions WHERE post_id = $1) WHERE id = $1`, [id]);
+    await this.repo.recountReactions(id);
 
     if (action !== 'removed') {
       const me = (await profiles([userId]).catch(() => new Map())).get(userId);
@@ -482,12 +347,7 @@ export const reactToPost = async (req: AuthedRequest, res: Response) => {
       }));
     }
 
-    const summaryRes = await pool.query(`
-      SELECT (SELECT count(*)::int FROM post_reactions WHERE post_id = $1) AS reaction_count,
-        COALESCE((SELECT json_object_agg(reaction, n) FROM (
-          SELECT reaction, count(*) AS n FROM post_reactions WHERE post_id = $1 GROUP BY reaction) r), '{}'::json) AS reaction_summary`, [id]);
-    return res.json({ success: true, action, data: { ...summaryRes.rows[0], my_reaction: action === 'removed' ? null : reaction } });
-  } catch (error: any) {
-    return fail(res, error, 'reactToPost');
+    const summary = await this.repo.reactionSummary(id);
+    return { success: true, action, data: { ...summary, my_reaction: action === 'removed' ? null : reaction } };
   }
-};
+}

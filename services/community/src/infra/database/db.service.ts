@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import type { PoolClient } from 'pg';
+import type { PoolClient, QueryResult } from 'pg';
 import { pool } from '../../config';
+
+/** Something to run SQL on: the pool, or one client inside a transaction. */
+export type Queryable = { query: (text: string, params?: any[]) => Promise<QueryResult<any>> };
 
 /** The community Postgres pool (config.ts), for modules that want it injected. */
 @Injectable()

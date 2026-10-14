@@ -1,17 +1,29 @@
-import { Controller, Get, HttpCode, Post, Req, Res, UseGuards } from '@nestjs/common';
-import type { Request, Response } from 'express';
+import { Body, Controller, Get, HttpCode, Param, Post, Query, Res, UseGuards } from '@nestjs/common';
+import type { Response } from 'express';
 import { InternalAuthGuard } from '../../common/guards/auth.guard';
-import * as moderation from '../moderation/moderation.service';
+import { InternalService } from './internal.service';
 
 @Controller('internal')
 @UseGuards(InternalAuthGuard)
 export class InternalController {
+  constructor(private readonly internal: InternalService) {}
+
+  /** Not found answers 404 with {success:false} and no message, as before. */
+  private found(res: Response, result: object | null) {
+    if (!result) res.status(404);
+    return result ?? { success: false };
+  }
+
   @Get('codes/:kind/:no')
-  code(@Req() req: Request, @Res() res: Response) { return moderation.resolveCode(req, res); }
+  async code(@Param('kind') kind: string, @Param('no') no: string, @Query() query: Record<string, any>, @Res({ passthrough: true }) res: Response) {
+    return this.found(res, await this.internal.resolveCode(kind, no, query));
+  }
 
   @Get('users/:id/stats')
-  stats(@Req() req: Request, @Res() res: Response) { return moderation.userStats(req, res); }
+  async stats(@Param('id') id: string, @Res({ passthrough: true }) res: Response) {
+    return this.found(res, await this.internal.userStats(id));
+  }
 
   @Post('comments/purge') @HttpCode(200)
-  purge(@Req() req: Request, @Res() res: Response) { return moderation.purgeStoryComments(req, res); }
+  purge(@Body() body: any) { return this.internal.purgeStoryComments(body); }
 }
