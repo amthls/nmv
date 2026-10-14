@@ -133,7 +133,7 @@ services/library/
 - [ ] 3. catalog: `chapters`, `drafts`, worker sang `WorkerModule`; xóa router cũ và thư mục cũ.
 - [x] 4. community → NestJS.
 - [ ] 5. media → NestJS.
-- [ ] 6. library → bố cục Go chuẩn (nhỏ nhất, làm mẫu).
+- [x] 6. library → bố cục Go chuẩn (nhỏ nhất, làm mẫu).
 - [ ] 7. identity.
 - [ ] 8. messaging.
 - [ ] 9. workspace (lớn nhất).

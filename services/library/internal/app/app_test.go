@@ -1,4 +1,4 @@
-package main
+package app
 
 // End-to-end tests against a real Postgres (they wipe the database they get):
 //   LIBRARY_TEST_DATABASE_URL=postgres://postgres:...@127.0.0.1:5432/library_test go test ./...
@@ -20,6 +20,12 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"nmv/library/internal/config"
+	"nmv/library/internal/legacy"
+	"nmv/library/internal/platform/catalog"
+	"nmv/library/internal/platform/db"
+	"nmv/library/internal/platform/httpx"
 )
 
 const (
@@ -35,7 +41,7 @@ const (
 
 type harness struct {
 	t      *testing.T
-	s      *server
+	s      *App
 	srv    *httptest.Server
 	mu     sync.Mutex
 	counts []any // favorite counts the backend received
@@ -55,15 +61,15 @@ func newHarness(t *testing.T) *harness {
 		t.Skip("LIBRARY_TEST_DATABASE_URL not set")
 	}
 	ctx := context.Background()
-	db, err := pgxpool.New(ctx, dbURL)
+	pool, err := pgxpool.New(ctx, dbURL)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(db.Close)
-	if _, err := db.Exec(ctx, `DROP SCHEMA IF EXISTS legacy CASCADE; DROP SCHEMA public CASCADE; CREATE SCHEMA public`); err != nil {
+	t.Cleanup(pool.Close)
+	if _, err := pool.Exec(ctx, `DROP SCHEMA IF EXISTS legacy CASCADE; DROP SCHEMA public CASCADE; CREATE SCHEMA public`); err != nil {
 		t.Fatal(err)
 	}
-	if err := migrate(ctx, db); err != nil {
+	if err := db.Migrate(ctx, pool); err != nil {
 		t.Fatal(err)
 	}
 	h := &harness{t: t}
@@ -73,7 +79,7 @@ func newHarness(t *testing.T) *harness {
 	chapters := `[{"id":"` + ch1 + `","story_id":"` + storyA + `","title":"Một","slug":"chuong-1","chapter_number":"1","is_published":true,"updated_at":"2026-10-01 10:00:00+00"},
 		{"id":"` + ch2 + `","story_id":"` + storyA + `","title":"Hai","slug":"chuong-2","chapter_number":"2","is_published":true,"updated_at":"2026-10-01 10:00:01+00"}]`
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !internalAuthOK([]byte(strings.Repeat("b", 32)), r.Header.Get("X-Internal-Auth"), time.Now()) {
+		if !httpx.InternalAuthOK([]byte(strings.Repeat("b", 32)), r.Header.Get("X-Internal-Auth"), time.Now()) {
 			w.WriteHeader(401)
 			return
 		}
@@ -98,7 +104,7 @@ func newHarness(t *testing.T) *harness {
 			}
 		case "/internal/users/profiles":
 			no := int64(7)
-			json.NewEncoder(w).Encode(map[string]any{"data": []profile{
+			json.NewEncoder(w).Encode(map[string]any{"data": []catalog.Profile{
 				{ID: hana, Username: "hana", CodeNo: &no}, {ID: yuki, Username: "yuki"}, {ID: banned, Username: "bad", IsBanned: true}}})
 		case "/internal/favorite-counts":
 			var b map[string]any
@@ -112,12 +118,12 @@ func newHarness(t *testing.T) *harness {
 		}
 	}))
 	t.Cleanup(backend.Close)
-	h.s = &server{cfg: config{SigKey: []byte(testKey), InternalKey: []byte(strings.Repeat("i", 32))}, db: db,
-		be: newBackend(backend.URL, []byte(strings.Repeat("b", 32))), now: time.Now}
-	if err := h.s.syncOnce(ctx); err != nil {
+	h.s = New(config.Config{SigKey: []byte(testKey), InternalKey: []byte(strings.Repeat("i", 32)),
+		BackendURL: backend.URL, BackendKey: []byte(strings.Repeat("b", 32))}, pool, time.Now)
+	if err := h.s.Sync.SyncOnce(ctx); err != nil {
 		t.Fatal(err)
 	}
-	h.srv = httptest.NewServer(withRequestLog(h.s.routes()))
+	h.srv = httptest.NewServer(h.s.Handler())
 	t.Cleanup(h.srv.Close)
 	return h
 }
@@ -130,7 +136,7 @@ func (h *harness) call(user, method, path string, body any) (int, map[string]any
 	}
 	req, _ := http.NewRequest(method, h.srv.URL+path, &buf)
 	if user == "internal" {
-		req.Header.Set("X-Internal-Auth", internalHeader([]byte(strings.Repeat("i", 32)), time.Now().Add(time.Minute).Unix()))
+		req.Header.Set("X-Internal-Auth", httpx.InternalHeader([]byte(strings.Repeat("i", 32)), time.Now().Add(time.Minute).Unix()))
 	} else if user != "" {
 		req.Header = signed(user)
 	}
@@ -180,10 +186,10 @@ func TestHistoryFollowsBookmarks(t *testing.T) {
 		t.Fatalf("flushed position: %v %v", scroll, secs)
 	}
 	h.want(200, yuki, "POST", "/history", map[string]any{"chapter_id": ch1, "scroll_position": 12})
-	if err := h.s.flushPositions(ctx, ""); err != nil {
+	if err := h.s.history.FlushPositions(ctx, ""); err != nil {
 		t.Fatal(err)
 	}
-	if n := len(h.s.pos.take("")); n != 0 {
+	if n := h.s.history.PendingPositions(); n != 0 {
 		t.Fatalf("buffer after flush: %d", n)
 	}
 
@@ -208,7 +214,7 @@ func TestHistoryFollowsBookmarks(t *testing.T) {
 		SELECT $1, gen_random_uuid(), gen_random_uuid(), NOW() FROM generate_series(1, 1000)`, yuki); err != nil {
 		t.Fatal(err)
 	}
-	if err := h.s.pruneHistory(ctx); err != nil {
+	if err := h.s.history.PruneHistory(ctx); err != nil {
 		t.Fatal(err)
 	}
 	var kept, keptCh1 int
@@ -221,7 +227,7 @@ func TestHistoryFollowsBookmarks(t *testing.T) {
 	// deleting a story from one's history right after reading it: the pending position must not bring it back
 	h.want(200, yuki, "POST", "/history", map[string]any{"chapter_id": ch1, "scroll_position": 5})
 	h.want(200, yuki, "DELETE", "/history/"+storyA, nil)
-	h.s.flushPositions(ctx, "")
+	h.s.history.FlushPositions(ctx, "")
 	if l := list(h.want(200, yuki, "GET", "/history", nil)); len(l) != 0 {
 		t.Fatalf("deleted history came back: %v", l)
 	}
@@ -379,7 +385,7 @@ func TestImportLegacy(t *testing.T) {
 		url += "?search_path=legacy"
 	}
 	for range 2 { // the second run does nothing
-		if err := importLegacy(ctx, h.s.db, url); err != nil {
+		if err := legacy.Import(ctx, h.s.db, url); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -402,7 +408,7 @@ func TestImportLegacy(t *testing.T) {
 		t.Fatalf("follows: %v", ov)
 	}
 	// identity.user.deleted: follows go
-	if err := h.s.applyIdentityEvent(ctx, []byte(`{"event_id":"eeeeeeee-0000-0000-0000-000000000001","type":"identity.user.deleted","data":{"id":"`+hana+`","deleted_at":"2026-10-11"}}`)); err != nil {
+	if err := h.s.follows.ApplyIdentityEvent(ctx, []byte(`{"event_id":"eeeeeeee-0000-0000-0000-000000000001","type":"identity.user.deleted","data":{"id":"`+hana+`","deleted_at":"2026-10-11"}}`)); err != nil {
 		t.Fatal(err)
 	}
 	if ov := h.want(200, "internal", "GET", "/internal/users/"+hana+"/overview", nil)["data"].(map[string]any)["stats"].(map[string]any); ov["followers"].(float64) != 0 {
@@ -412,7 +418,7 @@ func TestImportLegacy(t *testing.T) {
 
 func TestReconcile(t *testing.T) {
 	h := newHarness(t)
-	if err := h.s.reconcile(context.Background()); err != nil {
+	if err := h.s.Sync.Reconcile(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	var stories, chapters int

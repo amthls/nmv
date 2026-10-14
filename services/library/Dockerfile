@@ -3,7 +3,7 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /library .
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /library ./cmd/library
 
 # Nothing but the binary; runs as nobody
 FROM scratch

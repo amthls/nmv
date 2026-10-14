@@ -1,55 +1,46 @@
-package main
+// Package albums: named story lists, moved from the backend's album.controller.ts with the same JSON. A story may sit in
+// any number of a user's albums. Private albums open only for the owner or with the share link (?key=token); public
+// ones also show up under the stories they contain. Others can save an album (live) or copy its stories into their own.
+package albums
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
+
+	"nmv/library/internal/platform/catalog"
+	"nmv/library/internal/platform/httpx"
 )
 
-// Albums: named story lists, moved from the backend's album.controller.ts with the same JSON. A story may sit in any
-// number of a user's albums. Private albums open only for the owner or with the share link (?key=token); public ones
-// also show up under the stories they contain. Others can save an album (live) or copy its stories into their own.
+// ProfileSource gives the owners' names and avatars (the backend's profiles).
+type ProfileSource interface {
+	Profiles(ctx context.Context, ids []string) (map[string]catalog.Profile, error)
+}
 
-const (
-	maxAlbumsPerUser   = 100
-	maxStoriesPerAlbum = 1000
-)
+// Service holds the album rules.
+type Service struct {
+	repo     *Repository
+	profiles ProfileSource
+}
 
-// summaryColumns: the album card. excludeStory (a $n placeholder) leaves that story out of the cover preview, so
-// "other albums with this story" previews what else is inside. Owner fields are added by withOwners.
-func summaryColumns(excludeStory string) string {
-	ex := ""
-	if excludeStory != "" {
-		ex = " AND s.id <> " + excludeStory
-	}
-	return `a.id, a.code, a.name, a.description, a.is_public, a.copied_from, a.created_at, a.updated_at, a.user_id AS owner_id,
-	  (SELECT count(*)::int FROM album_stories x JOIN ext_stories s ON s.id = x.story_id
-	    WHERE x.album_id = a.id AND s.approval_status = 'approved') AS story_count,
-	  (SELECT count(*)::int FROM album_saves sv WHERE sv.album_id = a.id) AS save_count,
-	  COALESCE((
-	    SELECT json_agg(p) FROM (
-	      SELECT s.id, s.slug, s.title, s.cover_image_url
-	      FROM album_stories x JOIN ext_stories s ON s.id = x.story_id
-	      WHERE x.album_id = a.id AND s.approval_status = 'approved'` + ex + `
-	      ORDER BY x.added_at DESC LIMIT 4
-	    ) p
-	  ), '[]'::json) AS preview`
+// NewService wires the album service.
+func NewService(repo *Repository, profiles ProfileSource) *Service {
+	return &Service{repo: repo, profiles: profiles}
 }
 
 // withOwners adds owner_username, owner_name, owner_avatar (from the backend) and drops albums whose owner is banned
 // or deleted when activeOnly.
-func (s *server) withOwners(ctx context.Context, rows []map[string]any, activeOnly bool) ([]map[string]any, error) {
+func (s *Service) withOwners(ctx context.Context, rows []map[string]any, activeOnly bool) ([]map[string]any, error) {
 	ids := make([]string, 0, len(rows))
 	for _, r := range rows {
 		ids = append(ids, r["owner_id"].(string))
 	}
-	people, err := s.be.profiles(ctx, ids)
+	people, err := s.profiles.Profiles(ctx, ids)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("owner profiles: %w", err)
 	}
 	out := rows[:0]
 	for _, r := range rows {
@@ -74,11 +65,11 @@ func text(body map[string]any, key string, max int, label string) (val *string, 
 	}
 	str, isStr := raw.(string)
 	if !isStr {
-		return nil, true, bad(label + " không hợp lệ.")
+		return nil, true, httpx.Bad(label + " không hợp lệ.")
 	}
 	str = strings.TrimSpace(str)
 	if len([]rune(str)) > max {
-		return nil, true, bad(fmt.Sprintf("%s tối đa %d ký tự.", label, max))
+		return nil, true, httpx.Bad(fmt.Sprintf("%s tối đa %d ký tự.", label, max))
 	}
 	if str == "" {
 		return nil, true, nil
@@ -86,98 +77,85 @@ func text(body map[string]any, key string, max int, label string) (val *string, 
 	return &str, true, nil
 }
 
-func readBody(w http.ResponseWriter, r *http.Request) (map[string]any, error) {
-	body := map[string]any{}
-	if r.ContentLength == 0 {
-		return body, nil
-	}
-	if err := readJSON(w, r, &body); err != nil {
-		return nil, err
-	}
-	return body, nil
-}
-
 // ownAlbum: an album the user owns, or 404 (never reveals someone else's private album).
-func (s *server) ownAlbum(ctx context.Context, albumID, me string) (name string, err error) {
-	if !isUUID(albumID) {
-		return "", notFound("Album không tồn tại.")
+func (s *Service) ownAlbum(ctx context.Context, albumID, me string) (name string, err error) {
+	if !httpx.IsUUID(albumID) {
+		return "", httpx.NotFound("Album không tồn tại.")
 	}
-	err = s.db.QueryRow(ctx, `SELECT name FROM albums WHERE id = $1 AND user_id = $2`, albumID, me).Scan(&name)
-	if err == pgx.ErrNoRows {
-		return "", notFound("Album không tồn tại hoặc không thuộc về bạn.")
+	name, err = s.repo.ownName(ctx, albumID, me)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", httpx.NotFound("Album không tồn tại hoặc không thuộc về bạn.")
 	}
-	return name, err
-}
-
-type viewable struct {
-	ownerID, name, shareToken string
-	public                    bool
+	if err != nil {
+		return "", fmt.Errorf("find album: %w", err)
+	}
+	return name, nil
 }
 
 // viewableAlbum: an album the viewer may open: owner, public album, or private album with the right share key.
-func (s *server) viewableAlbum(ctx context.Context, albumID, me string, key any) (*viewable, error) {
-	if !isUUID(albumID) {
-		return nil, notFound("Album không tồn tại.")
+func (s *Service) viewableAlbum(ctx context.Context, albumID, me string, key any) (*viewable, error) {
+	if !httpx.IsUUID(albumID) {
+		return nil, httpx.NotFound("Album không tồn tại.")
 	}
-	var v viewable
-	err := s.db.QueryRow(ctx, `SELECT user_id::text, name, is_public, share_token FROM albums WHERE id = $1`, albumID).
-		Scan(&v.ownerID, &v.name, &v.public, &v.shareToken)
+	v, err := s.repo.viewableRow(ctx, albumID)
 	k, _ := key.(string)
-	if err == pgx.ErrNoRows || (err == nil && !(v.ownerID == me || v.public || (k != "" && k == v.shareToken))) {
-		return nil, notFound("Album không tồn tại hoặc là album riêng tư.")
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && !(v.ownerID == me || v.public || (k != "" && k == v.shareToken))) {
+		return nil, httpx.NotFound("Album không tồn tại hoặc là album riêng tư.")
 	}
-	return &v, err
+	if err != nil {
+		return nil, fmt.Errorf("find album: %w", err)
+	}
+	return &v, nil
 }
 
-func (s *server) albumCount(ctx context.Context, me string) (int, error) {
-	var n int
-	return n, s.db.QueryRow(ctx, `SELECT count(*) FROM albums WHERE user_id = $1`, me).Scan(&n)
+// ownerCodeNo: the account number in the AL- code (null if the backend doesn't know it yet).
+func (s *Service) ownerCodeNo(ctx context.Context, me string) (*int64, error) {
+	people, err := s.profiles.Profiles(ctx, []string{me})
+	if err != nil {
+		return nil, fmt.Errorf("owner profile: %w", err)
+	}
+	return people[me].CodeNo, nil
 }
 
-// GET /albums/me?story_id=: my albums; with story_id each one says whether it holds that story.
-func (s *server) handleMyAlbums(w http.ResponseWriter, r *http.Request, me string) error {
-	story := r.URL.Query().Get("story_id")
-	if !isUUID(story) {
+// checkRoom is a 400 when the person already has the most albums allowed.
+func (s *Service) checkRoom(ctx context.Context, me string) error {
+	n, err := s.repo.count(ctx, me)
+	if err != nil {
+		return fmt.Errorf("count albums: %w", err)
+	}
+	if n >= maxAlbumsPerUser {
+		return httpx.Bad(fmt.Sprintf("Mỗi tài khoản tạo tối đa %d album.", maxAlbumsPerUser))
+	}
+	return nil
+}
+
+// Mine: my albums; with story each one says whether it holds that story.
+func (s *Service) Mine(ctx context.Context, me, story string) ([]map[string]any, error) {
+	if !httpx.IsUUID(story) {
 		story = ""
 	}
-	rows, err := s.maps(r.Context(), nil, `SELECT `+summaryColumns("")+`, a.share_token,
-		  ($2 <> '' AND EXISTS (SELECT 1 FROM album_stories x WHERE x.album_id = a.id AND x.story_id::text = $2)) AS has_story
-		FROM albums a WHERE a.user_id = $1 ORDER BY a.updated_at DESC`, me, story)
-	if err == nil {
-		rows, err = s.withOwners(r.Context(), rows, false)
-	}
+	rows, err := s.repo.mine(ctx, me, story)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("list my albums: %w", err)
 	}
-	ok(w, rows)
-	return nil
+	return s.withOwners(ctx, rows, false)
 }
 
-// GET /albums/saved: other people's albums I saved, still viewable to me (saved through a share link: while it matches).
-func (s *server) handleSavedAlbums(w http.ResponseWriter, r *http.Request, me string) error {
-	rows, err := s.maps(r.Context(), nil, `SELECT `+summaryColumns("")+`, sv.created_at AS saved_at,
-		  CASE WHEN a.is_public THEN NULL ELSE sv.share_token END AS share_key
-		FROM album_saves sv JOIN albums a ON a.id = sv.album_id
-		WHERE sv.user_id = $1 AND (a.is_public OR sv.share_token = a.share_token)
-		ORDER BY sv.created_at DESC`, me)
-	if err == nil {
-		rows, err = s.withOwners(r.Context(), rows, false)
-	}
+// Saved: other people's albums I saved, still viewable to me (saved through a share link: while it matches).
+func (s *Service) Saved(ctx context.Context, me string) ([]map[string]any, error) {
+	rows, err := s.repo.saved(ctx, me)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("list saved albums: %w", err)
 	}
-	ok(w, rows)
-	return nil
+	return s.withOwners(ctx, rows, false)
 }
 
-// GET /albums/by-story/{storyId}: mine = my albums holding the story; others = public albums of active users holding it,
-// random order, those holding more than this story first.
-func (s *server) handleAlbumsByStory(w http.ResponseWriter, r *http.Request, me string) error {
-	story := r.PathValue("storyId")
-	if !isUUID(story) {
-		return notFound("Truyện không tồn tại.")
+// ByStory: mine = my albums holding the story; others = public albums of active users holding it, random order,
+// those holding more than this story first.
+func (s *Service) ByStory(ctx context.Context, me, story string, limit int) (map[string]any, error) {
+	if !httpx.IsUUID(story) {
+		return nil, httpx.NotFound("Truyện không tồn tại.")
 	}
-	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	if limit < 1 {
 		limit = 12
 	}
@@ -185,52 +163,39 @@ func (s *server) handleAlbumsByStory(w http.ResponseWriter, r *http.Request, me 
 	mine := []map[string]any{}
 	var err error
 	if me != "" {
-		mine, err = s.maps(r.Context(), nil, `SELECT `+summaryColumns("$2")+`, a.share_token
-			FROM albums a WHERE a.user_id = $1 AND EXISTS (SELECT 1 FROM album_stories x WHERE x.album_id = a.id AND x.story_id = $2)
-			ORDER BY a.updated_at DESC`, me, story)
-		if err == nil {
-			mine, err = s.withOwners(r.Context(), mine, false)
-		}
+		mine, err = s.repo.mineWithStory(ctx, me, story)
 		if err != nil {
-			return err
+			return nil, fmt.Errorf("list my albums with story: %w", err)
+		}
+		if mine, err = s.withOwners(ctx, mine, false); err != nil {
+			return nil, err
 		}
 	}
 	// a few extra: albums of banned/deleted owners are dropped after asking the backend
-	others, err := s.maps(r.Context(), nil, `SELECT * FROM (
-		  SELECT `+summaryColumns("$1")+`,
-		    ($2 <> '' AND EXISTS (SELECT 1 FROM album_saves sv WHERE sv.album_id = a.id AND sv.user_id::text = $2)) AS is_saved
-		  FROM albums a
-		  WHERE a.is_public AND a.user_id::text <> $2
-		    AND EXISTS (SELECT 1 FROM album_stories x WHERE x.album_id = a.id AND x.story_id = $1)
-		) t ORDER BY (t.story_count > 1) DESC, random() LIMIT $3`, story, me, limit*3)
-	if err == nil {
-		others, err = s.withOwners(r.Context(), others, true)
-	}
+	others, err := s.repo.othersWithStory(ctx, story, me, limit*3)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("list public albums with story: %w", err)
+	}
+	if others, err = s.withOwners(ctx, others, true); err != nil {
+		return nil, err
 	}
 	if len(others) > limit {
 		others = others[:limit]
 	}
-	ok(w, map[string]any{"mine": mine, "others": others})
-	return nil
+	return map[string]any{"mine": mine, "others": others}, nil
 }
 
-// GET /albums/{id}?key=: the album page with its stories.
-func (s *server) handleAlbum(w http.ResponseWriter, r *http.Request, me string) error {
-	id := r.PathValue("id")
-	if _, err := s.viewableAlbum(r.Context(), id, me, r.URL.Query().Get("key")); err != nil {
-		return err
+// Get: the album page with its stories.
+func (s *Service) Get(ctx context.Context, id, me string, key any) (map[string]any, error) {
+	if _, err := s.viewableAlbum(ctx, id, me, key); err != nil {
+		return nil, err
 	}
-	rows, err := s.maps(r.Context(), nil, `SELECT `+summaryColumns("")+`, a.share_token,
-		  ($2 <> '' AND EXISTS (SELECT 1 FROM album_saves sv WHERE sv.album_id = a.id AND sv.user_id::text = $2)) AS is_saved,
-		  src.name AS copied_from_name, src.is_public AS copied_from_public
-		FROM albums a LEFT JOIN albums src ON src.id = a.copied_from WHERE a.id = $1`, id, me)
-	if err == nil {
-		rows, err = s.withOwners(r.Context(), rows, false)
-	}
+	rows, err := s.repo.page(ctx, id, me)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("read album: %w", err)
+	}
+	if rows, err = s.withOwners(ctx, rows, false); err != nil {
+		return nil, err
 	}
 	album := rows[0]
 	album["is_owner"] = album["owner_id"] == me
@@ -241,334 +206,229 @@ func (s *server) handleAlbum(w http.ResponseWriter, r *http.Request, me string) 
 		album["copied_from"], album["copied_from_name"] = nil, nil // don't link to a private source album
 	}
 	delete(album, "copied_from_public")
-	stories, err := s.maps(r.Context(), nil, `
-		SELECT s.id, s.title, s.slug, s.cover_image_url, s.author_name, s.story_type, s.status, s.total_chapters, s.total_views, x.added_at
-		FROM album_stories x JOIN ext_stories s ON s.id = x.story_id
-		WHERE x.album_id = $1 AND s.approval_status = 'approved' ORDER BY x.added_at DESC`, id)
+	stories, err := s.repo.stories(ctx, id)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("read album stories: %w", err)
 	}
 	album["stories"] = stories
-	ok(w, album)
-	return nil
+	return album, nil
 }
 
-// POST /albums {name, description?, is_public?, story_id?}
-func (s *server) handleCreateAlbum(w http.ResponseWriter, r *http.Request, me string) error {
-	body, err := readBody(w, r)
-	if err != nil {
-		return err
-	}
+// Create: {name, description?, is_public?, story_id?}
+func (s *Service) Create(ctx context.Context, me string, body map[string]any) (map[string]any, error) {
 	name, _, err := text(body, "name", 100, "Tên album")
 	if err == nil && name == nil {
-		err = bad("Tên album không được để trống.")
+		err = httpx.Bad("Tên album không được để trống.")
 	}
-	if err != nil {
-		return err
-	}
-	desc, _, err := text(body, "description", 500, "Mô tả")
-	if err != nil {
-		return err
-	}
-	story, _ := body["story_id"].(string)
-	if body["story_id"] != nil && !isUUID(story) {
-		return bad("Truyện không hợp lệ.")
-	}
-	if n, err := s.albumCount(r.Context(), me); err != nil {
-		return err
-	} else if n >= maxAlbumsPerUser {
-		return bad(fmt.Sprintf("Mỗi tài khoản tạo tối đa %d album.", maxAlbumsPerUser))
-	}
-	codeNo, err := s.ownerCodeNo(r.Context(), me)
-	if err != nil {
-		return err
-	}
-	var album map[string]any
-	err = pgx.BeginFunc(r.Context(), s.db, func(tx pgx.Tx) error {
-		rows, err := s.maps(r.Context(), tx, `INSERT INTO albums (user_id, owner_code_no, name, description, is_public)
-			VALUES ($1, $2, $3, $4, $5) RETURNING id, name, description, is_public, share_token, created_at, updated_at`,
-			me, codeNo, *name, desc, body["is_public"] == true)
-		if err != nil {
-			return err
-		}
-		album = rows[0]
-		if story != "" {
-			_, err = tx.Exec(r.Context(), `INSERT INTO album_stories (album_id, story_id) VALUES ($1, $2)`, album["id"], story)
-		}
-		return err
-	})
-	if err != nil {
-		return err
-	}
-	album["has_story"] = story != ""
-	writeJSON(w, 201, map[string]any{"success": true, "data": album, "message": "Đã tạo album."})
-	return nil
-}
-
-// ownerCodeNo: the account number in the AL- code (null if the backend doesn't know it yet).
-func (s *server) ownerCodeNo(ctx context.Context, me string) (*int64, error) {
-	people, err := s.be.profiles(ctx, []string{me})
 	if err != nil {
 		return nil, err
 	}
-	return people[me].CodeNo, nil
-}
-
-// PUT /albums/{id} {name?, description?, is_public?}
-func (s *server) handleUpdateAlbum(w http.ResponseWriter, r *http.Request, me string) error {
-	id := r.PathValue("id")
-	if _, err := s.ownAlbum(r.Context(), id, me); err != nil {
-		return err
-	}
-	body, err := readBody(w, r)
+	desc, _, err := text(body, "description", 500, "Mô tả")
 	if err != nil {
-		return err
-	}
-	name, nameSent, err := text(body, "name", 100, "Tên album")
-	if err == nil && nameSent && name == nil {
-		err = bad("Tên album không được để trống.")
-	}
-	if err != nil {
-		return err
-	}
-	desc, descSent, err := text(body, "description", 500, "Mô tả")
-	if err != nil {
-		return err
-	}
-	var public *bool
-	if v, sent := body["is_public"]; sent {
-		b := v == true
-		public = &b
-	}
-	rows, err := s.maps(r.Context(), nil, `UPDATE albums SET name = COALESCE($2, name),
-		  description = CASE WHEN $3::boolean THEN $4 ELSE description END, is_public = COALESCE($5, is_public), updated_at = NOW()
-		WHERE id = $1 RETURNING id, name, description, is_public, share_token, updated_at`, id, name, descSent, desc, public)
-	if err != nil {
-		return err
-	}
-	writeJSON(w, 200, map[string]any{"success": true, "data": rows[0], "message": "Đã cập nhật album."})
-	return nil
-}
-
-// PUT /albums/me/visibility {is_public}: every album of mine public, or every one private.
-func (s *server) handleAllAlbumsVisibility(w http.ResponseWriter, r *http.Request, me string) error {
-	body, err := readBody(w, r)
-	if err != nil {
-		return err
-	}
-	public, isBool := body["is_public"].(bool)
-	if !isBool {
-		return bad("Thiếu chế độ công khai/riêng tư.")
-	}
-	tag, err := s.db.Exec(r.Context(), `UPDATE albums SET is_public = $2, updated_at = NOW() WHERE user_id = $1 AND is_public <> $2`, me, public)
-	if err != nil {
-		return err
-	}
-	msg := "Đã chuyển tất cả album sang riêng tư."
-	if public {
-		msg = "Đã công khai tất cả album."
-	}
-	writeJSON(w, 200, map[string]any{"success": true, "data": map[string]any{"changed": tag.RowsAffected()}, "message": msg})
-	return nil
-}
-
-func (s *server) handleDeleteAlbum(w http.ResponseWriter, r *http.Request, me string) error {
-	id := r.PathValue("id")
-	if _, err := s.ownAlbum(r.Context(), id, me); err != nil {
-		return err
-	}
-	if _, err := s.db.Exec(r.Context(), `DELETE FROM albums WHERE id = $1`, id); err != nil {
-		return err
-	}
-	writeJSON(w, 200, map[string]any{"success": true, "message": "Đã xóa album."})
-	return nil
-}
-
-// POST /albums/{id}/share-link/reset: a new share key; old private links stop working.
-func (s *server) handleResetShareLink(w http.ResponseWriter, r *http.Request, me string) error {
-	id := r.PathValue("id")
-	if _, err := s.ownAlbum(r.Context(), id, me); err != nil {
-		return err
-	}
-	rows, err := s.maps(r.Context(), nil, `UPDATE albums SET share_token = replace(gen_random_uuid()::text, '-', '') WHERE id = $1 RETURNING share_token`, id)
-	if err != nil {
-		return err
-	}
-	writeJSON(w, 200, map[string]any{"success": true, "data": rows[0], "message": "Đã tạo link chia sẻ mới, link cũ không còn dùng được."})
-	return nil
-}
-
-// POST /albums/{id}/stories {story_id}
-func (s *server) handleAddToAlbum(w http.ResponseWriter, r *http.Request, me string) error {
-	id := r.PathValue("id")
-	body, err := readBody(w, r)
-	if err != nil {
-		return err
+		return nil, err
 	}
 	story, _ := body["story_id"].(string)
-	if !isUUID(story) {
-		return bad("Truyện không hợp lệ.")
+	if body["story_id"] != nil && !httpx.IsUUID(story) {
+		return nil, httpx.Bad("Truyện không hợp lệ.")
 	}
-	name, err := s.ownAlbum(r.Context(), id, me)
+	if err := s.checkRoom(ctx, me); err != nil {
+		return nil, err
+	}
+	codeNo, err := s.ownerCodeNo(ctx, me)
 	if err != nil {
+		return nil, err
+	}
+	album, err := s.repo.create(ctx, me, codeNo, *name, desc, body["is_public"] == true, story)
+	if err != nil {
+		return nil, fmt.Errorf("create album: %w", err)
+	}
+	album["has_story"] = story != ""
+	return album, nil
+}
+
+// Update: {name?, description?, is_public?}
+func (s *Service) Update(ctx context.Context, me, id string, body func() (map[string]any, error)) (map[string]any, error) {
+	if _, err := s.ownAlbum(ctx, id, me); err != nil {
+		return nil, err
+	}
+	b, err := body()
+	if err != nil {
+		return nil, err
+	}
+	name, nameSent, err := text(b, "name", 100, "Tên album")
+	if err == nil && nameSent && name == nil {
+		err = httpx.Bad("Tên album không được để trống.")
+	}
+	if err != nil {
+		return nil, err
+	}
+	desc, descSent, err := text(b, "description", 500, "Mô tả")
+	if err != nil {
+		return nil, err
+	}
+	var public *bool
+	if v, sent := b["is_public"]; sent {
+		p := v == true
+		public = &p
+	}
+	rows, err := s.repo.update(ctx, id, name, descSent, desc, public)
+	if err != nil {
+		return nil, fmt.Errorf("update album: %w", err)
+	}
+	return rows[0], nil
+}
+
+// SetAllVisibility: every album of mine public, or every one private. Returns how many changed.
+func (s *Service) SetAllVisibility(ctx context.Context, me string, body map[string]any) (changed int64, public bool, err error) {
+	public, isBool := body["is_public"].(bool)
+	if !isBool {
+		return 0, false, httpx.Bad("Thiếu chế độ công khai/riêng tư.")
+	}
+	changed, err = s.repo.setAllVisibility(ctx, me, public)
+	if err != nil {
+		return 0, false, fmt.Errorf("set albums visibility: %w", err)
+	}
+	return changed, public, nil
+}
+
+// Delete removes an album of mine.
+func (s *Service) Delete(ctx context.Context, me, id string) error {
+	if _, err := s.ownAlbum(ctx, id, me); err != nil {
 		return err
 	}
-	var n int
-	if err := s.db.QueryRow(r.Context(), `SELECT count(*) FROM album_stories WHERE album_id = $1`, id).Scan(&n); err != nil {
-		return err
+	if err := s.repo.remove(ctx, id); err != nil {
+		return fmt.Errorf("delete album: %w", err)
+	}
+	return nil
+}
+
+// ResetShareLink: a new share key; old private links stop working.
+func (s *Service) ResetShareLink(ctx context.Context, me, id string) (map[string]any, error) {
+	if _, err := s.ownAlbum(ctx, id, me); err != nil {
+		return nil, err
+	}
+	rows, err := s.repo.resetShareToken(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("reset share link: %w", err)
+	}
+	return rows[0], nil
+}
+
+// AddStory puts a story into an album of mine; returns the album's name.
+func (s *Service) AddStory(ctx context.Context, me, id string, body map[string]any) (string, error) {
+	story, _ := body["story_id"].(string)
+	if !httpx.IsUUID(story) {
+		return "", httpx.Bad("Truyện không hợp lệ.")
+	}
+	name, err := s.ownAlbum(ctx, id, me)
+	if err != nil {
+		return "", err
+	}
+	n, err := s.repo.storyCount(ctx, id)
+	if err != nil {
+		return "", fmt.Errorf("count album stories: %w", err)
 	}
 	if n >= maxStoriesPerAlbum {
-		return bad(fmt.Sprintf("Mỗi album chứa tối đa %d truyện.", maxStoriesPerAlbum))
+		return "", httpx.Bad(fmt.Sprintf("Mỗi album chứa tối đa %d truyện.", maxStoriesPerAlbum))
 	}
-	var exists bool
-	if err := s.db.QueryRow(r.Context(), `SELECT EXISTS (SELECT 1 FROM ext_stories WHERE id = $1)`, story).Scan(&exists); err != nil {
-		return err
+	exists, err := s.repo.storyExists(ctx, story)
+	if err != nil {
+		return "", fmt.Errorf("check story: %w", err)
 	}
 	if !exists {
-		return notFound("Truyện hoặc chương không tồn tại.")
+		return "", httpx.NotFound("Truyện hoặc chương không tồn tại.")
 	}
-	if _, err := s.db.Exec(r.Context(), `INSERT INTO album_stories (album_id, story_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, id, story); err != nil {
-		return err
+	if err := s.repo.addStory(ctx, id, story); err != nil {
+		return "", fmt.Errorf("add story to album: %w", err)
 	}
-	if _, err := s.db.Exec(r.Context(), `UPDATE albums SET updated_at = NOW() WHERE id = $1`, id); err != nil {
-		return err
+	if err := s.repo.touch(ctx, id); err != nil {
+		return "", fmt.Errorf("touch album: %w", err)
 	}
-	writeJSON(w, 200, map[string]any{"success": true, "action": "added", "message": fmt.Sprintf("Đã lưu vào album \"%s\".", name)})
-	return nil
+	return name, nil
 }
 
-// DELETE /albums/{id}/stories/{storyId}
-func (s *server) handleRemoveFromAlbum(w http.ResponseWriter, r *http.Request, me string) error {
-	id, story := r.PathValue("id"), r.PathValue("storyId")
-	if !isUUID(story) {
-		return bad("Truyện không hợp lệ.")
+// RemoveStory takes a story out of an album of mine; returns the album's name.
+func (s *Service) RemoveStory(ctx context.Context, me, id, story string) (string, error) {
+	if !httpx.IsUUID(story) {
+		return "", httpx.Bad("Truyện không hợp lệ.")
 	}
-	name, err := s.ownAlbum(r.Context(), id, me)
+	name, err := s.ownAlbum(ctx, id, me)
 	if err != nil {
-		return err
+		return "", err
 	}
-	if _, err := s.db.Exec(r.Context(), `DELETE FROM album_stories WHERE album_id = $1 AND story_id = $2`, id, story); err != nil {
-		return err
+	if err := s.repo.removeStory(ctx, id, story); err != nil {
+		return "", fmt.Errorf("remove story from album: %w", err)
 	}
-	if _, err := s.db.Exec(r.Context(), `UPDATE albums SET updated_at = NOW() WHERE id = $1`, id); err != nil {
-		return err
+	if err := s.repo.touch(ctx, id); err != nil {
+		return "", fmt.Errorf("touch album: %w", err)
 	}
-	writeJSON(w, 200, map[string]any{"success": true, "action": "removed", "message": fmt.Sprintf("Đã bỏ truyện khỏi album \"%s\".", name)})
-	return nil
+	return name, nil
 }
 
-// POST /albums/{id}/save {key?}: save / unsave someone else's album (toggle).
-func (s *server) handleSaveAlbum(w http.ResponseWriter, r *http.Request, me string) error {
-	id := r.PathValue("id")
-	body, err := readBody(w, r)
+// ToggleSave saves / unsaves someone else's album. Returns true when it was saved (false = unsaved).
+func (s *Service) ToggleSave(ctx context.Context, me, id string, body map[string]any) (saved bool, err error) {
+	album, err := s.viewableAlbum(ctx, id, me, body["key"])
 	if err != nil {
-		return err
-	}
-	album, err := s.viewableAlbum(r.Context(), id, me, body["key"])
-	if err != nil {
-		return err
+		return false, err
 	}
 	if album.ownerID == me {
-		return bad("Đây là album của bạn.")
+		return false, httpx.Bad("Đây là album của bạn.")
 	}
-	tag, err := s.db.Exec(r.Context(), `DELETE FROM album_saves WHERE user_id = $1 AND album_id = $2`, me, id)
+	had, err := s.repo.deleteSave(ctx, me, id)
 	if err != nil {
-		return err
+		return false, fmt.Errorf("unsave album: %w", err)
 	}
-	if tag.RowsAffected() > 0 {
-		writeJSON(w, 200, map[string]any{"success": true, "action": "removed", "message": "Đã bỏ lưu album."})
-		return nil
+	if had {
+		return false, nil
 	}
 	var token *string
 	if !album.public {
 		token = &album.shareToken
 	}
-	if _, err := s.db.Exec(r.Context(), `INSERT INTO album_saves (user_id, album_id, share_token) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
-		me, id, token); err != nil {
-		return err
+	if err := s.repo.addSave(ctx, me, id, token); err != nil {
+		return false, fmt.Errorf("save album: %w", err)
 	}
-	writeJSON(w, 200, map[string]any{"success": true, "action": "added", "message": "Đã lưu album vào mục \"Album đã lưu\"."})
-	return nil
+	return true, nil
 }
 
-// POST /albums/{id}/copy {key?, target_album_id?, name?}: copy the album's stories into one of my albums or a new one.
-func (s *server) handleCopyAlbum(w http.ResponseWriter, r *http.Request, me string) error {
-	id := r.PathValue("id")
-	body, err := readBody(w, r)
+// Copy copies the album's stories into one of my albums (target_album_id) or a new one.
+func (s *Service) Copy(ctx context.Context, me, id string, body map[string]any) (*CopyResult, error) {
+	source, err := s.viewableAlbum(ctx, id, me, body["key"])
 	if err != nil {
-		return err
-	}
-	source, err := s.viewableAlbum(r.Context(), id, me, body["key"])
-	if err != nil {
-		return err
+		return nil, err
 	}
 	targetID, _ := body["target_album_id"].(string)
-	var target struct{ id, name string }
+	var target copyTarget
 	if targetID != "" {
-		if !isUUID(targetID) {
-			return bad("Album đích không hợp lệ.")
+		if !httpx.IsUUID(targetID) {
+			return nil, httpx.Bad("Album đích không hợp lệ.")
 		}
 		if targetID == id {
-			return bad("Không thể sao chép album vào chính nó.")
+			return nil, httpx.Bad("Không thể sao chép album vào chính nó.")
 		}
-		name, err := s.ownAlbum(r.Context(), targetID, me)
+		name, err := s.ownAlbum(ctx, targetID, me)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		target.id, target.name = targetID, name
-	} else {
-		if n, err := s.albumCount(r.Context(), me); err != nil {
-			return err
-		} else if n >= maxAlbumsPerUser {
-			return bad(fmt.Sprintf("Mỗi tài khoản tạo tối đa %d album.", maxAlbumsPerUser))
-		}
+	} else if err := s.checkRoom(ctx, me); err != nil {
+		return nil, err
 	}
 	name, _, err := text(body, "name", 100, "Tên album")
 	if err != nil {
-		return err
+		return nil, err
 	}
-	codeNo, err := s.ownerCodeNo(r.Context(), me)
+	codeNo, err := s.ownerCodeNo(ctx, me)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	var added int64
-	err = pgx.BeginFunc(r.Context(), s.db, func(tx pgx.Tx) error {
-		if target.id == "" {
-			newName := source.name
-			if name != nil {
-				newName = *name
-			}
-			if err := tx.QueryRow(r.Context(), `INSERT INTO albums (user_id, owner_code_no, name, description, copied_from)
-				SELECT $1, $2, $3, description, id FROM albums WHERE id = $4 RETURNING id::text, name`,
-				me, codeNo, newName, id).Scan(&target.id, &target.name); err != nil {
-				return err
-			}
-		}
-		var have int
-		if err := tx.QueryRow(r.Context(), `SELECT count(*) FROM album_stories WHERE album_id = $1`, target.id).Scan(&have); err != nil {
-			return err
-		}
-		tag, err := tx.Exec(r.Context(), `INSERT INTO album_stories (album_id, story_id)
-			SELECT $1, x.story_id FROM album_stories x JOIN ext_stories s ON s.id = x.story_id
-			WHERE x.album_id = $2 AND s.approval_status = 'approved'
-			  AND NOT EXISTS (SELECT 1 FROM album_stories y WHERE y.album_id = $1 AND y.story_id = x.story_id)
-			ORDER BY x.added_at LIMIT $3
-			ON CONFLICT DO NOTHING`, target.id, id, max(0, maxStoriesPerAlbum-have))
-		if err != nil {
-			return err
-		}
-		added = tag.RowsAffected()
-		_, err = tx.Exec(r.Context(), `UPDATE albums SET updated_at = NOW() WHERE id = $1`, target.id)
-		return err
-	})
+	newName := source.name
+	if name != nil {
+		newName = *name
+	}
+	target, added, err := s.repo.copyStories(ctx, me, codeNo, id, newName, target)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("copy album: %w", err)
 	}
-	msg := fmt.Sprintf("Album \"%s\" đã có đủ các truyện này.", target.name)
-	if added > 0 {
-		msg = fmt.Sprintf("Đã sao chép %d truyện vào album \"%s\".", added, target.name)
-	}
-	writeJSON(w, 201, map[string]any{"success": true, "message": msg,
-		"data": map[string]any{"album_id": target.id, "album_name": target.name, "added": added}})
-	return nil
+	return &CopyResult{AlbumID: target.id, AlbumName: target.name, Added: added}, nil
 }

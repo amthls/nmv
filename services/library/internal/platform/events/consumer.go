@@ -1,35 +1,42 @@
-package main
+// Package events is the RabbitMQ consumer of identity.user.deleted (own queue, retry, dead-letter).
+package events
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 	amqp "github.com/rabbitmq/amqp091-go"
+
+	"nmv/library/internal/platform/logger"
 )
 
 // identity.user.deleted on the novelhub.events exchange: a deleted account follows and is followed by nobody (as the
 // backend did). Own queue library.identity, retried through .retry (10 s), parked in .dlq after 5 attempts.
 
 const (
-	eventsExchange = "novelhub.events"
-	identityQueue  = "library.identity"
+	// Exchange is the topic exchange every service publishes to.
+	Exchange = "novelhub.events"
+	// IdentityQueue is library's own queue for identity.user.deleted.
+	IdentityQueue = "library.identity"
 )
 
-func (s *server) consumeIdentity(ctx context.Context) {
-	if s.cfg.RabbitURL == "" {
-		logf(ctx, "warn", "RABBITMQ_URL empty: account deletions are not applied")
+// Handler applies one event body; an error sends it to the retry queue.
+type Handler func(ctx context.Context, body []byte) error
+
+// ConsumeIdentity runs the consumer until ctx ends, reconnecting with backoff.
+func ConsumeIdentity(ctx context.Context, rabbitURL string, apply Handler) {
+	if rabbitURL == "" {
+		logger.Logf(ctx, "warn", "RABBITMQ_URL empty: account deletions are not applied")
 		return
 	}
 	backoff := time.Second
 	for ctx.Err() == nil {
-		err := s.identitySession(ctx)
+		err := identitySession(ctx, rabbitURL, apply)
 		if ctx.Err() != nil {
 			return
 		}
-		logf(ctx, "warn", "identity consumer stopped, retrying: "+fmt.Sprint(err))
+		logger.Logf(ctx, "warn", "identity consumer stopped, retrying: "+fmt.Sprint(err))
 		select {
 		case <-ctx.Done():
 			return
@@ -41,8 +48,8 @@ func (s *server) consumeIdentity(ctx context.Context) {
 	}
 }
 
-func (s *server) identitySession(ctx context.Context) error {
-	conn, err := amqp.DialConfig(s.cfg.RabbitURL, amqp.Config{Heartbeat: 30 * time.Second})
+func identitySession(ctx context.Context, rabbitURL string, apply Handler) error {
+	conn, err := amqp.DialConfig(rabbitURL, amqp.Config{Heartbeat: 30 * time.Second})
 	if err != nil {
 		return err
 	}
@@ -51,21 +58,21 @@ func (s *server) identitySession(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	retry, dlq := identityQueue+".retry", identityQueue+".dlq"
+	retry, dlq := IdentityQueue+".retry", IdentityQueue+".dlq"
 	steps := []func() error{
-		func() error { return ch.ExchangeDeclare(eventsExchange, "topic", true, false, false, false, nil) },
+		func() error { return ch.ExchangeDeclare(Exchange, "topic", true, false, false, false, nil) },
 		func() error { _, err := ch.QueueDeclare(dlq, true, false, false, false, nil); return err },
 		func() error {
 			_, err := ch.QueueDeclare(retry, true, false, false, false, amqp.Table{
-				"x-message-ttl": int32(10000), "x-dead-letter-exchange": "", "x-dead-letter-routing-key": identityQueue})
+				"x-message-ttl": int32(10000), "x-dead-letter-exchange": "", "x-dead-letter-routing-key": IdentityQueue})
 			return err
 		},
 		func() error {
-			_, err := ch.QueueDeclare(identityQueue, true, false, false, false, amqp.Table{
+			_, err := ch.QueueDeclare(IdentityQueue, true, false, false, false, amqp.Table{
 				"x-dead-letter-exchange": "", "x-dead-letter-routing-key": retry})
 			return err
 		},
-		func() error { return ch.QueueBind(identityQueue, "identity.user.deleted", eventsExchange, false, nil) },
+		func() error { return ch.QueueBind(IdentityQueue, "identity.user.deleted", Exchange, false, nil) },
 		func() error { return ch.Qos(20, 0, false) },
 	}
 	for _, step := range steps {
@@ -73,7 +80,7 @@ func (s *server) identitySession(ctx context.Context) error {
 			return err
 		}
 	}
-	deliveries, err := ch.Consume(identityQueue, "", false, false, false, false, nil)
+	deliveries, err := ch.Consume(IdentityQueue, "", false, false, false, false, nil)
 	if err != nil {
 		return err
 	}
@@ -88,14 +95,14 @@ func (s *server) identitySession(ctx context.Context) error {
 			if !open {
 				return fmt.Errorf("deliveries closed")
 			}
-			if err := s.applyIdentityEvent(ctx, d.Body); err == nil {
+			if err := apply(ctx, d.Body); err == nil {
 				d.Ack(false)
-			} else if attempts(d, identityQueue) >= 5 {
-				logError(ctx, "identity event parked in "+dlq+": "+err.Error())
+			} else if attempts(d, IdentityQueue) >= 5 {
+				logger.Error(ctx, "identity event parked in "+dlq+": "+err.Error())
 				ch.PublishWithContext(ctx, "", dlq, false, false, amqp.Publishing{DeliveryMode: amqp.Persistent, Body: d.Body})
 				d.Ack(false)
 			} else {
-				logf(ctx, "warn", "identity event failed, retrying: "+err.Error())
+				logger.Logf(ctx, "warn", "identity event failed, retrying: "+err.Error())
 				d.Nack(false, false) // dead-letters to the retry queue, back here after 10 s
 			}
 		}
@@ -113,28 +120,4 @@ func attempts(d amqp.Delivery, queue string) int64 {
 		}
 	}
 	return 1
-}
-
-func (s *server) applyIdentityEvent(ctx context.Context, body []byte) error {
-	var evt struct {
-		EventID string `json:"event_id"`
-		Type    string `json:"type"`
-		Data    struct {
-			ID        string  `json:"id"`
-			DeletedAt *string `json:"deleted_at"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(body, &evt); err != nil || !isUUID(evt.EventID) {
-		return fmt.Errorf("malformed event")
-	}
-	return pgx.BeginFunc(ctx, s.db, func(tx pgx.Tx) error {
-		tag, err := tx.Exec(ctx, `INSERT INTO processed_events (event_id, type) VALUES ($1, $2) ON CONFLICT DO NOTHING`, evt.EventID, evt.Type)
-		if err != nil || tag.RowsAffected() == 0 {
-			return err // seen before: nothing to do
-		}
-		if evt.Type == "identity.user.deleted" && evt.Data.DeletedAt != nil && isUUID(evt.Data.ID) {
-			_, err = tx.Exec(ctx, `DELETE FROM user_follows WHERE follower_id = $1 OR following_id = $1`, evt.Data.ID)
-		}
-		return err
-	})
 }
