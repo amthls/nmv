@@ -1,5 +1,4 @@
 import express, { Router } from 'express';
-import { getTags } from '../controllers/tag.controller';
 import { 
   getStories, 
   exploreStories, 
@@ -63,7 +62,6 @@ import {
   offerDraft,
 } from '../controllers/chapter.controller';
 
-import { queueStatus } from '../services/queue.service';
 import { cacheJson } from '../middlewares/cache';
 import { searchLimiter, perUserLimiter } from '../middlewares/security';
 
@@ -73,16 +71,7 @@ const router = Router();
 const albumLimiter = perUserLimiter({ windowMs: 60 * 60_000, limit: 60, message: 'Bạn tạo/sao chép album quá nhiều. Vui lòng thử lại sau.' });
 const joinRequestLimiter = perUserLimiter({ windowMs: 60 * 60_000, limit: 10, message: 'Bạn gửi quá nhiều yêu cầu gia nhập. Vui lòng thử lại sau.' });
 
-// Health Check
-router.get('/health', (req, res) => {
-  res.json({
-    status: 'ok',
-    timestamp: new Date().toISOString(),
-    service: 'NovelHub RESTful API',
-    version: '1.0.0',
-    queue: queueStatus(), // 'up' | 'down' | 'disabled' (RabbitMQ publisher connection)
-  });
-});
+// Health check: modules/system (Nest)
 
 // Account: sign-up/in, sessions, passwords, email, roles, bans, deletion live in the identity service (/api/identity/*).
 // Here: the profile side of "who am I" and the optional demo-account list.
@@ -92,7 +81,7 @@ router.get('/auth/accounts', getDemoAccounts);
 // File & Image Uploads (Multipart/Form-Data)
 
 // Tags & Categories
-router.get('/tags', cacheJson(600), getTags);
+// /tags: modules/tags (Nest)
 
 // Stories
 router.get('/stories', searchLimiter, getStories);

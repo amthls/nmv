@@ -1,6 +1,11 @@
+import 'reflect-metadata';
 import express from 'express';
+import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import cors from 'cors';
 import './config/env'; // loads .env and validates required secrets first
+import { AppModule } from './app.module';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import apiRoutes from './routes/api.routes';
 import { applySecurity, globalApiLimiter, writeLimiter, writeHourLimiter } from './middlewares/security';
 import { bumpOnWrite } from './middlewares/cache';
@@ -21,7 +26,6 @@ for (const k of ['USER_SIG_KEY_CATALOG', 'INTERNAL_KEY_CATALOG', 'INTERNAL_KEY_I
   }
 }
 
-const app = express();
 const PORT = process.env.PORT || 5000;
 
 // High concurrency crash guards
@@ -31,6 +35,15 @@ process.on('uncaughtException', (err) => {
 process.on('unhandledRejection', (reason, promise) => {
   console.error('[CRITICAL] Unhandled Rejection at:', promise, 'reason:', reason);
 });
+
+async function bootstrap() {
+// Nest on Express; its own body parser is off so the limits below (2mb JSON) stay as before.
+// Middleware and the legacy routers below are added before Nest registers its routes (at listen), so they run first;
+// a request no legacy route answers falls through to the Nest modules (Plan/nestjs-go-layout.md).
+const nest = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false, logger: ['error', 'warn'] });
+const app: express.Express = nest.getHttpAdapter().getInstance();
+nest.setGlobalPrefix('api/v1');
+nest.useGlobalFilters(new HttpExceptionFilter());
 
 app.use(requestContext); // before everything else, so every log line and error carries the request_id
 applySecurity(app);
@@ -66,7 +79,9 @@ app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 // RESTful API V1
-app.use('/api/v1', globalApiLimiter, writeLimiter, writeHourLimiter, bumpOnWrite, apiRoutes);
+// limits and cache bumps for every /api/v1 request, legacy router or Nest module
+app.use('/api/v1', globalApiLimiter, writeLimiter, writeHourLimiter, bumpOnWrite);
+app.use('/api/v1', apiRoutes);
 
 // Service-to-service calls (identity -> backend), signed like the gateway's headers. The gateway answers 404 for
 // /internal from outside, so only containers on the Docker networks reach these.
@@ -107,33 +122,21 @@ app.get('/', (req, res) => {
   });
 });
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: `Route not found: ${req.method} ${req.originalUrl}`,
-  });
-});
-
-// Global Error Handler Middleware
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('[Express Global Error]', err);
-  res.status(err.status || 500).json({
-    success: false,
-    message: err.message || 'Lỗi hệ thống máy chủ nội bộ',
-  });
-});
-
-const server = app.listen(PORT, () => {
-  console.log(`NovelHub API Server is running on http://localhost:${PORT}`);
-  console.log(`Healthcheck: http://localhost:${PORT}/api/v1/health`);
-  startSearchSync();
-  connectQueue();
-});
-
+await nest.listen(PORT);
+console.log(`NovelHub API Server is running on http://localhost:${PORT}`);
+console.log(`Healthcheck: http://localhost:${PORT}/api/v1/health`);
+startSearchSync();
+connectQueue();
 
 // Slow-connection (slowloris) protection: never wait forever for headers or a request body
+const server = nest.getHttpServer();
 server.headersTimeout = 15_000;
 server.requestTimeout = 60_000; // JSON only (uploads go to the media service)
 server.keepAliveTimeout = 5_000;
 server.maxHeadersCount = 60;
+}
+
+bootstrap().catch((err) => {
+  console.error('[CRITICAL] catalog failed to start:', err);
+  process.exit(1);
+});

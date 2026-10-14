@@ -61,7 +61,8 @@ export function signIdentityHeaders(id: string, roles: string[], now = Date.now(
   };
 }
 
-async function loadUser(req: Request): Promise<{ user?: AuthenticatedUser; blocked?: boolean }> {
+/** The signed-in user of a request (null fields = guest; blocked = banned or deleted account). */
+export async function loadUser(req: Request): Promise<{ user?: AuthenticatedUser; blocked?: boolean }> {
   const ident = identityFromHeaders(req.headers);
   if (!ident) return {};
   const q = () => pool.query(`SELECT id, username, display_name, avatar_url, is_banned, deleted_at FROM users WHERE id = $1::uuid`, [ident.id]);

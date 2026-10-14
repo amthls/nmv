@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseCode } from './code.controller';
+import { parseCode } from './parse-code';
 
 test('each kind is found by its fixed number only', () => {
   assert.deepEqual(parseCode('U-AD-26-0007'), { kind: 'user', no: 7 });
