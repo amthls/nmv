@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import express from 'express';
+import { RequestMethod } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import cors from 'cors';
@@ -13,11 +14,10 @@ import { connectQueue } from './services/queue.service';
 import { startSearchSync } from './services/search.service';
 import { visitorCookie } from './services/behaviorEvents';
 import { requestContext } from './utils/logger';
-import { identityFromHeaders, internalAuthOK } from './middlewares/auth.middleware';
+import { internalAuthOK } from './middlewares/auth.middleware';
 import {
-  permissions, exportChapters, exportSource, exportBook, userProfiles, groupMembers, storiesBrief, removedStories, commentCounts, librarySync, libraryIds, favoriteCounts,
+  permissions, exportChapters, exportSource, exportBook, groupMembers, storiesBrief, removedStories, commentCounts, librarySync, libraryIds, favoriteCounts,
 } from './controllers/internal.controller';
-import { deleteCheck } from './controllers/user.controller';
 
 // Without the keys that verify the gateway's identity headers and internal calls nobody is ever signed in: refuse to start
 for (const k of ['USER_SIG_KEY_CATALOG', 'INTERNAL_KEY_CATALOG', 'INTERNAL_KEY_IDENTITY', 'INTERNAL_KEY_WORKSPACE', 'INTERNAL_KEY_MESSAGING', 'INTERNAL_KEY_COMMUNITY', 'INTERNAL_KEY_LIBRARY']) {
@@ -42,7 +42,7 @@ async function bootstrap() {
 // a request no legacy route answers falls through to the Nest modules (Plan/nestjs-go-layout.md).
 const nest = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false, logger: ['error', 'warn'] });
 const app: express.Express = nest.getHttpAdapter().getInstance();
-nest.setGlobalPrefix('api/v1');
+nest.setGlobalPrefix('api/v1', { exclude: [{ path: 'internal/{*path}', method: RequestMethod.ALL }] });
 nest.useGlobalFilters(new HttpExceptionFilter());
 
 app.use(requestContext); // before everything else, so every log line and error carries the request_id
@@ -85,10 +85,6 @@ app.use('/api/v1', apiRoutes);
 
 // Service-to-service calls (identity -> backend), signed like the gateway's headers. The gateway answers 404 for
 // /internal from outside, so only containers on the Docker networks reach these.
-app.get('/internal/users/:id/delete-check', (req, res, next) => {
-  if (!identityFromHeaders(req.headers)) return res.status(401).json({ ok: false });
-  deleteCheck(req, res).catch(next);
-});
 // Workspace -> backend (X-Internal-Auth): story rights and the one-time chapter import
 const internal = (fn: (req: express.Request, res: express.Response) => Promise<unknown>): express.RequestHandler => (req, res, next) => {
   if (!internalAuthOK(req.get('x-internal-auth'))) return res.status(401).json({ success: false });
@@ -100,7 +96,6 @@ app.get('/internal/chapters/export', internal(exportChapters));
 app.post('/internal/exports/source', internal(exportSource));
 app.post('/internal/exports/book', internal(exportBook));
 // Messaging -> backend: names/avatars to show, and who is in a group (its chat)
-app.post('/internal/users/profiles', internal(userProfiles));
 app.get('/internal/groups/:id/members', internal(groupMembers));
 // Community -> backend: stories/chapters it shows or links, removed stories for /da-go, comment counts it keeps fresh
 app.post('/internal/stories/brief', internal(storiesBrief));

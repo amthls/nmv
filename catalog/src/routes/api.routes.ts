@@ -16,14 +16,6 @@ import {
   removeStoryCollaborator,
   getManageableStories,
 } from '../controllers/story.controller';
-import { 
-  getUsers, 
-  getUserProfile, 
-  getCurrentUserProfile, 
-  updateUserProfile, 
-  updateUserSettings,
-} from '../controllers/user.controller';
-import { getMe, getDemoAccounts } from '../controllers/auth.controller';
 import { requireAuth, optionalAuth, requireRole } from '../middlewares/auth.middleware';
 import { 
   getGroups, 
@@ -74,8 +66,6 @@ const joinRequestLimiter = perUserLimiter({ windowMs: 60 * 60_000, limit: 10, me
 
 // Account: sign-up/in, sessions, passwords, email, roles, bans, deletion live in the identity service (/api/identity/*).
 // Here: the profile side of "who am I" and the optional demo-account list.
-router.get('/auth/me', requireAuth, getMe);
-router.get('/auth/accounts', getDemoAccounts);
 
 // File & Image Uploads (Multipart/Form-Data)
 
@@ -136,11 +126,6 @@ router.post('/drafts/:id/offer', requireAuth, offerDraft);
 // Comments, violation reports, removed content, Fandom posts: the community service (/api/community/*)
 
 // Users & Profile Settings
-router.get('/profile/me', requireAuth, getCurrentUserProfile);
-router.put('/profile/me', requireAuth, updateUserProfile);
-router.put('/profile/me/settings', requireAuth, updateUserSettings);
-router.get('/users', getUsers);
-router.get('/users/:username', optionalAuth, getUserProfile);
 
 // Translation Groups
 router.get('/groups', optionalAuth, getGroups);

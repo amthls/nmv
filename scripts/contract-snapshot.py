@@ -966,7 +966,7 @@ def diff(a, b, path=""):
     elif isinstance(a, list) and isinstance(b, list) and len(a) == len(b) and a:
         for i, (x, y) in enumerate(zip(a, b)):
             out += diff(x, y, f"{path}[{i}]")
-    elif a != b and not (path.startswith("/shape") and "nullable" in (a, b) and not isinstance(a, (dict, list)) and not isinstance(b, (dict, list))):
+    elif a != b and not (path.startswith("/shape") and "nullable" in (a, b)):
         out.append(f"{path}: baseline={json.dumps(a, ensure_ascii=False)[:1500]}  new={json.dumps(b, ensure_ascii=False)[:1500]}")
     return out
 

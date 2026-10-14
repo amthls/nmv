@@ -129,22 +129,6 @@ export const exportBook = async (req: Request, res: Response) => {
 };
 
 /**
- * POST /internal/users/profiles {ids?: uuid[], usernames?: string[]} (at most 500): what other services show for a
- * person (messaging: inbox, threads, group chat). Deleted accounts come back flagged, banned ones too.
- */
-export const userProfiles = async (req: Request, res: Response) => {
-  const ids = Array.isArray(req.body?.ids) ? req.body.ids.filter(isUuid).slice(0, 500) : [];
-  const names = Array.isArray(req.body?.usernames) ? req.body.usernames.filter((u: unknown) => typeof u === 'string').slice(0, 500) : [];
-  const r = await pool.query(
-    `SELECT id, username, display_name, avatar_url, COALESCE(is_banned, false) AS is_banned, deleted_at IS NOT NULL AS deleted, code_no::int AS code_no,
-       COALESCE((SELECT array_agg(role::text) FROM user_roles r WHERE r.user_id = users.id), '{}') AS roles
-     FROM users WHERE id = ANY($1::uuid[]) OR username = ANY($2::text[])`,
-    [ids, names]
-  );
-  res.json({ success: true, data: r.rows });
-};
-
-/**
  * POST /internal/stories/brief {story_ids?, chapter_ids?} (at most 1000 each) -> {stories, chapters}: what community shows
  * or links for a story/chapter (any status: approval_status tells whether it was taken down).
  */
