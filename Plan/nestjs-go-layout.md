@@ -159,6 +159,54 @@ services/library/
    - community: Fandom, bình luận;
    - media: tải ảnh, EPUB/PDF.
 
+## Cách làm việc Opus ↔ Sonnet (tiết kiệm token)
+
+Chủ dự án quyết định 2026-10-14:
+- **Opus** là người chia việc và duyệt: đọc code, chẻ mỗi mục checklist thành việc nhỏ, giao việc, kiểm kết quả.
+- **Sonnet** chỉ làm đúng một việc được giao mỗi lần.
+
+**1. Phiếu giao việc (Opus → Sonnet), tối đa ~15 dòng, luôn theo mẫu này:**
+```
+VIỆC: <một câu>
+FILE: <danh sách file được đọc/sửa — chỉ đọc những file này>
+LÀM: <các bước cụ thể, hình dạng code mong muốn>
+KHÔNG: <điều cấm: không đổi URL/JSON/SQL, không chau chuốt thêm…>
+KIỂM: <lệnh kiểm tra cụ thể>
+XONG KHI: <tiêu chí dừng>
+```
+- Gộp các việc nhỏ cùng nhóm file vào một phiếu.
+- Không gửi lại bối cảnh dài: phiếu trỏ tới mục trong plan nếu cần.
+
+**2. Sonnet đọc ít:**
+- Chỉ đọc file ghi trong phiếu và đúng mục plan được trỏ tới. Không đọc lại README/CLAUDE.md mỗi lần.
+- Tìm bằng `grep -n`, đọc theo đoạn (`offset`/`limit`), không mở cả file nghìn dòng khi chỉ cần một hàm.
+- Đầu ra lệnh luôn cắt ngắn:
+  - log: `docker compose logs <svc> --tail 50 | grep -iE "error|warn"`;
+  - test: chỉ lấy dòng tổng kết hoặc dòng lỗi (`| tail -20`);
+  - `tsc`: `| head -30`.
+
+**3. Báo cáo (Sonnet → Opus), tối đa ~10 dòng:**
+```
+TRẠNG THÁI: xong | dở | kẹt
+COMMIT: <hash> (đã push?)
+KIỂM: tsc ✓/✗ · test ✓/✗ · snapshot ✓/✗ (số chỗ lệch)
+GHI CHÚ: <điều Opus cần biết, 1–3 dòng>
+CẦN OPUS: <chỉ khi kẹt: câu hỏi + phương án + đề xuất, ≤5 dòng>
+```
+Không dán diff hay log dài vào báo cáo.
+
+**4. Opus duyệt rẻ:**
+- Xem `git show --stat <hash>`, rồi chỉ đọc diff của chỗ có rủi ro (kiểm quyền, SQL, mã HTTP, transaction).
+- Không đọc lại phần chỉ chuyển chỗ nguyên văn.
+
+**5. Giữ hay mở agent mới:**
+- Việc liên tiếp trong cùng một service: nhắn tiếp cho agent đang chạy (SendMessage), để nó khỏi đọc lại code.
+- Sang service khác, hoặc agent đã chạy rất dài: mở agent mới với phiếu đầu tiên (tránh bối cảnh phình to).
+
+**6. Kiểm tra nặng làm theo mốc:**
+- `contract-snapshot --compare`, smoke script, build lại Docker: chỉ chạy ở cuối mỗi mốc.
+- Giữa các việc nhỏ: chỉ `tsc` + test của phần vừa sửa.
+
 ## Khi gặp vấn đề quá khó
 
 Quy tắc của chủ dự án (2026-10-14, bản sửa):
