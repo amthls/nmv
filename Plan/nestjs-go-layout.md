@@ -159,6 +159,47 @@ services/library/
    - community: Fandom, bình luận;
    - media: tải ảnh, EPUB/PDF.
 
+## Quy trình kiểm lỗi (bắt buộc ở mỗi phiếu và mỗi mốc)
+
+**Ai làm gì:**
+- **Haiku** chạy lệnh và trả về đạt/hỏng + tối đa ~10 dòng lỗi (khi có công cụ gọi Haiku).
+- **Sonnet** đọc lỗi và sửa.
+- **Opus** quyết những lỗi đổi hành vi hoặc dính bảo mật.
+
+**1. Sau mỗi lần sửa nhỏ (rẻ, chạy liền):**
+- Node: `npx tsc --noEmit | head -30`.
+- Go: `gofmt -l . && go vet ./...`.
+
+**2. Cuối mỗi phiếu (thứ tự cố định, hỏng bước nào thì dừng ở bước đó và sửa):**
+1. Test: Node `yarn test | tail -5`; Go `go test ./... | tail -15` (cả test tích hợp với DB `*_test` riêng, **không bao giờ** dùng DB thật).
+2. Giữ khóa `.agent-lock` (`until mkdir .agent-lock; do sleep 10; done` … `rmdir`, nhả bằng trap), rồi:
+   - `docker compose up -d --build <service>` (catalog thêm `worker`);
+   - `docker compose ps <service>` phải healthy/Up;
+   - `docker compose logs <service> --tail 50 | grep -iE "error|warn|panic"` phải rỗng (hoặc chỉ có cảnh báo đã có trên main);
+   - `python scripts/contract-snapshot.py --compare --only <nhóm>` phải 0 lệch.
+
+     Service phụ thuộc truyện do phần catalog tạo thì thêm `catalog` vào `--only` (ví dụ `--only catalog,library`).
+3. Smoke script của service (`scripts/<svc>-smoke.py | tail -10`).
+4. Ghi kết quả vào báo cáo theo mẫu (KIỂM: tsc/test/snapshot/smoke ✓/✗).
+
+**3. Cuối mỗi mốc (mỗi service xong):** full `--compare` (mọi service) 0 lệch, `sh scripts/migrate.sh` chạy hết các lệnh con không lỗi.
+
+**4. Khi có lệch hoặc lỗi, phân loại trước khi sửa:**
+- **Lỗi do refactor** (lệch status/JSON/message, route 404, 201 thay 200, thiếu guard, sai thứ tự route): sửa code, **không sửa baseline**.
+- **Lệch do dữ liệu thay đổi giữa các lần chạy** (null ↔ giá trị trong danh sách, số đếm): chỉ được nới script cho đúng loại đó, ghi lý do vào commit. Opus duyệt mọi thay đổi ở phần so sánh của script.
+- **Không phải lỗi refactor, đã biết:**
+  - Số đếm (bình luận, theo dõi, lượt xem) trên trang truyện trễ ≤ 60s do cache công khai (`cachedPublic`). Smoke kiểm số đếm ngay thì báo hỏng giả.
+  - Hạn mức theo giờ/ngày (báo cáo 10/giờ, thời gian chờ báo cáo 24 giờ, đăng bài 20/giờ…) làm smoke chạy lại bị 429. Xóa bộ đếm (`rl:*` trong Redis) hoặc dùng tài khoản khác.
+  - Baseline có sẵn 3 lời gọi 429 (identity: đổi email/mật khẩu) và 2 lời gọi 500 (`catalog: story collaborators bad id`, `internal: messaging job bad`) từ main: giữ nguyên.
+- **Nghi ngờ nhưng chưa rõ:** chạy lại đúng bước đó **một lần** trên dữ liệu sạch. Vẫn hỏng thì so với code main (`git stash` không dùng được vì nhiều agent chung thư mục: so bằng cách đọc code cũ trong `git show main:<file>`). Không rõ sau 2–3 cách thử thì `CẦN OPUS`.
+
+**5. Trước khi giao nhánh cho chủ dự án (cuối cùng):**
+- `docker compose down` → `python launch.py` (cài lại từ đầu với volume cũ) → full `--compare` 0 lệch.
+- Mọi smoke script đạt (trừ hỏng giả đã ghi ở trên).
+- `node scripts/bench.mjs` không chậm hơn rõ rệt.
+- `docker stats` ghi RAM.
+- Đi các luồng chính trên trình duyệt ở :3000 (danh sách ở mục trên).
+
 ## Cách làm việc Opus ↔ Sonnet (tiết kiệm token)
 
 Chủ dự án quyết định 2026-10-14:
