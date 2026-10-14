@@ -1,4 +1,4 @@
-package main
+package realtime
 
 import (
 	"context"
@@ -14,6 +14,9 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
+
+	"nmv/messaging/internal/platform/events"
+	"nmv/messaging/internal/platform/logger"
 )
 
 const testKey = "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm"
@@ -21,35 +24,18 @@ const testKey = "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm"
 func signed(user string) http.Header {
 	exp := strconv.FormatInt(time.Now().Add(time.Minute).Unix(), 10)
 	roles := "reader"
-	if user == boss {
-		roles = "reader,admin"
-	}
 	m := hmac.New(sha256.New, []byte(testKey))
 	m.Write([]byte(user + "|" + roles + "|" + exp))
 	return http.Header{"X-User-Id": {user}, "X-User-Roles": {roles}, "X-User-Exp": {exp}, "X-User-Sig": {hex.EncodeToString(m.Sum(nil))}}
 }
 
-func TestUserFrom(t *testing.T) {
-	r := httptest.NewRequest("GET", "/ws", nil)
-	r.Header = signed("u1")
-	if userFrom([]byte(testKey), r, time.Now()) != "u1" {
-		t.Fatal("signed headers must be accepted")
-	}
-	r.Header.Set("X-User-Roles", "admin")
-	if userFrom([]byte(testKey), r, time.Now()) != "" {
-		t.Fatal("tampered roles must be refused")
-	}
-	r.Header = signed("u1")
-	if userFrom([]byte(strings.Repeat("k", 32)), r, time.Now()) != "" || userFrom([]byte(testKey), r, time.Now().Add(5*time.Minute)) != "" {
-		t.Fatal("another service's key or an expired signature must be refused")
-	}
-}
-
 // A real socket through the hub: guests refused, pushes reach every tab of the user, the same tab replaces its old
 // socket, _disconnect closes them all.
 func TestHub(t *testing.T) {
-	h := newHub()
-	srv := httptest.NewServer(withRequestLog((&server{cfg: config{SigKey: []byte(testKey)}, hub: h, now: time.Now}).routes())) // as in main: the upgrade must get through the log wrapper
+	h := NewHub()
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /ws", NewHandler(h, []byte(testKey), time.Now).Serve)
+	srv := httptest.NewServer(logger.WithRequestLog(mux)) // as in main: the upgrade must get through the log wrapper
 	defer srv.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -71,7 +57,7 @@ func TestHub(t *testing.T) {
 	other, _, _ := dial("u2", "A")
 	waitCount(t, h, 3)
 
-	h.push(event{Users: []string{"u1"}, Type: "dm", Data: json.RawMessage(`{"from":"yuki"}`)})
+	h.Push(events.Event{Users: []string{"u1"}, Type: "dm", Data: json.RawMessage(`{"from":"yuki"}`)})
 	for _, c := range []*websocket.Conn{a, b} {
 		_, msg, err := c.Read(ctx)
 		if err != nil || !strings.Contains(string(msg), `"type":"dm"`) || !strings.Contains(string(msg), "yuki") {
@@ -89,7 +75,7 @@ func TestHub(t *testing.T) {
 	}
 	waitCount(t, h, 3)
 
-	h.disconnect([]string{"u1"})
+	h.Disconnect([]string{"u1"})
 	for _, c := range []*websocket.Conn{a2, b} {
 		if _, _, err := c.Read(ctx); websocket.CloseStatus(err) != closeKicked {
 			t.Fatalf("disconnect: %v", err)
@@ -100,12 +86,12 @@ func TestHub(t *testing.T) {
 	waitCount(t, h, 0)
 }
 
-func waitCount(t *testing.T, h *hub, n int) {
+func waitCount(t *testing.T, h *Hub, n int) {
 	t.Helper()
-	for i := 0; i < 100 && h.count() != n; i++ {
+	for i := 0; i < 100 && h.Count() != n; i++ {
 		time.Sleep(20 * time.Millisecond)
 	}
-	if h.count() != n {
-		t.Fatalf("open sockets: %d, want %d", h.count(), n)
+	if h.Count() != n {
+		t.Fatalf("open sockets: %d, want %d", h.Count(), n)
 	}
 }

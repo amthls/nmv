@@ -1,4 +1,4 @@
-package main
+package app
 
 // End-to-end tests against a real Postgres (they wipe the database they get):
 //   MESSAGING_TEST_DATABASE_URL=postgres://postgres:...@127.0.0.1:5432/messaging_test go test ./...
@@ -6,15 +6,26 @@ package main
 import (
 	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"nmv/messaging/internal/config"
+	"nmv/messaging/internal/legacy"
+	"nmv/messaging/internal/platform/catalog"
+	"nmv/messaging/internal/platform/db"
+	"nmv/messaging/internal/platform/httpx"
+	"nmv/messaging/internal/platform/logger"
 )
 
 const (
@@ -28,7 +39,7 @@ const (
 
 type convHarness struct {
 	t   *testing.T
-	s   *server
+	s   *App
 	srv *httptest.Server
 }
 
@@ -38,21 +49,21 @@ func newConv(t *testing.T) *convHarness {
 		t.Skip("MESSAGING_TEST_DATABASE_URL not set")
 	}
 	ctx := context.Background()
-	db, err := pgxpool.New(ctx, dbURL)
+	pool, err := pgxpool.New(ctx, dbURL)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(db.Close)
-	if _, err := db.Exec(ctx, `DROP SCHEMA IF EXISTS legacy CASCADE; DROP SCHEMA public CASCADE; CREATE SCHEMA public`); err != nil {
+	t.Cleanup(pool.Close)
+	if _, err := pool.Exec(ctx, `DROP SCHEMA IF EXISTS legacy CASCADE; DROP SCHEMA public CASCADE; CREATE SCHEMA public`); err != nil {
 		t.Fatal(err)
 	}
-	if err := migrate(ctx, db); err != nil {
+	if err := db.Migrate(ctx, pool); err != nil {
 		t.Fatal(err)
 	}
 	names := map[string]string{hana: "hana", yuki: "yuki", kai: "kai"}
 	// The backend's internal API: profiles and the group (hana leader, yuki member; kai outside)
 	backend := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !internalAuthOK([]byte(strings.Repeat("b", 32)), r.Header.Get("X-Internal-Auth"), time.Now()) {
+		if !httpx.InternalAuthOK([]byte(strings.Repeat("b", 32)), r.Header.Get("X-Internal-Auth"), time.Now()) {
 			w.WriteHeader(401)
 			return
 		}
@@ -60,18 +71,18 @@ func newConv(t *testing.T) *convHarness {
 		case "/internal/users/profiles":
 			var b struct{ IDs, Usernames []string }
 			json.NewDecoder(r.Body).Decode(&b)
-			out := []profile{}
+			out := []catalog.Profile{}
 			for id, n := range names {
 				for _, want := range append(b.IDs, b.Usernames...) {
 					if want == id || want == n {
 						dn := strings.ToUpper(n)
-						out = append(out, profile{ID: id, Username: n, DisplayName: &dn})
+						out = append(out, catalog.Profile{ID: id, Username: n, DisplayName: &dn})
 					}
 				}
 			}
 			json.NewEncoder(w).Encode(map[string]any{"data": out})
 		case "/internal/groups/" + group + "/members":
-			json.NewEncoder(w).Encode(map[string]any{"data": []member{{hana, "leader"}, {yuki, "member"}}})
+			json.NewEncoder(w).Encode(map[string]any{"data": []catalog.Member{{UserID: hana, Role: "leader"}, {UserID: yuki, Role: "member"}}})
 		case "/internal/stories/" + story + "/followers": // one page: hana and yuki follow the story
 			page := []string{hana, yuki}
 			if r.URL.Query().Get("after") != "" {
@@ -83,10 +94,10 @@ func newConv(t *testing.T) *convHarness {
 		}
 	}))
 	t.Cleanup(backend.Close)
-	s := &server{cfg: config{SigKey: []byte(testKey), InternalKey: []byte(strings.Repeat("i", 32))}, db: db,
-		be: newBackend(backend.URL, []byte(strings.Repeat("b", 32))), lib: newBackend(backend.URL, []byte(strings.Repeat("b", 32))), hub: newHub(), now: time.Now,
-		rate: &rateLimiter{limit: 30, hits: map[string][]time.Time{}}}
-	srv := httptest.NewServer(withRequestLog(s.routes()))
+	s := New(config.Config{SigKey: []byte(testKey), InternalKey: []byte(strings.Repeat("i", 32)),
+		BackendURL: backend.URL, BackendKey: []byte(strings.Repeat("b", 32)), LibraryURL: backend.URL, LibraryKey: []byte(strings.Repeat("b", 32))},
+		pool, nil, time.Now)
+	srv := httptest.NewServer(logger.WithRequestLog(s.Routes()))
 	t.Cleanup(srv.Close)
 	return &convHarness{t, s, srv}
 }
@@ -267,7 +278,7 @@ func TestImportLegacy(t *testing.T) {
 		legacyURL = os.Getenv("MESSAGING_TEST_DATABASE_URL") + "&search_path=legacy"
 	}
 	for range 2 { // re-runs add nothing
-		if err := importLegacy(ctx, h.s.db, legacyURL); err != nil {
+		if err := legacy.Import(ctx, h.s.db, legacyURL); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -308,12 +319,12 @@ func TestImportLegacy(t *testing.T) {
 		}
 	}
 	// the imported dedupe key still guards against a re-delivered job
-	if n, _ := h.s.deliver(ctx, []notifyItem{{UserID: hana, Type: "group_member_add", Title: "x", DedupeKey: "chapter:d0000000-0000-0000-0000-000000000001:" + hana}}); n != 0 {
+	if n := postJob(t, h, map[string]any{"kind": "notify", "items": []map[string]any{{"userId": hana, "type": "group_member_add", "title": "x", "dedupeKey": "chapter:d0000000-0000-0000-0000-000000000001:" + hana}}}); n != 0 {
 		t.Fatal("dedupe key from the old table must hold")
 	}
 	// done once: what was deleted here does not come back
 	h.want(200, hana, "DELETE", "/notifications/e0000000-0000-0000-0000-000000000001", nil)
-	if err := importLegacy(ctx, h.s.db, legacyURL); err != nil {
+	if err := legacy.Import(ctx, h.s.db, legacyURL); err != nil {
 		t.Fatal(err)
 	}
 	if n := len(data(h.want(200, hana, "GET", "/notifications", nil))["notifications"].([]any)); n != 1 {
@@ -430,5 +441,36 @@ func TestNotifications(t *testing.T) {
 
 func signInternal(key string) string {
 	exp := time.Now().Add(time.Minute).Unix()
-	return internalHeader([]byte(key), exp)
+	return httpx.InternalHeader([]byte(key), exp)
+}
+
+// postJob sends a notification job through the backend's fallback endpoint and returns how many rows it created.
+func postJob(t *testing.T, h *convHarness, job map[string]any) int {
+	t.Helper()
+	var buf bytes.Buffer
+	json.NewEncoder(&buf).Encode(job)
+	req, _ := http.NewRequest("POST", h.srv.URL+"/internal/notifications/jobs", &buf)
+	req.Header.Set("X-Internal-Auth", signInternal(strings.Repeat("i", 32)))
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	var out map[string]any
+	json.NewDecoder(res.Body).Decode(&out)
+	n, _ := data(out)["created"].(float64)
+	return int(n)
+}
+
+const testKey = "mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm"
+
+func signed(user string) http.Header {
+	exp := strconv.FormatInt(time.Now().Add(time.Minute).Unix(), 10)
+	roles := "reader"
+	if user == boss {
+		roles = "reader,admin"
+	}
+	m := hmac.New(sha256.New, []byte(testKey))
+	m.Write([]byte(user + "|" + roles + "|" + exp))
+	return http.Header{"X-User-Id": {user}, "X-User-Roles": {roles}, "X-User-Exp": {exp}, "X-User-Sig": {hex.EncodeToString(m.Sum(nil))}}
 }

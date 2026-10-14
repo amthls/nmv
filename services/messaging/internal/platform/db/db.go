@@ -1,22 +1,22 @@
-package main
+// Package db applies the schema (migrations).
+package db
 
 import (
 	"context"
-	"embed"
 	"fmt"
 	"sort"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"nmv/messaging/internal/platform/logger"
+	"nmv/messaging/migrations"
 )
 
-//go:embed migrations/*.sql
-var migrationFiles embed.FS
-
-// migrate applies migrations/*.sql not yet recorded in schema_migrations, all in one transaction under a
+// Migrate applies migrations/*.sql not yet recorded in schema_migrations, all in one transaction under a
 // transaction-scoped advisory lock (two copies starting together don't race). Same as the other Go services.
-func migrate(ctx context.Context, db *pgxpool.Pool) error {
-	entries, err := migrationFiles.ReadDir("migrations")
+func Migrate(ctx context.Context, db *pgxpool.Pool) error {
+	entries, err := migrations.FS.ReadDir(".")
 	if err != nil {
 		return err
 	}
@@ -40,14 +40,14 @@ func migrate(ctx context.Context, db *pgxpool.Pool) error {
 			if done {
 				continue
 			}
-			sql, _ := migrationFiles.ReadFile("migrations/" + name)
+			sql, _ := migrations.FS.ReadFile(name)
 			if _, err := tx.Exec(ctx, string(sql)); err != nil {
 				return fmt.Errorf("migration %s: %w", name, err)
 			}
 			if _, err := tx.Exec(ctx, `INSERT INTO schema_migrations (name) VALUES ($1)`, name); err != nil {
 				return err
 			}
-			logInfo(ctx, "applied migration "+name)
+			logger.Info(ctx, "applied migration "+name)
 		}
 		return nil
 	})

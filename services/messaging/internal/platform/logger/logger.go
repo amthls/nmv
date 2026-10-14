@@ -1,4 +1,5 @@
-package main
+// Package logger writes the JSON log lines and the per-request log.
+package logger
 
 // shortcut: third copy of identity/workspace log.go (same JSON lines and redaction); a shared Go module needs one
 // Docker build context for all Go services: do it when the copies start to differ.
@@ -20,9 +21,11 @@ import (
 // JSON log lines with the same shape and redaction rules as catalog/src/utils/logger.ts:
 // {time, level, service, request_id, msg, ...fields}. Never log request bodies, cookies or tokens.
 
+// ctxKey keys the request id in a context.
 type ctxKey int
 
-const requestIDKey ctxKey = 0
+// RequestIDKey is the context key of the request id.
+const RequestIDKey ctxKey = 0
 
 var redactions = []struct {
 	re   *regexp.Regexp
@@ -35,6 +38,7 @@ var redactions = []struct {
 	{regexp.MustCompile(`[\w.+-]+@[\w-]+(\.[\w-]+)+`), "[email]"},
 }
 
+// redact hides secrets and emails in a log message.
 func redact(s string) string {
 	for _, r := range redactions {
 		s = r.re.ReplaceAllString(s, r.with)
@@ -42,10 +46,11 @@ func redact(s string) string {
 	return s
 }
 
-func logf(ctx context.Context, level, msg string, fields ...any) {
+// Logf writes one JSON line (warn and error go to stderr).
+func Logf(ctx context.Context, level, msg string, fields ...any) {
 	line := map[string]any{"time": time.Now().UTC().Format(time.RFC3339Nano), "level": level, "service": "messaging", "msg": redact(msg)}
 	if ctx != nil {
-		if id, ok := ctx.Value(requestIDKey).(string); ok {
+		if id, ok := ctx.Value(RequestIDKey).(string); ok {
 			line["request_id"] = id
 		}
 	}
@@ -60,8 +65,11 @@ func logf(ctx context.Context, level, msg string, fields ...any) {
 	fmt.Fprintln(out, string(b))
 }
 
-func logInfo(ctx context.Context, msg string, f ...any)  { logf(ctx, "info", msg, f...) }
-func logError(ctx context.Context, msg string, f ...any) { logf(ctx, "error", msg, f...) }
+// Info logs at info level.
+func Info(ctx context.Context, msg string, f ...any) { Logf(ctx, "info", msg, f...) }
+
+// Error logs at error level.
+func Error(ctx context.Context, msg string, f ...any) { Logf(ctx, "error", msg, f...) }
 
 var requestIDRe = regexp.MustCompile(`^[A-Za-z0-9-]{8,64}$`)
 
@@ -80,8 +88,8 @@ func (w *statusWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return http.NewResponseController(w.ResponseWriter).Hijack()
 }
 
-// withRequestLog adopts the gateway's X-Request-Id (or makes one), and logs one line per request (path only).
-func withRequestLog(next http.Handler) http.Handler {
+// WithRequestLog adopts the gateway's X-Request-Id (or makes one), and logs one line per request (path only).
+func WithRequestLog(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := r.Header.Get("X-Request-Id")
 		if !requestIDRe.MatchString(id) {
@@ -90,7 +98,7 @@ func withRequestLog(next http.Handler) http.Handler {
 			id = hex.EncodeToString(b)
 		}
 		w.Header().Set("X-Request-Id", id)
-		ctx := context.WithValue(r.Context(), requestIDKey, id)
+		ctx := context.WithValue(r.Context(), RequestIDKey, id)
 		sw := &statusWriter{ResponseWriter: w, status: 200}
 		start := time.Now()
 		next.ServeHTTP(sw, r.WithContext(ctx))
@@ -101,6 +109,6 @@ func withRequestLog(next http.Handler) http.Handler {
 		if sw.status >= 500 {
 			level = "error"
 		}
-		logf(ctx, level, "request", "method", r.Method, "path", r.URL.Path, "status", sw.status, "ms", time.Since(start).Milliseconds())
+		Logf(ctx, level, "request", "method", r.Method, "path", r.URL.Path, "status", sw.status, "ms", time.Since(start).Milliseconds())
 	})
 }

@@ -3,7 +3,7 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /messaging .
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /messaging ./cmd/messaging
 
 # Nothing but the binary; runs as nobody
 FROM scratch

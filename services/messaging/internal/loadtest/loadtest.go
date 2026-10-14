@@ -1,4 +1,5 @@
-package main
+// Package loadtest is the `messaging loadtest` subcommand: N fake sockets and one push to all of them.
+package loadtest
 
 import (
 	"context"
@@ -17,9 +18,11 @@ import (
 
 	"github.com/coder/websocket"
 	"github.com/redis/go-redis/v9"
+
+	"nmv/messaging/internal/platform/events"
 )
 
-// loadTest: `messaging loadtest <connections> <ws url> [hold seconds] [user prefix]`, run as its own container next to the
+// Run: `messaging loadtest <connections> <ws url> [hold seconds] [user prefix]`, run as its own container next to the
 // real one:
 //
 //	docker compose run --rm --no-deps messaging loadtest 2000 ws://messaging:8080/ws 60
@@ -28,7 +31,8 @@ import (
 //
 // Opens N sockets as N fake users (signed with USER_SIG_KEY_MESSAGING), publishes one ping to all of them through
 // Redis like the backend does, reports how many arrived and how fast, then holds the sockets (watch `docker stats`).
-func loadTest(ctx context.Context, args []string) error {
+// Run opens the sockets and reports; args are `<connections> <ws url> [hold seconds] [user prefix]`.
+func Run(ctx context.Context, args []string) error {
 	if len(args) < 2 {
 		return fmt.Errorf("usage: messaging loadtest <connections> <ws url> [hold seconds] [user prefix]")
 	}
@@ -108,8 +112,8 @@ func loadTest(ctx context.Context, args []string) error {
 		mu.Lock()
 		lat, sent = lat[:0], time.Now()
 		mu.Unlock()
-		payload, _ := json.Marshal(event{Users: users, Type: "notification"})
-		if err := rdb.Publish(ctx, rtChannel, payload).Err(); err != nil {
+		payload, _ := json.Marshal(events.Event{Users: users, Type: "notification"})
+		if err := rdb.Publish(ctx, events.RTChannel, payload).Err(); err != nil {
 			return err
 		}
 		alive := n - int(failed.Load()) - int(dead.Load())

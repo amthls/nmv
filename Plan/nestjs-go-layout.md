@@ -136,7 +136,7 @@ services/library/
 - [x] 6. library → bố cục Go chuẩn (nhỏ nhất, làm mẫu).
 - [x] 7. identity.
   - Ghi chú: identity giữ logic và SQL trong handler.go (không tách repository riêng) vì nhạy bảo mật: logic đan trong transaction (xoay refresh, khóa đăng nhập, ký header), chỉ chuyển chỗ để không đổi hành vi.
-- [ ] 8. messaging.
+- [x] 8. messaging.
 - [ ] 9. workspace (lớn nhất).
 - [ ] 10. Viết `docs/QUY-UOC.md` (quy chuẩn NestJS và Go ở trên, cách thêm chức năng mới), cập nhật README (kiến trúc, cấu trúc thư mục) và CLAUDE.md (lệnh, bẫy mới). Mỗi PR trước cũng sửa phần README của service đó.
 

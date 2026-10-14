@@ -1,4 +1,5 @@
-package main
+// Package realtime: plain WebSocket pushes. The hub keeps this process's open sockets; pushes arrive through Redis.
+package realtime
 
 import (
 	"context"
@@ -8,6 +9,8 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
+
+	"nmv/messaging/internal/platform/events"
 )
 
 const (
@@ -21,6 +24,7 @@ const (
 	closeKicked  = 4003
 )
 
+// client is one open socket.
 type client struct {
 	user, tab string
 	conn      *websocket.Conn
@@ -37,15 +41,18 @@ func (c *client) closeWith(code websocket.StatusCode, reason string) {
 	})
 }
 
-// hub: the open sockets of this process, by user. Pushes come from Redis (any process publishes).
-type hub struct {
+// Pushes come from Redis (any process publishes).
+// Hub is the open sockets of this process, by user.
+type Hub struct {
 	mu    sync.Mutex
 	users map[string]map[*client]struct{}
 }
 
-func newHub() *hub { return &hub{users: map[string]map[*client]struct{}{}} }
+// NewHub makes an empty hub.
+func NewHub() *Hub { return &Hub{users: map[string]map[*client]struct{}{}} }
 
-func (h *hub) count() int {
+// Count is the number of open sockets.
+func (h *Hub) Count() int {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	n := 0
@@ -56,7 +63,7 @@ func (h *hub) count() int {
 }
 
 // add registers c: the same tab's previous socket is replaced, and beyond maxPerUser the oldest is closed.
-func (h *hub) add(c *client) {
+func (h *Hub) add(c *client) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	cs := h.users[c.user]
@@ -82,7 +89,7 @@ func (h *hub) add(c *client) {
 	cs[c] = struct{}{}
 }
 
-func (h *hub) remove(c *client) {
+func (h *Hub) remove(c *client) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if cs := h.users[c.user]; cs != nil {
@@ -93,9 +100,9 @@ func (h *hub) remove(c *client) {
 	}
 }
 
-// push sends {type, data} to every socket of the event's users (["*"] = everyone connected); a client whose buffer is
+// Push sends {type, data} to every socket of the event's users (["*"] = everyone connected); a client whose buffer is
 // full is dropped.
-func (h *hub) push(e event) {
+func (h *Hub) Push(e events.Event) {
 	msg, _ := json.Marshal(map[string]any{"type": e.Type, "data": e.Data})
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -118,7 +125,8 @@ func (h *hub) push(e event) {
 	}
 }
 
-func (h *hub) disconnect(users []string) {
+// Disconnect closes every socket of the users (banned, sessions revoked).
+func (h *Hub) Disconnect(users []string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	for _, u := range users {
@@ -129,7 +137,8 @@ func (h *hub) disconnect(users []string) {
 	}
 }
 
-func (h *hub) closeAll() {
+// CloseAll closes every socket (restart): browsers reconnect to another copy.
+func (h *Hub) CloseAll() {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	for u, cs := range h.users {
@@ -140,9 +149,9 @@ func (h *hub) closeAll() {
 	}
 }
 
-// serve upgrades the request and runs the socket until it closes: one writer loop here, the library's reader
+// Serve upgrades the request and runs the socket until it closes: one writer loop here, the library's reader
 // (CloseRead) answers control frames, and a ticker pings.
-func (h *hub) serve(w http.ResponseWriter, r *http.Request, user, tab string) {
+func (h *Hub) Serve(w http.ResponseWriter, r *http.Request, user, tab string) {
 	conn, err := websocket.Accept(w, r, nil) // same origin only (the library checks Origin against Host)
 	if err != nil {
 		return

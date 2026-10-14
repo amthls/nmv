@@ -1,4 +1,5 @@
-package main
+// Package legacy is the one-time copy of the backend's old chat and notification tables (`messaging import-legacy`).
+package legacy
 
 import (
 	"context"
@@ -9,15 +10,17 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"nmv/messaging/internal/platform/logger"
 )
 
-// importLegacy copies direct messages, group chats, blocks and labels from the backend's database (novel_platform)
+// Import copies direct messages, group chats, blocks and labels from the backend's database (novel_platform)
 // into messaging_db, keeping message and label UUIDs. Only adds what is missing, never overwrites; each part is
 // recorded in legacy_imports and never runs again (a group message deleted here must not come back).
 // Read state: a dm member has read up to their newest message from the other person that has read_at set.
 //
 //	docker compose run --rm -e LEGACY_DATABASE_URL=... messaging import-legacy
-func importLegacy(ctx context.Context, db *pgxpool.Pool, legacyURL string) error {
+func Import(ctx context.Context, db *pgxpool.Pool, legacyURL string) error {
 	if legacyURL == "" {
 		return fmt.Errorf("LEGACY_DATABASE_URL is required")
 	}
@@ -28,15 +31,15 @@ func importLegacy(ctx context.Context, db *pgxpool.Pool, legacyURL string) error
 	defer old.Close(ctx)
 	var exists, done bool
 	if err := old.QueryRow(ctx, `SELECT to_regclass('direct_messages') IS NOT NULL`).Scan(&exists); err != nil || !exists {
-		logInfo(ctx, "import-legacy: no legacy tables, nothing to do")
+		logger.Info(ctx, "import-legacy: no legacy tables, nothing to do")
 		return err
 	}
 	if err := db.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM legacy_imports WHERE part = 'messages')`).Scan(&done); err != nil {
 		return err
 	}
 	if done {
-		logInfo(ctx, "import-legacy: messages already imported")
-		return importLegacyNotifications(ctx, db, old)
+		logger.Info(ctx, "import-legacy: messages already imported")
+		return importNotifications(ctx, db, old)
 	}
 
 	collect := func(q string) ([][]any, error) {
@@ -157,9 +160,9 @@ func importLegacy(ctx context.Context, db *pgxpool.Pool, legacyURL string) error
 	if err != nil {
 		return err
 	}
-	logInfo(ctx, fmt.Sprintf("import-legacy: %d/%d direct messages, %d/%d group messages, %d/%d blocks, %d/%d labels, %d/%d labelled conversations added",
+	logger.Info(ctx, fmt.Sprintf("import-legacy: %d/%d direct messages, %d/%d group messages, %d/%d blocks, %d/%d labels, %d/%d labelled conversations added",
 		added[0], len(dms), added[1], len(groups), added[2], len(blocks), added[3], len(labels), added[4], len(labelled)))
-	return importLegacyNotifications(ctx, db, old)
+	return importNotifications(ctx, db, old)
 }
 
 // legacyCategory: the old enum type + reference type -> a category (drafts, tasks and take-downs all used 'system').
@@ -181,11 +184,11 @@ func legacyCategory(typ, ref string) string {
 
 // importLegacyNotifications copies the backend's notifications (same ids; the link is built from its tables, as the
 // old bell did) and the notify_* switches of user_settings (interaction is off only when all three old switches were).
-func importLegacyNotifications(ctx context.Context, db *pgxpool.Pool, old *pgx.Conn) error {
+func importNotifications(ctx context.Context, db *pgxpool.Pool, old *pgx.Conn) error {
 	var done bool
 	if err := db.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM legacy_imports WHERE part = 'notifications')`).Scan(&done); err != nil || done {
 		if done {
-			logInfo(ctx, "import-legacy: notifications already imported")
+			logger.Info(ctx, "import-legacy: notifications already imported")
 		}
 		return err
 	}
@@ -275,6 +278,20 @@ func importLegacyNotifications(ctx context.Context, db *pgxpool.Pool, old *pgx.C
 	if err != nil {
 		return err
 	}
-	logInfo(ctx, fmt.Sprintf("import-legacy: %d/%d notifications, %d switched-off categories added", addedNotes, len(notes), addedOff))
+	logger.Info(ctx, fmt.Sprintf("import-legacy: %d/%d notifications, %d switched-off categories added", addedNotes, len(notes), addedOff))
 	return nil
+}
+
+// dmKey names the conversation of two people, whoever is first (same rule as the dm package).
+func dmKey(a, b string) string {
+	if a > b {
+		a, b = b, a
+	}
+	return a + ":" + b
+}
+
+// actor is one entry of a notification's actors list.
+type actor struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
