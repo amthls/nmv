@@ -11,19 +11,22 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/a
 interface CreateGroupModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (group?: any) => void;
+  /** Có group thì là chế độ sửa hồ sơ (PUT /groups/:id); mount lại modal mỗi lần mở để điền sẵn. */
+  group?: any;
 }
 
-export default function CreateGroupModal({ isOpen, onClose, onSuccess }: CreateGroupModalProps) {
+export default function CreateGroupModal({ isOpen, onClose, onSuccess, group }: CreateGroupModalProps) {
   const { authFetch } = useAuth();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [websiteUrl, setWebsiteUrl] = useState('');
-  const [discordUrl, setDiscordUrl] = useState('');
-  const [rules, setRules] = useState('');
-  const [avatarImages, setAvatarImages] = useState<string[]>([]);
-  const [bannerImages, setBannerImages] = useState<string[]>([]);
+  const [name, setName] = useState<string>(group?.name ?? '');
+  const [description, setDescription] = useState<string>(group?.description ?? '');
+  const [websiteUrl, setWebsiteUrl] = useState<string>(group?.website_url ?? '');
+  const [discordUrl, setDiscordUrl] = useState<string>(group?.discord_url ?? '');
+  const [rules, setRules] = useState<string>(group?.rules ?? '');
+  const [avatarImages, setAvatarImages] = useState<string[]>(group?.avatar_url ? [group.avatar_url] : []);
+  const [bannerImages, setBannerImages] = useState<string[]>(group?.banner_url ? [group.banner_url] : []);
+  const isEdit = Boolean(group);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
 
@@ -36,32 +39,41 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess }: CreateG
     setIsSubmitting(true);
     setErrorMsg(null);
     try {
-      const res = await authFetch(`${API_BASE_URL}/groups`, {
-        method: 'POST',
+      const next: Record<string, string | null> = {
+        name: name.trim(),
+        description: description.trim() || null,
+        website_url: websiteUrl.trim() || null,
+        discord_url: discordUrl.trim() || null,
+        rules: rules.trim() || null,
+        avatar_url: avatarImages.length > 0 ? avatarImages[0] : null,
+        banner_url: bannerImages.length > 0 ? bannerImages[0] : null,
+      };
+      // Sửa: chỉ gửi trường đã đổi (ô xóa trắng thành null)
+      const payload = isEdit
+        ? Object.fromEntries(Object.entries(next).filter(([k, v]) => v !== ((group[k] as string | null | undefined)?.trim?.() || null)))
+        : next;
+      if (isEdit && Object.keys(payload).length === 0) {
+        onClose();
+        return;
+      }
+      const res = await authFetch(isEdit ? `${API_BASE_URL}/groups/${group.id}` : `${API_BASE_URL}/groups`, {
+        method: isEdit ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: name.trim(),
-          description: description.trim() || null,
-          website_url: websiteUrl.trim() || null,
-          discord_url: discordUrl.trim() || null,
-          rules: rules.trim() || null,
-          avatar_url: avatarImages.length > 0 ? avatarImages[0] : null,
-          banner_url: bannerImages.length > 0 ? bannerImages[0] : null,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const json = await res.json().catch(() => null);
       if (res.ok) {
-        setFeedbackMsg(json?.message || 'Tạo nhóm dịch thành công');
+        setFeedbackMsg(json?.message || (isEdit ? 'Đã lưu hồ sơ nhóm' : 'Tạo nhóm dịch thành công'));
         setTimeout(() => {
           setFeedbackMsg(null);
           setName(''); setDescription(''); setWebsiteUrl(''); setDiscordUrl(''); setRules('');
           setAvatarImages([]); setBannerImages([]);
-          onSuccess();
+          onSuccess(json?.data);
           onClose();
         }, 1200);
       } else {
-        setErrorMsg(json?.message || 'Không thể tạo nhóm dịch. Vui lòng thử lại.');
+        setErrorMsg(json?.message || (isEdit ? 'Không thể lưu hồ sơ nhóm. Vui lòng thử lại.' : 'Không thể tạo nhóm dịch. Vui lòng thử lại.'));
       }
     } catch (err) {
       console.error('Failed to create group:', err);
@@ -84,9 +96,9 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess }: CreateG
               <Users className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white">Thành Lập Nhóm Dịch Mới</h3>
+              <h3 className="text-base font-bold text-white">{isEdit ? 'Sửa hồ sơ nhóm' : 'Thành Lập Nhóm Dịch Mới'}</h3>
               <p className="text-[11px] text-gray-400">
-                Nhóm hiển thị công khai ngay, bạn là Trưởng nhóm
+                {isEdit ? 'Chỉ các trường bạn đổi mới được lưu' : 'Nhóm hiển thị công khai ngay, bạn là Trưởng nhóm'}
               </p>
             </div>
           </div>
@@ -193,7 +205,7 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess }: CreateG
           {/* Action Toolbar */}
           <div className="flex items-center justify-between pt-3 border-t border-white/10">
             <span className="text-[11px] text-gray-400">
-              * Bạn sẽ tự động trở thành <strong>Trưởng nhóm (Leader)</strong> của nhóm này
+              {isEdit ? 'Đường dẫn (slug) của nhóm không đổi' : <>* Bạn sẽ tự động trở thành <strong>Trưởng nhóm (Leader)</strong> của nhóm này</>}
             </span>
 
             <button
@@ -202,7 +214,7 @@ export default function CreateGroupModal({ isOpen, onClose, onSuccess }: CreateG
               className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 disabled:opacity-40 text-snow font-bold text-xs shadow-lg shadow-brand-500/25 flex items-center gap-2 transition hover:scale-105"
             >
               <Send className="w-3.5 h-3.5" />
-              <span>{isSubmitting ? 'Đang tạo...' : 'Tạo Nhóm Dịch'}</span>
+              <span>{isEdit ? (isSubmitting ? 'Đang lưu...' : 'Lưu') : (isSubmitting ? 'Đang tạo...' : 'Tạo Nhóm Dịch')}</span>
             </button>
           </div>
 
