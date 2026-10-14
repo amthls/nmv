@@ -1,4 +1,4 @@
-import './logger'; // first: every console.* line becomes JSON
+import './common/utils/logger'; // first: every console.* line becomes JSON
 import fs from 'fs';
 import path from 'path';
 import { Pool } from 'pg';

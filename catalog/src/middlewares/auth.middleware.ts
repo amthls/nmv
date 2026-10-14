@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import type { IncomingHttpHeaders } from 'http';
 import { pool } from '../config/db';
-import { readThroughUser } from '../services/identitySync';
+import { readThroughUser } from '../modules/users/identity-sync.job';
 
 /**
  * Who is calling. Sign-in lives in the identity service; the gateway asks it about every request
@@ -61,7 +61,8 @@ export function signIdentityHeaders(id: string, roles: string[], now = Date.now(
   };
 }
 
-async function loadUser(req: Request): Promise<{ user?: AuthenticatedUser; blocked?: boolean }> {
+/** The signed-in user of a request (null fields = guest; blocked = banned or deleted account). */
+export async function loadUser(req: Request): Promise<{ user?: AuthenticatedUser; blocked?: boolean }> {
   const ident = identityFromHeaders(req.headers);
   if (!ident) return {};
   const q = () => pool.query(`SELECT id, username, display_name, avatar_url, is_banned, deleted_at FROM users WHERE id = $1::uuid`, [ident.id]);

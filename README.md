@@ -2,7 +2,7 @@
 
 Nền tảng đọc **Light Novel (truyện chữ)** và **Manga (truyện tranh)** trực tuyến, có nhóm dịch, diễn đàn Fandom, bookmark từng dòng và tìm kiếm bằng **Elasticsearch**.
 
-> README này được đối chiếu trực tiếp với mã nguồn và CSDL đang chạy (routes trong `catalog/src/routes/api.routes.ts`, schema thật trong PostgreSQL). Mục [Hạn chế đã biết](#-hạn-chế-đã-biết) ghi rõ những gì chưa làm.
+> README này được đối chiếu trực tiếp với mã nguồn và CSDL đang chạy (routes trong các `*.controller.ts` của `catalog/src/modules/`, schema thật trong PostgreSQL). Mục [Hạn chế đã biết](#-hạn-chế-đã-biết) ghi rõ những gì chưa làm.
 
 > **Đổi tên (giai đoạn I2, `Plan/catalog.md`):** service API chính trước đây tên `backend`, nay là `catalog` (thư mục `catalog/`,
 > container `novel_catalog`, image `nmv-catalog`). Database vẫn là `novel_platform`; tên `backend` vẫn phân giải trong mạng Docker
@@ -99,16 +99,18 @@ Trình duyệt gọi `/api/v1/...` và `/uploads/...` cùng origin; qua gateway 
 ## 📂 Cấu trúc thư mục
 
 ```
-├── catalog/                          # service catalog (Node/Express/TS), trước đây tên backend
+├── catalog/                          # service catalog (Node/NestJS 11/TS), trước đây tên backend
 │   ├── src/
-│   │   ├── config/                   # db (pg Pool), redis, env
-│   │   ├── controllers/              # story, chapter, group, tag, user, auth (hồ sơ), internal (/internal/*)...
+│   │   ├── server.ts, worker.ts      # API (dist/server.js) và tiến trình nền (container worker)
+│   │   ├── app.module.ts             # import mọi module chức năng
+│   │   ├── modules/                  # mỗi chức năng một thư mục: stories, chapters, volumes, drafts, groups, tags, codes, users, search, exports, library-sync, system
+│   │   │                             #   (*.module / *.controller / *.service / *.repository / dto/ / *.job)
+│   │   ├── common/                   # guards, decorators, filters (lỗi {success:false,message}), utils
+│   │   ├── infra/                    # database (pg Pool), queue (RabbitMQ), clients (gọi service khác), realtime, mailer, notification, behavior
 │   │   ├── middlewares/              # auth (header ký từ identity), cache, security (rate limit)
-│   │   ├── services/                 # search (Elasticsearch), client gọi service khác, sự kiện, đối soát, hotShelf
-│   │   ├── utils/richText.ts         # lọc HTML từ trình soạn thảo (sanitize-html)
-│   │   ├── routes/api.routes.ts      # toàn bộ route /api/v1
-│   │   ├── server.ts                 # API
-│   │   └── worker.ts                 # tiến trình nền (container worker)
+│   │   ├── utils/                    # richText.ts (sanitize-html), validation, logger, ids
+│   │   ├── config/                   # env, redis
+│   │   └── worker/                   # WorkerModule: việc nền
 │   ├── scripts/                      # seed / import (chạy thủ công bằng tsx)
 │   └── prisma/                       # schema cũ, chỉ để tham khảo (code không dùng Prisma client)
 ├── frontend/src/
@@ -116,12 +118,12 @@ Trình duyệt gọi `/api/v1/...` và `/uploads/...` cùng origin; qua gateway 
 │   ├── components/                   # Navbar, auth, explore, reader, story, groups, fandom, comments...
 │   └── context/AuthContext.tsx
 ├── services/
-│   ├── identity/                     # Go: tài khoản, mật khẩu, phiên, vai trò
+│   ├── identity/                     # Go (cmd/, internal/<chức năng>/, internal/app/routes.go): tài khoản, mật khẩu, phiên, vai trò
 │   ├── workspace/                    # Go: nội dung chương + phiên bản, nháp, đề xuất, việc
 │   ├── messaging/                    # Go: tin nhắn, chat nhóm, thông báo, WebSocket
 │   ├── library/                      # Go: theo dõi, bookmark, lịch sử, album
-│   ├── community/                    # TS: Fandom, bình luận, báo cáo
-│   ├── media/                        # TS: ảnh, EPUB/PDF
+│   ├── community/                    # TS/NestJS (src/modules/): Fandom, bình luận, báo cáo
+│   ├── media/                        # TS/NestJS (src/modules/): ảnh, EPUB/PDF
 │   └── recommender/                  # Python: gợi ý
 ├── events/                           # JSON Schema của mọi sự kiện trên exchange novelhub.events
 ├── sql/database.sql, sql/migrations/ # schema catalog (novel_platform); mỗi service có migrations riêng trong thư mục của nó
@@ -167,7 +169,7 @@ Chạy không qua Docker (cần Postgres sẵn): `yarn dev:local` (catalog + fro
 | `RABBITMQ_URL` / `RABBITMQ_USER` / `RABBITMQ_PASSWORD` | compose tự ghép URL từ hai biến sau | **Bắt buộc** `RABBITMQ_PASSWORD`. Để trống `RABBITMQ_URL` (chạy ngoài Docker) thì catalog gửi job thông báo thẳng cho messaging (`POST /internal/notifications/jobs`) |
 | `ENABLE_DEMO_ACCOUNTS` | `false` | `true` mới hiện danh sách tài khoản demo và gợi ý mật khẩu trên form đăng nhập |
 | `PGADMIN_DEFAULT_PASSWORD` | *(không có)* | **Bắt buộc** (kể cả khi không bật pgAdmin, vì compose đọc cả file) |
-| `SMTP_URL` / `MAIL_FROM` | *(trống)* / `NovelHub <no-reply@novelhub.local>` | Gửi mail quên mật khẩu, xác thực email, ví dụ `smtps://user:app-password@smtp.gmail.com:465`. Để trống: không gửi, mail nằm trong `mail_outbox` của `identity_db` (xem `services/identity/mail.go`). Mỗi địa chỉ nhận tối đa **10 mail/ngày** (vượt thì bỏ qua, ghi log cảnh báo) |
+| `SMTP_URL` / `MAIL_FROM` | *(trống)* / `NovelHub <no-reply@novelhub.local>` | Gửi mail quên mật khẩu, xác thực email, ví dụ `smtps://user:app-password@smtp.gmail.com:465`. Để trống: không gửi, mail nằm trong `mail_outbox` của `identity_db` (xem `services/identity/internal/email/mail.go`). Mỗi địa chỉ nhận tối đa **10 mail/ngày** (vượt thì bỏ qua, ghi log cảnh báo) |
 | `TURNSTILE_SITE_KEY` / `TURNSTILE_SECRET` | *(trống)* | Cloudflare Turnstile (chống bot) cho đăng ký và quên mật khẩu: đặt **cả hai** (khóa của trang Turnstile trên tài khoản Cloudflare) rồi build lại `frontend`, khởi động lại `identity`. Trống = tắt. Khóa thử của Cloudflare: `1x00000000000000000000AA` / `1x0000000000000000000000000000000AA` |
 | `SITE_URL` | `http://localhost:3000` | Địa chỉ công khai của web, dùng để tạo link trong email |
 | `COOKIE_SECURE` | `false` | `true` ép cờ `Secure` cho cookie. Không cần khi đi qua Cloudflare/HTTPS proxy: cookie tự `Secure` khi `X-Forwarded-Proto: https` |
@@ -213,7 +215,7 @@ Chống DDoS băng thông lớn phải làm ở rìa mạng (Cloudflare, tườn
 
 Ngoài ra: tối đa 60 kết nối đồng thời/IP, hết hạn 10s cho header và 20s cho thân yêu cầu (chống slowloris), thân yêu cầu thường tối đa 2MB. Vượt giới hạn trả `429`. **IP thật** do gateway xác định: `X-Forwarded-For` gửi kèm được ghi đè, và `CF-Connecting-IP` chỉ được tin khi yêu cầu đến từ tunnel Cloudflare cục bộ (kẻ trong LAN gửi header giả sẽ bị bỏ qua). Ghi chú: Next.js chuyển nguyên `X-Forwarded-For` của người gửi, đó là lý do catalog không tự tin header đó.
 
-**3. Catalog (`middlewares/security.ts`)** giới hạn theo ngữ cảnh (bộ đếm lưu trong **Redis**: còn nguyên sau khi khởi động lại và dùng chung giữa nhiều bản catalog; Redis lỗi thì cho qua thay vì chặn cả site), dựa trên IP do gateway cấp: đăng nhập sai 10 lần/15 phút cho mỗi cặp (IP, tài khoản), đăng ký 5 lần/giờ, bình luận 30 lần/5 phút, đăng bài 20 lần/giờ, thả cảm xúc 60/phút, báo cáo 10/giờ, chat nhóm 30/phút (theo tài khoản), tìm kiếm 90/phút, ảnh thu nhỏ 300/phút. **Thao tác ghi theo tài khoản** (khách: theo IP; như GitHub): catalog 120/phút + 600/giờ (tự lưu nháp không tính vào giờ); service workspace 60/phút + 600/giờ, việc nặng (dùng bản cũ, kéo bản mới, nhận đề xuất, lấy lại nháp) 10/phút + 100/giờ, sao chép nháp 20/giờ (`services/workspace/quota.go`). Mọi `429` có `Retry-After`; trang hiện đếm ngược (`RateLimitNotice`). Thêm: JSON tối đa 2MB, từ khóa tìm kiếm ≤ 120 ký tự, `page` ≤ 1000, tối đa 3 tiến trình `sharp` cùng lúc, `headersTimeout`/`requestTimeout` cho server. **Upload yêu cầu đăng nhập**; đuôi file lấy từ loại MIME đã kiểm (không lấy tên do người dùng đặt) và nội dung phải giải mã được thành ảnh, nếu không bị xóa ngay (chặn "file HTML giả làm PNG" gây XSS lưu trữ).
+**3. Catalog (`middlewares/security.ts`)** giới hạn theo ngữ cảnh (bộ đếm lưu trong **Redis**: còn nguyên sau khi khởi động lại và dùng chung giữa nhiều bản catalog; Redis lỗi thì cho qua thay vì chặn cả site), dựa trên IP do gateway cấp: đăng nhập sai 10 lần/15 phút cho mỗi cặp (IP, tài khoản), đăng ký 5 lần/giờ, bình luận 30 lần/5 phút, đăng bài 20 lần/giờ, thả cảm xúc 60/phút, báo cáo 10/giờ, chat nhóm 30/phút (theo tài khoản), tìm kiếm 90/phút, ảnh thu nhỏ 300/phút. **Thao tác ghi theo tài khoản** (khách: theo IP; như GitHub): catalog 120/phút + 600/giờ (tự lưu nháp không tính vào giờ); service workspace 60/phút + 600/giờ, việc nặng (dùng bản cũ, kéo bản mới, nhận đề xuất, lấy lại nháp) 10/phút + 100/giờ, sao chép nháp 20/giờ (`services/workspace/internal/quota/quota.go`). Mọi `429` có `Retry-After`; trang hiện đếm ngược (`RateLimitNotice`). Thêm: JSON tối đa 2MB, từ khóa tìm kiếm ≤ 120 ký tự, `page` ≤ 1000, tối đa 3 tiến trình `sharp` cùng lúc, `headersTimeout`/`requestTimeout` cho server. **Upload yêu cầu đăng nhập**; đuôi file lấy từ loại MIME đã kiểm (không lấy tên do người dùng đặt) và nội dung phải giải mã được thành ảnh, nếu không bị xóa ngay (chặn "file HTML giả làm PNG" gây XSS lưu trữ).
 
 ## ⚡ Hiệu năng & mở rộng (Redis, realtime, PgBouncer)
 
@@ -221,10 +223,10 @@ Mục tiêu: chịu được vài nghìn đến vài chục nghìn người onli
 
 | Vấn đề | Cách làm | Code |
 |:---|:---|:---|
-| Mỗi lượt đọc chương ghi DB nhiều lần, tranh khóa dòng `stories` của truyện hot | Lượt xem cộng vào Redis (`HINCRBY`), worker mỗi phút ghi gộp vào `stories.total_views`, `chapters.total_views` và `story_views_daily`. Không ghi từng dòng vào `story_views` nữa | `services/viewCounter.ts`, `worker.ts` |
-| Trang chủ truy vấn nặng cho mọi người | Cache JSON trong Redis: `/stories/trending` (kệ "Đang hot": worker tính sẵn vào đúng khóa cache 2 phút/lần, `HOT_SHELF_MS`, khóa sống 6 phút; worker tắt thì API tự tính khi hụt, 120s), `/stories/recently-updated` 60s, `/stories/illustrations` 300s, `/tags` 600s (header `X-Cache: HIT/MISS`) | `middlewares/cache.ts` |
-| Trang truyện / đọc chương truy vấn DB mỗi lượt xem (7 và 6 truy vấn) | Phần ai xem cũng giống (truyện, tag, tập + chương, cộng tác viên; nội dung chương, trang ảnh, chương trước/sau, mục lục) cache 60s trong Redis (`cachedPublic`, khóa `pub:<thế hệ>:…`). Mọi request ghi thành công vào `/api/v1`, phiên bản áp từ workspace (`applyRevisionNow`) và lần xóa hẳn truyện tăng `pubcache:gen` **trước khi trả lời**, nên người vừa sửa thấy ngay. Theo dõi, quyền, kiểm duyệt, lịch sử đọc, lượt xem vẫn tính mỗi request. Lượt xem / bình luận / tên người đăng có thể trễ tối đa 60s | `middlewares/cache.ts` |
-| Trình duyệt hỏi server liên tục (thông báo 25s, chat 4s) | Service messaging đẩy tín hiệu `notification`, `dm`, `group_message` qua WebSocket tới mọi tab của người nhận; trang nhận được thì tải lại qua REST. Hỏi định kỳ chỉ còn là dự phòng (120s / 30–60s) | `catalog/src/services/realtime.ts`, `services/messaging`, `frontend/src/lib/realtime.ts` |
+| Mỗi lượt đọc chương ghi DB nhiều lần, tranh khóa dòng `stories` của truyện hot | Lượt xem cộng vào Redis (`HINCRBY`), worker mỗi phút ghi gộp vào `stories.total_views`, `chapters.total_views` và `story_views_daily`. Không ghi từng dòng vào `story_views` nữa | `catalog/src/modules/chapters/view-counter.ts`, `worker.ts` |
+| Trang chủ truy vấn nặng cho mọi người | Cache JSON trong Redis: `/stories/trending` (kệ "Đang hot": worker tính sẵn vào đúng khóa cache 2 phút/lần, `HOT_SHELF_MS`, khóa sống 6 phút; worker tắt thì API tự tính khi hụt, 120s), `/stories/recently-updated` 60s, `/stories/illustrations` 300s, `/tags` 600s (header `X-Cache: HIT/MISS`) | `catalog/src/middlewares/cache.ts` |
+| Trang truyện / đọc chương truy vấn DB mỗi lượt xem (7 và 6 truy vấn) | Phần ai xem cũng giống (truyện, tag, tập + chương, cộng tác viên; nội dung chương, trang ảnh, chương trước/sau, mục lục) cache 60s trong Redis (`cachedPublic`, khóa `pub:<thế hệ>:…`). Mọi request ghi thành công vào `/api/v1`, phiên bản áp từ workspace (`applyRevisionNow`) và lần xóa hẳn truyện tăng `pubcache:gen` **trước khi trả lời**, nên người vừa sửa thấy ngay. Theo dõi, quyền, kiểm duyệt, lịch sử đọc, lượt xem vẫn tính mỗi request. Lượt xem / bình luận / tên người đăng có thể trễ tối đa 60s | `catalog/src/middlewares/cache.ts` |
+| Trình duyệt hỏi server liên tục (thông báo 25s, chat 4s) | Service messaging đẩy tín hiệu `notification`, `dm`, `group_message` qua WebSocket tới mọi tab của người nhận; trang nhận được thì tải lại qua REST. Hỏi định kỳ chỉ còn là dự phòng (120s / 30–60s) | `catalog/src/infra/realtime/realtime.ts`, `services/messaging`, `frontend/src/lib/realtime.ts` |
 | Nhiều bản catalog × pool 50 làm hết kết nối Postgres | API đi qua PgBouncer (transaction pooling). Worker nối thẳng Postgres | `docker-compose.yml` |
 
 - **Realtime (service messaging, Go, `Plan/messaging.md`):** trình duyệt mở **WebSocket thường** `/api/msg/ws?tab=<id>` (chỉ người đã đăng nhập; gateway hỏi identity như mọi request, messaging kiểm chữ ký `USER_SIG_KEY_MESSAGING`). Catalog API và worker `PUBLISH` `{users, type, data}` lên kênh Redis `rt:events`; mọi bản messaging nhận và đẩy cho các tab của những người đó (chạy nhiều bản được, không cần sticky session). `type: _disconnect` đóng mọi kết nối của một người (bị khóa/xóa). Server ping tầng giao thức mỗi 30 giây, không pong sau 45 giây thì cắt; mỗi tab một kết nối (kết nối lại thay kết nối cũ), tối đa 10 kết nối/tài khoản; tab ẩn quá 5 phút thì đóng. Client tự nối lại chờ ngẫu nhiên tăng dần (1–30 giây), bị từ chối thì làm mới phiên một lần; **không phát lại sự kiện bị lỡ**: nối lại xong mọi trang tải lại (DB là sự thật). Gateway: `worker_connections 16384`, `nofile 65536`, kết nối WebSocket mới tối đa 1/giây/IP (burst 10). Thử tải: `docker compose run --rm --no-deps messaging loadtest <N> ws://messaging:8080/ws <giây> [tiền tố]` (đo 2026-10-11: 10k và 30k kết nối giữ qua 3 lượt ping không rớt cái nào, ~40–44 KB RAM/kết nối, phát tới cả 30k p95 < 230 ms; `MESSAGING_MEMORY` mặc định 768m ≈ 15k kết nối, 30k cần 1.5g; chi tiết `Plan/messaging.md` E4). `next dev` chạy riêng (không qua gateway) thì không có socket, trang vẫn chạy nhờ hỏi định kỳ.
@@ -285,7 +287,7 @@ Service thứ hai tách khỏi catalog (`Plan/chapter-workspace.md`, giai đoạ
 - **Tên sự kiện:** `<service>.<thực thể>.<việc>` (`identity.user.updated`, `workspace.revision.merged`). Vỏ chung `{event_id, type, version, occurred_at, request_id, data}` (`events/envelope.v1.json`).
 - **Đổi schema** (`events/<tên>.v1.json`): chỉ được **thêm trường** (bên nhận bỏ qua trường lạ). Đổi nghĩa, đổi kiểu hay bỏ trường là phá vỡ → sự kiện mới `….v2.json` với tên mới, phát song song bản cũ cho tới khi mọi bên nhận đã chuyển. Test của mỗi service kiểm mọi sự kiện nó ghi ra khớp schema.
 - **Phát lại (dựng lại bản sao):** `docker compose run --rm identity republish [user-id]`, `docker compose run --rm workspace republish [chapter-id]` gửi lại ảnh chụp hiện tại (không tăng version): bản sao thiếu hoặc cũ thì nhận, bản đã đúng bỏ qua. Bản sao bị sửa tay mà cùng version thì phải đặt `users.identity_version = 0` / xóa dòng `ws_chapter_versions` trước khi phát lại.
-- **Đối soát** (worker catalog, 5 phút sau khi khởi động rồi 6 giờ/lần, `catalog/src/services/reconcile.ts`): so `GET /internal/stats` của identity, workspace (số dòng + tổng version) với bản sao (`users` có `identity_version > 0`, `ws_chapter_versions`); outbox chưa gửi quá 10 phút; hàng `.dlq` có tin. Có vấn đề → **thông báo cho Admin** (mỗi loại một lần/ngày) kèm lệnh sửa.
+- **Đối soát** (worker catalog, 5 phút sau khi khởi động rồi 6 giờ/lần, `catalog/src/modules/system/reconcile.job.ts`): so `GET /internal/stats` của identity, workspace (số dòng + tổng version) với bản sao (`users` có `identity_version > 0`, `ws_chapter_versions`); outbox chưa gửi quá 10 phút; hàng `.dlq` có tin. Có vấn đề → **thông báo cho Admin** (mỗi loại một lần/ngày) kèm lệnh sửa.
 
 ## 🖼 Service media (ảnh, EPUB/PDF)
 
@@ -392,7 +394,7 @@ Thư mục `./backups` (kho restic cũ, nếu còn) không còn được dùng, 
 
 ## 📬 Hàng đợi thông báo (RabbitMQ)
 
-Thông báo nằm ở **service messaging** (`messaging_db`, `Plan/messaging.md` E3). Catalog vẫn quyết định "ai nhận gì" (`services/notification.service.ts`) rồi đẩy job vào hàng `novel.notifications`; trước khi đẩy nó gắn `link` (bấm vào đi đâu) và `image` (bìa truyện) = ảnh chụp lúc đó, và bỏ người đã tắt thông báo của bài viết đó. Messaging nhận job, bỏ loại người đó đã tắt, chống trùng, gộp, ghi rồi đẩy tín hiệu realtime. API không chờ.
+Thông báo nằm ở **service messaging** (`messaging_db`, `Plan/messaging.md` E3). Catalog vẫn quyết định "ai nhận gì" (`catalog/src/infra/notification/notification.service.ts`) rồi đẩy job vào hàng `novel.notifications`; trước khi đẩy nó gắn `link` (bấm vào đi đâu) và `image` (bìa truyện) = ảnh chụp lúc đó, và bỏ người đã tắt thông báo của bài viết đó. Messaging nhận job, bỏ loại người đó đã tắt, chống trùng, gộp, ghi rồi đẩy tín hiệu realtime. API không chờ.
 
 | Sự kiện | Ai được thông báo | Loại (nhóm) |
 |:---|:---|:---|
@@ -404,7 +406,7 @@ Thông báo nằm ở **service messaging** (`messaging_db`, `Plan/messaging.md`
 | Admin/Mod gỡ / khôi phục bài viết hoặc truyện | Tác giả / người đăng truyện | `post_removed`, `post_restored`, `story_removed`, `story_restored` (kiểm duyệt) |
 | Đối soát, cảnh báo identity | Mọi Admin | `admin_alert` (hệ thống) |
 
-- **Loại** là chuỗi, đăng ký trong `services/messaging/notify.go` (nhóm, tắt được không, có gộp không). **Không tắt được:** kết quả xin vào nhóm/được thêm, đề xuất được gộp/trả lại, nội dung bị gỡ/khôi phục, cảnh báo Admin, thông báo toàn site.
+- **Loại** là chuỗi, đăng ký trong `services/messaging/internal/notifications/model.go` (nhóm, tắt được không, có gộp không). **Không tắt được:** kết quả xin vào nhóm/được thêm, đề xuất được gộp/trả lại, nội dung bị gỡ/khôi phục, cảnh báo Admin, thông báo toàn site.
 - **Chuông:** số là **chưa xem** (mở chuông → về 0), từng dòng vẫn "chưa đọc" tới khi bấm; tab Tất cả / Chưa đọc / Nhóm dịch / Workspace. Trang `/thong-bao`: ô tìm (tiêu đề + nội dung, chuẩn tìm kiếm chung), lọc theo nhóm, chỉ chưa đọc, tải thêm, xóa, **cài đặt nhóm × kênh** (web; email chưa có). Đã đọc giữ 30 ngày, chưa đọc 60 ngày (messaging dọn mỗi giờ).
 - **Thông báo toàn site** (Admin, ở `/thong-bao`): một dòng cho mọi người (`broadcasts` + `broadcast_reads`), hiện 30 ngày.
 - **Chương mới:** messaging hỏi người theo dõi từ catalog (`GET /internal/stories/:id/followers`, khối 1000, nghỉ 25ms giữa các khối), tối đa 4 job chạy cùng lúc mỗi bản messaging. Đo cũ (worker Node, cùng thuật toán khối): 20.000 người theo dõi xong sau 2,8 giây; bản Go chưa đo lại ở quy mô đó (12 người: 21ms).
@@ -415,7 +417,7 @@ Thông báo nằm ở **service messaging** (`messaging_db`, `Plan/messaging.md`
 
 ## 🔎 Tìm kiếm với Elasticsearch
 
-Tìm kiếm truyện dùng **Elasticsearch 9** (container `search`, image chính thức `elasticsearch:9.5.3`, 1 node). Code tích hợp nằm trong `catalog/src/services/search.service.ts`, gọi REST API bằng `fetch` có sẵn (không thêm thư viện).
+Tìm kiếm truyện dùng **Elasticsearch 9** (container `search`, image chính thức `elasticsearch:9.5.3`, 1 node). Code tích hợp nằm trong `catalog/src/modules/search/search.client.ts`, gọi REST API bằng `fetch` có sẵn (không thêm thư viện).
 
 - PostgreSQL vẫn là nguồn dữ liệu chính. Elasticsearch chỉ xử lý ô tìm kiếm chữ (`q`) của `GET /stories/explore`: trả về danh sách id truyện xếp theo độ liên quan (BM25), còn mọi bộ lọc khác (loại, tình trạng, thể loại, số chương, sắp xếp...) vẫn chạy bằng SQL.
 - **Trường được tìm:** tên truyện (ưu tiên cao nhất), tên gốc, tác giả, họa sĩ, thể loại, tên nhóm dịch, tóm tắt.
@@ -661,7 +663,7 @@ Email có dạng `<tên ngắn>@novelhub.vn` (ví dụ `admin@novelhub.vn`, `sak
 - Gợi ý không còn dùng số giây đọc (library không phát): mức thích một truyện tính theo số chương đã mở, theo dõi, album, bookmark, lượt xem.
   Script tạo người đọc giả `simulateReaders.ts` đã bỏ (từ G1 nó không còn tới được recommender).
 - Tin nhắn riêng chưa có xóa/sửa tin, gửi ảnh hay báo cáo tin nhắn; chặn chỉ áp dụng cho tin nhắn (người bị chặn vẫn thấy bài viết, bình luận của bạn).
-- Test tự động mới chỉ có `isTokenRevoked` (`catalog/src/middlewares/auth.middleware.test.ts`) và `parseCode` (`catalog/src/controllers/code.controller.test.ts`).
+- Test tự động mới chỉ có `isTokenRevoked` (`catalog/src/middlewares/auth.middleware.test.ts`) và `parseCode` (`catalog/src/modules/codes/parse-code.test.ts`).
 - Web miễn phí nên **không làm** hệ thống xu, nạp tiền, mua chương hay cấp độ.
 
 - **Không có sao lưu** (đã bỏ theo quyết định của chủ dự án), xem [Sao lưu](#-sao-lưu).

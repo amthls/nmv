@@ -1,19 +1,18 @@
+import 'reflect-metadata';
 import express from 'express';
+import { RequestMethod } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import cors from 'cors';
 import './config/env'; // loads .env and validates required secrets first
-import apiRoutes from './routes/api.routes';
+import { AppModule } from './app.module';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { applySecurity, globalApiLimiter, writeLimiter, writeHourLimiter } from './middlewares/security';
 import { bumpOnWrite } from './middlewares/cache';
-import { connectQueue } from './services/queue.service';
-import { startSearchSync } from './services/search.service';
-import { visitorCookie } from './services/behaviorEvents';
+import { connectQueue } from './infra/queue/queue.service';
+import { startSearchSync } from './modules/search/search.client';
+import { visitorCookie } from './infra/behavior/behavior-events';
 import { requestContext } from './utils/logger';
-import { identityFromHeaders, internalAuthOK } from './middlewares/auth.middleware';
-import {
-  permissions, exportChapters, exportSource, exportBook, userProfiles, groupMembers, storiesBrief, removedStories, commentCounts, librarySync, libraryIds, favoriteCounts,
-} from './controllers/internal.controller';
-import { deleteCheck } from './controllers/user.controller';
-
 // Without the keys that verify the gateway's identity headers and internal calls nobody is ever signed in: refuse to start
 for (const k of ['USER_SIG_KEY_CATALOG', 'INTERNAL_KEY_CATALOG', 'INTERNAL_KEY_IDENTITY', 'INTERNAL_KEY_WORKSPACE', 'INTERNAL_KEY_MESSAGING', 'INTERNAL_KEY_COMMUNITY', 'INTERNAL_KEY_LIBRARY']) {
   if (process.env.NODE_ENV === 'production' && (process.env[k] || '').length < 32) {
@@ -21,7 +20,6 @@ for (const k of ['USER_SIG_KEY_CATALOG', 'INTERNAL_KEY_CATALOG', 'INTERNAL_KEY_I
   }
 }
 
-const app = express();
 const PORT = process.env.PORT || 5000;
 
 // High concurrency crash guards
@@ -31,6 +29,14 @@ process.on('uncaughtException', (err) => {
 process.on('unhandledRejection', (reason, promise) => {
   console.error('[CRITICAL] Unhandled Rejection at:', promise, 'reason:', reason);
 });
+
+async function bootstrap() {
+// Nest on Express; its own body parser is off so the limits below (2mb JSON) stay as before.
+// Middleware below is added before Nest registers its routes (at listen), so it runs first.
+const nest = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false, logger: ['error', 'warn'] });
+const app: express.Express = nest.getHttpAdapter().getInstance();
+nest.setGlobalPrefix('api/v1', { exclude: [{ path: 'internal/{*path}', method: RequestMethod.ALL }] });
+nest.useGlobalFilters(new HttpExceptionFilter());
 
 app.use(requestContext); // before everything else, so every log line and error carries the request_id
 applySecurity(app);
@@ -66,36 +72,11 @@ app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 // RESTful API V1
-app.use('/api/v1', globalApiLimiter, writeLimiter, writeHourLimiter, bumpOnWrite, apiRoutes);
+// limits and cache bumps for every /api/v1 request
+app.use('/api/v1', globalApiLimiter, writeLimiter, writeHourLimiter, bumpOnWrite);
 
-// Service-to-service calls (identity -> backend), signed like the gateway's headers. The gateway answers 404 for
-// /internal from outside, so only containers on the Docker networks reach these.
-app.get('/internal/users/:id/delete-check', (req, res, next) => {
-  if (!identityFromHeaders(req.headers)) return res.status(401).json({ ok: false });
-  deleteCheck(req, res).catch(next);
-});
-// Workspace -> backend (X-Internal-Auth): story rights and the one-time chapter import
-const internal = (fn: (req: express.Request, res: express.Response) => Promise<unknown>): express.RequestHandler => (req, res, next) => {
-  if (!internalAuthOK(req.get('x-internal-auth'))) return res.status(401).json({ success: false });
-  fn(req, res).catch(next);
-};
-app.get('/internal/permissions', internal(permissions));
-app.get('/internal/chapters/export', internal(exportChapters));
-// Media -> backend: what an EPUB/PDF may contain, and the content itself
-app.post('/internal/exports/source', internal(exportSource));
-app.post('/internal/exports/book', internal(exportBook));
-// Messaging -> backend: names/avatars to show, and who is in a group (its chat)
-app.post('/internal/users/profiles', internal(userProfiles));
-app.get('/internal/groups/:id/members', internal(groupMembers));
-// Community -> backend: stories/chapters it shows or links, removed stories for /da-go, comment counts it keeps fresh
-app.post('/internal/stories/brief', internal(storiesBrief));
-app.get('/internal/stories/removed', internal(removedStories));
-app.post('/internal/comment-counts', internal(commentCounts));
-// Library -> backend: changed stories/chapters for its read copies, every id (nightly reconcile), follower counts
-app.get('/internal/library/stories', internal(librarySync('stories')));
-app.get('/internal/library/chapters', internal(librarySync('chapters')));
-app.get('/internal/library/ids', internal(libraryIds));
-app.post('/internal/favorite-counts', internal(favoriteCounts));
+// Service-to-service routes (/internal/*) are Nest modules (X-Internal-Auth). The gateway answers 404 for /internal
+// from outside, so only containers on the Docker networks reach them.
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -107,33 +88,21 @@ app.get('/', (req, res) => {
   });
 });
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: `Route not found: ${req.method} ${req.originalUrl}`,
-  });
-});
-
-// Global Error Handler Middleware
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('[Express Global Error]', err);
-  res.status(err.status || 500).json({
-    success: false,
-    message: err.message || 'Lỗi hệ thống máy chủ nội bộ',
-  });
-});
-
-const server = app.listen(PORT, () => {
-  console.log(`NovelHub API Server is running on http://localhost:${PORT}`);
-  console.log(`Healthcheck: http://localhost:${PORT}/api/v1/health`);
-  startSearchSync();
-  connectQueue();
-});
-
+await nest.listen(PORT);
+console.log(`NovelHub API Server is running on http://localhost:${PORT}`);
+console.log(`Healthcheck: http://localhost:${PORT}/api/v1/health`);
+startSearchSync();
+connectQueue();
 
 // Slow-connection (slowloris) protection: never wait forever for headers or a request body
+const server = nest.getHttpServer();
 server.headersTimeout = 15_000;
 server.requestTimeout = 60_000; // JSON only (uploads go to the media service)
 server.keepAliveTimeout = 5_000;
 server.maxHeadersCount = 60;
+}
+
+bootstrap().catch((err) => {
+  console.error('[CRITICAL] catalog failed to start:', err);
+  process.exit(1);
+});

@@ -1,16 +1,15 @@
 import { IS_PROD, PORT, migrate, pool } from './config';
-import express, { NextFunction, Request, Response } from 'express';
-import { requestContext } from './logger';
-import { commentLimiter, internalAuthOK, optionalAuth, postLimiter, reactLimiter, reportLimiter, requireAuth } from './auth';
-import {
-  approvePost, createPost, deletePost, getFandomSidebar, getPostBySlug, getPosts, reactToPost, rejectPost, togglePinPost, togglePostMute, updatePost,
-} from './posts';
-import { createComment, deleteComment, getComments, likeComment, updateComment } from './comments';
-import { createReport, getReports, resolveReport } from './reports';
-import { getRemovedContent, handleIdentityEvent, purgeStoryComments, resolveCode, userStats } from './moderation';
-import { connectQueue } from './notify';
-import { startEventConsumer } from './events';
-import { importLegacy } from './importLegacy';
+import 'reflect-metadata';
+import express from 'express';
+import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
+import { requestContext } from './common/utils/logger';
+import { ModerationService } from './modules/moderation/moderation.service';
+import { connectQueue } from './modules/notify/notify.service';
+import { startEventConsumer } from './infra/queue/events';
+import { importLegacy } from './modules/legacy-import/import-legacy';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { AppModule } from './app.module';
 
 /**
  * community: Fandom posts, comments (stories, chapters, posts), reactions, reports, removed content. See Plan/community.md.
@@ -22,64 +21,27 @@ for (const k of ['COMMUNITY_DATABASE_URL', 'USER_SIG_KEY_COMMUNITY', 'INTERNAL_K
   if (IS_PROD && (process.env[k] || '').length < (k === 'COMMUNITY_DATABASE_URL' ? 1 : 32)) throw new Error(`${k} is missing`);
 }
 
-// Express 4 does not catch async handlers' errors
-const wrap = (fn: (req: any, res: Response) => Promise<unknown>) => (req: Request, res: Response, next: NextFunction) => {
-  fn(req, res).catch(next);
-};
-const internal = (fn: (req: Request, res: Response) => Promise<unknown>) => (req: Request, res: Response, next: NextFunction) => {
-  if (!internalAuthOK(req.get('x-internal-auth'))) return res.status(401).json({ success: false });
-  fn(req, res).catch(next);
-};
-
-const app = express();
-app.disable('x-powered-by');
-app.set('trust proxy', false); // only the gateway talks to us; it sends X-Real-IP
-app.use(requestContext);
-app.use(express.json({ limit: '1mb' })); // post bodies are rich HTML (sanitized, at most 100k characters)
-
-app.get('/health', (_req, res) => res.json({ success: true }));
-app.get('/ready', async (_req, res) => {
-  const ok = await pool.query('SELECT 1').then(() => true, () => false);
-  res.status(ok ? 200 : 503).json({ success: ok, data: { database: ok ? 'ok' : 'down' } });
-});
-
-app.get('/comments', wrap(getComments));
-app.post('/comments', requireAuth, commentLimiter, wrap(createComment));
-app.post('/comments/:id/like', requireAuth, wrap(likeComment));
-app.put('/comments/:id', requireAuth, wrap(updateComment));
-app.delete('/comments/:id', requireAuth, wrap(deleteComment));
-
-app.post('/reports', requireAuth, reportLimiter, wrap(createReport));
-app.get('/reports', requireAuth, wrap(getReports));
-app.put('/reports/:id/resolve', requireAuth, wrap(resolveReport));
-app.get('/moderation/removed', requireAuth, wrap(getRemovedContent));
-
-app.get('/posts', optionalAuth, wrap(getPosts));
-app.get('/posts/sidebar', optionalAuth, wrap(getFandomSidebar));
-app.get('/posts/:slug', optionalAuth, wrap(getPostBySlug));
-app.post('/posts', requireAuth, postLimiter, wrap(createPost));
-app.put('/posts/:id', requireAuth, wrap(updatePost));
-app.delete('/posts/:id', requireAuth, wrap(deletePost));
-app.post('/posts/:id/approve', requireAuth, wrap(approvePost));
-app.post('/posts/:id/reject', requireAuth, wrap(rejectPost));
-app.post('/posts/:id/react', requireAuth, reactLimiter, wrap(reactToPost));
-app.post('/posts/:id/pin', requireAuth, wrap(togglePinPost));
-app.post('/posts/:id/mute', requireAuth, wrap(togglePostMute));
-
-app.get('/internal/codes/:kind/:no', internal(resolveCode));
-app.get('/internal/users/:id/stats', internal(userStats));
-app.post('/internal/comments/purge', internal(purgeStoryComments));
-
-app.use((_req, res) => res.status(404).json({ success: false, message: 'Không tìm thấy.' }));
-app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-  if (err?.type === 'entity.parse.failed') return res.status(400).json({ success: false, message: 'Dữ liệu không hợp lệ.' });
-  if (err?.type === 'entity.too.large') return res.status(413).json({ success: false, message: 'Nội dung quá lớn.' });
-  console.error('[community] request failed:', err?.stack || err);
-  res.status(500).json({ success: false, message: 'Lỗi hệ thống.' });
-});
+async function bootstrap() {
+  // Nest on Express with its own body parser off: express.json keeps the 1mb limit, errors answered as before
+  const nest = await NestFactory.create<NestExpressApplication>(AppModule, { bodyParser: false, logger: ['error', 'warn'] });
+  const app: express.Express = nest.getHttpAdapter().getInstance();
+  app.disable('x-powered-by');
+  app.set('trust proxy', false); // only the gateway talks to us; it sends X-Real-IP
+  nest.useGlobalFilters(new HttpExceptionFilter());
+  app.use(requestContext);
+  const json = express.json({ limit: '1mb' }); // post bodies are rich HTML (sanitized, at most 100k characters)
+  app.use((req, res, next) => json(req, res, (err?: any) => {
+    if (err?.type === 'entity.parse.failed') return res.status(400).json({ success: false, message: 'Dữ liệu không hợp lệ.' });
+    if (err?.type === 'entity.too.large') return res.status(413).json({ success: false, message: 'Nội dung quá lớn.' });
+    next(err);
+  }));
+  return nest;
+}
 
 async function main() {
   await migrate();
+  const nest = await bootstrap();
+  const handleIdentityEvent = (evt: any) => nest.get(ModerationService).handleIdentityEvent(evt);
   connectQueue();
   // identity.user.deleted (purge_content): hide that account's posts and comments
   const lost = () => {
@@ -97,7 +59,9 @@ async function main() {
       }
     }
   }
-  const server = app.listen(PORT, () => console.log(`community listening on :${PORT}`));
+  await nest.listen(PORT);
+  console.log(`community listening on :${PORT}`);
+  const server = nest.getHttpServer();
   const shutdown = async (signal: string) => {
     console.log(`[community] ${signal}: stopping`);
     server.close();

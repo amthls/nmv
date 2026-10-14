@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "test": "tsx --test src/**/*.test.ts",
+    "test": "tsx --test \"src/**/*.test.ts\"",
     "start": "node dist/server.js",
     "db:check": "tsx scripts/check-db.ts",
     "db:import": "tsx scripts/import-sql.ts",
@@ -16,6 +16,9 @@
     "prisma:migrate": "prisma migrate dev"
   },
   "dependencies": {
+    "@nestjs/common": "11.2.7",
+    "@nestjs/core": "11.2.7",
+    "@nestjs/platform-express": "11.2.7",
     "@prisma/client": "^5.22.0",
     "amqplib": "^2.2.0",
     "bcryptjs": "^3.0.3",
@@ -29,6 +32,8 @@
     "nodemailer": "~7.0.13",
     "pg": "^8.23.1",
     "rate-limit-redis": "^4",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2",
     "sanitize-html": "^2.18.0",
     "zod": "^3.23.8"
   },
