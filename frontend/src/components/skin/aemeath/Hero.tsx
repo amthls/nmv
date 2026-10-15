@@ -7,8 +7,6 @@ import Link from '@/components/common/Link';
 export default function Hero() {
   return (
     <section className="sk-hero" aria-label="Giới thiệu">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/backgrounds/aemeath/sprite.webp" alt="" className="sk-hero__sprite" loading="lazy" />
       <span className="sk-hero__chip">
         <span className="sk-star" aria-hidden="true" /> LIGHT NOVEL · MANGA · FANDOM
       </span>

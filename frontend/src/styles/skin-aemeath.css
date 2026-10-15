@@ -28,9 +28,8 @@ html.skin-aemeath {
   --sk-radius: 18px;
   --ck-color-focus-border: #ec4899;
   background:
-    radial-gradient(560px 190px at 0% 100%, #fdf2f8 55%, transparent),
     linear-gradient(rgb(255 240 248 / 0.7), rgb(255 240 248 / 0.84)),
-    url('/backgrounds/aemeath/day.webp') center / cover no-repeat fixed,
+    url('/backgrounds/aemeath/day.webp') center top / cover no-repeat fixed,
     #fdf2f8;
 }
 html.skin-aemeath.dark {
@@ -284,3 +283,39 @@ html.skin-aemeath .nh-progress, html.skin-aemeath .nh-loadbar { --nh-bar: #f472b
 html.skin-aemeath header a[aria-label*="Trang chủ"] svg,
 html.skin-aemeath :is(button, a).bg-brand-500 svg, html.skin-aemeath :is(button, a).bg-brand-600 svg,
 html.skin-aemeath :is(button, a)[class*="from-brand-5"] svg, html.skin-aemeath :is(button, a)[class*="from-brand-6"] svg { stroke: #fff; color: #fff; }
+
+/* ---------- Tinh chỉnh (light mode, hero truyện, nút, banner) ---------- */
+/* icon: ở nền sáng dùng gradient đậm hơn để đủ tương phản */
+html.skin-aemeath:not(.dark) #ae-icon-grad stop:first-child { stop-color: #be185d; }
+html.skin-aemeath:not(.dark) #ae-icon-grad stop:last-child { stop-color: #0e7490; }
+html.skin-aemeath:not(.dark) header svg.lucide:not([class*="text-"]), html.skin-aemeath:not(.dark) header svg.ae-icon:not([class*="text-"]) { stroke-width: 2.2; }
+
+/* hero chi tiết truyện luôn là khối tối (ảnh bìa mờ + phủ tím đêm): ở light mode ép bảng chữ về bản tối để đọc rõ (>= 4.5:1) */
+html.skin-aemeath:not(.dark) .sk-story-hero {
+  --c-white: 248 244 255;
+  --c-gray-50: 250 250 250; --c-gray-100: 245 245 245; --c-gray-200: 229 229 229; --c-gray-300: 212 212 212; --c-gray-400: 190 190 200;
+  --c-gray-500: 163 163 163; --c-gray-600: 115 115 115; --c-gray-700: 82 82 82; --c-gray-800: 38 38 38; --c-gray-900: 23 23 23; --c-gray-950: 10 10 10;
+  --c-brand-50: 253 242 248; --c-brand-100: 252 231 243; --c-brand-200: 251 207 232; --c-brand-300: 249 168 212; --c-brand-400: 244 114 182;
+  --sk-grad: linear-gradient(90deg, #ffffff, #fbcfe8 55%, #a5f3fc);
+  --c-cyan-300: 103 232 249; --c-cyan-400: 34 211 238; --c-cyan-200: 165 243 252; --c-cyan-100: 207 250 254; --c-cyan-50: 236 254 255;
+  --c-rose-300: 253 164 175; --c-rose-400: 251 113 133; --c-emerald-300: 110 231 183; --c-emerald-400: 52 211 153;
+  --c-amber-300: 252 211 77; --c-amber-400: 251 191 36; --c-purple-300: 249 168 212;
+  --c-blue-50: var(--c-brand-50); --c-blue-100: var(--c-brand-100); --c-blue-200: var(--c-brand-200); --c-blue-300: var(--c-brand-300); --c-blue-400: var(--c-brand-400);
+  --c-sky-50: var(--c-brand-50); --c-sky-100: var(--c-brand-100); --c-sky-200: var(--c-brand-200); --c-sky-300: var(--c-brand-300); --c-sky-400: var(--c-brand-400);
+}
+html.skin-aemeath .sk-story-hero :is(h1, h2) { filter: drop-shadow(0 1px 6px rgb(11 15 36 / 0.7)); }
+
+/* nút "Đọc tiếp" (emerald) -> hồng/cyan theo skin */
+html.skin-aemeath a[class*="from-emerald-"], html.skin-aemeath button[class*="from-emerald-"] {
+  background-image: linear-gradient(90deg, #db2777, #ec4899 55%, #22b8cf);
+  box-shadow: 0 10px 22px -10px rgb(236 72 153 / 0.65);
+}
+html.skin-aemeath a[class*="from-emerald-"]:hover, html.skin-aemeath button[class*="from-emerald-"]:hover { filter: brightness(1.08); }
+
+/* banner trang chủ: chỉ giữ sprite hologram ở góc màn hình, bỏ sprite thứ hai trong banner */
+.sk-hero__sprite { display: none; }
+/* icon trong hero truyện (khối tối) ở light mode: nét hồng nhạt thay gradient đậm */
+html.skin-aemeath:not(.dark) .sk-story-hero svg.lucide:not([class*="text-emerald"]):not([class*="text-rose"]):not([class*="text-red"]):not([class*="text-amber"]):not([class*="text-green"]):not([class*="text-yellow"]),
+html.skin-aemeath:not(.dark) .sk-story-hero svg.ae-icon:not([class*="text-"]) { stroke: #fbcfe8; }
+/* hero truyện là khối tối kể cả ở light: chữ cyan/sky phải sáng (ghi đè quy tắc light của content.css) */
+html.skin-aemeath:not(.dark) main .sk-story-hero :is([class*="text-sky-"], [class*="text-cyan-"]) { color: #67e8f9 !important; }
