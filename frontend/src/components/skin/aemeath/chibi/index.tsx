@@ -68,3 +68,24 @@ export function AeChibi({ mood = 'happy', pose = 'hi', sticker, size = 120, clas
 export function AeCat(_: { mood?: ChibiMood; size?: number; className?: string }) {
   return null;
 }
+
+export type ChibiBadgeName = 'wink' | 'map' | 'heart' | 'wave';
+
+/** Huy hiệu tròn (ảnh chính thức do chủ dự án cung cấp), dùng làm avatar 32-96px. */
+export function AeBadge({ name, size = 56, className = '' }: { name: ChibiBadgeName; size?: number; className?: string }) {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={`${SRC}badge-${name}.webp`}
+      alt=""
+      aria-hidden
+      width={size}
+      height={size}
+      loading="lazy"
+      decoding="async"
+      draggable={false}
+      className={`rounded-full object-cover ring-2 ring-white/20 ${className}`}
+      style={{ width: size, height: size }}
+    />
+  );
+}

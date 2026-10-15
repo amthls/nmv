@@ -822,7 +822,7 @@ export default function ChapterReaderPage() {
             >
               <span>Chương tiếp</span>
               <ChevronRight className="w-4 h-4" />
-              <SkinChibi free className="absolute -top-9 right-1" pose="cheer" mood="happy" seed={storySlug} size={56} />
+              <SkinChibi badge="heart" className="absolute -top-8 right-1" size={44} />
             </Link>
           ) : (
             <div />

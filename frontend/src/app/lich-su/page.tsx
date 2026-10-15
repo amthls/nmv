@@ -330,7 +330,7 @@ export default function ReadingHistoryPage() {
         </div>
       ) : filteredHistory.length === 0 ? (
         <div className="text-center py-20 glass-panel rounded-3xl border border-white/10 bg-glass space-y-4">
-          <ChibiSay pose="hi" mood={searchTerm || typeFilter !== 'all' ? 'sad' : 'surprised'} line={searchTerm || typeFilter !== 'all' ? CHIBI_LINES.noResult[1] : CHIBI_LINES.emptyHistory[0]} />
+          <ChibiSay badge="map" mood={searchTerm || typeFilter !== 'all' ? 'sad' : 'surprised'} line={searchTerm || typeFilter !== 'all' ? CHIBI_LINES.noResult[1] : CHIBI_LINES.emptyHistory[0]} />
           <div className="w-16 h-16 rounded-full bg-brand-500/10 text-brand-400 flex items-center justify-center mx-auto [html.skin-aemeath_&]:hidden">
             <History className="w-8 h-8" />
           </div>

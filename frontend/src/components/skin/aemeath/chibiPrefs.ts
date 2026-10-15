@@ -5,6 +5,13 @@ import { useCallback, useEffect, useState } from 'react';
 export type ChibiMood = 'happy' | 'wink' | 'sleepy' | 'surprised' | 'sad' | 'smug';
 export type ChibiPose = 'hi' | 'peek' | 'sit' | 'read' | 'sign' | 'cheer';
 export type ChibiSticker = 'hi' | 'sleepy' | 'smug' | 'music';
+export type ChibiBadge = 'wink' | 'map' | 'heart' | 'wave';
+export const CHIBI_BADGES: { id: ChibiBadge; label: string }[] = [
+  { id: 'wave', label: 'Huy hiệu vẫy' },
+  { id: 'wink', label: 'Huy hiệu nháy mắt' },
+  { id: 'heart', label: 'Huy hiệu tim' },
+  { id: 'map', label: 'Huy hiệu bản đồ' },
+];
 
 export const CHIBI_STICKERS: { id: ChibiSticker; label: string }[] = [
   { id: 'hi', label: 'Vẫy tay' },
@@ -17,14 +24,14 @@ const KEY = 'novelhub-ae-outfit'; // giữ tên khoá theo phiếu: 'random' ho�
 const OFF_KEY = 'novelhub-ae-chibi';
 const EVENT = 'novelhub-ae-chibi-change';
 
-export type StickerPref = ChibiSticker | 'random';
+export type StickerPref = ChibiSticker | ChibiBadge | 'random';
 
 function read(): { sticker: StickerPref; enabled: boolean } {
   let sticker: StickerPref = 'random';
   let enabled = true;
   try {
     const o = localStorage.getItem(KEY);
-    if (o && CHIBI_STICKERS.some((x) => x.id === o)) sticker = o as ChibiSticker;
+    if (o && (CHIBI_STICKERS.some((x) => x.id === o) || CHIBI_BADGES.some((x) => x.id === o))) sticker = o as StickerPref;
     enabled = localStorage.getItem(OFF_KEY) !== 'off';
   } catch {}
   return { sticker, enabled };
@@ -32,7 +39,7 @@ function read(): { sticker: StickerPref; enabled: boolean } {
 
 /** Sticker ổn định theo seed (vd slug truyện) khi người dùng để ngẫu nhiên. */
 export function pickSticker(pref: StickerPref, seed = ''): ChibiSticker {
-  if (pref !== 'random') return pref;
+  if (pref !== 'random' && CHIBI_STICKERS.some((x) => x.id === pref)) return pref as ChibiSticker;
   let h = 0;
   for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
   return CHIBI_STICKERS[h % CHIBI_STICKERS.length].id;
