@@ -33,7 +33,7 @@ export function createHeroScene(canvas: HTMLCanvasElement, host: HTMLElement, op
     return {
       g,
       a: (i / count) * Math.PI * 2,
-      speed: (0.12 + (i % 3) * 0.05) * (i % 2 ? 1 : -1),
+      speed: (0.1 + (i % 3) * 0.02) * (i % 2 ? 1 : -1),
       rx: radius * MathUtils.randFloat(0.8, 1.2),
       ry: radius * MathUtils.randFloat(0.35, 0.6),
       z: MathUtils.randFloat(-1.2, 1.6),
@@ -47,14 +47,14 @@ export function createHeroScene(canvas: HTMLCanvasElement, host: HTMLElement, op
   const stop = startLoop(
     canvas,
     (dt, t) => {
-      tx += (ptr.p.y * 0.2 - tx) * Math.min(1, dt * 2.5);
-      ty += (ptr.p.x * 0.35 - ty) * Math.min(1, dt * 2.5);
+      tx += (ptr.p.y * 0.06 - tx) * Math.min(1, dt * 1.2);
+      ty += (ptr.p.x * 0.1 - ty) * Math.min(1, dt * 1.2);
       group.rotation.x = tx;
       group.rotation.y = ty;
       for (const it of items) {
         it.a += it.speed * dt;
         it.g.position.set(Math.cos(it.a) * it.rx, Math.sin(it.a) * it.ry + Math.sin(t * 0.8 + it.ph) * 0.12, it.z + Math.sin(it.a) * 0.8);
-        it.g.rotation.y += dt * 0.5;
+        it.g.rotation.y += dt * 0.12;
         it.g.rotation.z = Math.sin(t * 0.4 + it.ph) * 0.25;
       }
       st.pink.position.set(Math.cos(t * 0.5) * 5, 2.5, 4);
