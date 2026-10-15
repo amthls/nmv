@@ -26,6 +26,7 @@ import {
   FileText,
 } from 'lucide-react';
 import QuickActionModal from './QuickActionModal';
+import { SkinIcon } from '@/components/skin/aemeath/icons';
 import AuthModal from './auth/AuthModal';
 import { useAuth } from '@/context/AuthContext';
 import SearchBox from '@/components/SearchBox';
@@ -263,7 +264,7 @@ export default function Navbar() {
           {/* Actions & User Auth Section */}
           <div className="flex items-center gap-1.5 sm:gap-2 ml-auto lg:ml-0">
             <Link href="/kham-pha" className={`${ICON_BUTTON} lg:hidden`} title="Tìm kiếm" aria-label="Tìm kiếm">
-              <Search className="w-[18px] h-[18px]" />
+              <SkinIcon lucide={Search} ae="search" className="w-[18px] h-[18px]" />
             </Link>
 
             <ThemeToggle className="hidden sm:block" />

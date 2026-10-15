@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Moon, Sun } from 'lucide-react';
+import { SkinIcon } from '@/components/skin/aemeath/icons';
 import { useTheme } from '@/lib/theme';
 
 export default function ThemeToggle({ className = '' }: { className?: string }) {
@@ -19,12 +20,12 @@ export default function ThemeToggle({ className = '' }: { className?: string }) 
       title={isDark ? 'Giao diện sáng' : 'Giao diện tối'}
       className={`relative w-9 h-9 rounded-lg overflow-hidden bg-white/[0.04] border border-white/[0.08] hover:bg-brand-500/20 hover:border-brand-400/50 text-gray-300 hover:text-white transition ${className}`}
     >
-      <Sun
+      <SkinIcon lucide={Sun} ae="sun"
         className={`absolute inset-0 m-auto w-[18px] h-[18px] text-amber-500 transition-all duration-500 ease-silk ${
           isDark ? 'opacity-0 rotate-90 scale-50' : 'opacity-100 rotate-0 scale-100'
         }`}
       />
-      <Moon
+      <SkinIcon lucide={Moon} ae="moon"
         className={`absolute inset-0 m-auto w-[18px] h-[18px] text-indigo-300 transition-all duration-500 ease-silk ${
           isDark ? 'opacity-100 rotate-0 scale-100' : 'opacity-0 -rotate-90 scale-50'
         }`}

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Palette } from 'lucide-react';
+import { SkinIcon } from '@/components/skin/aemeath/icons';
 import { useSkin, type Skin } from '@/lib/theme';
 
 const SKINS: { id: Skin; name: string; thumb: string | null }[] = [
@@ -75,7 +76,7 @@ export default function SkinPicker({ className = '' }: { className?: string }) {
         title="Skin giao diện"
         className="w-9 h-9 rounded-lg flex items-center justify-center bg-white/[0.04] border border-white/[0.08] hover:bg-brand-500/20 hover:border-brand-400/50 text-gray-300 hover:text-white transition"
       >
-        <Palette className="w-[18px] h-[18px]" />
+        <SkinIcon lucide={Palette} ae="sparkles" className="w-[18px] h-[18px]" />
       </button>
       {open && (
         <div className="glass-menu absolute right-0 top-full mt-2 w-60 rounded-2xl p-3 z-50">

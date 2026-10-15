@@ -268,3 +268,12 @@ html.skin-aemeath.sk-tilt .tile:hover { transition-duration: 0.12s; }
   .sk-crystals { display: none; }
 }
 html.skin-aemeath :is(h1, h2) svg { color: rgb(var(--c-brand-400)); -webkit-text-fill-color: initial; }
+
+/* thanh tiến độ điều hướng / loadbar: hồng-cyan thay xanh */
+html.skin-aemeath .nh-progress::before, html.skin-aemeath .nh-loadbar::before { background: linear-gradient(90deg, transparent, #f472b6, #67e8f9, transparent); }
+html.skin-aemeath .nh-progress, html.skin-aemeath .nh-loadbar { --nh-bar: #f472b6; }
+
+/* icon trên nền hồng đặc (logo, nút chính): nét trắng, không dùng gradient hồng (sẽ tàng hình) */
+html.skin-aemeath header a[aria-label*="Trang chủ"] svg,
+html.skin-aemeath :is(button, a).bg-brand-500 svg, html.skin-aemeath :is(button, a).bg-brand-600 svg,
+html.skin-aemeath :is(button, a)[class*="from-brand-5"] svg, html.skin-aemeath :is(button, a)[class*="from-brand-6"] svg { stroke: #fff; color: #fff; }
