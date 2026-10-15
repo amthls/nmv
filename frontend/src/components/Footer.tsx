@@ -1,6 +1,9 @@
+'use client';
+
 import React from 'react';
 import Link from '@/components/common/Link';
-import { BookOpen, Heart } from 'lucide-react';
+import { BookOpen, Heart } from 'lucide-react';import { SkinIcon } from '@/components/skin/aemeath/icons';
+
 
 export default function Footer() {
   return (
@@ -9,7 +12,7 @@ export default function Footer() {
         <div className="space-y-3">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center text-snow font-bold">
-              <BookOpen className="w-4 h-4" />
+              <SkinIcon lucide={BookOpen} ae="bookOpen" className="w-4 h-4" />
             </div>
             <span className="text-lg font-bold text-white">NovelHub</span>
           </div>
@@ -52,7 +55,7 @@ export default function Footer() {
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 mt-8 pt-6 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500 gap-2">
         <div>© 2026 NovelHub Platform. All rights reserved.</div>
         <div className="flex items-center gap-1">
-          Built with <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" /> for Novel & Manga lovers
+          Built with <SkinIcon lucide={Heart} ae="heart" className="w-3.5 h-3.5 text-rose-500 fill-rose-500" /> for Novel & Manga lovers
         </div>
       </div>
     </footer>

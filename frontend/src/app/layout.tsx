@@ -1,10 +1,16 @@
 ﻿import type { Metadata } from 'next';
 import './globals.css';
+import '../styles/skin-aemeath.css';
+import '../styles/skin-aemeath-icons.css';
+import '../styles/skin-aemeath-controls.css';
+import '../styles/skin-aemeath-content.css';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { AuthProvider } from '@/context/AuthContext';
 import { ReadingSessionProvider } from '@/context/ReadingSessionContext';
 import NavigationProgress from '@/components/common/NavigationProgress';
+import { AeIconDefs } from '@/components/skin/aemeath/icons';
+import SkinEffects from '@/components/common/SkinEffects';
 import NavTracker from '@/components/common/NavTracker';
 import RateLimitNotice from '@/components/common/RateLimitNotice';
 import ContinueReadingMiniplayer from '@/components/reader/ContinueReadingMiniplayer';
@@ -31,6 +37,8 @@ export default function RootLayout({
           <ReadingSessionProvider>
             <NavigationProgress />
             <NavTracker />
+            <SkinEffects />
+            <AeIconDefs />
             <RateLimitNotice />
             <Navbar />
             <main className="flex-1">

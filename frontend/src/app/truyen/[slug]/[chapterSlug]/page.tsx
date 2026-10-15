@@ -482,7 +482,8 @@ export default function ChapterReaderPage() {
   };
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 pb-28 ${themeClasses}`}>
+    <div className={`sk-reader min-h-screen transition-colors duration-300 pb-28 ${themeClasses}`} data-reader-theme={settings.theme}>
+      <div className="sk-read-progress" aria-hidden />
       
       {/* 1. Sticky Reader Top Control Bar */}
       <header className={`sticky top-0 z-40 w-full backdrop-blur-md border-b transition-colors duration-300 ${headerBgClass}`}>
@@ -815,7 +816,7 @@ export default function ChapterReaderPage() {
           {chapterData.next_chapter ? (
             <Link
               href={`/truyen/${storySlug}/${chapterData.next_chapter.slug}`}
-              className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-snow text-xs font-bold shadow-lg shadow-brand-500/25 transition hover:scale-105"
+              className="sk-next-quest flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-snow text-xs font-bold shadow-lg shadow-brand-500/25 transition hover:scale-105"
             >
               <span>Chương tiếp</span>
               <ChevronRight className="w-4 h-4" />

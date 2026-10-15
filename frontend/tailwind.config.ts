@@ -54,6 +54,8 @@ const SURFACES = {
   dark: { surface: '#141414', 'surface-2': '#1c1c1c', 'surface-3': '#191919' },
 };
 
+const SKIN_REMAPPED = ['blue', 'sky'];
+
 function paletteVars(mode: 'light' | 'dark') {
   const out: Record<string, string> = {
     '--c-white': mode === 'light' ? '24 24 27' : '245 245 245',
@@ -67,14 +69,28 @@ function paletteVars(mode: 'light' | 'dark') {
       out[`--c-${name}-${s}`] = rgb(mode === 'light' ? scale[LIGHT_SHADE_OF[s]] : scale[s]);
     }
   }
+  // Mid/dark brand shades are variables too so a skin (html.skin-*) can recolour the whole accent
+  for (const [s, hex] of Object.entries(brand)) {
+    if (!FLIPPED_SHADES.includes(s)) out[`--c-brand-${s}`] = rgb(hex);
+  }
+  // blue / sky are fully variable too: the skin points them at the brand scale
+  for (const name of SKIN_REMAPPED) {
+    for (const [s, hex] of Object.entries(HUES[name])) {
+      if (!FLIPPED_SHADES.includes(s)) out[`--c-${name}-${s}`] = rgb(hex);
+    }
+  }
+  out['--c-brand-accent'] = rgb('#1672d6');
   for (const [k, hex] of Object.entries(SURFACES[mode])) out[`--c-${k}`] = rgb(hex);
   return out;
 }
 
+const BRAND_ALIASES = ['brand', 'indigo', 'purple', 'violet'];
 function themedScale(name: string, scale: Record<string, string>) {
   const out: Record<string, string> = {};
   for (const [s, hex] of Object.entries(scale)) {
-    out[s] = FLIPPED_SHADES.includes(s) ? v(`${name}-${s}`) : hex;
+    if (BRAND_ALIASES.includes(name)) out[s] = v(`brand-${s}`);
+    else if (SKIN_REMAPPED.includes(name)) out[s] = v(`${name}-${s}`);
+    else out[s] = FLIPPED_SHADES.includes(s) ? v(`${name}-${s}`) : hex;
   }
   return out;
 }
@@ -94,7 +110,7 @@ const config: Config = {
     extend: {
       colors: {
         ...themedHues,
-        brand: { ...themedHues.brand, accent: '#1672d6' },
+        brand: { ...themedHues.brand, accent: v('brand-accent') },
         white: v('white'),
         black: v('black'),
         gray: Object.fromEntries(Object.keys(colors.gray).map((k) => [k, v(`gray-${k}`)])),

@@ -16,7 +16,8 @@ import {
   AlertCircle,
   KeyRound,
   Users
-} from 'lucide-react';
+} from 'lucide-react';import { SkinIcon } from '@/components/skin/aemeath/icons';
+
 import Link from '@/components/common/Link';
 import { useAuth } from '@/context/AuthContext';
 import Turnstile, { TURNSTILE_SITE_KEY } from '@/components/auth/Turnstile';
@@ -141,13 +142,13 @@ export default function AuthModal() {
           onClick={closeAuthModal}
           className="absolute top-5 right-5 p-2 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition"
         >
-          <X className="w-5 h-5" />
+          <SkinIcon lucide={X} ae="x" className="w-5 h-5" />
         </button>
 
         {/* Modal Header */}
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-500 shadow-lg shadow-brand-500/30 mb-3">
-            <Lock className="w-6 h-6 text-white" />
+            <SkinIcon lucide={Lock} ae="lock" className="w-6 h-6 text-white" />
           </div>
           <h3 className="text-2xl font-bold bg-gradient-to-r from-white via-gray-100 to-brand-300 bg-clip-text text-transparent">
             {activeTab === 'login' && 'Đăng Nhập NovelHub'}
@@ -168,7 +169,7 @@ export default function AuthModal() {
                 : 'text-gray-400 hover:text-white'
             }`}
           >
-            <LogIn className="w-4 h-4" />
+            <SkinIcon lucide={LogIn} ae="logIn" className="w-4 h-4" />
             Đăng nhập
           </button>
           <button
@@ -215,7 +216,7 @@ export default function AuthModal() {
                   className="w-full h-11 pl-10 pr-4 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition"
                   required
                 />
-                <User className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <SkinIcon lucide={User} ae="user" className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
               </div>
             </div>
 
@@ -237,13 +238,13 @@ export default function AuthModal() {
                   className="w-full h-11 pl-10 pr-10 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition"
                   required
                 />
-                <KeyRound className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <SkinIcon lucide={KeyRound} ae="key" className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <button
                   type="button"
                   onClick={() => setShowLoginPassword(!showLoginPassword)}
                   className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
                 >
-                  {showLoginPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showLoginPassword ? <SkinIcon lucide={EyeOff} ae="eyeOff" className="w-4 h-4" /> : <SkinIcon lucide={Eye} ae="eye" className="w-4 h-4" />}
                 </button>
               </div>
             </div>
@@ -257,7 +258,7 @@ export default function AuthModal() {
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
-                  <LogIn className="w-4 h-4" />
+                  <SkinIcon lucide={LogIn} ae="logIn" className="w-4 h-4" />
                   Đăng Nhập
                 </>
               )}
@@ -294,7 +295,7 @@ export default function AuthModal() {
                   className="w-full h-10 pl-9 pr-4 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-500"
                   required
                 />
-                <User className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <SkinIcon lucide={User} ae="user" className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
               </div>
               <span className="text-[10px] text-gray-400 mt-0.5 block">
                 Chữ cái, số và dấu gạch dưới, từ 3-30 ký tự.
@@ -345,13 +346,13 @@ export default function AuthModal() {
                     className="w-full h-10 pl-9 pr-9 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-500"
                     required
                   />
-                  <KeyRound className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <SkinIcon lucide={KeyRound} ae="key" className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <button
                     type="button"
                     onClick={() => setShowRegPassword(!showRegPassword)}
                     className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
                   >
-                    {showRegPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    {showRegPassword ? <SkinIcon lucide={EyeOff} ae="eyeOff" className="w-3.5 h-3.5" /> : <SkinIcon lucide={Eye} ae="eye" className="w-3.5 h-3.5" />}
                   </button>
                 </div>
               </div>

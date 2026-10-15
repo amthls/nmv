@@ -1,0 +1,226 @@
+/* skin Aemeath: controls (hologram cyan + pha lê + hồng). Mọi thứ chỉ áp khi html.skin-aemeath. */
+html.skin-aemeath {
+  --ck-field: rgb(255 255 255 / 0.62); --ck-field-border: rgb(236 72 153 / 0.28);
+  --ck-ph: #94a3b8;
+  --ck-focus: 0 0 0 1.5px #f472b6, 0 0 0 4px rgb(103 232 249 / 0.35), 0 0 22px -4px rgb(244 114 182 / 0.6);
+}
+html.skin-aemeath.dark {
+  --ck-field: rgb(244 114 182 / 0.07); --ck-field-border: rgb(244 114 182 / 0.26);
+  --ck-ph: #a8b4d6;
+}
+
+/* ---------- Nút chính: lóe sáng quét ngang + lún 3D ---------- */
+html.skin-aemeath button.bg-brand-500, html.skin-aemeath button.bg-brand-600,
+html.skin-aemeath button[class*="from-brand-5"], html.skin-aemeath button[class*="from-brand-6"] {
+  position: relative; overflow: hidden; isolation: isolate;
+}
+html.skin-aemeath button.bg-brand-500::after, html.skin-aemeath button.bg-brand-600::after,
+html.skin-aemeath button[class*="from-brand-5"]::after, html.skin-aemeath button[class*="from-brand-6"]::after {
+  content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 55%; z-index: -1; pointer-events: none;
+  background: linear-gradient(100deg, transparent, rgb(255 255 255 / 0.55), rgb(103 232 249 / 0.35), transparent);
+  transform: translateX(-130%) skewX(-18deg); opacity: 0;
+}
+html.skin-aemeath button.bg-brand-500:hover::after, html.skin-aemeath button.bg-brand-600:hover::after,
+html.skin-aemeath button[class*="from-brand-5"]:hover::after, html.skin-aemeath button[class*="from-brand-6"]:hover::after {
+  opacity: 1; animation: ck-sweep 0.8s ease-out;
+}
+@keyframes ck-sweep { from { transform: translateX(-130%) skewX(-18deg); } to { transform: translateX(330%) skewX(-18deg); } }
+html.skin-aemeath :is(button, a).bg-brand-500:active, html.skin-aemeath :is(button, a).bg-brand-600:active { transform: translateY(2px) scale(0.985); }
+html.skin-aemeath button:disabled { filter: saturate(0.5); }
+
+/* ---------- Nút phụ: kính pha lê viền sáng 1px ---------- */
+html.skin-aemeath :is(button, a)[class*="bg-white/5"], html.skin-aemeath :is(button, a)[class*="bg-white/10"] {
+  background-color: rgb(255 255 255 / 0.1);
+  border: 1px solid rgb(244 114 182 / 0.3);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35);
+  backdrop-filter: blur(10px) saturate(160%); -webkit-backdrop-filter: blur(10px) saturate(160%);
+  transition: transform 0.2s ease, box-shadow 0.25s ease, border-color 0.25s ease, background-color 0.25s ease;
+}
+html.skin-aemeath.dark :is(button, a)[class*="bg-white/5"], html.skin-aemeath.dark :is(button, a)[class*="bg-white/10"] {
+  background-color: rgb(103 232 249 / 0.06); border-color: rgb(103 232 249 / 0.22);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1);
+}
+html.skin-aemeath :is(button, a)[class*="bg-white/5"]:hover:not(:disabled), html.skin-aemeath :is(button, a)[class*="bg-white/10"]:hover:not(:disabled) {
+  border-color: #67e8f9; transform: translateY(-1px);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.4), 0 0 18px -4px rgb(103 232 249 / 0.65), 0 0 12px -6px rgb(244 114 182 / 0.6);
+}
+/* ghost / icon button: glow khi hover */
+html.skin-aemeath button[class*="hover:bg-white/"]:not([class*="bg-white/5"]):not([class*="bg-white/10"]):hover:not(:disabled) {
+  background: radial-gradient(circle, rgb(244 114 182 / 0.22), rgb(103 232 249 / 0.1) 70%);
+  box-shadow: 0 0 16px -4px rgb(244 114 182 / 0.55);
+}
+html.skin-aemeath button[class*="hover:text-white"]:hover:not(:disabled) { text-shadow: 0 0 10px rgb(244 114 182 / 0.7); }
+html.skin-aemeath :is(button, a, input, select, textarea, summary):focus-visible { outline: 2px solid #67e8f9; outline-offset: 2px; }
+
+/* ---------- Input / textarea / select / search ---------- */
+html.skin-aemeath :is(input:not([type=checkbox], [type=radio], [type=range], [type=file], [type=color], [type=submit], [type=button]), textarea, select):not(.ck *) {
+  background-color: var(--ck-field); border: 1px solid var(--ck-field-border); border-radius: 14px;
+  caret-color: #ec4899;
+  backdrop-filter: blur(10px) saturate(150%); -webkit-backdrop-filter: blur(10px) saturate(150%);
+  box-shadow: inset 0 1px 3px rgb(190 24 93 / 0.08);
+  transition: box-shadow 0.25s ease, border-color 0.25s ease, background-color 0.25s ease;
+}
+html.skin-aemeath :is(input, textarea)::placeholder { color: var(--ck-ph); opacity: 0.85; }
+html.skin-aemeath :is(input:not([type=checkbox], [type=radio], [type=range], [type=file], [type=color]), textarea, select):not(.ck *):focus {
+  outline: none; border-color: #f472b6; box-shadow: var(--ck-focus); background-color: rgb(255 255 255 / 0.8);
+}
+html.skin-aemeath.dark :is(input:not([type=checkbox], [type=radio], [type=range], [type=file], [type=color]), textarea, select):not(.ck *):focus { background-color: rgb(244 114 182 / 0.12); }
+html.skin-aemeath select option { background: rgb(var(--c-surface-2)); color: rgb(var(--c-white)); }
+html.skin-aemeath input[type=file]::file-selector-button {
+  margin-right: 10px; padding: 6px 12px; border: 1px solid rgb(244 114 182 / 0.4); border-radius: 10px; cursor: pointer;
+  color: rgb(var(--c-white)); background: linear-gradient(135deg, rgb(244 114 182 / 0.25), rgb(103 232 249 / 0.2));
+}
+html.skin-aemeath :is(input, textarea)::selection { background: rgb(244 114 182 / 0.4); }
+
+/* ---------- Checkbox / radio / range / toggle ---------- */
+html.skin-aemeath :is(input[type=checkbox], input[type=radio], input[type=range]) { accent-color: #ec4899; }
+html.skin-aemeath :is(input[type=checkbox], input[type=radio]) {
+  appearance: none; -webkit-appearance: none; width: 1.1rem; height: 1.1rem; flex: none; cursor: pointer; vertical-align: middle;
+  background: var(--ck-field); border: 1.5px solid #f472b6; position: relative;
+  transition: box-shadow 0.2s ease, background 0.2s ease;
+}
+html.skin-aemeath input[type=checkbox] { border-radius: 6px; }
+html.skin-aemeath input[type=radio] { border-radius: 50%; }
+html.skin-aemeath :is(input[type=checkbox], input[type=radio]):hover { box-shadow: 0 0 12px -2px rgb(103 232 249 / 0.7); }
+html.skin-aemeath :is(input[type=checkbox], input[type=radio]):checked {
+  background: linear-gradient(135deg, #ec4899, #67e8f9); border-color: #fbcfe8; box-shadow: 0 0 14px -2px rgb(244 114 182 / 0.8);
+}
+html.skin-aemeath input[type=checkbox]:checked::after {
+  content: ''; position: absolute; left: 28%; top: 10%; width: 28%; height: 52%;
+  border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+html.skin-aemeath input[type=radio]:checked::after {
+  content: ''; position: absolute; inset: 25%; background: #fff; transform: scale(1.5);
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+}
+html.skin-aemeath input[type=range] {
+  appearance: none; -webkit-appearance: none; height: 6px; border-radius: 999px; border: 0; box-shadow: none; padding: 0;
+  background: linear-gradient(90deg, rgb(244 114 182 / 0.5), rgb(103 232 249 / 0.5));
+}
+html.skin-aemeath input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 18px; height: 18px; border-radius: 4px; transform: rotate(45deg); border: 1.5px solid #fff;
+  background: linear-gradient(135deg, #ec4899, #67e8f9); box-shadow: 0 0 12px rgb(244 114 182 / 0.8); cursor: pointer;
+}
+html.skin-aemeath input[type=range]::-moz-range-thumb {
+  width: 16px; height: 16px; border-radius: 4px; border: 1.5px solid #fff;
+  background: linear-gradient(135deg, #ec4899, #67e8f9); box-shadow: 0 0 12px rgb(244 114 182 / 0.8); cursor: pointer;
+}
+html.skin-aemeath [role=switch] { border: 1px solid rgb(244 114 182 / 0.4); }
+html.skin-aemeath [role=switch][aria-checked=true] { background: linear-gradient(90deg, #ec4899, #67e8f9) !important; box-shadow: 0 0 14px -3px rgb(244 114 182 / 0.8); }
+html.skin-aemeath [role=switch] > span { box-shadow: 0 0 8px rgb(103 232 249 / 0.7); }
+html.skin-aemeath .peer:checked ~ div[class*="peer-checked:bg-"] { background: linear-gradient(90deg, #ec4899, #67e8f9) !important; box-shadow: 0 0 14px -3px rgb(244 114 182 / 0.8); }
+
+/* ---------- Tab: chỉ báo trượt ---------- */
+html.skin-aemeath [role=tab] { position: relative; transition: color 0.25s ease, text-shadow 0.25s ease; }
+html.skin-aemeath [role=tab]::after {
+  content: ''; position: absolute; left: 12%; right: 12%; bottom: -1px; height: 3px; border-radius: 3px; pointer-events: none;
+  background: linear-gradient(90deg, #f472b6, #67e8f9); box-shadow: 0 0 10px rgb(103 232 249 / 0.8);
+  transform: scaleX(0); transform-origin: 0 50%; transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+html.skin-aemeath [role=tab][aria-selected=true]::after { transform: scaleX(1); }
+html.skin-aemeath [role=tab][aria-selected=true] { text-shadow: 0 0 12px rgb(244 114 182 / 0.55); }
+
+/* ---------- Pagination: ô pha lê, trang hiện tại hình thoi sáng ---------- */
+html.skin-aemeath button[class*="w-9 h-9"][class*="rounded-xl"] { border-radius: 12px; font-family: 'Quicksand', 'Inter', sans-serif; }
+html.skin-aemeath button[class*="w-9 h-9"][class*="bg-brand-600"] {
+  background: transparent !important; border: 0 !important; box-shadow: none !important; animation: none !important;
+  position: relative; overflow: visible; isolation: isolate; color: #fff; text-shadow: 0 1px 4px rgb(131 24 67 / 0.7);
+}
+html.skin-aemeath button[class*="w-9 h-9"][class*="bg-brand-600"]::before {
+  content: ''; position: absolute; inset: 3px; z-index: -1; border-radius: 6px; transform: rotate(45deg);
+  background: linear-gradient(135deg, #ec4899, #f9a8d4 55%, #67e8f9); box-shadow: 0 0 18px rgb(244 114 182 / 0.75), 0 0 8px rgb(103 232 249 / 0.6);
+  animation: ck-pulse 2.4s ease-in-out infinite;
+}
+html.skin-aemeath button[class*="w-9 h-9"][class*="bg-brand-600"]::after { display: none; }
+@keyframes ck-pulse { 0%, 100% { transform: rotate(45deg) scale(1); } 50% { transform: rotate(45deg) scale(1.08); } }
+
+/* ---------- Dropdown / popover / menu ---------- */
+html.skin-aemeath :is(.glass-menu, [role=menu], [role=listbox]) { animation: ck-materialize 0.32s cubic-bezier(0.22, 1, 0.36, 1) both; transform-origin: top center; }
+html.skin-aemeath :is([role=menu] > *, [role=option], [role=listbox] li button):hover { background: linear-gradient(90deg, rgb(244 114 182 / 0.2), rgb(103 232 249 / 0.12)) !important; }
+@keyframes ck-materialize {
+  0% { opacity: 0; transform: translateY(-6px) scale(0.96); }
+  60% { opacity: 1; }
+  100% { opacity: 1; transform: none; }
+}
+
+/* ---------- Modal ---------- */
+html.skin-aemeath .fixed.inset-0[class*="bg-black/"] { background: radial-gradient(circle at 50% 40%, rgb(80 20 70 / 0.55), rgb(8 10 28 / 0.82)); backdrop-filter: blur(10px) saturate(130%); }
+html.skin-aemeath .fixed.inset-0[class*="bg-black/"] > :is([role=dialog], [class*="bg-surface"], .glass-strong) {
+  position: relative; border: 1px solid var(--glass-border); border-radius: 22px;
+  background-color: var(--glass-bg-strong);
+  backdrop-filter: blur(24px) saturate(170%); -webkit-backdrop-filter: blur(24px) saturate(170%);
+  box-shadow: 0 30px 70px -24px rgb(236 72 153 / 0.5), 0 0 30px -10px rgb(103 232 249 / 0.5), var(--glass-highlight);
+  animation: ck-materialize 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+/* góc bracket hologram bằng background (không đụng ::before/::after của .glass-panel) */
+html.skin-aemeath .fixed.inset-0[class*="bg-black/"] > [class*="bg-surface"] {
+  background-image: linear-gradient(#67e8f9, #67e8f9), linear-gradient(#67e8f9, #67e8f9), linear-gradient(#f472b6, #f472b6), linear-gradient(#f472b6, #f472b6);
+  background-repeat: no-repeat;
+  background-size: 18px 2px, 2px 18px, 18px 2px, 2px 18px;
+  background-position: 10px 10px, 10px 10px, calc(100% - 10px) calc(100% - 10px), calc(100% - 10px) calc(100% - 10px);
+}
+html.skin-aemeath .fixed.inset-0[class*="bg-black/"] > :is([role=dialog], [class*="bg-surface"])::after {
+  content: ''; position: absolute; left: 0; right: 0; top: 0; height: 2px; pointer-events: none; border-radius: 2px;
+  background: linear-gradient(90deg, transparent, #67e8f9, #f472b6, transparent); box-shadow: 0 0 14px #67e8f9;
+  animation: ck-scanline 0.9s ease-out 0.05s both;
+}
+@keyframes ck-scanline { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(360px); opacity: 0; } }
+
+/* ---------- Toast / tooltip ---------- */
+html.skin-aemeath :is([role=status], [role=alert]):is(.fixed)[class*="bg-"], html.skin-aemeath [role=tooltip] {
+  background: var(--glass-bg-strong); border: 1px solid rgb(103 232 249 / 0.4); border-left: 3px solid #f472b6;
+  border-radius: 14px; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 14px 34px -14px rgb(236 72 153 / 0.5), 0 0 18px -8px rgb(103 232 249 / 0.6);
+}
+
+/* ---------- Badge / chip / CodeBadge ---------- */
+html.skin-aemeath span[class*="rounded-full"][class*="px-2"][class*="py-0.5"], html.skin-aemeath span[class*="rounded-md"][class*="px-1.5"] {
+  border: 1px solid rgb(244 114 182 / 0.35); box-shadow: 0 0 10px -4px rgb(103 232 249 / 0.55), inset 0 1px 0 rgb(255 255 255 / 0.25);
+}
+html.skin-aemeath :is(button, span).font-mono[class*="rounded"] {
+  border: 1px dashed rgb(103 232 249 / 0.5); background: linear-gradient(135deg, rgb(244 114 182 / 0.12), rgb(103 232 249 / 0.12));
+  letter-spacing: 0.03em; transition: box-shadow 0.25s ease, transform 0.2s ease;
+}
+html.skin-aemeath button.font-mono:hover { box-shadow: 0 0 14px -3px rgb(103 232 249 / 0.7); transform: translateY(-1px); }
+
+/* ---------- Skeleton ---------- */
+html.skin-aemeath .animate-pulse > * { border-radius: 12px; }
+
+/* ---------- Loader sao 4 cánh 3D + thanh tiến độ hologram ---------- */
+html.skin-aemeath .nh-book { width: 56px; height: 56px; perspective: 300px; }
+html.skin-aemeath .nh-book--sm { width: 28px; height: 28px; }
+html.skin-aemeath .nh-book::after {
+  background: linear-gradient(135deg, #f9a8d4, #ec4899 45%, #67e8f9);
+  filter: drop-shadow(0 0 8px rgb(244 114 182 / 0.8)) drop-shadow(0 0 14px rgb(103 232 249 / 0.6));
+  animation: ck-star-3d 2s ease-in-out infinite;
+}
+html.skin-aemeath .nh-book::before {
+  content: ''; position: absolute; width: 30%; height: 30%; background: #fff; opacity: 0.85; z-index: 1;
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  animation: sk-twinkle 1.4s ease-in-out infinite;
+}
+@keyframes ck-star-3d {
+  0% { transform: rotateY(0) rotateZ(0) scale(0.85); }
+  50% { transform: rotateY(180deg) rotateZ(90deg) scale(1.1); }
+  100% { transform: rotateY(360deg) rotateZ(180deg) scale(0.85); }
+}
+html.skin-aemeath .nh-book + span { color: #f472b6; letter-spacing: 0.12em; text-shadow: 0 0 10px rgb(103 232 249 / 0.5); }
+html.skin-aemeath .nh-progress { height: 4px; background: rgb(244 114 182 / 0.12); box-shadow: 0 0 14px rgb(103 232 249 / 0.5); }
+html.skin-aemeath .nh-progress::before, html.skin-aemeath .nh-loadbar::before {
+  background: linear-gradient(90deg, transparent, #f472b6 30%, #fff 50%, #67e8f9 70%, transparent); box-shadow: 0 0 12px #67e8f9;
+}
+html.skin-aemeath .nh-progress::after {
+  content: ''; position: absolute; inset: 0; opacity: 0.5;
+  background: repeating-linear-gradient(90deg, transparent 0 7px, rgb(255 255 255 / 0.5) 7px 8px);
+}
+
+/* ---------- Màu xanh ghi cứng cũ trong vùng explore ---------- */
+html.skin-aemeath a[class*="rgba(10,40,90"] { box-shadow: 0 10px 30px -18px rgb(190 24 93 / 0.55); }
+html.skin-aemeath a[class*="rgba(22,114,214"]:hover { box-shadow: 0 22px 44px -20px rgb(236 72 153 / 0.6), 0 0 20px -8px rgb(103 232 249 / 0.5); }
+
+/* ---------- Giảm chuyển động ---------- */
+@media (prefers-reduced-motion: reduce) {
+  html.skin-aemeath :is(.glass-menu, [role=menu], [role=listbox]), html.skin-aemeath .fixed.inset-0 > *, html.skin-aemeath .fixed.inset-0 > *::after,
+  html.skin-aemeath button::after, html.skin-aemeath button::before, html.skin-aemeath .nh-book::after, html.skin-aemeath .nh-book::before { animation: none !important; }
+  html.skin-aemeath [role=tab]::after { transition: none; }
+}

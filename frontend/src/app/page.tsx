@@ -5,6 +5,7 @@ import { Story } from '@/components/explore/StoryCardGrid';
 import FeaturedCarousel from '@/components/home/FeaturedCarousel';
 import StoryRail from '@/components/home/StoryRail';
 import RecommendationRail from '@/components/home/RecommendationRail';
+import SkinHero from '@/components/skin/aemeath/SkinHero';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -44,6 +45,7 @@ export default function HomePage() {
 
   return (
     <div className="pb-24">
+      <SkinHero />
       {/* 1. FEATURED THIS WEEK — banner card */}
       {isLoading && trendingStories.length === 0 ? (
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 pt-6">

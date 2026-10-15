@@ -475,6 +475,14 @@ Tự viết bằng CSS, không cần thư viện. Không hiện gì nếu tải 
 
 Các trang danh sách/chi tiết vẫn giữ khung xám nhấp nháy (skeleton) như trước. Dùng `BookLoader` ở chỗ mới: `<BookLoader label="Đang tải..." delayMs={250} />`. Lưu ý `NavigationProgress` bọc `window.fetch` để đếm các yêu cầu `/api/v1` (bỏ qua `/history` và `/notifications` vì chạy nền).
 
+### Skin giao diện (Aemeath)
+
+Ngoài sáng/tối còn có **skin**, một chiều riêng độc lập (`default` | `aemeath`): lưu `localStorage['novelhub-skin']`, áp class `skin-aemeath` lên `<html>` trong `THEME_INIT_SCRIPT` (trước paint, không nháy), hook `useSkin()` ở `src/lib/theme.ts`. Chọn ở nút bảng màu cạnh nút sáng/tối trên header và ở `/tai-khoan` (mục "Skin giao diện web", tách khỏi "Giao diện nền" là theme khi đọc). Đổi skin có hiệu ứng vòng tròn lan + lóe sáng.
+- Skin Aemeath (Wuthering Waves): hồng chủ đạo, cyan hologram, nền `public/backgrounds/aemeath/{day,night,portrait}.webp` (màn dọc dùng `portrait`), sprite nhân vật góc phải (≥1280px, tắt ở trang đọc chương qua `html[data-reader]`).
+- CSS: `src/styles/skin-aemeath*.css` (import trong `app/layout.tsx`); mọi selector bắt đầu `html.skin-aemeath`. Màu `brand/indigo/purple/violet/blue/sky` là biến `--c-*` (`tailwind.config.ts`), skin ghi đè sang thang hồng. Tiêu đề dùng font Quicksand, chữ gradient hồng→cyan.
+- Trang trí tải lazy chỉ khi skin bật (`components/skin/aemeath/*`): pha lê 3D, nghiêng 3D bìa truyện theo chuột, vệt sao con trỏ, viên sáng trượt ở nav, hero trang chủ (`SkinHero`), trang 404 (`app/not-found.tsx`). Tắt khi `prefers-reduced-motion`; hiệu ứng chuột chỉ trên thiết bị có hover.
+- Quy ước, token màu và phân vùng: `Plan/aemeath-skin.md`.
+
 ## ✨ Chức năng & Trang giao diện
 
 | Đường dẫn | Chức năng |

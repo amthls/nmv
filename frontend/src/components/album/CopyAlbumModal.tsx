@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from '@/components/common/Link';
-import { CheckCircle2, Copy, Loader2, X } from 'lucide-react';
+import { CheckCircle2, Copy, Loader2, X } from 'lucide-react';import { SkinIcon } from '@/components/skin/aemeath/icons';
+
 import { useAuth } from '@/context/AuthContext';
 import { AlbumSummary, readJson } from '@/lib/albums';
 import { LIBRARY_URL } from '@/lib/apiJson';
@@ -84,7 +85,7 @@ export default function CopyAlbumModal({ album, shareKey, onClose, onCopied }: C
             <p className="text-xs text-gray-400 truncate">"{album.name}" · {album.story_count} truyện</p>
           </div>
           <button onClick={onClose} className="p-1 rounded-lg text-gray-400 hover:text-white hover:bg-white/10" aria-label="Đóng">
-            <X className="w-4 h-4" />
+            <SkinIcon lucide={X} ae="x" className="w-4 h-4" />
           </button>
         </div>
 

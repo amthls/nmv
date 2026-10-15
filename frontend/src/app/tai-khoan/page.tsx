@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from '@/components/common/Link';
 import ImageQualityPicker from '@/components/common/ImageQualityPicker';
+import { SkinChoices } from '@/components/common/SkinPicker';
 import { useMiniplayerEnabled } from '@/lib/miniplayerPref';
 import {
   User,
@@ -761,6 +762,11 @@ export default function UserProfilePage() {
               <label className="block text-xs font-semibold text-gray-300 mb-3">Độ phân giải ảnh khi đọc truyện tranh</label>
               <ImageQualityPicker />
               <p className="mt-2 text-[10.5px] text-gray-500">Lưu ngay trên trình duyệt này, không cần bấm Lưu.</p>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-300 mb-3">Skin giao diện web</label>
+              <SkinChoices />
+              <p className="mt-2 text-[10.5px] text-gray-500">Đổi màu và hình nền toàn trang, độc lập với sáng/tối. Lưu ngay trên trình duyệt này.</p>
             </div>
             <div>
               <label className="block text-xs font-semibold text-gray-300 mb-3">Giao diện nền (Theme)</label>

@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Check, Plus, Tag, Trash2, X } from 'lucide-react';
+import { Check, Plus, Tag, Trash2, X } from 'lucide-react';import { SkinIcon } from '@/components/skin/aemeath/icons';
+
 import { DmLabel, LABEL_STYLES, labelStyle } from './labels';
 
 type Props = {
@@ -29,7 +30,7 @@ function ColorPicker({ value, onChange }: { value: string; onChange: (c: string)
             value === c ? 'ring-2 ring-white/70 scale-110' : 'hover:scale-110'
           }`}
         >
-          {value === c && <Check className="w-3 h-3 text-ink" strokeWidth={3} />}
+          {value === c && <SkinIcon lucide={Check} ae="check" className="w-3 h-3 text-ink" strokeWidth={3} />}
         </button>
       ))}
     </div>
@@ -82,7 +83,7 @@ export default function LabelManager({ isOpen, onClose, labels, onCreate, onUpda
             <Tag className="w-4 h-4 text-fuchsia-400" /> Quản lý nhãn
           </h2>
           <button onClick={onClose} aria-label="Đóng" className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10">
-            <X className="w-4 h-4" />
+            <SkinIcon lucide={X} ae="x" className="w-4 h-4" />
           </button>
         </div>
 
@@ -100,7 +101,7 @@ export default function LabelManager({ isOpen, onClose, labels, onCreate, onUpda
               disabled={!name.trim()}
               className="h-9 px-3 rounded-lg bg-brand-600 hover:bg-brand-500 disabled:opacity-40 text-snow text-xs font-semibold flex items-center gap-1"
             >
-              <Plus className="w-4 h-4" /> Tạo
+              <SkinIcon lucide={Plus} ae="plus" className="w-4 h-4" /> Tạo
             </button>
           </div>
           <ColorPicker value={color} onChange={setColor} />
@@ -144,7 +145,7 @@ export default function LabelManager({ isOpen, onClose, labels, onCreate, onUpda
                   aria-label={`Xóa nhãn ${l.name}`}
                   className="p-1 rounded-md text-gray-500 hover:text-rose-400 hover:bg-rose-500/10"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <SkinIcon lucide={Trash2} ae="trash" className="w-3.5 h-3.5" />
                 </button>
               </div>
               <div className="pl-[18px]">

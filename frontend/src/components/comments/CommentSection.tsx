@@ -16,7 +16,8 @@ import {
   Clock,
   Pencil,
   Trash2
-} from 'lucide-react';
+} from 'lucide-react';import { SkinIcon } from '@/components/skin/aemeath/icons';
+
 import ReportButton from '@/components/common/ReportButton';
 import { useAuth } from '@/context/AuthContext';
 import { COMMUNITY_URL } from '@/lib/apiJson';
@@ -228,7 +229,7 @@ export default function CommentSection({
             {comment.avatar_url ? (
               <img src={comment.avatar_url} alt={comment.display_name} className="w-full h-full object-cover" />
             ) : (
-              <User className="w-4 h-4 text-brand-300" />
+              <SkinIcon lucide={User} ae="user" className="w-4 h-4 text-brand-300" />
             )}
           </div>
 
@@ -240,7 +241,7 @@ export default function CommentSection({
               </Link>
               {getRoleBadge(comment.roles)}
               <span className="text-[10px] text-gray-500 flex items-center gap-1">
-                <Clock className="w-3 h-3" />
+                <SkinIcon lucide={Clock} ae="clock" className="w-3 h-3" />
                 {formatTimeAgo(comment.created_at)}
                 {comment.is_edited && <span className="italic">(đã chỉnh sửa)</span>}
               </span>
@@ -286,7 +287,7 @@ export default function CommentSection({
                   isLiked ? 'text-rose-400 font-bold' : 'hover:text-rose-400'
                 }`}
               >
-                <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-rose-400 text-rose-400' : ''}`} />
+                <SkinIcon lucide={Heart} ae="heart" className={`w-3.5 h-3.5 ${isLiked ? 'fill-rose-400 text-rose-400' : ''}`} />
                 <span>{comment.like_count > 0 ? comment.like_count : 'Thích'}</span>
               </button>
 
@@ -294,13 +295,13 @@ export default function CommentSection({
                 onClick={() => setReplyTarget({ id: comment.id, name: comment.display_name || comment.username })}
                 className="flex items-center gap-1 hover:text-brand-400 transition"
               >
-                <Reply className="w-3.5 h-3.5" />
+                <SkinIcon lucide={Reply} ae="reply" className="w-3.5 h-3.5" />
                 <span>Trả lời</span>
               </button>
 
               {isMine && !isEditing && (
                 <button onClick={() => startEdit(comment)} className="flex items-center gap-1 hover:text-cyan-400 transition">
-                  <Pencil className="w-3.5 h-3.5" />
+                  <SkinIcon lucide={Pencil} ae="edit" className="w-3.5 h-3.5" />
                   <span>Sửa</span>
                 </button>
               )}
@@ -310,7 +311,7 @@ export default function CommentSection({
                   onClick={() => handleDeleteComment(comment.id, Boolean(comment.replies && comment.replies.length))}
                   className="flex items-center gap-1 hover:text-rose-400 transition"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <SkinIcon lucide={Trash2} ae="trash" className="w-3.5 h-3.5" />
                   <span>Xóa</span>
                 </button>
               )}
@@ -330,7 +331,7 @@ export default function CommentSection({
                     onClick={() => setReplyTarget(null)}
                     className="text-gray-500 hover:text-white"
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <SkinIcon lucide={X} ae="x" className="w-3.5 h-3.5" />
                   </button>
                 </div>
                 <div className="flex gap-2">
@@ -347,7 +348,7 @@ export default function CommentSection({
                     disabled={!replyText.trim() || isSubmitting}
                     className="px-3.5 h-9 rounded-xl bg-brand-600 hover:bg-brand-500 disabled:opacity-40 text-snow text-xs font-semibold flex items-center gap-1.5 transition"
                   >
-                    <Send className="w-3 h-3" />
+                    <SkinIcon lucide={Send} ae="send" className="w-3 h-3" />
                   </button>
                 </div>
               </div>
@@ -372,7 +373,7 @@ export default function CommentSection({
       <div className="flex items-center justify-between pb-3 border-b border-white/10">
         <div className="flex items-center gap-2.5">
           <div className="p-2 rounded-xl bg-brand-600/20 text-brand-400 border border-brand-500/20">
-            <MessageSquare className="w-4 h-4" />
+            <SkinIcon lucide={MessageSquare} ae="message" className="w-4 h-4" />
           </div>
           <div>
             <h3 className="text-base font-bold text-white">{title}</h3>
@@ -381,7 +382,7 @@ export default function CommentSection({
         </div>
 
         <div className="text-xs text-gray-400 flex items-center gap-1.5">
-          <Sparkles className="w-3.5 h-3.5 text-brand-400" />
+          <SkinIcon lucide={Sparkles} ae="sparkles" className="w-3.5 h-3.5 text-brand-400" />
           <span>Văn minh & Lịch sự</span>
         </div>
       </div>
@@ -408,7 +409,7 @@ export default function CommentSection({
             disabled={!newComment.trim() || isSubmitting}
             className="px-5 py-2 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 disabled:opacity-40 text-snow font-bold text-xs shadow-lg shadow-brand-500/25 flex items-center gap-2 transition"
           >
-            <Send className="w-3.5 h-3.5" />
+            <SkinIcon lucide={Send} ae="send" className="w-3.5 h-3.5" />
             <span>Gửi Bình Luận</span>
           </button>
         </div>
@@ -436,7 +437,7 @@ export default function CommentSection({
           </div>
         ) : comments.length === 0 ? (
           <div className="p-8 text-center text-xs text-gray-500 space-y-1">
-            <MessageSquare className="w-6 h-6 text-gray-600 mx-auto mb-2" />
+            <SkinIcon lucide={MessageSquare} ae="message" className="w-6 h-6 text-gray-600 mx-auto mb-2" />
             <div>Chưa có bình luận nào.</div>
             <div>Hãy là người đầu tiên để lại cảm nghĩ của bạn!</div>
           </div>
