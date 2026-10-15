@@ -40,3 +40,9 @@ Chỉ chạm skin này; không đổi hành vi mặc định.
 - `@import` CSS phải đứng đầu file; vì vậy import các file skin trong layout.tsx.
 - `next dev` bị CSP chặn eval trong trình duyệt: xem trình duyệt bằng `next build` + `next start` (rewrites `/api/v1` cần `CATALOG_ORIGIN=http://localhost:5000` lúc build; `/api/identity` cần proxy về gateway :3000).
 - Tailwind brand 500-950 trước đây là hex tĩnh: đã chuyển thành biến để skin đổi được; alias indigo/purple/violet trỏ cùng thang brand; blue/sky là biến `--c-blue-*`/`--c-sky-*` (skin trỏ vào brand).
+
+### Icons (agent ICONS, xong)
+- Import: `import { SkinIcon, skinIcon, AeIcon, AeIconDefs } from '@/components/skin/aemeath/icons'`.
+- `<SkinIcon lucide={Heart} ae="heart" className="w-4 h-4" />` (skin mặc định = lucide y như cũ); `const HomeIcon = skinIcon(Home, 'home')`; `<AeIcon name="home" size={20} strokeWidth={1.5} />`.
+- LEAD cần gắn `<AeIconDefs />` một lần trong layout (gradient `#ae-icon-grad`); không có thì nét lucide trống. CSS tầng 1 ở `styles/skin-aemeath-icons.css` (stroke gradient, hover glow, tôn trọng reduced-motion; bỏ qua icon text-emerald/rose/red/amber).
+- Tên `ae` có sẵn: home search bookmark bell heart star user users menu x chevronLeft chevronRight chevronDown chevronUp check plus settings message bookOpen eye eyeOff clock upload edit trash share filter sun moon logOut logIn flame lock key library sparkles send globe reply.

@@ -2,7 +2,8 @@
 
 import React from 'react';
 import Link from '@/components/common/Link';
-import { Bookmark, Globe, Library, Lock } from 'lucide-react';
+import { Bookmark, Globe, Library, Lock } from 'lucide-react';import { SkinIcon } from '@/components/skin/aemeath/icons';
+
 import SmartImage from '@/components/common/SmartImage';
 import { AlbumSummary, albumPath } from '@/lib/albums';
 
@@ -40,7 +41,7 @@ export default function AlbumCard({ album, showOwner, previewLabel, actions, onT
           </div>
         ) : (
           <div className="h-full w-full flex flex-col items-center justify-center gap-2 text-gray-500">
-            <Library className="w-8 h-8" />
+            <SkinIcon lucide={Library} ae="library" className="w-8 h-8" />
             <span className="text-[11px]">{previewLabel ? 'Không có truyện nào khác' : 'Album trống'}</span>
           </div>
         )}
@@ -60,7 +61,7 @@ export default function AlbumCard({ album, showOwner, previewLabel, actions, onT
                 : 'bg-black/70 text-gray-200 hover:bg-black/85'
             }`}
           >
-            {album.is_public ? <Globe className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
+            {album.is_public ? <SkinIcon lucide={Globe} ae="globe" className="w-3 h-3" /> : <SkinIcon lucide={Lock} ae="lock" className="w-3 h-3" />}
             {album.is_public ? 'Công khai' : 'Riêng tư'}
           </button>
         )}
@@ -73,8 +74,8 @@ export default function AlbumCard({ album, showOwner, previewLabel, actions, onT
         {/* Title always reserves two lines so the rows below line up across cards */}
         <Link href={href} className="flex items-start gap-1.5 min-h-[2.5rem]">
           {album.is_public
-            ? <Globe className="w-3.5 h-3.5 mt-0.5 shrink-0 text-emerald-400" aria-label="Công khai" />
-            : <Lock className="w-3.5 h-3.5 mt-0.5 shrink-0 text-gray-500" aria-label="Riêng tư" />}
+            ? <SkinIcon lucide={Globe} ae="globe" className="w-3.5 h-3.5 mt-0.5 shrink-0 text-emerald-400" aria-label="Công khai" />
+            : <SkinIcon lucide={Lock} ae="lock" className="w-3.5 h-3.5 mt-0.5 shrink-0 text-gray-500" aria-label="Riêng tư" />}
           <h4 className="text-sm font-bold leading-5 text-white group-hover:text-brand-300 transition line-clamp-2">{album.name}</h4>
         </Link>
         <div className="flex items-center justify-between gap-2 text-[11px] text-gray-400">
@@ -84,7 +85,7 @@ export default function AlbumCard({ album, showOwner, previewLabel, actions, onT
             </Link>
           ) : <span />}
           <span className="flex items-center gap-1 shrink-0" title="Số người đã lưu album">
-            <Bookmark className="w-3 h-3" /> {album.save_count}
+            <SkinIcon lucide={Bookmark} ae="bookmark" className="w-3 h-3" /> {album.save_count}
           </span>
         </div>
         {actions && <div className="pt-2 mt-auto flex flex-wrap gap-1.5">{actions}</div>}

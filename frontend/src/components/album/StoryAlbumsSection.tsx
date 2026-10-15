@@ -2,7 +2,8 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Link from '@/components/common/Link';
-import { ChevronLeft, ChevronRight, Library, Plus, Shuffle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Library, Plus, Shuffle } from 'lucide-react';import { SkinIcon } from '@/components/skin/aemeath/icons';
+
 import { useAuth } from '@/context/AuthContext';
 import { AlbumSummary, albumPath, readJson } from '@/lib/albums';
 import AlbumCard from './AlbumCard';
@@ -52,7 +53,7 @@ export default function StoryAlbumsSection({ storyId, refreshKey, onOpenSave }: 
       <div className="flex flex-wrap items-end justify-between gap-3 pb-3 border-b border-white/10">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <Library className="w-5 h-5 text-brand-400" />
+            <SkinIcon lucide={Library} ae="library" className="w-5 h-5 text-brand-400" />
             <h3 className="text-xl font-bold text-white tracking-wide">Album có truyện này</h3>
           </div>
           <p className="text-xs text-gray-400 mt-1">
@@ -73,7 +74,7 @@ export default function StoryAlbumsSection({ storyId, refreshKey, onOpenSave }: 
             onClick={() => (isAuthenticated ? onOpenSave() : openAuthModal('login'))}
             className="px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow text-xs font-bold flex items-center gap-1"
           >
-            <Plus className="w-3.5 h-3.5" /> Lưu vào album
+            <SkinIcon lucide={Plus} ae="plus" className="w-3.5 h-3.5" /> Lưu vào album
           </button>
         </div>
       </div>
@@ -120,14 +121,14 @@ export default function StoryAlbumsSection({ storyId, refreshKey, onOpenSave }: 
                 className="hidden md:flex absolute left-0 top-1/3 -translate-x-1/2 w-9 h-9 rounded-full bg-zinc-900/90 border border-white/20 text-white items-center justify-center opacity-0 group-hover/row:opacity-100 transition"
                 aria-label="Cuộn sang trái"
               >
-                <ChevronLeft className="w-4 h-4" />
+                <SkinIcon lucide={ChevronLeft} ae="chevronLeft" className="w-4 h-4" />
               </button>
               <button
                 onClick={() => scroll(1)}
                 className="hidden md:flex absolute right-0 top-1/3 translate-x-1/2 w-9 h-9 rounded-full bg-zinc-900/90 border border-white/20 text-white items-center justify-center opacity-0 group-hover/row:opacity-100 transition"
                 aria-label="Cuộn sang phải"
               >
-                <ChevronRight className="w-4 h-4" />
+                <SkinIcon lucide={ChevronRight} ae="chevronRight" className="w-4 h-4" />
               </button>
             </>
           )}

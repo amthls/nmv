@@ -1,1 +1,29 @@
-/* skin Aemeath: icons (do agent phụ trách sửa file này) */
+/* skin Aemeath: icons. Cần <AeIconDefs /> trong layout (gradient #ae-icon-grad). */
+@keyframes ae-ico-pop { 0% { transform: scale(1); } 45% { transform: scale(1.18) translateY(-1px); } 100% { transform: scale(1.08); } }
+@keyframes ae-ico-spark { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+
+/* Tầng 1: mọi lucide có nét gradient hồng -> cyan (trừ icon mang màu ngữ nghĩa: xanh lục/đỏ/hổ phách). */
+html.skin-aemeath svg.lucide:not([class*="text-emerald"]):not([class*="text-rose"]):not([class*="text-red"]):not([class*="text-amber"]):not([class*="text-green"]):not([class*="text-yellow"]) {
+  stroke: url(#ae-icon-grad);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transform-origin: center;
+  transition: transform .25s cubic-bezier(.34, 1.56, .64, 1), filter .25s ease;
+}
+/* Điểm sao tô đặc của bộ icon riêng dùng cùng gradient. */
+html.skin-aemeath svg.ae-icon:not([class*="text-emerald"]):not([class*="text-rose"]):not([class*="text-red"]):not([class*="text-amber"]) .ae-spark { fill: url(#ae-icon-grad); }
+html.skin-aemeath svg.ae-icon .ae-spark { animation: ae-ico-spark 2.8s ease-in-out infinite; }
+
+/* Hover: glow hồng + cyan, nảy nhẹ. */
+html.skin-aemeath :is(a, button, [role="button"], summary, label):hover svg.lucide:not(.animate-spin),
+html.skin-aemeath svg.lucide:not(.animate-spin):hover {
+  filter: drop-shadow(0 0 3px rgb(244 114 182 / .75)) drop-shadow(0 0 7px rgb(103 232 249 / .45));
+  animation: ae-ico-pop .35s cubic-bezier(.34, 1.56, .64, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.skin-aemeath svg.ae-icon .ae-spark { animation: none; }
+  html.skin-aemeath :is(a, button, [role="button"], summary, label):hover svg.lucide:not(.animate-spin),
+  html.skin-aemeath svg.lucide:hover { animation: none; transform: none; }
+  html.skin-aemeath svg.lucide { transition: none; }
+}

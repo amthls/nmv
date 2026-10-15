@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { AlertCircle, CheckCircle2, KeyRound } from 'lucide-react';
+import { AlertCircle, CheckCircle2, KeyRound } from 'lucide-react';import { SkinIcon } from '@/components/skin/aemeath/icons';
+
 import { apiJson, IDENTITY_URL } from '@/lib/apiJson';
 import { apiFetch } from '@/lib/session';
 
@@ -73,7 +74,7 @@ export function PasswordInput({ label, value, onChange, autoComplete }: {
           required
           className="w-full h-11 pl-10 pr-3 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition"
         />
-        <KeyRound className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+        <SkinIcon lucide={KeyRound} ae="key" className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
       </span>
     </label>
   );

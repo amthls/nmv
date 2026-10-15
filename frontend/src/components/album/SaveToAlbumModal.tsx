@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Check, Globe, Loader2, Lock, Plus, X } from 'lucide-react';
+import { Check, Globe, Loader2, Lock, Plus, X } from 'lucide-react';import { SkinIcon } from '@/components/skin/aemeath/icons';
+
 import { useAuth } from '@/context/AuthContext';
 import { AlbumSummary, readJson } from '@/lib/albums';
 import { LIBRARY_URL } from '@/lib/apiJson';
@@ -110,7 +111,7 @@ export default function SaveToAlbumModal({ isOpen, onClose, storyId, storyTitle,
             <p className="text-xs text-gray-400 truncate">{storyTitle}</p>
           </div>
           <button onClick={onClose} className="p-1 rounded-lg text-gray-400 hover:text-white hover:bg-white/10" aria-label="Đóng">
-            <X className="w-4 h-4" />
+            <SkinIcon lucide={X} ae="x" className="w-4 h-4" />
           </button>
         </div>
 
@@ -134,15 +135,15 @@ export default function SaveToAlbumModal({ isOpen, onClose, storyId, storyTitle,
                     }`}>
                       {busyId === album.id
                         ? <Loader2 className="w-3 h-3 animate-spin" />
-                        : album.has_story && <Check className="w-3.5 h-3.5" />}
+                        : album.has_story && <SkinIcon lucide={Check} ae="check" className="w-3.5 h-3.5" />}
                     </span>
                     <span className="flex-1 min-w-0">
                       <span className="block text-sm font-semibold text-white truncate">{album.name}</span>
                       <span className="block text-[11px] text-gray-400">{album.story_count} truyện</span>
                     </span>
                     {album.is_public
-                      ? <Globe className="w-3.5 h-3.5 text-emerald-400 shrink-0" aria-label="Công khai" />
-                      : <Lock className="w-3.5 h-3.5 text-gray-500 shrink-0" aria-label="Riêng tư" />}
+                      ? <SkinIcon lucide={Globe} ae="globe" className="w-3.5 h-3.5 text-emerald-400 shrink-0" aria-label="Công khai" />
+                      : <SkinIcon lucide={Lock} ae="lock" className="w-3.5 h-3.5 text-gray-500 shrink-0" aria-label="Riêng tư" />}
                   </button>
                 </li>
               ))}
@@ -166,7 +167,7 @@ export default function SaveToAlbumModal({ isOpen, onClose, storyId, storyTitle,
               disabled={!newName.trim() || isCreating}
               className="px-3 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow text-xs font-bold flex items-center gap-1 disabled:opacity-50"
             >
-              {isCreating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+              {isCreating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <SkinIcon lucide={Plus} ae="plus" className="w-3.5 h-3.5" />}
               Tạo
             </button>
           </div>

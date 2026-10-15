@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { KeyRound, LogOut, MailCheck, MailWarning } from 'lucide-react';
+import { KeyRound, LogOut, MailCheck, MailWarning } from 'lucide-react';import { SkinIcon } from '@/components/skin/aemeath/icons';
+
 import { useAuth } from '@/context/AuthContext';
 import { Notice, PasswordInput, primaryButton } from '@/components/auth/AccountCard';
 import { IDENTITY_URL, apiJson } from '@/lib/apiJson';
@@ -70,7 +71,7 @@ export default function SecurityTab() {
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <form onSubmit={changePassword} className={card}>
-        <h3 className="text-sm font-bold text-white flex items-center gap-2"><KeyRound className="w-4 h-4 text-brand-400" /> Đổi mật khẩu</h3>
+        <h3 className="text-sm font-bold text-white flex items-center gap-2"><SkinIcon lucide={KeyRound} ae="key" className="w-4 h-4 text-brand-400" /> Đổi mật khẩu</h3>
         {pwResult && <Notice ok={pwResult.ok}>{pwResult.message}</Notice>}
         <PasswordInput label="Mật khẩu hiện tại" value={current} onChange={setCurrent} autoComplete="current-password" />
         <PasswordInput label="Mật khẩu mới (ít nhất 8 ký tự)" value={next} onChange={setNext} autoComplete="new-password" />
@@ -115,7 +116,7 @@ export default function SecurityTab() {
             disabled={logoutBusy}
             className="w-full h-11 rounded-xl bg-rose-600/80 hover:bg-rose-600 text-snow font-semibold text-sm transition disabled:opacity-50 flex items-center justify-center gap-2"
           >
-            <LogOut className="w-4 h-4" /> Đăng xuất khỏi mọi thiết bị
+            <SkinIcon lucide={LogOut} ae="logOut" className="w-4 h-4" /> Đăng xuất khỏi mọi thiết bị
           </button>
         </div>
       </div>
