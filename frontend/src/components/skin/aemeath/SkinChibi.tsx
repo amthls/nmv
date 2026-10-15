@@ -2,10 +2,11 @@
 
 import dynamic from 'next/dynamic';
 import { useSkin } from '@/lib/theme';
-import { CHIBI_BADGES, pickSticker, useChibiPrefs, type ChibiBadge, type ChibiMood, type ChibiPose, type ChibiSticker } from './chibiPrefs';
+import { CHIBI_ARTS, CHIBI_BADGES, pickAny, pickSticker, useChibiPrefs, type ChibiArt, type ChibiBadge, type ChibiMood, type ChibiPose, type ChibiSticker } from './chibiPrefs';
 
 // Tải lazy: chỉ khi skin Aemeath bật và chibi chưa bị tắt thì mới kéo mã chibi.
 const AeChibi = dynamic(() => import('./chibi').then((m) => m.AeChibi), { ssr: false });
+const AeArt = dynamic(() => import('./chibi').then((m) => m.AeArt), { ssr: false });
 const AeBadge = dynamic(() => import('./chibi').then((m) => m.AeBadge), { ssr: false });
 
 interface Props {
@@ -16,6 +17,8 @@ interface Props {
   sticker?: ChibiSticker;
   /** Huy hiệu tròn: dùng thẳng, hoặc (cùng free) làm mặc định nếu người dùng chọn huy hiệu làm trợ lý. */
   badge?: ChibiBadge;
+  /** Thẻ fan art có nền; cùng free + người dùng để ngẫu nhiên thì xoay vòng giữa sticker và fan art. */
+  art?: ChibiArt;
   seed?: string;
   size?: number;
   animate?: boolean;
@@ -30,9 +33,27 @@ export function useChibiOn() {
 }
 
 /** Chibi Aemeath; skin mặc định (hoặc đã tắt chibi) thì không render và không tải gì. */
-export default function SkinChibi({ pose = 'hi', mood = 'happy', free, sticker, badge, seed = '', size = 96, animate = true, className = '' }: Props) {
+export default function SkinChibi({ pose = 'hi', mood = 'happy', free, sticker, badge, art, seed = '', size = 96, animate = true, className = '' }: Props) {
   const { on, prefs } = useChibiOn();
   if (!on) return null;
+  const pref = prefs.sticker;
+  let a: ChibiArt | undefined = art;
+  let st = sticker;
+  if (!a && !badge && !sticker && free) {
+    if (CHIBI_ARTS.some((x) => x.id === pref)) a = pref as ChibiArt;
+    else if (pref === 'random') {
+      const r = pickAny(seed);
+      if (r.kind === 'art') a = r.id;
+      else st = r.id;
+    }
+  }
+  if (a) {
+    return (
+      <span className={`inline-block pointer-events-none select-none ${className}`} aria-hidden="true">
+        <AeArt name={a} size={size} />
+      </span>
+    );
+  }
   const b = badge ?? (free && CHIBI_BADGES.some((x) => x.id === prefs.sticker) ? (prefs.sticker as ChibiBadge) : undefined);
   if (b) {
     return (
@@ -41,7 +62,7 @@ export default function SkinChibi({ pose = 'hi', mood = 'happy', free, sticker, 
       </span>
     );
   }
-  const s = sticker ?? (free ? pickSticker(prefs.sticker, seed) : undefined);
+  const s = st ?? (free ? pickSticker(prefs.sticker, seed) : undefined);
   return (
     <span className={`inline-block pointer-events-none select-none ${className}`} aria-hidden="true">
       <AeChibi sticker={s} mood={mood} pose={pose} size={size} animate={animate} />

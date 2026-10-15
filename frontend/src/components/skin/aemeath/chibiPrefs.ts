@@ -5,6 +5,15 @@ import { useCallback, useEffect, useState } from 'react';
 export type ChibiMood = 'happy' | 'wink' | 'sleepy' | 'surprised' | 'sad' | 'smug';
 export type ChibiPose = 'hi' | 'peek' | 'sit' | 'read' | 'sign' | 'cheer';
 export type ChibiSticker = 'hi' | 'sleepy' | 'smug' | 'music';
+export type ChibiArt = 'casual' | 'cheers' | 'keytar' | 'duo' | 'happy' | 'school';
+export const CHIBI_ARTS: { id: ChibiArt; label: string }[] = [
+  { id: 'casual', label: 'Thường phục' },
+  { id: 'cheers', label: 'Cụng ly' },
+  { id: 'keytar', label: 'Keytar' },
+  { id: 'duo', label: 'Trên đầu bạn' },
+  { id: 'happy', label: 'Cười tươi' },
+  { id: 'school', label: 'Đồng phục' },
+];
 export type ChibiBadge = 'wink' | 'map' | 'heart' | 'wave';
 export const CHIBI_BADGES: { id: ChibiBadge; label: string }[] = [
   { id: 'wave', label: 'Huy hiệu vẫy' },
@@ -24,17 +33,26 @@ const KEY = 'novelhub-ae-outfit'; // giữ tên khoá theo phiếu: 'random' ho�
 const OFF_KEY = 'novelhub-ae-chibi';
 const EVENT = 'novelhub-ae-chibi-change';
 
-export type StickerPref = ChibiSticker | ChibiBadge | 'random';
+export type StickerPref = ChibiSticker | ChibiBadge | ChibiArt | 'random';
 
 function read(): { sticker: StickerPref; enabled: boolean } {
   let sticker: StickerPref = 'random';
   let enabled = true;
   try {
     const o = localStorage.getItem(KEY);
-    if (o && (CHIBI_STICKERS.some((x) => x.id === o) || CHIBI_BADGES.some((x) => x.id === o))) sticker = o as StickerPref;
+    if (o && (CHIBI_STICKERS.some((x) => x.id === o) || CHIBI_BADGES.some((x) => x.id === o) || CHIBI_ARTS.some((x) => x.id === o))) sticker = o as StickerPref;
     enabled = localStorage.getItem(OFF_KEY) !== 'off';
   } catch {}
   return { sticker, enabled };
+}
+
+/** Xoay vòng ngẫu nhiên (ổn định theo seed + ngày) giữa sticker, huy hiệu và fan art khi người dùng để 'ngẫu nhiên'. */
+export function pickAny(seed: string): { kind: 'sticker'; id: ChibiSticker } | { kind: 'art'; id: ChibiArt } {
+  const all = [...CHIBI_STICKERS.map((x) => ({ kind: 'sticker' as const, id: x.id })), ...CHIBI_ARTS.map((x) => ({ kind: 'art' as const, id: x.id }))];
+  const s = seed + new Date().toDateString();
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return all[h % all.length] as { kind: 'sticker'; id: ChibiSticker } | { kind: 'art'; id: ChibiArt };
 }
 
 /** Sticker ổn định theo seed (vd slug truyện) khi người dùng để ngẫu nhiên. */

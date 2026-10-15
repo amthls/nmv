@@ -405,7 +405,7 @@ function ExplorePageContent() {
             </div>
           ) : stories.length === 0 ? (
             <div className="p-12 text-center rounded-2xl glass-panel border border-white/[0.04] space-y-4">
-              <ChibiSay badge="map" line="Để mình tìm đường giúp nhé~" />
+              <ChibiSay art="school" size={84} line="Để mình tìm đường giúp nhé~" />
               <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/[0.04] flex items-center justify-center text-gray-400 mx-auto [html.skin-aemeath_&]:hidden">
                 <AlertCircle className="w-6 h-6 text-brand-400" />
               </div>

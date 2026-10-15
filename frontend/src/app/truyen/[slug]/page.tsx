@@ -383,7 +383,7 @@ export default function StoryDetailPage() {
   if (!story) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-20 text-center space-y-4">
-        <ChibiSay pose="hi" mood="surprised" line={CHIBI_LINES.notFound[1]} />
+        <ChibiSay art="duo" size={96} line={CHIBI_LINES.notFound[1]} />
         <AlertCircle className="w-12 h-12 text-brand-400 mx-auto [html.skin-aemeath_&]:hidden" />
         <h2 className="text-xl font-bold text-white">Không tìm thấy bộ truyện này</h2>
         <Link href="/kham-pha" className="inline-block px-4 py-2 rounded-xl bg-brand-600 text-snow text-xs font-semibold">
