@@ -89,3 +89,24 @@ export function AeBadge({ name, size = 56, className = '' }: { name: ChibiBadgeN
     />
   );
 }
+
+export type ChibiArtName = 'casual' | 'cheers' | 'keytar' | 'duo' | 'happy' | 'school';
+
+/** Thẻ fan art có nền (Pinterest, chỉ dùng cục bộ phi thương mại): bo góc, không tách nền. */
+export function AeArt({ name, size = 84, className = '' }: { name: ChibiArtName; size?: number; className?: string }) {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={`${SRC}fan-${name}.webp`}
+      alt=""
+      aria-hidden
+      width={size}
+      height={size}
+      loading="lazy"
+      decoding="async"
+      draggable={false}
+      className={`rounded-2xl object-cover shadow-lg ring-1 ring-white/20 ${className}`}
+      style={{ width: size, height: size }}
+    />
+  );
+}

@@ -816,14 +816,16 @@ export default function ChapterReaderPage() {
           </button>
 
           {chapterData.next_chapter ? (
+            <div className="relative">
+            <SkinChibi art="cheers" className="absolute -top-[58px] -right-4 z-10" size={52} />
             <Link
               href={`/truyen/${storySlug}/${chapterData.next_chapter.slug}`}
               className="sk-next-quest relative flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-snow text-xs font-bold shadow-lg shadow-brand-500/25 transition hover:scale-105"
             >
               <span>Chương tiếp</span>
               <ChevronRight className="w-4 h-4" />
-              <SkinChibi badge="heart" className="absolute -top-8 right-1" size={44} />
             </Link>
+            </div>
           ) : (
             <div />
           )}

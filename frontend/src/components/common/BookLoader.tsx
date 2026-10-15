@@ -26,7 +26,7 @@ export default function BookLoader({ label = 'Đang tải...', size = 'md', dela
         // Skin Aemeath: chibi nhún nhảy + mèo thay cho sách lật
         <div className="sk-chibi-loader" aria-hidden="true">
           <div className="sk-chibi-loader__hop">
-            <SkinChibi pose="cheer" mood="happy" free size={92} seed="loader" />
+            <SkinChibi art="keytar" size={84} />
           </div>
         </div>
       ) : (
