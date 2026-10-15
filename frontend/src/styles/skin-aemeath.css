@@ -203,13 +203,8 @@ html.skin-aemeath .animate-pulse :is([class*="bg-white/"], [class*="bg-gray-"]),
 .sk-hero__title { font-family: 'Quicksand', 'Inter', sans-serif; font-weight: 700; font-size: clamp(1.7rem, 4.4vw, 3rem); line-height: 1.1; background: linear-gradient(90deg, #fbcfe8, #f472b6 45%, #67e8f9); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
 .sk-hero__sub { color: #e9d5ff; max-width: 34ch; margin-top: 10px; font-size: 0.95rem; }
 .sk-hero__chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; color: #67e8f9; border: 1px solid rgb(103 232 249 / 0.5); background: rgb(103 232 249 / 0.1); }
-.sk-hero__crystal { position: absolute; z-index: -1; right: 30%; top: 14%; width: 64px; height: 92px; transform-style: preserve-3d; animation: sk-spin 18s linear infinite; opacity: 0.55; pointer-events: none; }
-.sk-hero__crystal i { position: absolute; inset: 0; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); background: linear-gradient(135deg, rgb(103 232 249 / 0.7), rgb(244 114 182 / 0.6)); }
-.sk-hero__crystal i:nth-child(2) { transform: rotateY(60deg); }
-.sk-hero__crystal i:nth-child(3) { transform: rotateY(120deg); }
 .sk-star { display: inline-block; width: 1em; height: 1em; background: currentColor; clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); }
 .sk-hero .sk-star { color: #67e8f9; animation: sk-twinkle 2.4s ease-in-out infinite; }
-html.skin-aemeath .sk-hero { perspective: 900px; }
 @media (max-width: 640px) { .sk-hero { padding: 22px 18px; min-height: 210px; } .sk-hero__sprite { opacity: 0.45; right: -14%; } }
 /* tiêu đề khu vực (kệ truyện): ngôi sao lấp lánh đứng trước */
 html.skin-aemeath h2::before {
@@ -228,44 +223,56 @@ html.skin-aemeath::before {
   animation: sk-scan 14s linear infinite;
 }
 @keyframes sk-scan { to { background-position: 0 80px; } }
-html.skin-aemeath::after {
-  content: ''; position: fixed; right: 1vw; bottom: 0; width: min(26vw, 420px); aspect-ratio: 900 / 1232;
-  z-index: -1; pointer-events: none; display: none; opacity: 0.22;
-  background: url('/backgrounds/aemeath/sprite.webp') bottom right / contain no-repeat;
-  filter: drop-shadow(0 0 18px rgb(103 232 249 / 0.45));
-  translate: calc(var(--px, 0) * -14px) calc(var(--py, 0) * -10px);
-  animation: sk-float 7s ease-in-out infinite alternate;
-}
+/* Sprite Aemeath = hình chiếu hologram đứng yên (không theo chuột): nhịp trôi chậm, scanline cyan,
+   chớp nhiễu glitch ngắn hiếm, đế chiếu sáng elip. Phần tử .sk-holo do Decor.tsx render (lazy). */
 @keyframes sk-float { to { transform: translateY(-10px); } }
-@media (min-width: 1280px) { html.skin-aemeath:not([data-reader])::after { display: block; } }
-
-.sk-crystals { position: fixed; inset: 0; z-index: -1; pointer-events: none; perspective: 900px; overflow: hidden; }
-html[data-reader] .sk-crystals { display: none; }
-@media (max-width: 1023px) { .sk-crystals { display: none; } }
-.sk-crystal { position: absolute; width: 90px; height: 130px; transform-style: preserve-3d; opacity: 0.35; animation: sk-spin 24s linear infinite; will-change: transform; }
-.sk-crystal i { position: absolute; inset: 0; display: block; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); background: linear-gradient(135deg, rgb(103 232 249 / 0.55), rgb(244 114 182 / 0.45)); }
-.sk-crystal i:nth-child(2) { transform: rotateY(60deg); }
-.sk-crystal i:nth-child(3) { transform: rotateY(120deg); }
-.sk-crystal:nth-child(1) { left: 6%; top: 22%; }
-.sk-crystal:nth-child(2) { left: 42%; top: 70%; width: 60px; height: 88px; animation-duration: 32s; opacity: 0.25; }
-.sk-crystal:nth-child(3) { right: 28%; top: 12%; width: 70px; height: 100px; animation-duration: 28s; animation-direction: reverse; opacity: 0.3; }
 @keyframes sk-spin { from { transform: rotateY(0deg) rotateZ(12deg); } to { transform: rotateY(360deg) rotateZ(12deg); } }
+.sk-holo {
+  position: fixed; right: 1.5vw; bottom: 0; width: min(24vw, 400px); aspect-ratio: 900 / 1232;
+  z-index: -1; pointer-events: none; display: none; opacity: 0.24; transition: opacity 0.5s ease;
+}
+.sk-holo.is-dim { opacity: 0.07; }
+@media (min-width: 1280px) { html.skin-aemeath:not([data-reader]) .sk-holo { display: block; } }
+.sk-holo__body { position: absolute; inset: 0; animation: sk-float 6s ease-in-out infinite alternate; }
+.sk-holo__img, .sk-holo__scan { position: absolute; inset: 0; background: url('/backgrounds/aemeath/sprite.webp') bottom center / contain no-repeat; }
+.sk-holo__img { filter: drop-shadow(0 0 16px rgb(103 232 249 / 0.5)) saturate(1.1); animation: sk-holo-glitch 20s steps(1, end) infinite; }
+.sk-holo__scan {
+  background: repeating-linear-gradient(0deg, rgb(103 232 249 / 0.55) 0 1px, transparent 1px 4px);
+  -webkit-mask: url('/backgrounds/aemeath/sprite.webp') bottom center / contain no-repeat;
+  mask: url('/backgrounds/aemeath/sprite.webp') bottom center / contain no-repeat;
+  mix-blend-mode: screen; opacity: 0.6;
+}
+.sk-holo__base {
+  position: absolute; left: 6%; right: 6%; bottom: -2%; height: 7%; border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgb(103 232 249 / 0.7), rgb(103 232 249 / 0.18) 55%, transparent 72%);
+  box-shadow: 0 0 24px rgb(103 232 249 / 0.35);
+}
+/* chớp nhiễu ~200ms mỗi 20s */
+@keyframes sk-holo-glitch {
+  0%, 100% { transform: none; filter: drop-shadow(0 0 16px rgb(103 232 249 / 0.5)) saturate(1.1); }
+  94% { transform: translateX(-6px) skewX(-3deg); filter: drop-shadow(4px 0 0 rgb(244 114 182 / 0.8)) drop-shadow(-4px 0 0 rgb(103 232 249 / 0.9)); }
+  95% { transform: translateX(5px); filter: drop-shadow(-3px 0 0 rgb(244 114 182 / 0.8)) drop-shadow(3px 0 0 rgb(103 232 249 / 0.9)) brightness(1.4); }
+  96% { transform: none; }
+}
+
+/* canvas WebGL (Three.js): nền toàn site mật độ thấp, dưới nội dung; banner và 404 nằm trong khung riêng */
+.sk-gl-bg { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; opacity: 0.5; }
+html[data-reader] .sk-gl-bg:not(.sk-gl-burst) { display: none; }
+.sk-gl-bg.sk-gl-burst { z-index: 9998; opacity: 1; }
+.sk-gl-hero { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+.sk-gl-404 { width: 220px; height: 220px; pointer-events: none; }
 
 .sk-flash { position: fixed; inset: 0; z-index: 9999; pointer-events: none; opacity: 0;
   background: radial-gradient(circle at var(--fx, 50%) var(--fy, 50%), rgb(244 114 182 / 0.55), rgb(103 232 249 / 0.3) 40%, transparent 70%); }
-.sk-trail { position: fixed; z-index: 9998; width: 12px; height: 12px; margin: -6px 0 0 -6px; pointer-events: none;
-  background: linear-gradient(135deg, #f9a8d4, #67e8f9);
-  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); }
-
 /* ---------- 3D tilt của card (JS đặt --rx/--ry/--mx/--my) ---------- */
 html.skin-aemeath.sk-tilt .tile { transform: perspective(800px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); will-change: transform; }
 html.skin-aemeath.sk-tilt .tile:hover { transition-duration: 0.12s; }
 
 @media (prefers-reduced-motion: reduce) {
-  html.skin-aemeath::before, html.skin-aemeath::after, .sk-crystal, .sk-hero__crystal, .sk-404__sprite, .sk-nav-glow,
+  html.skin-aemeath::before, .sk-holo__body, .sk-holo__img, .sk-hero__sprite, .sk-hero .sk-star, .sk-404__sprite, .sk-nav-glow,
   html.skin-aemeath :is(button, a)[class*="bg-brand-"], html.skin-aemeath :is(h1, h2):hover,
   html.skin-aemeath header a[aria-label*="Trang chủ"]::after, html.skin-aemeath h2::before { animation: none; }
-  .sk-crystals { display: none; }
+  .sk-gl-bg, .sk-gl-hero { display: none; }
 }
 html.skin-aemeath :is(h1, h2) svg { color: rgb(var(--c-brand-400)); -webkit-text-fill-color: initial; }
 
