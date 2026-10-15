@@ -262,7 +262,7 @@ export default function StoryDetailPage() {
   const renderChapterRow = (ch: any) => (
       <div
         key={ch.id}
-        className="p-3.5 flex items-center justify-between hover:bg-white/5 transition group px-5"
+        className="sk-chap-row p-3.5 flex items-center justify-between hover:bg-white/5 transition group px-5"
       >
         <Link
           href={`/truyen/${story.slug}/${ch.slug}`}
@@ -397,7 +397,7 @@ export default function StoryDetailPage() {
       
       {/* 1. Hero header: story art in a card aligned with the content below, like the home banner */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-      <div className="relative isolate overflow-hidden rounded-xl border border-white/10 bg-surface-3 shadow-[0_24px_60px_-28px_rgba(0,0,0,0.8)]">
+      <div className="sk-story-hero relative isolate overflow-hidden rounded-xl border border-white/10 bg-surface-3 shadow-[0_24px_60px_-28px_rgba(0,0,0,0.8)]">
         <div className="pointer-events-none absolute inset-0 -z-10">
           <SmartImage
             src={story.banner_image_url || story.cover_image_url}

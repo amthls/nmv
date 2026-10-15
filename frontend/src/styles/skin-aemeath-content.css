@@ -1,1 +1,126 @@
-/* skin Aemeath: content (do agent phụ trách sửa file này) */
+/* skin Aemeath: nội dung (card truyện, chi tiết truyện, trang đọc, trang list). Chỉ animate transform/opacity. */
+
+/* ---------- Card truyện .tile: pha lê + viền gradient + bracket hologram + bóng chạy theo chuột ---------- */
+html.skin-aemeath .tile {
+  border-radius: 14px;
+  background: var(--glass-bg-strong);
+  box-shadow: var(--glass-shadow);
+}
+html.skin-aemeath .tile::before {
+  content: ''; position: absolute; inset: 0; z-index: 4; pointer-events: none; border-radius: inherit; padding: 1px;
+  background: linear-gradient(135deg, #fbcfe8, rgb(244 114 182 / 0.25) 40%, rgb(103 232 249 / 0.7));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+}
+html.skin-aemeath .tile::after {
+  content: ''; position: absolute; inset: 5px; z-index: 4; pointer-events: none; opacity: 0.55;
+  background:
+    linear-gradient(#67e8f9, #67e8f9) top left / 12px 1.5px no-repeat,
+    linear-gradient(#67e8f9, #67e8f9) top left / 1.5px 12px no-repeat,
+    linear-gradient(#f9a8d4, #f9a8d4) bottom right / 12px 1.5px no-repeat,
+    linear-gradient(#f9a8d4, #f9a8d4) bottom right / 1.5px 12px no-repeat;
+  transition: opacity 0.3s ease;
+}
+html.skin-aemeath .tile:hover::after { opacity: 1; }
+html.skin-aemeath .tile__shine {
+  background: radial-gradient(360px circle at var(--mx, 50%) var(--my, 0%), rgb(255 255 255 / 0.34), rgb(103 232 249 / 0.12) 40%, transparent 60%);
+}
+html.skin-aemeath .tile > span[class*="bg-sky-"] { background: rgb(8 145 178 / 0.9) !important; }
+html.skin-aemeath .tile > span[class*="bg-rose-"] { background: rgb(219 39 119 / 0.9) !important; }
+@media (hover: none), (prefers-reduced-motion: reduce) { html.skin-aemeath .tile { transform: none !important; } }
+
+/* ---------- Xanh dương ghi cứng trong vùng nội dung: sky/indigo/cyan -> cyan hologram / hồng tím ---------- */
+html.skin-aemeath main [class*="bg-indigo-"] { background-color: rgb(192 132 252 / 0.16) !important; }
+html.skin-aemeath main [class*="text-indigo-"] { color: #c084fc !important; }
+html.skin-aemeath main [class*="border-indigo-"] { border-color: rgb(192 132 252 / 0.35) !important; }
+html.skin-aemeath main :is(button, a)[class*="to-indigo-"] { --tw-gradient-to: #0891b2 !important; }
+html.skin-aemeath main [class*="bg-sky-"] { background-color: rgb(103 232 249 / 0.12) !important; }
+html.skin-aemeath main :is(button, a)[class*="bg-sky-"] { background-color: #0891b2 !important; color: #fff !important; }
+html.skin-aemeath main [class*="bg-cyan-6"], html.skin-aemeath main [class*="bg-cyan-5"] { background-color: #0891b2 !important; }
+html.skin-aemeath main [class*="text-sky-"], html.skin-aemeath main [class*="text-cyan-"] { color: #22d3ee !important; }
+html.skin-aemeath:not(.dark) main [class*="text-sky-"], html.skin-aemeath:not(.dark) main [class*="text-cyan-"] { color: #0e7490 !important; }
+html.skin-aemeath main [class*="border-sky-"] { border-color: rgb(103 232 249 / 0.4) !important; }
+
+/* ---------- Tiêu đề trang + khung trống ---------- */
+html.skin-aemeath main h1::after {
+  content: ''; display: inline-block; width: 0.5em; height: 0.5em; margin-left: 0.4em; vertical-align: 0.1em;
+  background: linear-gradient(135deg, #f9a8d4, #67e8f9); -webkit-text-fill-color: initial;
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  animation: sk-twinkle 3.2s ease-in-out infinite;
+}
+html.skin-aemeath main [class*="border-dashed"] {
+  border-style: solid; border-color: var(--glass-border); border-radius: var(--sk-radius); background: var(--glass-bg);
+}
+html.skin-aemeath main [class*="border-dashed"]::after {
+  content: 'Aemeath: "Chưa có gì ở đây... cùng tìm thứ gì đó thú vị nhé~"'; display: block; margin: 12px auto 0; max-width: 28ch;
+  font-size: 11px; line-height: 1.5; text-align: center; color: rgb(var(--c-brand-400)); padding-top: 52px;
+  background: url('/backgrounds/aemeath/sprite.webp') center top / auto 46px no-repeat;
+}
+
+/* ---------- Trang chi tiết truyện ---------- */
+html.skin-aemeath .sk-story-hero {
+  border: 1px solid transparent; border-radius: var(--sk-radius);
+  background: linear-gradient(rgb(var(--c-surface-3)), rgb(var(--c-surface-3))) padding-box,
+              linear-gradient(135deg, #fbcfe8, rgb(244 114 182 / 0.3) 45%, #67e8f9) border-box;
+  box-shadow: 0 0 34px -14px rgb(103 232 249 / 0.4), 0 24px 50px -28px rgb(190 24 93 / 0.5);
+}
+html.skin-aemeath .sk-story-hero > div:first-child img { filter: blur(6px) saturate(1.15); transform: scale(1.08); }
+html.skin-aemeath .sk-story-hero > div:first-child > div:nth-child(2) {
+  background: linear-gradient(68deg, rgb(11 15 36 / 0.82) 30%, rgb(76 29 149 / 0.35) 100%) !important;
+}
+html.skin-aemeath .sk-story-hero > div:first-child::after {
+  content: ''; position: absolute; top: -20%; bottom: -20%; left: 0; width: 38%; pointer-events: none;
+  background: linear-gradient(100deg, transparent, rgb(103 232 249 / 0.16), rgb(249 168 212 / 0.14), transparent);
+  transform: translateX(-120%) skewX(-18deg); animation: sk-holo-sweep 9s ease-in-out infinite;
+}
+@keyframes sk-holo-sweep { 0%, 55% { transform: translateX(-120%) skewX(-18deg); } 100% { transform: translateX(380%) skewX(-18deg); } }
+html.skin-aemeath .sk-chap-row { position: relative; transition: background-color 0.2s ease; }
+html.skin-aemeath .sk-chap-row:hover { background: linear-gradient(90deg, rgb(244 114 182 / 0.14), rgb(103 232 249 / 0.08)) !important; }
+html.skin-aemeath .sk-chap-row:hover::before {
+  content: ''; position: absolute; left: 6px; top: 50%; width: 8px; height: 8px; margin-top: -4px;
+  background: linear-gradient(135deg, #f9a8d4, #67e8f9);
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+}
+html.skin-aemeath .sk-story-hero a[class*="rounded-full"] {
+  background: rgb(255 255 255 / 0.08); border: 1px solid rgb(103 232 249 / 0.35); backdrop-filter: blur(6px);
+}
+html.skin-aemeath .sk-story-hero a[class*="rounded-full"]:hover { border-color: #f9a8d4; background: rgb(244 114 182 / 0.2); }
+
+/* ---------- Trang đọc: giấy hồng kem (sáng) / tím đêm (tối); không hiệu ứng trong vùng chữ ---------- */
+html.skin-aemeath .sk-reader[data-reader-theme="light"] { background: #fff5f8; color: #3b2338; }
+html.skin-aemeath .sk-reader[data-reader-theme="dark"] { background: #14112b; color: #e9e4f7; }
+html.skin-aemeath .sk-reader .reader-text { text-shadow: none; }
+html.skin-aemeath .sk-reader[data-reader-theme="light"] .chapter-rich a { color: #be185d; }
+html.skin-aemeath .sk-reader[data-reader-theme="dark"] .chapter-rich a { color: #67e8f9; }
+html.skin-aemeath .sk-reader ::selection { background: rgb(244 114 182 / 0.4); }
+html.skin-aemeath .sk-reader .chapter-rich blockquote { border-left: 3px solid #f472b6; }
+html.skin-aemeath .sk-reader .chapter-rich mark { background: rgb(103 232 249 / 0.3); color: inherit; }
+html.skin-aemeath .sk-reader [class*="bg-yellow-"], html.skin-aemeath .sk-reader [class*="bg-amber-"] { background-color: rgb(244 114 182 / 0.18) !important; }
+html.skin-aemeath .sk-reader > header { border-bottom-color: rgb(244 114 182 / 0.3); }
+html.skin-aemeath .sk-read-progress {
+  display: none; position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 60; transform-origin: 0 50%;
+  background: linear-gradient(90deg, #f9a8d4, #f472b6 50%, #67e8f9); box-shadow: 0 0 10px rgb(103 232 249 / 0.7);
+}
+@supports (animation-timeline: scroll()) {
+  html.skin-aemeath .sk-read-progress { display: block; transform: scaleX(0); animation: sk-read-prog linear both; animation-timeline: scroll(root); }
+  @keyframes sk-read-prog { to { transform: scaleX(1); } }
+}
+html.skin-aemeath .sk-next-quest {
+  position: relative; overflow: hidden; border: 1px solid rgb(249 168 212 / 0.7); border-radius: 16px;
+  background: linear-gradient(120deg, #db2777, #ec4899 55%, #0891b2) !important;
+  box-shadow: 0 0 22px -6px rgb(244 114 182 / 0.7), 0 0 16px -8px rgb(103 232 249 / 0.6);
+}
+html.skin-aemeath .sk-next-quest::before {
+  content: ''; position: absolute; top: 0; bottom: 0; left: 0; width: 40%; pointer-events: none;
+  background: linear-gradient(100deg, transparent, rgb(255 255 255 / 0.4), transparent);
+  transform: translateX(-130%) skewX(-18deg); animation: sk-holo-sweep 4.5s ease-in-out infinite;
+}
+html.skin-aemeath .sk-next-quest::after {
+  content: ''; position: absolute; top: 5px; right: 8px; width: 9px; height: 9px; background: #fff; opacity: 0.9;
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); animation: sk-twinkle 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.skin-aemeath main h1::after, html.skin-aemeath .sk-next-quest::after, html.skin-aemeath .sk-read-progress { animation: none; }
+  html.skin-aemeath .sk-story-hero > div:first-child::after, html.skin-aemeath .sk-next-quest::before { display: none; }
+}
