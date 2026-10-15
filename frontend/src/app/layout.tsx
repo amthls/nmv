@@ -4,6 +4,7 @@ import '../styles/skin-aemeath.css';
 import '../styles/skin-aemeath-icons.css';
 import '../styles/skin-aemeath-controls.css';
 import '../styles/skin-aemeath-content.css';
+import '../styles/skin-aemeath-chibi.css';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { AuthProvider } from '@/context/AuthContext';

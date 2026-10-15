@@ -26,6 +26,8 @@ import {
   RotateCcw
 } from 'lucide-react';
 import SmartImage from '@/components/common/SmartImage';
+import SkinChibi, { ChibiSay } from '@/components/skin/aemeath/SkinChibi';
+import { CHIBI_LINES } from '@/components/skin/aemeath/chibiLines';
 import { goBack } from '@/lib/nav';
 import CommentSection from '@/components/comments/CommentSection';
 import ReportButton from '@/components/common/ReportButton';
@@ -381,7 +383,8 @@ export default function StoryDetailPage() {
   if (!story) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-20 text-center space-y-4">
-        <AlertCircle className="w-12 h-12 text-brand-400 mx-auto" />
+        <ChibiSay pose="hi" mood="surprised" line={CHIBI_LINES.notFound[1]} />
+        <AlertCircle className="w-12 h-12 text-brand-400 mx-auto [html.skin-aemeath_&]:hidden" />
         <h2 className="text-xl font-bold text-white">Không tìm thấy bộ truyện này</h2>
         <Link href="/kham-pha" className="inline-block px-4 py-2 rounded-xl bg-brand-600 text-snow text-xs font-semibold">
           Quay lại trang Khám Phá
@@ -410,6 +413,9 @@ export default function StoryDetailPage() {
           {/* thin top highlight, like the glass panels */}
           <div className="absolute inset-0 rounded-xl shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12)]" />
         </div>
+
+        {/* Chibi Aemeath nhỏ ở góc hero (chỉ skin Aemeath, outfit ổn định theo slug) */}
+        <SkinChibi free className="sk-chibi-hero" pose={story.slug.length % 2 ? 'read' : 'sit'} mood="happy" seed={story.slug} size={84} />
 
         {/* header content always uses the dark palette: white text on the darkened art */}
         <div className="dark relative px-5 sm:px-8 lg:px-10 pt-6 pb-8 md:pt-8 md:pb-10 [text-shadow:0_1px_8px_rgba(0,0,0,0.45)]">

@@ -44,6 +44,8 @@ import { useAuth } from '@/context/AuthContext';
 import { useReadingSession } from '@/context/ReadingSessionContext';
 import { logChapterRead, saveReadingPosition } from '@/lib/readingHistory';
 import CodeBadge from '@/components/common/CodeBadge';
+import SkinChibi, { ChibiSay } from '@/components/skin/aemeath/SkinChibi';
+import { CHIBI_LINES } from '@/components/skin/aemeath/chibiLines';
 import { LIBRARY_URL } from '@/lib/apiJson';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
@@ -816,10 +818,11 @@ export default function ChapterReaderPage() {
           {chapterData.next_chapter ? (
             <Link
               href={`/truyen/${storySlug}/${chapterData.next_chapter.slug}`}
-              className="sk-next-quest flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-snow text-xs font-bold shadow-lg shadow-brand-500/25 transition hover:scale-105"
+              className="sk-next-quest relative flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-snow text-xs font-bold shadow-lg shadow-brand-500/25 transition hover:scale-105"
             >
               <span>Chương tiếp</span>
               <ChevronRight className="w-4 h-4" />
+              <SkinChibi free className="absolute -top-9 right-1" pose="cheer" mood="happy" seed={storySlug} size={56} />
             </Link>
           ) : (
             <div />

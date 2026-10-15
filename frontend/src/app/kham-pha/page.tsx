@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import PageLoader from '@/components/common/PageLoader';
+import { ChibiSay } from '@/components/skin/aemeath/SkinChibi';
+import { CHIBI_LINES } from '@/components/skin/aemeath/chibiLines';
 import { SEARCH_DELAY_MS } from '@/components/SearchBox';
 import { 
   Search, 
@@ -403,7 +405,8 @@ function ExplorePageContent() {
             </div>
           ) : stories.length === 0 ? (
             <div className="p-12 text-center rounded-2xl glass-panel border border-white/[0.04] space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/[0.04] flex items-center justify-center text-gray-400 mx-auto">
+              <ChibiSay pose="hi" mood="sad" line={CHIBI_LINES.noResult[0]} />
+              <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/[0.04] flex items-center justify-center text-gray-400 mx-auto [html.skin-aemeath_&]:hidden">
                 <AlertCircle className="w-6 h-6 text-brand-400" />
               </div>
               <div>
