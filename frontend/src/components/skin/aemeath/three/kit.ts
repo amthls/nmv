@@ -28,7 +28,7 @@ const TINTS = [0xff8fc8, 0x6fe3f5, 0xc4b5fd]; // hồng, cyan, bạc-tím
 export class CrystalKit {
   readonly geo = new OctahedronGeometry(1, 0).scale(0.62, 1.5, 0.62);
   readonly edges = new EdgesGeometry(this.geo);
-  readonly lineMat = new LineBasicMaterial({ color: 0x67e8f9, transparent: true, opacity: 0.55 });
+  readonly lineMat = new LineBasicMaterial({ color: 0x67e8f9, transparent: true, opacity: 0.25 });
   readonly mats = TINTS.map(
     (color) =>
       new MeshPhysicalMaterial({
@@ -41,10 +41,10 @@ export class CrystalKit {
         iridescenceIOR: 1.6,
         flatShading: true,
         transparent: true,
-        opacity: 0.72,
-        envMapIntensity: 0.55,
+        opacity: 0.45,
+        envMapIntensity: 0.4,
         emissive: color,
-        emissiveIntensity: 0.4,
+        emissiveIntensity: 0.25,
       }),
   );
 

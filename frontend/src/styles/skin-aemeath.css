@@ -256,7 +256,7 @@ html.skin-aemeath::before {
 }
 
 /* canvas WebGL (Three.js): nền toàn site mật độ thấp, dưới nội dung; banner và 404 nằm trong khung riêng */
-.sk-gl-bg { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; opacity: 0.5; }
+.sk-gl-bg { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; opacity: 0.6; }
 html[data-reader] .sk-gl-bg:not(.sk-gl-burst) { display: none; }
 .sk-gl-bg.sk-gl-burst { z-index: 9998; opacity: 1; }
 .sk-gl-hero { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }

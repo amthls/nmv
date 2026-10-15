@@ -20,7 +20,7 @@ export interface BgScene {
   dispose: () => void;
 }
 
-const SHARDS = 26;
+const SHARDS = 14;
 
 /**
  * Nền toàn site: hạt sao thưa + 3 pha lê trôi rất chậm (mờ, nằm sau nội dung) và nhóm mảnh vỡ cho hiệu ứng đổi skin.
@@ -33,7 +33,7 @@ export function createBgScene(canvas: HTMLCanvasElement): BgScene {
   st.cyan.position.set(8, -3, 5);
 
   // sao: ~110 hạt, trôi lên rất chậm
-  const N = 110;
+  const N = 70;
   const pos = new Float32Array(N * 3);
   for (let i = 0; i < N; i++) {
     pos[i * 3] = MathUtils.randFloatSpread(26);
@@ -44,15 +44,17 @@ export function createBgScene(canvas: HTMLCanvasElement): BgScene {
   g.setAttribute('position', new BufferAttribute(pos, 3));
   const stars = new Points(
     g,
-    new PointsMaterial({ color: 0xffd0ee, size: 0.07, sizeAttenuation: true, transparent: true, opacity: 0.75, depthWrite: false, blending: AdditiveBlending }),
+    new PointsMaterial({ color: 0xffd0ee, size: 0.05, sizeAttenuation: true, transparent: true, opacity: 0.45, depthWrite: false, blending: AdditiveBlending }),
   );
   scene.add(stars);
 
   // 3 pha lê ở rìa (tránh vùng chữ ở giữa)
   const crystals: { g: Group; base: Vector3; speed: number; phase: number }[] = [
-    { g: kit.make(0, 0.6), base: new Vector3(-7.2, 2.2, -2), speed: 0.1, phase: 0 },
-    { g: kit.make(1, 0.75), base: new Vector3(7.6, -2.6, -3), speed: -0.08, phase: 2 },
-    { g: kit.make(2, 0.5), base: new Vector3(5.2, 4.4, -5), speed: 0.06, phase: 4 },
+    // rất nhỏ (~25-45px), ở mép màn hình, xoay một vòng >= 50s
+    { g: kit.make(0, 0.1, false), base: new Vector3(-7.4, 2.4, -2), speed: 0.12, phase: 0 },
+    { g: kit.make(1, 0.11, false), base: new Vector3(7.7, -2.2, -2.5), speed: -0.1, phase: 2 },
+    { g: kit.make(2, 0.07, false), base: new Vector3(6.6, 3.4, -5), speed: 0.09, phase: 4 },
+    { g: kit.make(0, 0.06, false), base: new Vector3(-6.4, -3.2, -6), speed: -0.08, phase: 1 },
   ];
   for (const c of crystals) {
     c.g.position.copy(c.base);
@@ -60,7 +62,7 @@ export function createBgScene(canvas: HTMLCanvasElement): BgScene {
   }
 
   // mảnh vỡ cho hiệu ứng đổi skin
-  const shardGeo = new OctahedronGeometry(0.28, 0);
+  const shardGeo = new OctahedronGeometry(0.09, 0);
   const shardMat = new MeshBasicMaterial({ color: 0xffb3dd, transparent: true, opacity: 1, blending: AdditiveBlending, depthWrite: false });
   const shardMat2 = new MeshBasicMaterial({ color: 0x67e8f9, transparent: true, opacity: 1, blending: AdditiveBlending, depthWrite: false });
   const shards = new Group();
@@ -70,7 +72,7 @@ export function createBgScene(canvas: HTMLCanvasElement): BgScene {
     shards.add(m);
     const dir = new Vector3(MathUtils.randFloatSpread(2), MathUtils.randFloatSpread(2), MathUtils.randFloatSpread(1)).normalize();
     const rest = dir.clone().multiplyScalar(0.55);
-    return { m, dir, rest, spin: new Vector3(MathUtils.randFloatSpread(6), MathUtils.randFloatSpread(6), 0), dist: MathUtils.randFloat(3, 7) };
+    return { m, dir, rest, spin: new Vector3(MathUtils.randFloatSpread(6), MathUtils.randFloatSpread(6), 0), dist: MathUtils.randFloat(1.2, 3) };
   });
   scene.add(shards);
 
@@ -95,15 +97,15 @@ export function createBgScene(canvas: HTMLCanvasElement): BgScene {
     (dt, t) => {
       px += (ptr.p.x - px) * Math.min(1, dt * 1.5);
       py += (ptr.p.y - py) * Math.min(1, dt * 1.5);
-      camera.position.x = px * 0.5;
-      camera.position.y = -py * 0.3;
+      camera.position.x = px * 0.04;
+      camera.position.y = -py * 0.03;
       camera.lookAt(0, 0, 0);
       stars.rotation.y = t * 0.006;
       stars.position.y = (t * 0.05) % 1;
       for (const c of crystals) {
         c.g.rotation.y += c.speed * dt;
         c.g.rotation.x = Math.sin(t * 0.15 + c.phase) * 0.15;
-        c.g.position.y = c.base.y + Math.sin(t * 0.2 + c.phase) * 0.35;
+        c.g.position.y = c.base.y + Math.sin(t * 0.2 + c.phase) * 0.06;
       }
       st.pink.position.x = -8 + Math.sin(t * 0.2) * 2;
       if (burstT >= 0) {
@@ -111,12 +113,12 @@ export function createBgScene(canvas: HTMLCanvasElement): BgScene {
         const p = Math.min(burstT, 1);
         const e = Math.pow(Math.sin(p * Math.PI), 0.9);
         const fade = 1 - MathUtils.smoothstep(p, 0.82, 1);
-        shardMat.opacity = shardMat2.opacity = fade;
+        shardMat.opacity = shardMat2.opacity = fade * 0.4;
         for (const s of shardData) {
           s.m.position.copy(origin).add(s.rest).addScaledVector(s.dir, s.dist * e);
           s.m.rotation.x += s.spin.x * dt * (0.3 + e);
           s.m.rotation.y += s.spin.y * dt * (0.3 + e);
-          s.m.scale.setScalar(1 + 0.6 * (1 - e));
+          s.m.scale.setScalar(0.6 + 0.5 * (1 - e));
         }
         if (burstT >= 1) {
           burstT = -1;
