@@ -105,6 +105,7 @@ export function useSkin() {
       Math.max(origin.x, window.innerWidth - origin.x),
       Math.max(origin.y, window.innerHeight - origin.y),
     );
+    if (next === 'aemeath') (window as unknown as { __nhSkinBurst?: unknown }).__nhSkinBurst = { x: origin.x, y: origin.y, t: performance.now() };
     const transition = doc.startViewTransition(() => {
       flushSync(() => {
         applySkin(next);

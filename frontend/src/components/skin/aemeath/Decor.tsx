@@ -1,15 +1,20 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
+import GlBackground from './GlBackground';
 
 /**
  * Lớp trang trí của skin Aemeath (chỉ được tải khi skin bật, xem AemeathLayer):
- * pha lê 3D, parallax sprite, nghiêng 3D card theo chuột, vệt sao theo con trỏ, viên sáng trượt ở thanh nav.
- * Mọi hiệu ứng theo chuột chỉ chạy trên thiết bị có hover và tắt khi prefers-reduced-motion.
+ * - canvas WebGL nền (Three.js, một canvas toàn site, xem GlBackground);
+ * - sprite hologram đứng yên (.sk-holo), mờ bớt khi cuộn hoặc khi con trỏ lại gần;
+ * - viên sáng trượt ở thanh nav;
+ * - nghiêng 3D thẻ truyện (.tile) theo chuột (chỉ thiết bị có hover, tắt khi reduced-motion).
+ * Không có hiệu ứng theo chuột cho ảnh nền hay sprite.
  */
 export default function Decor() {
   const pathname = usePathname() || '';
+  const holo = useRef<HTMLDivElement>(null);
 
   // Viên sáng trượt theo mục nav đang chọn
   useEffect(() => {
@@ -47,7 +52,32 @@ export default function Decor() {
     [],
   );
 
-  // Hiệu ứng theo chuột
+  // Sprite mờ bớt khi cuộn xuống hoặc con trỏ lại gần vùng sprite
+  useEffect(() => {
+    const el = holo.current;
+    if (!el) return;
+    let scrolled = false;
+    let near = false;
+    const apply = () => el.classList.toggle('is-dim', scrolled || near);
+    const onScroll = () => {
+      scrolled = window.scrollY > 240;
+      apply();
+    };
+    const onMove = (e: PointerEvent) => {
+      const r = el.getBoundingClientRect();
+      near = e.clientX > r.left - 60 && e.clientY > r.top - 40;
+      apply();
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('pointermove', onMove, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('pointermove', onMove);
+    };
+  }, []);
+
+  // Nghiêng 3D thẻ truyện theo chuột
   useEffect(() => {
     const root = document.documentElement;
     const fine = window.matchMedia('(hover: hover) and (pointer: fine)');
@@ -55,7 +85,6 @@ export default function Decor() {
     let raf = 0;
     let last: PointerEvent | null = null;
     let tile: HTMLElement | null = null;
-    let lastTrail = 0;
 
     const resetTile = () => {
       if (!tile) return;
@@ -63,27 +92,10 @@ export default function Decor() {
       tile.style.removeProperty('--ry');
       tile = null;
     };
-    const sparkle = (x: number, y: number) => {
-      const el = document.createElement('span');
-      el.className = 'sk-trail';
-      el.style.left = `${x}px`;
-      el.style.top = `${y}px`;
-      document.body.appendChild(el);
-      const dx = (Math.random() - 0.5) * 24;
-      el.animate(
-        [
-          { opacity: 0.9, transform: 'translate(0,0) scale(1) rotate(0deg)' },
-          { opacity: 0, transform: `translate(${dx}px, 22px) scale(0.2) rotate(120deg)` },
-        ],
-        { duration: 650, easing: 'ease-out' },
-      ).finished.finally(() => el.remove());
-    };
     const frame = () => {
       raf = 0;
       const e = last;
       if (!e) return;
-      root.style.setProperty('--px', String((e.clientX / window.innerWidth - 0.5) * 2));
-      root.style.setProperty('--py', String((e.clientY / window.innerHeight - 0.5) * 2));
       const t = (e.target as Element | null)?.closest?.('.tile') as HTMLElement | null;
       if (t !== tile) resetTile();
       if (t) {
@@ -95,11 +107,6 @@ export default function Decor() {
         t.style.setProperty('--rx', `${((0.5 - y) * 12).toFixed(2)}deg`);
         t.style.setProperty('--mx', `${(x * 100).toFixed(1)}%`);
         t.style.setProperty('--my', `${(y * 100).toFixed(1)}%`);
-      }
-      const now = performance.now();
-      if (now - lastTrail > 70) {
-        lastTrail = now;
-        sparkle(e.clientX, e.clientY);
       }
     };
     const onMove = (e: PointerEvent) => {
@@ -122,20 +129,19 @@ export default function Decor() {
       window.removeEventListener('pointermove', onMove);
       if (raf) cancelAnimationFrame(raf);
       root.classList.remove('sk-tilt');
-      root.style.removeProperty('--px');
-      root.style.removeProperty('--py');
     };
   }, []);
 
   return (
-    <div className="sk-crystals" aria-hidden="true">
-      {[0, 1, 2].map((n) => (
-        <div key={n} className="sk-crystal">
-          <i />
-          <i />
-          <i />
+    <>
+      <GlBackground />
+      <div ref={holo} className="sk-holo" aria-hidden="true">
+        <div className="sk-holo__body">
+          <div className="sk-holo__base" />
+          <div className="sk-holo__img" />
+          <div className="sk-holo__scan" />
         </div>
-      ))}
-    </div>
+      </div>
+    </>
   );
 }
