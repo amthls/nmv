@@ -31,6 +31,7 @@ import { useAuth } from '@/context/AuthContext';
 import SearchBox from '@/components/SearchBox';
 import { useRealtime } from '@/lib/realtime';
 import ThemeToggle from './common/ThemeToggle';
+import SkinPicker from './common/SkinPicker';
 import StoryCaseOpening from './random/StoryCaseOpening';
 import NotificationItem, { Notification, NOTIFICATION_URL } from './notifications/NotificationItem';
 
@@ -266,6 +267,7 @@ export default function Navbar() {
             </Link>
 
             <ThemeToggle className="hidden sm:block" />
+            <SkinPicker className="hidden sm:block" />
 
             {/* Random story case (CS2-style) */}
             <button
@@ -563,6 +565,7 @@ export default function Navbar() {
                 <Dices className="w-4 h-4" /> Hòm truyện ngẫu nhiên
               </button>
               <ThemeToggle />
+              <SkinPicker />
             </div>
 
             {!isAuthenticated && (
