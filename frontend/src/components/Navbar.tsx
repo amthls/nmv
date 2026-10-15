@@ -34,6 +34,8 @@ import { useRealtime } from '@/lib/realtime';
 import ThemeToggle from './common/ThemeToggle';
 import SkinPicker from './common/SkinPicker';
 import StoryCaseOpening from './random/StoryCaseOpening';
+import { ChibiSay } from '@/components/skin/aemeath/SkinChibi';
+import { CHIBI_LINES } from '@/components/skin/aemeath/chibiLines';
 import NotificationItem, { Notification, NOTIFICATION_URL } from './notifications/NotificationItem';
 
 const BELL_TABS = [
@@ -349,7 +351,8 @@ export default function Navbar() {
                     <div className="max-h-[380px] overflow-y-auto divide-y divide-white/5">
                       {notifications.length === 0 ? (
                         <div className="p-8 text-center">
-                          <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-3 text-brand-400">
+                          <ChibiSay pose="sit" mood="sleepy" size={72} line={CHIBI_LINES.notifyEmpty[0]} />
+                          <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-3 text-brand-400 [html.skin-aemeath_&]:hidden">
                             <Bell className="w-6 h-6" />
                           </div>
                           <p className="text-sm font-semibold text-white">

@@ -1,0 +1,61 @@
+/* Chibi Aemeath (phần tích hợp, xem Plan/aemeath-chibi.md). Mọi thứ chỉ hiện khi skin Aemeath bật vì chỉ
+   component SkinChibi/ChibiSay/ChibiCorner mới render các class này. */
+
+.sk-chibi-say { display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 0 auto 6px; }
+.sk-chibi-say__bubble {
+  position: relative; max-width: 260px; padding: 7px 13px; border-radius: 16px; font-size: 12px; line-height: 1.4; font-weight: 600;
+  color: rgb(var(--c-white)); background: var(--glass-bg-strong); border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+.sk-chibi-say__bubble::before {
+  content: ''; position: absolute; left: 50%; top: -5px; width: 9px; height: 9px; margin-left: -5px; transform: rotate(45deg);
+  background: var(--glass-bg-strong); border-left: 1px solid var(--glass-border); border-top: 1px solid var(--glass-border);
+}
+
+/* Hero trang truyện: góc dưới-phải, mờ nhẹ, không nhận chuột */
+.sk-chibi-hero { position: absolute; right: 14px; bottom: 6px; z-index: 1; opacity: 0.95; filter: drop-shadow(0 4px 10px rgb(0 0 0 / 0.35)); }
+@media (max-width: 767px) { .sk-chibi-hero { display: none; } }
+
+/* Thẻ "Chương tiếp" */
+.sk-chibi-next { position: relative; display: inline-flex; }
+.sk-chibi-next__pet { position: absolute; right: -6px; bottom: calc(100% - 14px); pointer-events: none; }
+
+/* Loader */
+.sk-chibi-loader { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.sk-chibi-loader__hop { animation: sk-chibi-hop 0.9s ease-in-out infinite; transform-origin: 50% 100%; }
+@keyframes sk-chibi-hop { 0%, 100% { transform: translateY(0) scale(1.04, 0.96); } 45% { transform: translateY(-14px) scale(0.98, 1.03); } }
+
+/* Góc màn hình (peek) */
+.sk-chibi-corner {
+  position: fixed; left: 10px; bottom: 0; z-index: 25; width: 96px; height: 96px; overflow: hidden;
+  display: none; transition: opacity 0.4s ease; opacity: 0; pointer-events: none;
+}
+@media (min-width: 640px) { html:not([data-reader]) .sk-chibi-corner { display: block; } }
+.sk-chibi-corner.is-seen { opacity: 1; pointer-events: auto; cursor: pointer; }
+.sk-chibi-corner__pet { position: absolute; left: 0; bottom: 0; transform: translateY(72%); transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1); }
+.sk-chibi-corner.is-up .sk-chibi-corner__pet { transform: translateY(8%); }
+.sk-chibi-corner.is-peek .sk-chibi-corner__pet { transform: translateY(40%); }
+.sk-chibi-bubble {
+  position: fixed; left: 110px; bottom: 34px; z-index: 26; max-width: 230px; padding: 8px 13px; border-radius: 16px; font-size: 12px; font-weight: 600; line-height: 1.4;
+  color: rgb(var(--c-white)); background: var(--glass-bg-strong); border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow);
+  animation: sk-chibi-pop 0.3s ease-out both; pointer-events: none;
+}
+@keyframes sk-chibi-pop { from { opacity: 0; transform: translateY(6px) scale(0.95); } }
+@media (max-width: 639px) { .sk-chibi-bubble { display: none; } }
+
+/* Toast thông báo mới (chibi bên trái) */
+.sk-chibi-toast {
+  position: fixed; left: 50%; top: 76px; z-index: 120; transform: translateX(-50%); display: flex; align-items: center; gap: 6px;
+  max-width: min(92vw, 360px); padding: 6px 16px 6px 6px; border-radius: 18px; font-size: 12px; font-weight: 600;
+  color: rgb(var(--c-white)); background: var(--glass-bg-strong); border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow);
+  animation: sk-chibi-drop 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes sk-chibi-drop { from { opacity: 0; transform: translate(-50%, -12px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .sk-chibi-loader__hop, .sk-chibi-bubble, .sk-chibi-toast { animation: none; }
+  .sk-chibi-corner__pet { transition: none; }
+}
+
+/* 404: chibi thay sprite tĩnh và câu thoại cũ */
+.sk-404:has(.sk-chibi-say) .sk-404__sprite, .sk-404:has(.sk-chibi-say) > p.text-xs { display: none !important; }

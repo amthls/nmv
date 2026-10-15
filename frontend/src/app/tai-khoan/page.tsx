@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from '@/components/common/Link';
 import ImageQualityPicker from '@/components/common/ImageQualityPicker';
 import { SkinChoices } from '@/components/common/SkinPicker';
+import ChibiSettings from '@/components/skin/aemeath/ChibiSettings';
 import { useMiniplayerEnabled } from '@/lib/miniplayerPref';
 import {
   User,
@@ -768,6 +769,7 @@ export default function UserProfilePage() {
               <SkinChoices />
               <p className="mt-2 text-[10.5px] text-gray-500">Đổi màu và hình nền toàn trang, độc lập với sáng/tối. Lưu ngay trên trình duyệt này.</p>
             </div>
+            <ChibiSettings />
             <div>
               <label className="block text-xs font-semibold text-gray-300 mb-3">Giao diện nền (Theme)</label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

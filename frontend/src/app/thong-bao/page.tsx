@@ -3,6 +3,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bell, CheckCheck, Loader2, LogIn, Megaphone, Settings2, Trash2 } from 'lucide-react';
+import { ChibiSay } from '@/components/skin/aemeath/SkinChibi';
+import { CHIBI_LINES } from '@/components/skin/aemeath/chibiLines';
 import PageLoader from '@/components/common/PageLoader';
 import SearchInput from '@/components/common/SearchInput';
 import NotificationItem, { Notification, NOTIFICATION_URL } from '@/components/notifications/NotificationItem';
@@ -201,7 +203,8 @@ export default function NotificationsPage() {
           <div className={`rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden divide-y divide-white/5 min-h-40 transition-opacity ${loading || typing ? 'opacity-60' : ''}`}>
             {items.length === 0 && !loading && (
               <div className="p-12 text-center">
-                <Bell className="w-8 h-8 mx-auto text-gray-600 mb-3" />
+                <ChibiSay pose="sit" mood="sleepy" size={96} line={CHIBI_LINES.notifyEmpty[1]} />
+                <Bell className="w-8 h-8 mx-auto text-gray-600 mb-3 [html.skin-aemeath_&]:hidden" />
                 <p className="text-sm font-semibold text-white">Không có thông báo nào</p>
                 <p className="text-xs text-gray-400 mt-1">{query ? 'Không có thông báo nào khớp từ khóa.' : 'Thử chọn mục khác, hoặc bỏ lọc "Chưa đọc".'}</p>
               </div>
