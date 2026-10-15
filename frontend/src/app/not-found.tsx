@@ -10,7 +10,7 @@ export default function NotFound() {
       {/* Sprite chỉ hiện khi skin Aemeath bật (html.skin-aemeath .sk-404__sprite) */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/backgrounds/aemeath/sprite.webp" alt="" className="sk-404__sprite hidden [html.skin-aemeath_&]:block" loading="lazy" />
-      <ChibiSay pose="hi" mood="surprised" size={120} line="Ơ, lạc đường rồi sao? Để mình dẫn bạn về nhé!" />
+      <ChibiSay plane line="Ơ, lạc đường rồi sao? Để mình dẫn bạn về nhé!" />
       <Skin404Crystal />
       <h1 className="text-5xl font-extrabold">404</h1>
       <p className="text-gray-300">Trang bạn tìm không tồn tại hoặc đã được chuyển đi.</p>

@@ -29,3 +29,7 @@ không che chữ/nút, mỗi màn hình tối đa 1-2 chibi. Chỉ khi `<html cl
 ## Nguồn ảnh
 4 sticker động "Aemeath Sticker Slice of Life 13_01-04" từ Wuthering Waves Wiki (Fandom), bản quyền Kuro Games, lưu ở `frontend/public/backgrounds/aemeath/chibi/`.
 `AeChibi` ánh xạ mood/pose sang sticker (hoặc prop `sticker`); `outfit` bỏ qua, `AeCat` trả null. Tuỳ chọn trợ lý lưu `novelhub-ae-outfit` (random|hi|smug|music|sleepy), tắt chibi `novelhub-ae-chibi=off`.
+
+## Bổ sung huy hiệu (feat/aemeath-chibi-badges)
+- [x] `AeBadge` (badge-wave/wink/heart/map.webp, tròn 32-96px): toast = wave, cuối chương = heart, tìm không thấy/lịch sử = map ("Để mình tìm đường giúp nhé~"), 404 = plane.webp (giữ dòng ©KURO GAMES), tài khoản chọn được cả 4 sticker + 4 huy hiệu.
+- Nguồn: badge do chủ dự án cung cấp; plane từ bài "New Aemeath chibi" (X @WuWa_Verse1, 2026-02-19); bản quyền Kuro Games.

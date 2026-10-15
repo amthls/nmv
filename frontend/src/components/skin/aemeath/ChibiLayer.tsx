@@ -93,7 +93,7 @@ function Toast() {
   if (!shown) return null;
   return (
     <div className="sk-chibi-toast" role="status">
-      <SkinChibi free pose="hi" mood="wink" seed="toast" size={44} />
+      <SkinChibi badge="wave" size={40} />
       <span>{shown}</span>
     </div>
   );
