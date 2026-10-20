@@ -473,12 +473,19 @@ export default function UserProfilePage() {
       </div>
 
       {/* 2. Tabs */}
-      <div className="flex gap-1.5 p-1 rounded-2xl bg-white/5 border border-white/10 overflow-x-auto w-full sm:w-fit">
+      <div className="flex gap-1.5 p-1 rounded-2xl bg-white/5 border border-white/10 overflow-x-auto scrollbar-none w-full sm:w-fit">
         {tabs.map(({ id, label, icon: Icon, admin }) => (
           <button
             key={id}
             onClick={() => setActiveTab(id)}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap ${
+            ref={activeTab === id ? (el) => {
+              // keep the chosen tab inside the scrolling row (horizontal only, never moves the page)
+              const row = el?.parentElement;
+              if (!el || !row) return;
+              if (el.offsetLeft < row.scrollLeft) row.scrollLeft = el.offsetLeft - 8;
+              else if (el.offsetLeft + el.offsetWidth > row.scrollLeft + row.clientWidth) row.scrollLeft = el.offsetLeft + el.offsetWidth - row.clientWidth + 8;
+            } : undefined}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap shrink-0 ${
               activeTab === id
                 ? admin ? 'bg-rose-600 text-snow shadow-md' : 'bg-brand-600 text-snow shadow-md shadow-brand-500/25'
                 : admin ? 'text-rose-300/80 hover:text-rose-200' : 'text-gray-400 hover:text-white'
