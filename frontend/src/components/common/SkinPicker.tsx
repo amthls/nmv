@@ -74,7 +74,7 @@ export default function SkinPicker({ className = '' }: { className?: string }) {
         aria-label="Chọn skin giao diện"
         aria-expanded={open}
         title="Skin giao diện"
-        className="w-9 h-9 rounded-lg flex items-center justify-center bg-white/[0.04] border border-white/[0.08] hover:bg-brand-500/20 hover:border-brand-400/50 text-gray-300 hover:text-white transition"
+        className="w-9 h-9 touch:w-11 touch:h-11 rounded-lg flex items-center justify-center bg-white/[0.04] border border-white/[0.08] hover:bg-brand-500/20 hover:border-brand-400/50 text-gray-300 hover:text-white transition"
       >
         <SkinIcon lucide={Palette} ae="sparkles" className="w-[18px] h-[18px]" />
       </button>

@@ -41,7 +41,7 @@ export default function NotificationItem({ n, onOpen, compact }: { n: Notificati
     <button
       type="button"
       onClick={() => onOpen(n)}
-      className={`w-full text-left ${compact ? 'p-3.5 px-4' : 'p-4'} flex items-start gap-3 transition hover:bg-white/5 ${
+      className={`w-full text-left ${compact ? 'p-3.5 px-4' : 'p-4'} touch:min-h-11 flex items-start gap-3 transition hover:bg-white/5 ${
         !n.is_read ? 'bg-brand-500/10' : ''
       } ${n.type === 'broadcast' ? 'border-l-2 border-amber-400/70' : ''}`}
     >

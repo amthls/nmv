@@ -24,31 +24,31 @@ export default function Footer() {
 
         <div>
           <h4 className="text-sm font-semibold text-white mb-3">Khám phá</h4>
-          <ul className="space-y-2 text-xs">
-            <li><Link href="/kham-pha?type=novel&sort=updated" className="hover:text-brand-400 transition">Light Novel mới</Link></li>
-            <li><Link href="/kham-pha?type=manga&sort=views" className="hover:text-brand-400 transition">Manga hot</Link></li>
-            <li><Link href="/nhieu-nguoi-xem" className="hover:text-brand-400 transition">Bảng xếp hạng</Link></li>
-            <li><Link href="/kham-pha" className="hover:text-brand-400 transition">Tất cả thể loại</Link></li>
+          <ul className="space-y-2 touch:space-y-0 text-xs">
+            <li><Link href="/kham-pha?type=novel&sort=updated" className="hover:text-brand-400 transition touch:inline-block touch:py-3">Light Novel mới</Link></li>
+            <li><Link href="/kham-pha?type=manga&sort=views" className="hover:text-brand-400 transition touch:inline-block touch:py-3">Manga hot</Link></li>
+            <li><Link href="/nhieu-nguoi-xem" className="hover:text-brand-400 transition touch:inline-block touch:py-3">Bảng xếp hạng</Link></li>
+            <li><Link href="/kham-pha" className="hover:text-brand-400 transition touch:inline-block touch:py-3">Tất cả thể loại</Link></li>
           </ul>
         </div>
 
         <div>
           <h4 className="text-sm font-semibold text-white mb-3">Cộng đồng & Dịch giả</h4>
-          <ul className="space-y-2 text-xs">
-            <li><Link href="/nhom-dich" className="hover:text-brand-400 transition">Danh sách nhóm dịch</Link></li>
-            <li><Link href="/dang-truyen" className="hover:text-brand-400 transition">Đăng tải truyện</Link></li>
-            <li><Link href="/fandom" className="hover:text-brand-400 transition">Fandom / Blog</Link></li>
-            <li><Link href="/thong-tin#noi-quy" className="hover:text-brand-400 transition">Nội quy cộng đồng</Link></li>
+          <ul className="space-y-2 touch:space-y-0 text-xs">
+            <li><Link href="/nhom-dich" className="hover:text-brand-400 transition touch:inline-block touch:py-3">Danh sách nhóm dịch</Link></li>
+            <li><Link href="/dang-truyen" className="hover:text-brand-400 transition touch:inline-block touch:py-3">Đăng tải truyện</Link></li>
+            <li><Link href="/fandom" className="hover:text-brand-400 transition touch:inline-block touch:py-3">Fandom / Blog</Link></li>
+            <li><Link href="/thong-tin#noi-quy" className="hover:text-brand-400 transition touch:inline-block touch:py-3">Nội quy cộng đồng</Link></li>
           </ul>
         </div>
 
         <div>
           <h4 className="text-sm font-semibold text-white mb-3">Hỗ trợ & Điều khoản</h4>
-          <ul className="space-y-2 text-xs">
-            <li><Link href="/thong-tin#dieu-khoan" className="hover:text-brand-400 transition">Điều khoản sử dụng</Link></li>
-            <li><Link href="/thong-tin#chinh-sach" className="hover:text-brand-400 transition">Chính sách bảo mật</Link></li>
-            <li><Link href="/bao-cao" className="hover:text-brand-400 transition">Báo cáo vi phạm</Link></li>
-            <li><Link href="/thong-tin#lien-he" className="hover:text-brand-400 transition">Liên hệ quản trị</Link></li>
+          <ul className="space-y-2 touch:space-y-0 text-xs">
+            <li><Link href="/thong-tin#dieu-khoan" className="hover:text-brand-400 transition touch:inline-block touch:py-3">Điều khoản sử dụng</Link></li>
+            <li><Link href="/thong-tin#chinh-sach" className="hover:text-brand-400 transition touch:inline-block touch:py-3">Chính sách bảo mật</Link></li>
+            <li><Link href="/bao-cao" className="hover:text-brand-400 transition touch:inline-block touch:py-3">Báo cáo vi phạm</Link></li>
+            <li><Link href="/thong-tin#lien-he" className="hover:text-brand-400 transition touch:inline-block touch:py-3">Liên hệ quản trị</Link></li>
           </ul>
         </div>
       </div>

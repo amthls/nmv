@@ -122,7 +122,7 @@ export default function FilterSidebar({
         </div>
         <button
           onClick={onReset}
-          className="flex items-center gap-1 min-h-11 sm:min-h-0 px-1 text-sm sm:text-xs text-gray-400 hover:text-brand-400 transition"
+          className="flex items-center gap-1 min-h-11 sm:min-h-0 touch:!min-h-11 px-1 text-sm sm:text-xs text-gray-400 hover:text-brand-400 transition"
           title="Đặt lại toàn bộ bộ lọc"
         >
           <RotateCcw className="w-3.5 h-3.5" />

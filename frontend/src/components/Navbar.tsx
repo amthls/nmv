@@ -54,7 +54,7 @@ const NAV_LINKS = [
 
 // One look for every icon action in the bar: borderless, same size
 const ICON_BUTTON =
-  'relative w-11 h-11 lg:w-9 lg:h-9 rounded-lg flex items-center justify-center bg-white/[0.04] border border-white/[0.08] text-gray-300 hover:text-white hover:bg-white/[0.09] hover:border-white/20 hover:-translate-y-px transition';
+  'relative w-11 h-11 lg:w-9 lg:h-9 touch:!w-11 touch:!h-11 rounded-lg flex items-center justify-center bg-white/[0.04] border border-white/[0.08] text-gray-300 hover:text-white hover:bg-white/[0.09] hover:border-white/20 hover:-translate-y-px transition';
 const BADGE =
   'absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-gradient-to-r from-rose-500 to-pink-500 text-[9px] font-bold text-snow flex items-center justify-center ring-2 ring-surface';
 
@@ -235,7 +235,7 @@ export default function Navbar() {
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center gap-2 sm:gap-3 lg:gap-5">
 
           {/* Logo & Brand (also the way back to the home page) */}
-          <Link href="/" className="flex items-center gap-3 shrink-0 group" aria-label="NovelHub - Trang chủ">
+          <Link href="/" className="flex items-center gap-3 shrink-0 group touch:py-2" aria-label="NovelHub - Trang chủ">
             <div className="relative w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 via-cyan-500 to-emerald-400 flex items-center justify-center text-snow shadow-sm shadow-cyan-500/30 group-hover:rotate-[-8deg] group-hover:scale-105 transition-transform">
               <BookOpen className="w-4 h-4" strokeWidth={2.4} />
             </div>
@@ -255,7 +255,7 @@ export default function Navbar() {
                   key={href}
                   href={href}
                   aria-current={active ? 'page' : undefined}
-                  className={`px-3 py-1 rounded-md transition ${
+                  className={`px-3 py-1 touch:!py-3 rounded-md transition ${
                     active
                       ? 'bg-gradient-to-r from-brand-600 via-brand-500 to-fuchsia-500 text-snow shadow-md shadow-fuchsia-500/20'
                       : 'text-gray-300 hover:text-white hover:bg-white/[0.06]'
@@ -272,7 +272,7 @@ export default function Navbar() {
             inputRef={searchInputRef}
             onOpenChange={setIsSearchOpen}
             className="flex-1 max-w-md ml-auto hidden lg:block"
-            inputClassName="w-full h-9 pl-10 pr-16 rounded-lg bg-white/[0.06] border border-white/10 text-sm text-white placeholder-gray-400 focus:outline-none focus:bg-white/[0.1] focus:border-brand-400 focus:ring-2 focus:ring-brand-500/30 transition"
+            inputClassName="w-full h-9 touch:h-11 pl-10 pr-16 rounded-lg bg-white/[0.06] border border-white/10 text-sm text-white placeholder-gray-400 focus:outline-none focus:bg-white/[0.1] focus:border-brand-400 focus:ring-2 focus:ring-brand-500/30 transition"
             hint={
               <kbd className="absolute right-3 top-1/2 -translate-y-1/2 px-1.5 py-0.5 rounded-md border border-white/10 bg-white/[0.05] text-[10px] font-semibold text-gray-400 pointer-events-none group-focus-within:opacity-0 transition">
                 Ctrl K
@@ -353,7 +353,7 @@ export default function Navbar() {
                         <button
                           type="button"
                           onClick={handleMarkAllAsRead}
-                          className="text-[11px] text-brand-400 hover:text-brand-300 font-medium transition cursor-pointer"
+                          className="text-[11px] text-brand-400 hover:text-brand-300 font-medium transition cursor-pointer touch:py-3 touch:px-2"
                         >
                           Đã đọc tất cả
                         </button>
@@ -367,7 +367,7 @@ export default function Navbar() {
                           role="tab"
                           aria-selected={bellTab === t.id}
                           onClick={() => switchBellTab(t.id)}
-                          className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition ${
+                          className={`px-2.5 py-1 touch:!py-3 rounded-full text-[11px] font-semibold transition ${
                             bellTab === t.id ? 'bg-white text-surface' : 'text-gray-400 hover:text-white hover:bg-white/5'
                           }`}
                         >
@@ -395,7 +395,7 @@ export default function Navbar() {
                     <Link
                       href="/thong-bao"
                       onClick={() => setIsNotificationOpen(false)}
-                      className="block text-center text-xs font-semibold text-brand-400 hover:text-brand-300 py-2.5 border-t border-white/10 hover:bg-white/5 transition"
+                      className="block text-center text-xs font-semibold text-brand-400 hover:text-brand-300 py-2.5 touch:py-3.5 border-t border-white/10 hover:bg-white/5 transition"
                     >
                       Xem tất cả và cài đặt
                     </Link>
@@ -408,7 +408,7 @@ export default function Navbar() {
             {/* Utilities menu: apps-grid icon, the one accent-colored button */}
             <button
               onClick={() => setIsQuickActionOpen(true)}
-              className="group hidden lg:flex w-9 h-9 rounded-lg bg-gradient-to-br from-fuchsia-500 via-brand-500 to-cyan-400 text-snow flex items-center justify-center shadow-md shadow-fuchsia-500/30 hover:brightness-110 hover:-translate-y-px transition"
+              className="group hidden lg:flex w-9 h-9 touch:!w-11 touch:!h-11 rounded-lg bg-gradient-to-br from-fuchsia-500 via-brand-500 to-cyan-400 text-snow flex items-center justify-center shadow-md shadow-fuchsia-500/30 hover:brightness-110 hover:-translate-y-px transition"
               title="Tiện ích"
               aria-label="Mở menu tiện ích"
             >
@@ -420,7 +420,7 @@ export default function Navbar() {
               <div className="relative hidden lg:block" ref={userMenuRef}>
                 <button
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                  className="block p-[6px] lg:p-[2px] rounded-full bg-gradient-to-br from-brand-400 via-fuchsia-400 to-cyan-300 hover:scale-105 transition"
+                  className="block p-[6px] lg:p-[2px] touch:!p-[6px] rounded-full bg-gradient-to-br from-brand-400 via-fuchsia-400 to-cyan-300 hover:scale-105 transition"
                   title={user.display_name || user.username}
                   aria-label="Menu tài khoản"
                 >
@@ -482,7 +482,7 @@ export default function Navbar() {
                         <Link
                           href="/dang-truyen"
                           onClick={() => setIsUserMenuOpen(false)}
-                          className="flex items-center gap-2.5 px-4 py-1.5 text-xs text-gray-300 hover:text-white hover:bg-white/5 transition"
+                          className="flex items-center gap-2.5 px-4 py-1.5 touch:py-3 text-xs text-gray-300 hover:text-white hover:bg-white/5 transition"
                         >
                           <FilePlus className="w-4 h-4 text-emerald-400" />
                           <span>Đăng truyện mới</span>
@@ -490,7 +490,7 @@ export default function Navbar() {
                         <Link
                           href="/dang-chuong"
                           onClick={() => setIsUserMenuOpen(false)}
-                          className="flex items-center gap-2.5 px-4 py-1.5 text-xs text-gray-300 hover:text-white hover:bg-white/5 transition"
+                          className="flex items-center gap-2.5 px-4 py-1.5 touch:py-3 text-xs text-gray-300 hover:text-white hover:bg-white/5 transition"
                         >
                           <BookOpen className="w-4 h-4 text-indigo-400" />
                           <span>Đăng chương mới</span>
@@ -498,7 +498,7 @@ export default function Navbar() {
                         <Link
                           href="/ws"
                           onClick={() => setIsUserMenuOpen(false)}
-                          className="flex items-center gap-2.5 px-4 py-1.5 text-xs text-gray-300 hover:text-white hover:bg-white/5 transition"
+                          className="flex items-center gap-2.5 px-4 py-1.5 touch:py-3 text-xs text-gray-300 hover:text-white hover:bg-white/5 transition"
                         >
                           <FileText className="w-4 h-4 text-amber-400" />
                           <span>Workspace (nháp của tôi)</span>
@@ -512,7 +512,7 @@ export default function Navbar() {
                         <Link
                           href="/bao-cao"
                           onClick={() => setIsUserMenuOpen(false)}
-                          className="flex items-center gap-2.5 px-4 py-1.5 text-xs text-gray-300 hover:text-white hover:bg-white/5 transition"
+                          className="flex items-center gap-2.5 px-4 py-1.5 touch:py-3 text-xs text-gray-300 hover:text-white hover:bg-white/5 transition"
                         >
                           <Flag className="w-4 h-4 text-amber-400" />
                           <span>Báo cáo vi phạm</span>
@@ -520,7 +520,7 @@ export default function Navbar() {
                         <Link
                           href="/da-go"
                           onClick={() => setIsUserMenuOpen(false)}
-                          className="flex items-center gap-2.5 px-4 py-1.5 text-xs text-gray-300 hover:text-white hover:bg-white/5 transition"
+                          className="flex items-center gap-2.5 px-4 py-1.5 touch:py-3 text-xs text-gray-300 hover:text-white hover:bg-white/5 transition"
                         >
                           <EyeOff className="w-4 h-4 text-rose-400" />
                           <span>Nội dung đã gỡ</span>
@@ -547,7 +547,7 @@ export default function Navbar() {
             ) : (
               <button
                 onClick={() => openAuthModal('login')}
-                className="hidden lg:flex items-center gap-2 h-9 px-3.5 rounded-lg text-sm font-medium text-gray-100 hover:text-white bg-white/[0.06] border border-white/10 hover:bg-white/10 transition"
+                className="hidden lg:flex items-center gap-2 h-9 touch:h-11 px-3.5 rounded-lg text-sm font-medium text-gray-100 hover:text-white bg-white/[0.06] border border-white/10 hover:bg-white/10 transition"
               >
                 <LogIn className="w-4 h-4" />
                 <span>Đăng nhập</span>
