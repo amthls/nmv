@@ -22,6 +22,7 @@ import {
   ArrowDown,
   Download,
   Library,
+  List,
   EyeOff,
   RotateCcw
 } from 'lucide-react';
@@ -396,7 +397,7 @@ export default function StoryDetailPage() {
   const isNovel = story.story_type === 'novel';
 
   return (
-    <div className="min-h-screen pb-20">
+    <div className="min-h-screen pb-20 max-lg:pb-[calc(4rem+env(safe-area-inset-bottom)+1rem)]">
       
       {/* 1. Hero header: story art in a card aligned with the content below, like the home banner */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
@@ -535,7 +536,7 @@ export default function StoryDetailPage() {
               {/* Actions: 1) reading  2) reader tools */}
               <div className="pt-3 space-y-3 md:mt-auto">{/* bottom of the cover, whatever the title length */}
                 {/* 1. Reading */}
-                <div className="flex flex-wrap items-center justify-center md:justify-start gap-2.5 max-lg:fixed max-lg:inset-x-0 max-lg:z-30 max-lg:px-4 max-lg:bottom-[calc(var(--bottom-nav-h,0px)+env(safe-area-inset-bottom)+0.75rem)] max-lg:[&>a]:flex-1 max-lg:[&>a]:justify-center max-lg:[&>a]:min-h-12 max-lg:[&>a]:text-base">
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-2.5 max-lg:hidden">
                   {lastReadChapter ? (
                     <Link
                       href={`/truyen/${story.slug}/${lastReadChapter.slug}${lastReadChapter.hash}`}
@@ -576,32 +577,32 @@ export default function StoryDetailPage() {
 
                 {/* 2. Reader tools, one compact toolbar */}
                 <div className="flex justify-center md:justify-start">
-                  <div className="inline-flex items-stretch rounded-xl bg-black/30 border border-white/10 backdrop-blur-sm divide-x divide-white/10 overflow-hidden text-xs font-semibold">
+                  <div className="max-lg:grid max-lg:grid-flow-col max-lg:auto-cols-fr max-lg:w-full lg:inline-flex items-stretch rounded-xl bg-black/30 border border-white/10 backdrop-blur-sm divide-x divide-white/10 overflow-hidden text-xs font-semibold">
                     <button
                       type="button"
                       onClick={handleToggleFollow}
-                      className={`px-3.5 py-2 flex items-center gap-1.5 transition select-none active:scale-95 ${
+                      className={`px-3.5 py-2 flex items-center gap-1.5 whitespace-nowrap max-lg:flex-col max-lg:justify-center max-lg:gap-1 max-lg:px-1 max-lg:py-2.5 transition select-none active:scale-95 ${
                         isFollowing ? 'text-rose-300 bg-rose-600/20 hover:bg-rose-600/30' : 'text-gray-300 hover:text-white hover:bg-white/10'
                       }`}
                       title={isFollowing ? 'Bỏ theo dõi truyện này' : 'Theo dõi truyện để nhận thông báo'}
                     >
                       <Heart className={`w-3.5 h-3.5 ${isFollowing ? 'fill-rose-500 text-rose-500' : ''}`} />
-                      <span>{isFollowing ? 'Đang theo dõi' : 'Theo dõi'}</span>
+                      <span><span className="sm:hidden">{isFollowing ? 'Đã theo dõi' : 'Theo dõi'}</span><span className="max-sm:hidden">{isFollowing ? 'Đang theo dõi' : 'Theo dõi'}</span></span>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => (isAuthenticated ? setIsAlbumOpen(true) : openAuthModal('login'))}
-                      className="px-3.5 py-2 flex items-center gap-1.5 text-gray-300 hover:text-white hover:bg-white/10 transition"
+                      className="px-3.5 py-2 flex items-center gap-1.5 whitespace-nowrap max-lg:flex-col max-lg:justify-center max-lg:gap-1 max-lg:px-1 max-lg:py-2.5 text-gray-300 hover:text-white hover:bg-white/10 transition"
                       title="Lưu truyện vào một hoặc nhiều album của bạn"
                     >
                       <Library className="w-3.5 h-3.5 text-brand-400" />
-                      <span>Lưu vào album</span>
+                      <span><span className="sm:hidden">Album</span><span className="max-sm:hidden">Lưu vào album</span></span>
                     </button>
 
                     <Link
                       href={`/fandom?story=${story.slug}`}
-                      className="px-3.5 py-2 flex items-center gap-1.5 text-gray-300 hover:text-white hover:bg-white/10 transition"
+                      className="px-3.5 py-2 flex items-center gap-1.5 whitespace-nowrap max-lg:flex-col max-lg:justify-center max-lg:gap-1 max-lg:px-1 max-lg:py-2.5 text-gray-300 hover:text-white hover:bg-white/10 transition"
                       title="Review, fanart và thảo luận về truyện này trên Fandom"
                     >
                       <MessageSquare className="w-3.5 h-3.5 text-cyan-400" />
@@ -612,7 +613,7 @@ export default function StoryDetailPage() {
                       <button
                         type="button"
                         onClick={() => setIsDownloadOpen(true)}
-                        className="px-3.5 py-2 flex items-center gap-1.5 text-gray-300 hover:text-white hover:bg-white/10 transition"
+                        className="px-3.5 py-2 flex items-center gap-1.5 whitespace-nowrap max-lg:flex-col max-lg:justify-center max-lg:gap-1 max-lg:px-1 max-lg:py-2.5 text-gray-300 hover:text-white hover:bg-white/10 transition"
                         title="Tải truyện dạng EPUB hoặc PDF"
                       >
                         <Download className="w-3.5 h-3.5 text-brand-400" />
@@ -623,7 +624,7 @@ export default function StoryDetailPage() {
                     <ReportButton
                       targetType="story"
                       targetId={story.id}
-                      className="px-3.5 py-2 flex items-center gap-1.5 text-gray-400 hover:text-amber-400 hover:bg-white/10 transition"
+                      className="px-3.5 py-2 flex items-center gap-1.5 whitespace-nowrap max-lg:flex-col max-lg:justify-center max-lg:gap-1 max-lg:px-1 max-lg:py-2.5 text-gray-400 hover:text-amber-400 hover:bg-white/10 transition"
                     />
                   </div>
                 </div>
@@ -724,7 +725,7 @@ export default function StoryDetailPage() {
         </section>
 
         {/* Volumes & Chapters List */}
-        <section className="space-y-6">
+        <section id="muc-luc" className="space-y-6 scroll-mt-20">
           <div className="flex items-center justify-between pb-3 border-b border-white/10">
             <div className="flex items-center gap-2">
               <Layers className="w-5 h-5 text-brand-400" />
@@ -890,6 +891,45 @@ export default function StoryDetailPage() {
 
       {story && (
         <DownloadModal isOpen={isDownloadOpen} onClose={() => setIsDownloadOpen(false)} storySlug={story.slug} story={story} />
+      )}
+      {/* Mobile sticky action bar (replaces the bottom nav on this page): follow, table of contents, read */}
+      {(lastReadChapter || story.first_chapter) && (
+        <div className="lg:hidden fixed inset-x-0 bottom-0 z-30 bg-surface border-t border-black/10 dark:border-white/10 pb-[env(safe-area-inset-bottom)]">
+          <div className="h-16 px-4 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleToggleFollow}
+              aria-label={isFollowing ? 'Bỏ theo dõi truyện này' : 'Theo dõi truyện'}
+              aria-pressed={isFollowing}
+              className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl text-gray-300 active:scale-95 transition select-none"
+            >
+              <Heart className={`w-6 h-6 ${isFollowing ? 'fill-rose-500 text-rose-500' : ''}`} />
+            </button>
+            <button
+              type="button"
+              onClick={() => document.getElementById('muc-luc')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+              aria-label="Mục lục chương"
+              className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl text-gray-300 active:scale-95 transition select-none"
+            >
+              <List className="w-6 h-6" />
+            </button>
+            <Link
+              href={
+                lastReadChapter
+                  ? `/truyen/${story.slug}/${lastReadChapter.slug}${lastReadChapter.hash}`
+                  : `/truyen/${story.slug}/${story.first_chapter.slug}`
+              }
+              className="flex-1 min-w-0 min-h-12 rounded-xl bg-brand-600 active:bg-brand-500 text-snow font-bold text-base flex items-center justify-center gap-2 transition"
+            >
+              <BookOpen className="w-5 h-5" />
+              <span className="whitespace-nowrap">
+                {lastReadChapter
+                  ? <>Đọc tiếp{lastReadChapter.chapter_number !== undefined && lastReadChapter.chapter_number !== null ? <> · <span className="max-[359px]:hidden">Chương</span><span className="min-[360px]:hidden">Ch.</span> {Number(lastReadChapter.chapter_number)}</> : ''}</>
+                  : 'Đọc từ đầu'}
+              </span>
+            </Link>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -14,7 +14,7 @@
 
 /* Hero trang truyện: góc dưới-phải, mờ nhẹ, không nhận chuột */
 .sk-chibi-hero { position: absolute; right: 14px; bottom: 6px; z-index: 1; opacity: 0.95; filter: drop-shadow(0 4px 10px rgb(0 0 0 / 0.35)); }
-@media (max-width: 767px) { .sk-chibi-hero { display: none; } }
+@media (max-width: 1023px) { .sk-chibi-hero { display: none; } }
 
 /* Thẻ "Chương tiếp" */
 .sk-chibi-next { position: relative; display: inline-flex; }
