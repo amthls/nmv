@@ -147,13 +147,15 @@ export default function ContinueReadingMiniplayer() {
   if (pathname === chapterHref) return null; // already reading this exact chapter, no bubble needed
 
   const tier = tierForHeight(size.height);
+  // the story page has its own sticky action bar on phones
+  const onStoryPage = /^\/truyen\/[^/]+\/?$/.test(pathname || '');
 
   const goToChapter = (slug?: string | null) => {
     if (slug) router.push(`/truyen/${session.storySlug}/${slug}`);
   };
 
   return (
-    <>
+    <div className={onStoryPage ? 'max-lg:hidden' : 'contents'}>
       {ghostPreset && (
         <div
           className="fixed right-6 z-30 rounded-2xl border-2 border-dashed border-brand-400/60 bg-brand-400/10 flex items-end justify-center pb-2 pointer-events-none"
@@ -227,7 +229,7 @@ export default function ContinueReadingMiniplayer() {
           <p className="mt-2 text-[10.5px] text-gray-400">Bật lại bất cứ lúc nào ở Tài khoản → Cài đặt đọc truyện.</p>
         </div>
       )}
-    </>
+    </div>
   );
 }
 

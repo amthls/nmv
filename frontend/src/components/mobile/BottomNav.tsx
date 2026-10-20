@@ -17,8 +17,8 @@ const ITEMS = [
 
 const ITEM = 'relative flex-1 min-h-11 flex flex-col items-center justify-center gap-0.5 text-xs transition active:scale-95';
 
-// The chapter reader has its own bars, and the workspace is a desktop-style tool
-const isHiddenPath = (p: string) => /^\/truyen\/[^/]+\/[^/]+/.test(p) || p === '/ws' || p.startsWith('/ws/');
+// The chapter reader has its own bars, the story page has its own sticky action bar, and the workspace is a desktop-style tool
+const isHiddenPath = (p: string) => /^\/truyen\/[^/]+\/?/.test(p) || p === '/ws' || p.startsWith('/ws/');
 
 export default function BottomNav() {
   const pathname = usePathname() || '/';
