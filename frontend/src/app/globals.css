@@ -39,6 +39,8 @@ html { scroll-behavior: smooth; -webkit-tap-highlight-color: transparent; }
   :root { --bottom-nav-h: 64px; }
   :root.no-bnav { --bottom-nav-h: 0px; }
   body { padding-bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom)); }
+  /* safety net only: the real causes of sideways overflow are fixed at the source */
+  html, body { overflow-x: clip; }
 }
 /* floating things (toast, miniplayer, reader bar): 12px above the nav, or above the safe area from lg */
 .bottom-above-nav { bottom: calc(var(--bottom-nav-h) + env(safe-area-inset-bottom) + 12px); }

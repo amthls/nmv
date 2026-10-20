@@ -321,7 +321,7 @@ export default function Navbar() {
             )}
 
             {isAuthenticated && (
-              <div className="relative" ref={notificationRef}>
+              <div className="relative hidden lg:block" ref={notificationRef}>
                 <button
                   type="button"
                   onClick={toggleBell}
@@ -408,7 +408,7 @@ export default function Navbar() {
             {/* Utilities menu: apps-grid icon, the one accent-colored button */}
             <button
               onClick={() => setIsQuickActionOpen(true)}
-              className="group w-11 h-11 lg:w-9 lg:h-9 rounded-lg bg-gradient-to-br from-fuchsia-500 via-brand-500 to-cyan-400 text-snow flex items-center justify-center shadow-md shadow-fuchsia-500/30 hover:brightness-110 hover:-translate-y-px transition"
+              className="group hidden lg:flex w-9 h-9 rounded-lg bg-gradient-to-br from-fuchsia-500 via-brand-500 to-cyan-400 text-snow flex items-center justify-center shadow-md shadow-fuchsia-500/30 hover:brightness-110 hover:-translate-y-px transition"
               title="Tiện ích"
               aria-label="Mở menu tiện ích"
             >
@@ -417,7 +417,7 @@ export default function Navbar() {
 
             {/* Authenticated User Menu or Login/Register Buttons */}
             {isAuthenticated && user ? (
-              <div className="relative" ref={userMenuRef}>
+              <div className="relative hidden lg:block" ref={userMenuRef}>
                 <button
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                   className="block p-[6px] lg:p-[2px] rounded-full bg-gradient-to-br from-brand-400 via-fuchsia-400 to-cyan-300 hover:scale-105 transition"
@@ -547,7 +547,7 @@ export default function Navbar() {
             ) : (
               <button
                 onClick={() => openAuthModal('login')}
-                className="flex items-center gap-2 h-11 lg:h-9 px-3.5 rounded-lg text-sm font-medium text-gray-100 hover:text-white bg-white/[0.06] border border-white/10 hover:bg-white/10 transition"
+                className="hidden lg:flex items-center gap-2 h-9 px-3.5 rounded-lg text-sm font-medium text-gray-100 hover:text-white bg-white/[0.06] border border-white/10 hover:bg-white/10 transition"
               >
                 <LogIn className="w-4 h-4" />
                 <span>Đăng nhập</span>
@@ -590,6 +590,16 @@ export default function Navbar() {
                 {label}
               </Link>
             ))}
+
+            <button
+              onClick={() => {
+                setIsMobileMenuOpen(false);
+                setIsQuickActionOpen(true);
+              }}
+              className="w-full flex items-center gap-2 min-h-11 px-3 rounded-lg text-base text-gray-300 hover:text-white hover:bg-white/5"
+            >
+              <LayoutGrid className="w-4 h-4" /> Tiện ích
+            </button>
 
             {/* Hidden from the bar on small screens */}
             <div className="pt-2 mt-2 border-t border-white/10 flex items-center gap-2 lg:hidden">

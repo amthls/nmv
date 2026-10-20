@@ -185,8 +185,8 @@ export default function NotificationsPage() {
         </div>
       )}
 
-      <div className="grid lg:grid-cols-[1fr_320px] gap-6 items-start">
-        <section>
+      <div className="grid grid-cols-[minmax(0,1fr)] lg:grid-cols-[1fr_320px] gap-6 items-start">
+        <section className="min-w-0">
           <SearchInput className="mb-3" value={search} onChange={setSearch} loading={typing || loading} placeholder="Tìm trong thông báo..." />
           <div className="flex gap-2 overflow-x-auto pb-3 -mx-1 px-1">
             {FILTERS.map((f) => (
