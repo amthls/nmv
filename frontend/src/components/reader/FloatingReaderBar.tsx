@@ -21,6 +21,7 @@ interface FloatingReaderBarProps {
   nextChapter: { slug: string; title: string; chapter_number: number } | null;
   onOpenChapterList: () => void;
   onOpenSettings: () => void;
+  hiddenByTap?: boolean;
 }
 
 export default function FloatingReaderBar({
@@ -32,6 +33,7 @@ export default function FloatingReaderBar({
   nextChapter,
   onOpenChapterList,
   onOpenSettings,
+  hiddenByTap = false,
 }: FloatingReaderBarProps) {
   const router = useRouter();
   const [scrollProgress, setScrollProgress] = useState(0);
@@ -65,8 +67,8 @@ export default function FloatingReaderBar({
   return (
     <aside 
       aria-label="Thanh điều hướng đọc truyện"
-      className={`fixed bottom-5 left-1/2 -translate-x-1/2 z-40 transition-all duration-300 ${
-        isVisible ? 'translate-y-0 opacity-100' : 'translate-y-16 opacity-0'
+      className={`fixed bottom-[calc(env(safe-area-inset-bottom)+1.25rem)] lg:bottom-5 left-1/2 -translate-x-1/2 z-40 transition-all duration-300 ${
+        isVisible && !hiddenByTap ? 'translate-y-0 opacity-100' : 'translate-y-24 opacity-0 pointer-events-none'
       }`}
     >
       <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-surface/90 hover:bg-surface/95 backdrop-blur-xl border border-white/15 shadow-2xl shadow-black/80 ring-1 ring-white/5 transition-all">
@@ -75,7 +77,7 @@ export default function FloatingReaderBar({
         <button
           onClick={() => prevChapter && router.push(`/truyen/${storySlug}/${prevChapter.slug}`)}
           disabled={!prevChapter}
-          className="w-8 h-8 rounded-full flex items-center justify-center text-gray-300 hover:text-white hover:bg-white/10 disabled:opacity-25 disabled:hover:bg-transparent disabled:cursor-not-allowed transition"
+          className="w-11 h-11 lg:w-8 lg:h-8 rounded-full flex items-center justify-center text-gray-300 hover:text-white hover:bg-white/10 disabled:opacity-25 disabled:hover:bg-transparent disabled:cursor-not-allowed transition"
           title={prevChapter ? `Chương trước: ${prevChapter.title} (Phím A)` : 'Đã ở chương đầu tiên'}
         >
           <ChevronLeft className="w-4 h-4" />
@@ -84,7 +86,7 @@ export default function FloatingReaderBar({
         {/* 2. Nút Trung Tâm: Hiển thị chương hiện tại + Click mở danh mục chương */}
         <button
           onClick={onOpenChapterList}
-          className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-brand-500/40 text-xs text-white font-semibold transition group max-w-[180px] sm:max-w-xs"
+          className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-brand-500/40 text-xs text-white font-semibold transition group max-w-[110px] min-h-11 lg:min-h-0 sm:max-w-xs"
           title="Nhấn để mở danh mục chọn chương"
         >
           <List className="w-3.5 h-3.5 text-brand-400 group-hover:scale-110 transition-transform shrink-0" />
@@ -106,7 +108,7 @@ export default function FloatingReaderBar({
         <button
           onClick={() => nextChapter && router.push(`/truyen/${storySlug}/${nextChapter.slug}`)}
           disabled={!nextChapter}
-          className="w-8 h-8 rounded-full flex items-center justify-center text-gray-300 hover:text-white hover:bg-white/10 disabled:opacity-25 disabled:hover:bg-transparent disabled:cursor-not-allowed transition"
+          className="w-11 h-11 lg:w-8 lg:h-8 rounded-full flex items-center justify-center text-gray-300 hover:text-white hover:bg-white/10 disabled:opacity-25 disabled:hover:bg-transparent disabled:cursor-not-allowed transition"
           title={nextChapter ? `Chương tiếp: ${nextChapter.title} (Phím D)` : 'Đã ở chương mới nhất'}
         >
           <ChevronRight className="w-4 h-4" />
@@ -117,7 +119,7 @@ export default function FloatingReaderBar({
         {/* 4. Nút Mở Cài Đặt Nhanh */}
         <button
           onClick={onOpenSettings}
-          className="w-8 h-8 rounded-full flex items-center justify-center text-gray-300 hover:text-brand-400 hover:bg-white/10 transition"
+          className="w-11 h-11 lg:w-8 lg:h-8 rounded-full flex items-center justify-center text-gray-300 hover:text-brand-400 hover:bg-white/10 transition"
           title="Cài đặt giao diện đọc (Font, cỡ chữ, màu nền)"
         >
           <Settings className="w-3.5 h-3.5" />
@@ -126,7 +128,7 @@ export default function FloatingReaderBar({
         {/* 5. Nút Lên Đầu Trang */}
         <button
           onClick={scrollToTop}
-          className="w-8 h-8 rounded-full flex items-center justify-center text-gray-300 hover:text-white hover:bg-white/10 transition"
+          className="w-11 h-11 lg:w-8 lg:h-8 rounded-full flex items-center justify-center text-gray-300 hover:text-white hover:bg-white/10 transition"
           title="Cuộn lên đầu trang"
         >
           <ArrowUp className="w-3.5 h-3.5" />

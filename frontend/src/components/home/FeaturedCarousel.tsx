@@ -114,7 +114,7 @@ export default function FeaturedCarousel({ stories, gallery = [] }: { stories: S
       onPointerUp={onPointerUp}
       onClickCapture={onClickCapture}
     >
-      <h2 className="text-lg sm:text-xl font-semibold tracking-tight text-white">Truyện nổi bật tuần</h2>
+      <h2 className="text-lg sm:text-xl font-semibold leading-snug tracking-tight text-white">Truyện nổi bật tuần</h2>
 
       <div className="relative isolate mt-3 overflow-hidden rounded-xl border border-white/10 bg-surface-3 shadow-[0_24px_60px_-28px_rgba(0,0,0,0.8)]">
       {/* Story art fills the card */}
@@ -167,9 +167,9 @@ export default function FeaturedCarousel({ stories, gallery = [] }: { stories: S
                   </h3>
 
                   {story.tags && story.tags.length > 0 && (
-                    <div className="rise rise-2 mt-2 sm:mt-3 flex flex-wrap gap-1 max-h-[22px] sm:max-h-none overflow-hidden">
+                    <div className="rise rise-2 mt-2 sm:mt-3 flex flex-wrap gap-1 max-h-[26px] sm:max-h-none overflow-hidden">
                       {story.tags.slice(0, 6).map((t) => (
-                        <span key={t.id} className="px-1.5 py-[3px] rounded-[3px] bg-black/45 backdrop-blur-sm [text-shadow:none] text-[10px] font-bold uppercase tracking-wide text-gray-200">
+                        <span key={t.id} className="px-1.5 py-[3px] rounded-[3px] bg-black/45 backdrop-blur-sm [text-shadow:none] text-xs sm:text-[10px] font-bold uppercase tracking-wide text-gray-200">
                           {t.name}
                         </span>
                       ))}
@@ -180,7 +180,7 @@ export default function FeaturedCarousel({ stories, gallery = [] }: { stories: S
                     {stripHtml(story.synopsis)}
                   </p>
 
-                  <p className="rise rise-4 mt-auto pr-32 sm:pr-44 text-sm sm:text-base font-medium italic text-white truncate">
+                  <p className="rise rise-4 mt-auto pr-0 [@media(hover:hover)]:pr-32 sm:pr-44 text-sm sm:text-base font-medium italic text-white truncate">
                     {story.author_name || 'Chưa rõ tác giả'}
                   </p>
                 </div>
@@ -190,10 +190,10 @@ export default function FeaturedCarousel({ stories, gallery = [] }: { stories: S
 
           {/* Arrows, bottom-right like MangaDex. The hidden bar is the autoplay timer. */}
           <div className="absolute bottom-0 right-0 z-10 flex items-center gap-1 sm:gap-2">
-            <button type="button" onClick={prev} aria-label="Truyện trước (phím ←)" className="w-9 h-9 sm:w-10 sm:h-10 grid place-items-center rounded-full text-white hover:bg-white/10 transition active:scale-95">
+            <button type="button" onClick={prev} aria-label="Truyện trước (phím ←)" className="w-11 h-11 sm:w-10 sm:h-10 grid place-items-center rounded-full text-white hover:bg-white/10 transition active:scale-95 [@media(hover:none)]:hidden">
               <ChevronLeft className="w-6 h-6" />
             </button>
-            <button type="button" onClick={next} aria-label="Truyện tiếp theo (phím →)" className="w-9 h-9 sm:w-10 sm:h-10 grid place-items-center rounded-full text-white hover:bg-white/10 transition active:scale-95">
+            <button type="button" onClick={next} aria-label="Truyện tiếp theo (phím →)" className="w-11 h-11 sm:w-10 sm:h-10 grid place-items-center rounded-full text-white hover:bg-white/10 transition active:scale-95 [@media(hover:none)]:hidden">
               <ChevronRight className="w-6 h-6" />
             </button>
             <span

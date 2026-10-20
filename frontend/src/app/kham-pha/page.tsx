@@ -246,14 +246,15 @@ function ExplorePageContent() {
               setSearchQuery(e.target.value);
               setCurrentPage(1);
             }}
-            className="w-full h-10 pl-10 pr-4 rounded-xl bg-white/5 border border-white/[0.04] text-sm text-white placeholder-gray-400 focus:outline-none focus:border-brand-500 transition"
+            className="w-full h-11 sm:h-10 pl-10 pr-11 rounded-xl bg-white/5 border border-white/[0.04] text-base sm:text-sm text-white placeholder-gray-400 focus:outline-none focus:border-brand-500 transition"
           />
           <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           {(isLoading || searchQuery !== debouncedQuery) && <div className="nh-loadbar -bottom-1.5 rounded-full" role="progressbar" aria-label="Đang tìm" />}
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+              className="absolute right-0 top-1/2 -translate-y-1/2 w-11 h-11 grid place-items-center text-gray-400 hover:text-white"
+              aria-label="Xóa từ khóa"
             >
               <X className="w-4 h-4" />
             </button>
@@ -287,21 +288,21 @@ function ExplorePageContent() {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setIsMobileFilterOpen(true)}
-                className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow text-xs font-semibold shadow-md transition"
+                className="lg:hidden flex items-center gap-1.5 min-h-11 px-3.5 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-snow text-sm font-semibold shadow-md transition"
               >
                 <Filter className="w-3.5 h-3.5" />
                 <span>Bộ lọc {activeFiltersCount > 0 && `(${activeFiltersCount})`}</span>
               </button>
 
-              <span className="text-xs text-gray-400">
+              <span className="text-sm sm:text-xs text-gray-400">
                 Tìm thấy <strong className="text-white font-bold">{pagination.total}</strong> bộ truyện
               </span>
             </div>
 
             {/* Right: Sort By & View Mode */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 w-full sm:w-auto">
               {/* Sort Dropdown */}
-              <div className="flex items-center gap-1.5 text-xs text-gray-400">
+              <div className="flex items-center gap-1.5 text-xs text-gray-400 min-w-0 flex-1 sm:flex-none">
                 <ArrowUpDown className="w-3.5 h-3.5 text-brand-400 hidden sm:inline" />
                 <span className="hidden sm:inline">Sắp xếp:</span>
                 <select
@@ -310,7 +311,7 @@ function ExplorePageContent() {
                     setSortBy(e.target.value);
                     setCurrentPage(1);
                   }}
-                  className="h-8 px-2.5 rounded-lg bg-glass border border-white/[0.04] text-xs text-white focus:outline-none focus:border-brand-500"
+                  className="h-11 sm:h-8 w-full sm:w-auto min-w-0 px-2.5 rounded-lg bg-glass border border-white/[0.04] text-base sm:text-xs text-white focus:outline-none focus:border-brand-500"
                 >
                   <option value="relevance">Liên quan / Mới cập nhật</option>
                   <option value="updated">Mới cập nhật</option>
@@ -325,7 +326,7 @@ function ExplorePageContent() {
               <div className="flex items-center gap-1 p-1 rounded-lg bg-black/40 border border-white/[0.03]">
                 <button
                   onClick={() => setViewMode('grid')}
-                  className={`p-1.5 rounded-md transition ${
+                  className={`w-11 h-11 sm:w-auto sm:h-auto grid place-items-center sm:block p-1.5 rounded-md transition ${
                     viewMode === 'grid'
                       ? 'bg-brand-600 text-snow shadow-sm'
                       : 'text-gray-400 hover:text-white'
@@ -336,7 +337,7 @@ function ExplorePageContent() {
                 </button>
                 <button
                   onClick={() => setViewMode('list')}
-                  className={`p-1.5 rounded-md transition ${
+                  className={`w-11 h-11 sm:w-auto sm:h-auto grid place-items-center sm:block p-1.5 rounded-md transition ${
                     viewMode === 'list'
                       ? 'bg-brand-600 text-snow shadow-sm'
                       : 'text-gray-400 hover:text-white'
@@ -394,7 +395,7 @@ function ExplorePageContent() {
           {/* Stories Result List/Grid */}
           <div ref={gridBox}>
           {isLoading ? (
-            <div className={`grid gap-4 ${viewMode === 'grid' ? 'gap-y-6' : 'grid-cols-1'}`} style={viewMode === 'grid' ? columnsStyle(columns) : undefined}>
+            <div className={`grid gap-3 sm:gap-4 ${viewMode === 'grid' ? 'gap-y-5 sm:gap-y-6' : 'grid-cols-1'}`} style={viewMode === 'grid' ? columnsStyle(columns) : undefined}>
               {[...Array(viewMode === 'grid' ? columns * 2 : 4)].map((_, i) => (
                 <div key={i} className="animate-pulse space-y-2">
                   <div className="aspect-[2/3] bg-white/5 rounded-xl w-full" />
@@ -433,7 +434,7 @@ function ExplorePageContent() {
               </button>
             </div>
           ) : (
-            <div className={`grid gap-4 ${viewMode === 'grid' ? 'gap-y-6' : 'grid-cols-1'}`} style={viewMode === 'grid' ? columnsStyle(columns) : undefined}>
+            <div className={`grid gap-3 sm:gap-4 ${viewMode === 'grid' ? 'gap-y-5 sm:gap-y-6' : 'grid-cols-1'}`} style={viewMode === 'grid' ? columnsStyle(columns) : undefined}>
               {stories.map(story => (
                 viewMode === 'grid' ? (
                   <StoryCardGrid key={story.id} story={story} />

@@ -185,7 +185,7 @@ export default function MangaReader({ pages, nextHref, prevHref, local = false }
       {/* Display settings */}
       {/* zero-height sticky rows: the controls float over the pages without pushing them down */}
       <div className="sticky top-14 z-30 h-0 flex justify-end pointer-events-none">
-        <div className="pointer-events-auto m-2 flex items-center gap-1.5">
+        <div className="pointer-events-auto m-2 flex items-center gap-1.5 max-lg:fixed max-lg:m-0 max-lg:left-4 max-lg:bottom-[calc(env(safe-area-inset-bottom)+5.5rem)]">
           {paged && !atEnd && (
             <span className="px-2.5 py-1.5 rounded-lg bg-black/60 text-snow text-xs font-semibold tabular-nums">
               {views[view].map((i) => i + 1).join('–')} / {pages.length}
@@ -194,10 +194,10 @@ export default function MangaReader({ pages, nextHref, prevHref, local = false }
           <button
             type="button"
             onClick={() => setPanel((v) => !v)}
-            className="px-2.5 py-1.5 rounded-lg bg-black/60 hover:bg-black/75 text-snow text-xs font-semibold flex items-center gap-1.5"
+            className="px-2.5 py-1.5 max-lg:w-11 max-lg:h-11 max-lg:justify-center rounded-lg bg-black/60 hover:bg-black/75 text-snow text-xs font-semibold flex items-center gap-1.5"
             aria-expanded={panel}
           >
-            <SlidersHorizontal className="w-3.5 h-3.5" /> Kiểu đọc
+            <SlidersHorizontal className="w-3.5 h-3.5 max-lg:w-5 max-lg:h-5" /> <span className="max-lg:sr-only">Kiểu đọc</span>
           </button>
         </div>
       </div>
@@ -245,7 +245,7 @@ export default function MangaReader({ pages, nextHref, prevHref, local = false }
           className={`mx-auto flex flex-col items-center ${s.fit === 'none' ? 'overflow-x-auto' : ''}`}
           style={{ maxWidth: s.mode === 'wide' ? '100%' : s.stripWidth, rowGap: s.gap }}
         >
-          {pages.map((_, i) => renderPage(i, false, i < 3))}
+          {pages.map((_, i) => renderPage(i, false, i < 2))}
         </div>
       ) : atEnd ? (
         <div className="flex flex-col items-center justify-center gap-4 text-center" style={{ minHeight: FIT_H }}>

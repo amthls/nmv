@@ -48,7 +48,7 @@ export default function StoryCardList({ story }: { story: Story }) {
       <div className="dark flex gap-4 sm:gap-5 p-3 sm:p-4 [text-shadow:0_1px_8px_rgba(0,0,0,0.45)]">
         <div className="relative w-[92px] sm:w-[128px] shrink-0 aspect-[2/3] overflow-hidden rounded-[3px] shadow-[0_14px_30px_-12px_rgba(0,0,0,0.7)]">
           <SmartImage src={story.cover_image_url} alt={story.title} className="w-full h-full object-cover transition-transform duration-700 ease-silk group-hover:scale-105" />
-          <span className={`absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-[2px] text-[9px] font-extrabold uppercase tracking-wider text-snow [text-shadow:none] ${
+          <span className={`absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-[2px] text-xs sm:text-[9px] font-extrabold uppercase tracking-wider text-snow [text-shadow:none] ${
             isNovel ? 'bg-sky-600/90' : 'bg-rose-600/90'
           }`}>
             {isNovel ? 'Novel' : 'Manga'}
@@ -56,7 +56,7 @@ export default function StoryCardList({ story }: { story: Story }) {
         </div>
 
         <div className="flex-1 min-w-0 flex flex-col">
-          <div className="flex items-center gap-2 text-[11px] text-gray-300">
+          <div className="flex items-center gap-2 text-xs sm:text-[11px] text-gray-300">
             <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[story.status] || STATUS_DOT.ongoing}`} />
             <span>{STATUS_LABEL[story.status] || STATUS_LABEL.ongoing}</span>
             {story.original_language && <span className="uppercase text-gray-400">· {story.original_language}</span>}
@@ -70,7 +70,7 @@ export default function StoryCardList({ story }: { story: Story }) {
           {story.tags && story.tags.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1 max-h-[21px] sm:max-h-[44px] overflow-hidden">
               {story.tags.slice(0, 8).map((tag) => (
-                <span key={tag.id} className="px-1.5 py-[3px] rounded-[3px] bg-black/45 backdrop-blur-sm text-[10px] font-bold uppercase tracking-wide text-gray-200 [text-shadow:none]">
+                <span key={tag.id} className="px-1.5 py-[3px] rounded-[3px] bg-black/45 backdrop-blur-sm text-xs sm:text-[10px] font-bold uppercase tracking-wide text-gray-200 [text-shadow:none]">
                   {tag.name}
                 </span>
               ))}

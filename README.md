@@ -484,6 +484,15 @@ Ngoài sáng/tối còn có **skin**, một chiều riêng độc lập (`defaul
 - Chibi Aemeath (`components/skin/aemeath/{SkinChibi,ChibiLayer,ChibiSettings,chibiPrefs,chibiLines}`, `chibi/index.tsx`, lazy, chỉ skin Aemeath): hero trang truyện, trạng thái trống/404/không tìm thấy (có câu thoại), thông báo trống + toast thông báo mới, cuối chương, loader, chibi ló góc dưới-trái (ẩn <640px và ở trang đọc), tuỳ chọn ở `/tai-khoan` (`novelhub-ae-outfit`, `novelhub-ae-chibi=off`). Ảnh: 4 sticker "Aemeath Sticker Slice of Life 13_01-04", Wuthering Waves Wiki (Fandom), bản quyền Kuro Games; 4 huy hiệu `badge-*.webp` do chủ dự án cung cấp (`AeBadge`); `plane.webp` (thẻ 404) từ bài "New Aemeath chibi" (X @WuWa_Verse1, 2026-02-19), giữ nguyên dòng bản quyền; 6 thẻ `fan-*.webp` là fan art từ Pinterest, chỉ dùng cục bộ phi thương mại, bản quyền thuộc tác giả (`AeArt`). Chi tiết `Plan/aemeath-chibi.md`.
 - Quy ước, token màu và phân vùng: `Plan/aemeath-skin.md`.
 
+### Giao diện điện thoại
+
+Dưới `lg` (1024px) có bố cục riêng cho điện thoại; desktop không đổi. Chi tiết và chuẩn chung: `Plan/mobile-ui.md`.
+- Thanh điều hướng dưới `components/mobile/BottomNav.tsx` (Trang chủ, Khám phá, Tủ truyện, Thông báo, Tôi); ẩn ở trang đọc chương và `/ws*` bằng class `html.no-bnav`.
+- Biến CSS `--bottom-nav-h` (64px dưới `lg`, 0 nếu không có nav) và class `.bottom-above-nav`, `.pb-safe` trong `globals.css`: thứ gì nổi ở đáy (toast, miniplayer, nút đọc) phải dùng chúng để không bị nav hoặc tai thỏ/thanh home che.
+- `viewport-fit=cover` (`export const viewport` trong `layout.tsx`); input ≥ 16px dưới `sm` để iOS không tự phóng to.
+- `future.hoverOnlyWhenSupported` trong `tailwind.config.ts`: mọi `hover:` chỉ áp khi có chuột; trên cảm ứng dùng `active:`.
+- Chuẩn: nút ≥ 44px, chữ ≥ 12px (tên truyện 14px), header ẩn khi cuộn xuống, trang truyện có nút đọc dính đáy, trình đọc chữ chạm giữa màn hình để ẩn/hiện thanh.
+
 ## ✨ Chức năng & Trang giao diện
 
 | Đường dẫn | Chức năng |
