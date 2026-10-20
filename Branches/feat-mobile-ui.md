@@ -3,7 +3,7 @@
 - **Mục tiêu:** Bố cục riêng cho điện thoại: thanh điều hướng dưới, chữ/nút đủ lớn, safe-area, trình đọc
 - **Tạo từ:** `origin/main` @ 1452e23, ngày 2026-10-20
 - **Trạng thái:** xong, chờ merge
-- **PR:** (chưa mở)
+- **PR:** https://github.com/amthls/nmv/pull/137
 - **Plan:** Plan/mobile-ui.md (mục D của Plan/ui-overhaul.md)
 
 ## Thay đổi
