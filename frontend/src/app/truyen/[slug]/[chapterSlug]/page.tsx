@@ -160,12 +160,15 @@ export default function ChapterReaderPage() {
 
     let current = 0;
     let saved = -1;
-    const handleScroll = () => {
+    let raf = 0;
+    const measure = () => {
+      raf = 0;
       const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
       const percent = totalHeight > 0 ? Math.min(100, Math.max(0, Math.round((window.scrollY / totalHeight) * 100))) : 0;
       current = percent;
       updateScrollPercent(chapterId, percent);
     };
+    const handleScroll = () => { if (!raf) raf = requestAnimationFrame(measure); };
     // The reading position for "Đọc tiếp": every 15 s if it moved, and when the tab is hidden or the chapter left
     const save = () => {
       if (current === saved) return;
@@ -174,7 +177,7 @@ export default function ChapterReaderPage() {
     };
     const onHidden = () => { if (document.visibilityState === 'hidden') save(); };
 
-    handleScroll();
+    measure();
     saved = current; // opening the chapter is recorded already
     window.addEventListener('scroll', handleScroll, { passive: true });
     document.addEventListener('visibilitychange', onHidden);
@@ -183,6 +186,7 @@ export default function ChapterReaderPage() {
       save();
       clearInterval(timer);
       window.removeEventListener('scroll', handleScroll);
+      if (raf) cancelAnimationFrame(raf);
       document.removeEventListener('visibilitychange', onHidden);
     };
   }, [chapterData?.id, updateScrollPercent, isAuthenticated, authFetch]);
