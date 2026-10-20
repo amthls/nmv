@@ -32,6 +32,8 @@ const DEFAULT_PRESET = PRESETS[1]; // 'card'
 
 const MIN_WIDTH = 220;
 const MIN_HEIGHT = 56;
+// stays above the mobile bottom nav (var is 0 from lg)
+const MINI_BOTTOM = 'calc(var(--bottom-nav-h) + env(safe-area-inset-bottom) + 24px)';
 const STORAGE_KEY = 'novelhub_miniplayer_preset';
 
 // Height thresholds that decide which of the 3 tiers is shown - crossing one while
@@ -45,7 +47,7 @@ function tierForHeight(height: number): 'compact' | 'card' | 'reader' {
 function clampToViewport(size: Size): Size {
   if (typeof window === 'undefined') return size;
   const maxW = Math.max(MIN_WIDTH, window.innerWidth - 24);
-  const maxH = Math.max(MIN_HEIGHT, window.innerHeight - 24);
+  const maxH = Math.max(MIN_HEIGHT, window.innerHeight - (window.innerWidth < 1024 ? 140 : 24));
   return { width: Math.min(size.width, maxW), height: Math.min(size.height, maxH) };
 }
 
@@ -154,8 +156,8 @@ export default function ContinueReadingMiniplayer() {
     <>
       {ghostPreset && (
         <div
-          className="fixed bottom-6 right-6 z-30 rounded-2xl border-2 border-dashed border-brand-400/60 bg-brand-400/10 flex items-end justify-center pb-2 pointer-events-none"
-          style={{ width: ghostPreset.size.width, height: ghostPreset.size.height }}
+          className="fixed right-6 z-30 rounded-2xl border-2 border-dashed border-brand-400/60 bg-brand-400/10 flex items-end justify-center pb-2 pointer-events-none"
+          style={{ width: ghostPreset.size.width, height: ghostPreset.size.height, bottom: MINI_BOTTOM }}
         >
           <span className="text-[10px] font-bold text-brand-200 bg-black/60 px-2 py-0.5 rounded-full">
             {ghostPreset.label}
@@ -164,8 +166,8 @@ export default function ContinueReadingMiniplayer() {
       )}
 
       <div
-        className="fixed bottom-6 right-6 z-40 rounded-2xl bg-zinc-900/95 border border-white/15 shadow-2xl shadow-black/60 backdrop-blur-md overflow-hidden select-none"
-        style={{ width: size.width, height: size.height }}
+        className="fixed right-6 z-40 rounded-2xl bg-zinc-900/95 border border-white/15 shadow-2xl shadow-black/60 backdrop-blur-md overflow-hidden select-none"
+        style={{ width: size.width, height: size.height, bottom: MINI_BOTTOM }}
       >
         <div
           onPointerDown={handlePointerDown}
@@ -210,7 +212,7 @@ export default function ContinueReadingMiniplayer() {
       {menu && (
         <div
           className="fixed right-6 z-40 w-56 rounded-xl border border-white/15 bg-zinc-900/95 p-3 shadow-2xl backdrop-blur-md"
-          style={{ bottom: size.height + 36 }}
+          style={{ bottom: `calc(var(--bottom-nav-h) + env(safe-area-inset-bottom) + ${size.height + 36}px)` }}
         >
           <label className="flex cursor-pointer items-center justify-between gap-3 text-xs font-semibold text-white">
             Hiện popup đọc tiếp

@@ -194,12 +194,12 @@ function FandomContent() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left: feeds + stories */}
         <aside className="lg:col-span-3 space-y-4">
-          <nav className="glass-panel border border-white/10 rounded-2xl p-2 flex lg:flex-col gap-1 overflow-x-auto">
+          <nav className="glass-panel border border-white/10 rounded-2xl p-2 flex lg:flex-col gap-1 overflow-x-auto scrollbar-none">
             {feeds.map(({ id, label, icon: Icon, count }) => (
               <button
                 key={id}
                 onClick={() => pickFeed(id)}
-                className={`flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition ${
+                className={`shrink-0 min-h-11 lg:min-h-0 flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition ${
                   feed === id ? 'bg-brand-600/25 text-white' : 'text-gray-300 hover:bg-white/5'
                 }`}
               >
@@ -263,12 +263,12 @@ function FandomContent() {
 
           {/* Categories */}
           {feed === 'all' && (
-            <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+            <div className="flex gap-1.5 overflow-x-auto scrollbar-none pb-1 -mx-4 px-4 sm:-mx-1 sm:px-1">
               {[{ id: 'all', label: 'Tất cả', emoji: '✨', cls: '' }, ...CATEGORIES].map((c) => (
                 <button
                   key={c.id}
                   onClick={() => setCategory(c.id)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition ${
+                  className={`shrink-0 min-h-11 sm:min-h-0 px-3 py-1.5 rounded-full text-sm sm:text-xs font-semibold whitespace-nowrap border transition ${
                     category === c.id ? (c.cls || 'bg-white/15 text-white border-white/20') : 'border-white/10 text-gray-400 hover:text-white hover:bg-white/5'
                   }`}
                 >

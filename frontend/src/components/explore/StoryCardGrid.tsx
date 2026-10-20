@@ -70,18 +70,18 @@ export default function StoryCardGrid({ story, rank, meta = 'stats' }: { story: 
   return (
     <Link
       href={story.continue_slug ? `/truyen/${story.slug}/${story.continue_slug}` : `/truyen/${story.slug}`}
-      className="group block min-w-0"
+      className="group block min-w-0 transition-transform duration-150 active:scale-[0.97] [@media(hover:hover)]:active:scale-100"
       title={story.title}
     >
       <div className="tile aspect-[2/3]">
         <SmartImage src={story.cover_image_url} alt={story.title} className="tile__img w-full h-full object-cover" />
-        <span className={`absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-[3px] text-[9.5px] font-extrabold uppercase tracking-wider text-snow shadow ${
+        <span className={`absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-[3px] text-xs sm:text-[9.5px] font-extrabold uppercase tracking-wider text-snow shadow ${
           isNovel ? 'bg-sky-600/90' : 'bg-rose-600/90'
         }`}>
           {isNovel ? 'Novel' : 'Manga'}
         </span>
         {story.continue_slug && (
-          <span className="absolute bottom-1.5 left-1.5 flex items-center gap-1 px-1.5 py-0.5 rounded-[3px] bg-black/70 text-[10px] font-bold text-white">
+          <span className="absolute bottom-1.5 left-1.5 flex items-center gap-1 px-1.5 py-0.5 rounded-[3px] bg-black/70 text-xs sm:text-[10px] font-bold text-white">
             <PlayCircle className="w-3 h-3" /> Đọc tiếp
           </span>
         )}
@@ -92,11 +92,11 @@ export default function StoryCardGrid({ story, rank, meta = 'stats' }: { story: 
         )}
       </div>
 
-      <h3 className="mt-2 min-h-[2.75em] text-[13px] font-semibold leading-snug text-white line-clamp-2 group-hover:text-brand-500 transition-colors">
+      <h3 className="mt-2 min-h-[2.75em] text-sm sm:text-[13px] font-semibold leading-snug text-white line-clamp-2 group-hover:text-brand-500 transition-colors">
         {story.title}
       </h3>
 
-      <div className="mt-1 h-4 flex items-center gap-2 text-[11px] leading-4 text-gray-400 min-w-0">
+      <div className="mt-1 h-4 flex items-center gap-2 text-xs sm:text-[11px] leading-4 text-gray-400 min-w-0">
         {meta === 'updated' ? (
           <>
             <span className="truncate">{story.latest_chapter?.title || 'Đang cập nhật'}</span>

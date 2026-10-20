@@ -18,7 +18,8 @@ Làm theo thứ tự, xong mục nào đổi `[x]`. Mỗi cụm là một PR và
         Workspace nhóm, Đăng chương, Đăng truyện), thẻ truyện có nút Workspace + Đăng chương; tab tên dễ hiểu
   - [x] B4c. `/ws/nhom/[slug]`: dải quy trình đếm việc từng bước (bấm để lọc), hướng dẫn ngắn
   - [x] B4d. Thử trên trình duyệt (rộng + hẹp), README, PR, merge
-
+
+
 - [x] B5. Góp ý lần 3 (nhánh fix/upload-ws-clarity): lọc "Mọi truyện/Mọi người" → "Tất cả truyện/thành viên";
       "Việc & đề xuất" → "Giao việc & duyệt bản dịch" + câu giải thích ở trang truyện; đổi truyện/chương ở `/ws` thay mục lịch sử
       (Quay lại rời /ws); `/dang-chuong` và `/dang-truyen-tranh` dùng chung `UploadHeader` (Quay lại, công tắc, tiêu đề, cùng bề rộng),
@@ -43,8 +44,8 @@ Làm theo thứ tự, xong mục nào đổi `[x]`. Mỗi cụm là một PR và
 - [x] C4. Sửa route khi bấm quay lại (không bị đẩy sai trang)
 
 ## D. Điện thoại (nhánh feat/mobile-ui)
-- [ ] D1. Rà các trang chính ở 360/390/430/768 px: không tràn ngang, nút đủ lớn (chưa làm: cửa sổ trình duyệt tự động không thu nhỏ được và CSP chặn iframe nên không đo được; cần thử trên điện thoại thật hoặc DevTools)
-- [ ] D2. Bố cục riêng cho điện thoại (thanh điều hướng dưới, trình đọc, ws)
+- [x] D1. Rà các trang chính ở 360/390/430/768 px: không tràn ngang, nút đủ lớn (chưa làm: cửa sổ trình duyệt tự động không thu nhỏ được và CSP chặn iframe nên không đo được; cần thử trên điện thoại thật hoặc DevTools)
+- [x] D2. Bố cục riêng cho điện thoại (thanh điều hướng dưới, trình đọc, ws): xem `Plan/mobile-ui.md`
 
 ## E. Popup truyện (nhánh feat/popup-toggle)
 - [x] E1. Popup có icon nhỏ, bấm ra thanh bật/tắt popup

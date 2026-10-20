@@ -40,7 +40,7 @@ export default function StoryRail({ title, subtitle, href, stories, meta, ranked
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between gap-4">
-        <h2 className="text-lg sm:text-xl font-semibold tracking-tight text-white">
+        <h2 className="text-lg sm:text-xl font-semibold leading-snug tracking-tight text-white">
           {href ? (
             <Link href={href} className="group inline-flex items-center gap-1 hover:text-brand-500 transition-colors">
               {title}
@@ -49,7 +49,7 @@ export default function StoryRail({ title, subtitle, href, stories, meta, ranked
           ) : title}
           {subtitle && <span className="block text-xs font-normal text-gray-400 mt-0.5">{subtitle}</span>}
         </h2>
-        <div className="flex items-center gap-1.5">
+        <div className="hidden [@media(hover:hover)]:flex items-center gap-1.5">
           <button
             type="button"
             onClick={() => scrollBy(-1)}
@@ -74,10 +74,10 @@ export default function StoryRail({ title, subtitle, href, stories, meta, ranked
       <div
         ref={scroller}
         onScroll={updateEdges}
-        className="scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0 flex gap-3 sm:gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-2"
+        className="scrollbar-none -mx-4 px-4 scroll-px-4 sm:mx-0 sm:px-0 sm:scroll-px-0 flex gap-3 sm:gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-2"
       >
         {stories.map((story, idx) => (
-          <div key={story.id} className="snap-start shrink-0 w-[132px] sm:w-[156px] lg:w-[172px]" onClickCapture={onItemClick ? () => onItemClick(story) : undefined}>
+          <div key={story.id} className="snap-start shrink-0 w-[136px] sm:w-[156px] lg:w-[172px]" onClickCapture={onItemClick ? () => onItemClick(story) : undefined}>
             <StoryCardGrid story={story} meta={meta} rank={ranked ? idx + 1 : undefined} />
           </div>
         ))}

@@ -101,6 +101,8 @@ const themedHues = Object.fromEntries(
 
 const config: Config = {
   darkMode: 'class',
+  // hover: styles only on devices with a real mouse, so taps on phones don't leave things stuck hovered
+  future: { hoverOnlyWhenSupported: true },
   content: [
     './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',

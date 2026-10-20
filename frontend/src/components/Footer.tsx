@@ -2,12 +2,13 @@
 
 import React from 'react';
 import Link from '@/components/common/Link';
-import { BookOpen, Heart } from 'lucide-react';import { SkinIcon } from '@/components/skin/aemeath/icons';
+import { BookOpen, Heart } from 'lucide-react';
+import { SkinIcon } from '@/components/skin/aemeath/icons';
 
 
 export default function Footer() {
   return (
-    <footer className="border-t border-white/10 bg-glass text-gray-400 py-10 mt-20">
+    <footer className="border-t border-white/10 bg-glass text-gray-400 py-10 mt-12 lg:mt-20 pb-safe">
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-4 gap-8">
         <div className="space-y-3">
           <div className="flex items-center gap-2.5">

@@ -26,6 +26,8 @@ html.skin-aemeath button[class*="from-brand-5"]:hover::after, html.skin-aemeath 
 }
 @keyframes ck-sweep { from { transform: translateX(-130%) skewX(-18deg); } to { transform: translateX(330%) skewX(-18deg); } }
 html.skin-aemeath :is(button, a).bg-brand-500:active, html.skin-aemeath :is(button, a).bg-brand-600:active { transform: translateY(2px) scale(0.985); }
+/* skin sets overflow:hidden on these, which lets a flex item shrink to nothing inside a scrolling row */
+html.skin-aemeath .overflow-x-auto > :is(button, a).bg-brand-500, html.skin-aemeath .overflow-x-auto > :is(button, a).bg-brand-600 { flex-shrink: 0; }
 html.skin-aemeath button:disabled { filter: saturate(0.5); }
 
 /* ---------- Nút phụ: kính pha lê viền sáng 1px ---------- */

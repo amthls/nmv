@@ -69,6 +69,7 @@ export default function ChapterReaderPage() {
   const [highlightedLine, setHighlightedLine] = useState<number | null>(null);
   // touch screens have no hover: the bookmark button shows on the paragraph last tapped
   const [activeLine, setActiveLine] = useState<number | null>(null);
+  const [barsHidden, setBarsHidden] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [imageQuality] = useImageQuality();
 
@@ -327,7 +328,11 @@ export default function ChapterReaderPage() {
     }
     const figure = target.closest('figure.image, .nh-illus');
     const img = figure?.querySelector('img');
-    if (!img || !readerTextRef.current) return;
+    if (!img || !readerTextRef.current) {
+      // mobile: tap on plain text toggles the bars; skip links, buttons and text selection
+      if (window.innerWidth < 1024 && !target.closest("a,button,[data-fn]") && !window.getSelection()?.toString()) setBarsHidden((v) => !v);
+      return;
+    }
     const all = Array.from(readerTextRef.current.querySelectorAll<HTMLImageElement>('figure.image img, .nh-illus img'));
     // full-size file, not the resolution picked for the page
     const full = (el: HTMLImageElement) => (el.getAttribute('src') || '').replace(/\?w=\d+$/, '');
@@ -484,18 +489,18 @@ export default function ChapterReaderPage() {
   };
 
   return (
-    <div className={`sk-reader min-h-screen transition-colors duration-300 pb-28 ${themeClasses}`} data-reader-theme={settings.theme}>
+    <div className={`sk-reader min-h-screen transition-colors duration-300 pb-[calc(8rem+env(safe-area-inset-bottom))] lg:pb-28 ${themeClasses}`} data-reader-theme={settings.theme}>
       <div className="sk-read-progress" aria-hidden />
       
       {/* 1. Sticky Reader Top Control Bar */}
-      <header className={`sticky top-0 z-40 w-full backdrop-blur-md border-b transition-colors duration-300 ${headerBgClass}`}>
+      <header className={`sticky top-0 z-40 w-full backdrop-blur-md border-b transition-all duration-300 ${barsHidden ? "max-lg:-translate-y-full" : ""} ${headerBgClass}`}>
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between gap-2">
           
           {/* Left: Back to Story & Title */}
           <div className="flex items-center gap-3 truncate">
             <BackLink
               href={`/truyen/${storySlug}`}
-              className="p-1.5 rounded-lg hover:bg-white/10 transition"
+              className="flex items-center justify-center w-11 h-11 lg:w-auto lg:h-auto p-1.5 rounded-lg hover:bg-white/10 transition"
               title="Quay lại mục lục truyện"
             >
               <ArrowLeft className="w-5 h-5" />
@@ -513,7 +518,7 @@ export default function ChapterReaderPage() {
             <button
               onClick={() => chapterData.prev_chapter && router.push(`/truyen/${storySlug}/${chapterData.prev_chapter.slug}`)}
               disabled={!chapterData.prev_chapter}
-              className="p-2 rounded-lg hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition"
+              className="hidden lg:block p-2 rounded-lg hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition"
               title="Chương trước (Phím A / Mũi tên trái)"
             >
               <ChevronLeft className="w-4 h-4" />
@@ -522,7 +527,7 @@ export default function ChapterReaderPage() {
             {/* Chapter Selector Trigger */}
             <button
               onClick={() => setIsChapterSelectorOpen(true)}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-xs font-semibold transition"
+              className="flex items-center justify-center gap-1 min-w-11 min-h-11 lg:min-w-0 lg:min-h-0 px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 text-xs font-semibold transition"
               title="Mục lục chương"
             >
               <List className="w-3.5 h-3.5" />
@@ -533,7 +538,7 @@ export default function ChapterReaderPage() {
             <button
               onClick={() => chapterData.next_chapter && router.push(`/truyen/${storySlug}/${chapterData.next_chapter.slug}`)}
               disabled={!chapterData.next_chapter}
-              className="p-2 rounded-lg hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition"
+              className="hidden lg:block p-2 rounded-lg hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition"
               title="Chương sau (Phím D / Mũi tên phải)"
             >
               <ChevronRight className="w-4 h-4" />
@@ -542,7 +547,7 @@ export default function ChapterReaderPage() {
             {/* Reader Settings Trigger */}
             <button
               onClick={() => setIsSettingsOpen(true)}
-              className="p-2 rounded-lg bg-brand-600 hover:bg-brand-500 text-snow shadow-sm transition ml-1"
+              className="flex items-center justify-center w-11 h-11 lg:w-auto lg:h-auto p-2 rounded-lg bg-brand-600 hover:bg-brand-500 text-snow shadow-sm transition ml-1"
               title="Tùy chỉnh font chữ, cỡ chữ, màu nền"
             >
               <Settings className="w-4 h-4" />
@@ -552,7 +557,7 @@ export default function ChapterReaderPage() {
             {chapterData.story?.allow_download && (
               <button
                 onClick={() => setIsDownloadOpen(true)}
-                className="p-2 rounded-lg hover:bg-white/10 transition ml-1"
+                className="flex items-center justify-center w-11 h-11 lg:w-auto lg:h-auto p-2 rounded-lg hover:bg-white/10 transition ml-1"
                 title="Tải chương này (EPUB / PDF)"
               >
                 <Download className="w-4 h-4" />
@@ -564,7 +569,7 @@ export default function ChapterReaderPage() {
               <ReportButton
                 targetType="chapter"
                 targetId={chapterData.id}
-                className="p-2 rounded-lg hover:bg-white/10 transition ml-1 flex items-center [&>span]:hidden"
+                className="w-11 h-11 lg:w-auto lg:h-auto p-2 rounded-lg hover:bg-white/10 transition ml-1 flex items-center justify-center [&>span]:hidden"
               />
             )}
 
@@ -852,6 +857,7 @@ export default function ChapterReaderPage() {
         nextChapter={chapterData.next_chapter}
         onOpenChapterList={() => setIsChapterSelectorOpen(true)}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        hiddenByTap={barsHidden}
       />
 
       {/* Modals */}
@@ -890,7 +896,7 @@ export default function ChapterReaderPage() {
     
       {/* Floating Instant Toast Notification */}
       {toastMsg && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-zinc-900/95 border border-white/20 text-white shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-5">
+        <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+6.5rem)] right-4 lg:bottom-6 lg:right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-zinc-900/95 border border-white/20 text-white shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-5">
           <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
           <span className="text-xs font-semibold">{toastMsg}</span>
         </div>

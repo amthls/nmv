@@ -31,12 +31,12 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
   };
 
   return (
-    <div className="flex items-center justify-center gap-1.5 pt-8">
+    <div className="flex flex-wrap items-center justify-center gap-2 pt-8">
       {/* First Page */}
       <button
         onClick={() => onPageChange(1)}
         disabled={currentPage === 1}
-        className="p-2 rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-gray-300 transition"
+        className="w-11 h-11 sm:w-9 sm:h-9 grid place-items-center rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-gray-300 transition"
         title="Trang đầu"
       >
         <ChevronsLeft className="w-4 h-4" />
@@ -46,7 +46,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
       <button
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
-        className="p-2 rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-gray-300 transition"
+        className="w-11 h-11 sm:w-9 sm:h-9 grid place-items-center rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-gray-300 transition"
         title="Trang trước"
       >
         <ChevronLeft className="w-4 h-4" />
@@ -57,7 +57,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
         <button
           key={page}
           onClick={() => onPageChange(page)}
-          className={`w-9 h-9 rounded-xl text-xs font-bold transition-all ${
+          className={`w-11 h-11 sm:w-9 sm:h-9 rounded-xl text-sm sm:text-xs font-bold transition-all ${
             currentPage === page
               ? 'bg-brand-600 text-snow shadow-lg shadow-brand-500/25 scale-105'
               : 'bg-white/5 hover:bg-white/10 text-gray-300'
@@ -71,7 +71,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
       <button
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
-        className="p-2 rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-gray-300 transition"
+        className="w-11 h-11 sm:w-9 sm:h-9 grid place-items-center rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-gray-300 transition"
         title="Trang sau"
       >
         <ChevronRight className="w-4 h-4" />
@@ -81,7 +81,7 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
       <button
         onClick={() => onPageChange(totalPages)}
         disabled={currentPage === totalPages}
-        className="p-2 rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-gray-300 transition"
+        className="w-11 h-11 sm:w-9 sm:h-9 grid place-items-center rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed text-gray-300 transition"
         title="Trang cuối"
       >
         <ChevronsRight className="w-4 h-4" />

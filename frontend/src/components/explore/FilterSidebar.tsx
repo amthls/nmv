@@ -122,7 +122,7 @@ export default function FilterSidebar({
         </div>
         <button
           onClick={onReset}
-          className="flex items-center gap-1 text-xs text-gray-400 hover:text-brand-400 transition"
+          className="flex items-center gap-1 min-h-11 sm:min-h-0 px-1 text-sm sm:text-xs text-gray-400 hover:text-brand-400 transition"
           title="Đặt lại toàn bộ bộ lọc"
         >
           <RotateCcw className="w-3.5 h-3.5" />
@@ -135,7 +135,7 @@ export default function FilterSidebar({
         onClick={onApply}
         disabled={!dirty || busy}
         aria-busy={busy}
-        className={`w-full h-10 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition ${
+        className={`w-full h-11 sm:h-10 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition ${
           dirty && !busy ? 'bg-brand-600 hover:bg-brand-500 text-snow shadow-lg shadow-brand-500/25' : 'bg-white/5 text-gray-500 cursor-default'
         }`}
       >
@@ -157,7 +157,7 @@ export default function FilterSidebar({
             <button
               key={item.value}
               onClick={() => handleTypeChange(item.value)}
-              className={`py-1.5 px-2 rounded-lg text-xs font-medium transition-all ${
+              className={`min-h-11 sm:min-h-0 py-1.5 px-2 rounded-lg text-sm sm:text-xs font-medium transition-all ${
                 filters.type === item.value
                   ? 'bg-brand-600 text-snow shadow-sm shadow-brand-500/30'
                   : 'text-gray-400 hover:text-gray-200'
@@ -177,7 +177,7 @@ export default function FilterSidebar({
         <select
           value={filters.status}
           onChange={e => handleStatusChange(e.target.value)}
-          className="w-full h-9 px-3 rounded-xl bg-glass border border-white/[0.04] text-xs text-white focus:outline-none focus:border-brand-500"
+          className="w-full h-11 sm:h-9 px-3 rounded-xl bg-glass border border-white/[0.04] text-base sm:text-xs text-white focus:outline-none focus:border-brand-500"
         >
           <option value="all">Tất cả tình trạng</option>
           <option value="ongoing">Đang tiến hành</option>
@@ -190,13 +190,13 @@ export default function FilterSidebar({
       {/* 3. Ngôn Ngữ Gốc & Số Chương */}
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1.5">
-          <label className="text-[11px] font-semibold text-gray-400 uppercase">
+          <label className="text-xs sm:text-[11px] font-semibold text-gray-400 uppercase">
             Ngôn ngữ gốc
           </label>
           <select
             value={filters.language}
             onChange={e => handleLanguageChange(e.target.value)}
-            className="w-full h-9 px-2.5 rounded-xl bg-glass border border-white/[0.04] text-xs text-white focus:outline-none focus:border-brand-500"
+            className="w-full h-11 sm:h-9 px-2.5 rounded-xl bg-glass border border-white/[0.04] text-base sm:text-xs text-white focus:outline-none focus:border-brand-500"
           >
             <option value="all">Tất cả</option>
             <option value="ja">🇯🇵 Nhật Bản</option>
@@ -208,13 +208,13 @@ export default function FilterSidebar({
         </div>
 
         <div className="space-y-1.5">
-          <label className="text-[11px] font-semibold text-gray-400 uppercase">
+          <label className="text-xs sm:text-[11px] font-semibold text-gray-400 uppercase">
             Số chương
           </label>
           <select
             value={filters.min_chapters}
             onChange={e => handleMinChaptersChange(e.target.value)}
-            className="w-full h-9 px-2.5 rounded-xl bg-glass border border-white/[0.04] text-xs text-white focus:outline-none focus:border-brand-500"
+            className="w-full h-11 sm:h-9 px-2.5 rounded-xl bg-glass border border-white/[0.04] text-base sm:text-xs text-white focus:outline-none focus:border-brand-500"
           >
             <option value="0">Tất cả</option>
             <option value="1">≥ 1 chương</option>
@@ -226,7 +226,7 @@ export default function FilterSidebar({
       </div>
 
       {/* Tag Instructions */}
-      <div className="p-2.5 rounded-xl bg-white/5 border border-white/[0.03] text-[11px] text-gray-400 space-y-1">
+      <div className="p-2.5 rounded-xl bg-white/5 border border-white/[0.03] text-xs sm:text-[11px] text-gray-400 space-y-1">
         <div className="flex items-center gap-1.5 text-gray-300 font-semibold">
           <Sparkles className="w-3.5 h-3.5 text-brand-400" />
           <span>Hướng dẫn chọn Tag:</span>
@@ -251,7 +251,7 @@ export default function FilterSidebar({
               <button
                 type="button"
                 onClick={() => toggleCategory(category.category_name)}
-                className="w-full flex items-center justify-between text-xs font-bold text-gray-300 hover:text-white uppercase tracking-wider py-1"
+                className="w-full flex items-center justify-between min-h-11 sm:min-h-0 text-sm sm:text-xs font-bold text-gray-300 hover:text-white uppercase tracking-wider py-1"
               >
                 <span>{category.category_label}</span>
                 {isCollapsed ? (
@@ -279,7 +279,7 @@ export default function FilterSidebar({
                         key={tag.id}
                         type="button"
                         onClick={() => toggleTag(tag.slug)}
-                        className={`text-[11px] font-medium px-2.5 py-1 rounded-lg border transition-all flex items-center gap-1 ${btnClass}`}
+                        className={`text-xs sm:text-[11px] font-medium px-3 min-h-9 sm:min-h-0 sm:px-2.5 py-1 rounded-lg border transition-all flex items-center gap-1 ${btnClass}`}
                         title={tag.description || tag.name}
                       >
                         {isIncluded && <Check className="w-3 h-3" />}
@@ -308,14 +308,14 @@ export default function FilterSidebar({
       {isOpenMobile && (
         <div className="lg:hidden fixed inset-0 z-50 flex justify-end bg-black/70 backdrop-blur-sm animate-in fade-in">
           <div 
-            className="w-full max-w-xs h-full bg-surface p-5 border-l border-white/[0.04] overflow-y-auto"
+            className="w-full max-w-xs h-full bg-surface p-4 sm:p-5 border-l border-white/[0.04] overflow-y-auto"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-4 mb-4 border-b border-white/[0.04]">
               <span className="font-bold text-base text-white">Bộ lọc</span>
               <button
                 onClick={onCloseMobile}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5"
+                className="w-11 h-11 grid place-items-center rounded-lg text-gray-400 hover:text-white hover:bg-white/5" aria-label="Đóng bộ lọc"
               >
                 <X className="w-5 h-5" />
               </button>

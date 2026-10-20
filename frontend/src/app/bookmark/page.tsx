@@ -258,12 +258,12 @@ export default function BookmarkPage() {
       </div>
 
       {/* 2. Main Tab Switcher */}
-      <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-white/5 border border-white/10 w-full sm:w-fit overflow-x-auto">
+      <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-white/5 border border-white/10 w-full sm:w-fit overflow-x-auto scrollbar-none">
         {tabs.map(({ id, label, count, icon: Icon }) => (
           <button
             key={id}
             onClick={() => setMainTab(id)}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 whitespace-nowrap ${
+            className={`shrink-0 min-h-11 px-4 py-2.5 rounded-xl text-sm sm:text-xs font-bold transition flex items-center gap-2 whitespace-nowrap ${
               mainTab === id
                 ? 'bg-brand-600 text-snow shadow-md shadow-brand-500/25'
                 : 'text-gray-400 hover:text-white'
@@ -355,19 +355,19 @@ export default function BookmarkPage() {
                     <button
                       onClick={() => handleAllVisibility(true)}
                       disabled={albums.every(a => a.is_public)}
-                      className="px-3 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1.5 bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 disabled:opacity-40 transition"
+                      className="min-h-11 sm:min-h-0 px-3 py-1.5 rounded-lg text-xs sm:text-[11px] font-bold flex items-center gap-1.5 bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 disabled:opacity-40 transition"
                     >
                       <Globe className="w-3.5 h-3.5" /> Công khai tất cả
                     </button>
                     <button
                       onClick={() => handleAllVisibility(false)}
                       disabled={albums.every(a => !a.is_public)}
-                      className="px-3 py-1.5 rounded-lg text-[11px] font-bold flex items-center gap-1.5 bg-white/5 text-gray-200 hover:bg-white/10 disabled:opacity-40 transition"
+                      className="min-h-11 sm:min-h-0 px-3 py-1.5 rounded-lg text-xs sm:text-[11px] font-bold flex items-center gap-1.5 bg-white/5 text-gray-200 hover:bg-white/10 disabled:opacity-40 transition"
                     >
                       <Lock className="w-3.5 h-3.5" /> Riêng tư tất cả
                     </button>
                   </div>
-                  <div className="grid grid-cols-[repeat(auto-fill,minmax(min(150px,calc(50%_-_8px)),1fr))] gap-4">
+                  <div className="grid grid-cols-[repeat(auto-fill,minmax(min(150px,calc(50%_-_8px)),1fr))] gap-3 sm:gap-4">
                     {albums.map((album) => (
                       <AlbumCard
                         key={album.id}
@@ -376,7 +376,7 @@ export default function BookmarkPage() {
                         actions={
                           <button
                             onClick={() => handleShareAlbum(album)}
-                            className="flex-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 bg-white/5 hover:bg-white/10 text-gray-300 transition"
+                            className="flex-1 min-h-11 sm:min-h-0 px-2.5 py-1.5 rounded-lg text-xs sm:text-[11px] font-bold flex items-center justify-center gap-1 bg-white/5 hover:bg-white/10 text-gray-300 transition"
                           >
                             <Link2 className="w-3 h-3" /> Chia sẻ link
                           </button>
@@ -409,7 +409,7 @@ export default function BookmarkPage() {
                         actions={
                           <button
                             onClick={() => handleUnsaveAlbum(album)}
-                            className="flex-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-rose-300 transition"
+                            className="flex-1 min-h-11 sm:min-h-0 px-2.5 py-1.5 rounded-lg text-xs sm:text-[11px] font-bold flex items-center justify-center gap-1 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-rose-300 transition"
                           >
                             <Trash2 className="w-3 h-3" /> Bỏ lưu
                           </button>
@@ -443,7 +443,7 @@ export default function BookmarkPage() {
                             <SmartImage src={fav.cover_image_url} alt={fav.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
                           </Link>
                           <div className="min-w-0 flex-1">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-brand-400">
+                            <span className="text-xs sm:text-[10px] font-bold uppercase tracking-wider text-brand-400">
                               {fav.story_type}
                             </span>
                             <Link href={`/truyen/${fav.slug}`}>
@@ -456,7 +456,7 @@ export default function BookmarkPage() {
                         </div>
 
                         <div className="px-5 py-3 border-t border-white/5 bg-black/20 flex items-center justify-between text-xs">
-                          <span className="text-gray-400 text-[11px]">
+                          <span className="text-gray-400 text-xs sm:text-[11px]">
                             {fav.total_chapters || 0} chương
                           </span>
                           <div className="flex items-center gap-2">

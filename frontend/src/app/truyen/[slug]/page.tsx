@@ -264,14 +264,14 @@ export default function StoryDetailPage() {
   const renderChapterRow = (ch: any) => (
       <div
         key={ch.id}
-        className="sk-chap-row p-3.5 flex items-center justify-between hover:bg-white/5 transition group px-5"
+        className="sk-chap-row min-h-12 lg:min-h-0 p-3.5 flex items-center justify-between hover:bg-white/5 transition group px-5"
       >
         <Link
           href={`/truyen/${story.slug}/${ch.slug}`}
-          className="flex items-center gap-3 truncate flex-1"
+          className="flex items-center gap-3 truncate flex-1 min-h-11 lg:min-h-0"
         >
           <BookOpen className="w-4 h-4 text-gray-500 group-hover:text-brand-400 transition-colors shrink-0" />
-          <span className="text-xs font-semibold text-gray-200 group-hover:text-brand-400 transition-colors truncate">
+          <span className="text-sm lg:text-xs font-semibold text-gray-200 group-hover:text-brand-400 transition-colors truncate">
             {ch.title}
           </span>
         </Link>
@@ -288,7 +288,7 @@ export default function StoryDetailPage() {
           
           <Link
             href={`/truyen/${story.slug}/${ch.slug}`}
-            className="text-right text-brand-400 font-medium hover:text-brand-300 transition-colors"
+            className="text-right max-lg:py-3 text-brand-400 font-medium hover:text-brand-300 transition-colors"
           >
             Đọc ngay
           </Link>
@@ -535,7 +535,7 @@ export default function StoryDetailPage() {
               {/* Actions: 1) reading  2) reader tools */}
               <div className="pt-3 space-y-3 md:mt-auto">{/* bottom of the cover, whatever the title length */}
                 {/* 1. Reading */}
-                <div className="flex flex-wrap items-center justify-center md:justify-start gap-2.5">
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-2.5 max-lg:fixed max-lg:inset-x-0 max-lg:z-30 max-lg:px-4 max-lg:bottom-[calc(var(--bottom-nav-h,0px)+env(safe-area-inset-bottom)+0.75rem)] max-lg:[&>a]:flex-1 max-lg:[&>a]:justify-center max-lg:[&>a]:min-h-12 max-lg:[&>a]:text-base">
                   {lastReadChapter ? (
                     <Link
                       href={`/truyen/${story.slug}/${lastReadChapter.slug}${lastReadChapter.hash}`}
@@ -555,7 +555,7 @@ export default function StoryDetailPage() {
                       href={`/truyen/${story.slug}/${story.first_chapter.slug}`}
                       className={
                         lastReadChapter
-                          ? 'px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold text-sm border border-white/10 flex items-center gap-2 transition'
+                          ? 'max-lg:hidden px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold text-sm border border-white/10 flex items-center gap-2 transition'
                           : 'px-5 py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-snow font-bold text-sm shadow-lg shadow-brand-500/25 flex items-center gap-2 transition-all hover:scale-[1.03]'
                       }
                     >
@@ -567,7 +567,7 @@ export default function StoryDetailPage() {
                   {story.latest_chapter && story.latest_chapter.slug !== story.first_chapter?.slug ? (
                     <Link
                       href={`/truyen/${story.slug}/${story.latest_chapter.slug}`}
-                      className="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold text-sm border border-white/10 transition"
+                      className="max-lg:hidden px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white font-semibold text-sm border border-white/10 transition"
                     >
                       Chương mới nhất
                     </Link>
@@ -865,9 +865,11 @@ export default function StoryDetailPage() {
 
       </div>
 
+      <div className="h-20 lg:hidden" aria-hidden />
+
       {/* Floating Instant Toast Notification */}
       {toastMsg && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-zinc-900/95 border border-white/20 text-white shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-5">
+        <div className="fixed bottom-[calc(var(--bottom-nav-h,0px)+env(safe-area-inset-bottom)+5.5rem)] right-4 lg:bottom-6 lg:right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-zinc-900/95 border border-white/20 text-white shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-5">
           <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
           <span className="text-xs font-semibold">{toastMsg}</span>
         </div>
