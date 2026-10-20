@@ -38,27 +38,26 @@ export default function FloatingReaderBar({
   const router = useRouter();
   const [scrollProgress, setScrollProgress] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
-  const [lastScrollY, setLastScrollY] = useState(0);
 
-  // Track scroll progress and auto-hide/show behavior
+  // Track scroll progress and auto-hide/show behavior (one pass per frame, state only when the value changes)
   useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
+    let raf = 0;
+    const update = () => {
+      raf = 0;
       const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
-      
       if (totalHeight > 0) {
-        const progress = Math.min(100, Math.max(0, Math.round((currentScrollY / totalHeight) * 100)));
-        setScrollProgress(progress);
+        setScrollProgress(Math.min(100, Math.max(0, Math.round((window.scrollY / totalHeight) * 100))));
       }
-
-      // Show bar when scrolling up or near bottom, keep visible
       setIsVisible(true);
-      setLastScrollY(currentScrollY);
     };
+    const handleScroll = () => { if (!raf) raf = requestAnimationFrame(update); };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [lastScrollY]);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, []);
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });

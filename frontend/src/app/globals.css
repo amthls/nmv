@@ -492,3 +492,18 @@ body::before {
   background: rgb(var(--c-brand-400) / 0.07); font-family: Inter, sans-serif; font-size: 0.85em; line-height: 1.65; text-align: left;
 }
 .nh-message__label { display: flex; align-items: center; gap: 0.4em; font-weight: 800; font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.05em; color: rgb(var(--c-brand-400)); margin-bottom: 0.35em; }
+
+/* Phone: a long chapter (90k+ px) was re-laid out on every scroll step. Off-screen blocks now skip layout and paint. */
+@media (max-width: 1023.98px) {
+  .reader-text > * {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 96px;
+  }
+}
+
+/* Phone, chapter page: still backdrop (aura and skin ornaments stop moving while reading) */
+@media (max-width: 1023.98px) {
+  html[data-reader] body::before,
+  html[data-reader].skin-aemeath *::before,
+  html[data-reader].skin-aemeath *::after { animation: none; }
+}
