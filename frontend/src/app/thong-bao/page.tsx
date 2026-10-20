@@ -149,10 +149,10 @@ export default function NotificationsPage() {
   }
 
   const chip = (active: boolean) =>
-    `shrink-0 px-3 h-8 rounded-full border text-xs font-semibold transition ${
+    `shrink-0 px-3 h-8 touch:h-11 rounded-full border text-xs font-semibold transition ${
       active ? 'bg-white text-ink border-white' : 'bg-white/[0.04] text-gray-300 border-white/10 hover:bg-white/[0.08]'
     }`;
-  const input = 'w-full px-3 h-9 rounded-lg bg-white/[0.04] border border-white/10 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-500';
+  const input = 'w-full px-3 h-9 touch:h-11 rounded-lg bg-white/[0.04] border border-white/10 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-brand-500';
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pb-24">
@@ -169,7 +169,7 @@ export default function NotificationsPage() {
           <button
             type="button"
             onClick={readAll}
-            className="shrink-0 px-3.5 h-9 rounded-xl bg-white/[0.06] border border-white/10 hover:bg-white/10 text-xs font-semibold text-white inline-flex items-center gap-1.5 transition"
+            className="shrink-0 px-3.5 h-9 touch:h-11 rounded-xl bg-white/[0.06] border border-white/10 hover:bg-white/10 text-xs font-semibold text-white inline-flex items-center gap-1.5 transition"
           >
             <CheckCheck className="w-4 h-4" /> Đánh dấu đã đọc{category ? ' (mục này)' : ' tất cả'}
           </button>
@@ -216,7 +216,7 @@ export default function NotificationsPage() {
                   <button
                     type="button"
                     onClick={() => remove(n)}
-                    className="absolute top-3 right-3 p-1.5 rounded-lg text-gray-500 hover:text-rose-300 hover:bg-white/5 opacity-0 group-hover:opacity-100 focus:opacity-100 transition"
+                    className="absolute top-3 right-3 p-1.5 touch:p-3 touch:top-1 touch:right-1 rounded-lg text-gray-500 hover:text-rose-300 hover:bg-white/5 opacity-0 group-hover:opacity-100 touch:opacity-100 focus:opacity-100 transition"
                     title="Xóa thông báo"
                     aria-label="Xóa thông báo"
                   >
@@ -235,7 +235,7 @@ export default function NotificationsPage() {
             <button
               type="button"
               onClick={() => load(true, items[items.length - 1]?.updated_at)}
-              className="mt-4 w-full h-10 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] text-sm font-semibold text-gray-200 transition"
+              className="mt-4 w-full h-10 touch:h-11 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] text-sm font-semibold text-gray-200 transition"
             >
               Xem thêm
             </button>
@@ -270,7 +270,7 @@ export default function NotificationsPage() {
                         aria-checked={s.web}
                         aria-label={`Thông báo web: ${s.label}`}
                         onClick={() => toggle(s)}
-                        className={`relative w-9 h-5 rounded-full transition ${s.web ? 'bg-brand-500' : 'bg-white/15'}`}
+                        className={`relative w-9 h-5 touch:before:absolute touch:before:-inset-3 touch:before:content-[''] rounded-full transition ${s.web ? 'bg-brand-500' : 'bg-white/15'}`}
                       >
                         <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${s.web ? 'left-[18px]' : 'left-0.5'}`} />
                       </button>
@@ -295,7 +295,7 @@ export default function NotificationsPage() {
                   onChange={(e) => setDraft({ ...draft, message: e.target.value })} aria-label="Nội dung" />
                 <input className={input} placeholder="Liên kết trong trang, vd /fandom/bai-viet (không bắt buộc)" value={draft.link}
                   onChange={(e) => setDraft({ ...draft, link: e.target.value })} aria-label="Liên kết" />
-                <button type="submit" className="w-full h-9 rounded-lg bg-amber-500 hover:bg-amber-400 text-ink text-sm font-bold transition">
+                <button type="submit" className="w-full h-9 touch:h-11 rounded-lg bg-amber-500 hover:bg-amber-400 text-ink text-sm font-bold transition">
                   Gửi cho mọi người
                 </button>
               </form>
@@ -309,7 +309,7 @@ export default function NotificationsPage() {
                           {new Date(b.created_at).toLocaleDateString('vi-VN')} · {b.read_count} người đã đọc
                         </p>
                       </div>
-                      <button type="button" onClick={() => deleteBroadcast(b)} className="p-1 text-gray-500 hover:text-rose-300" aria-label={`Xóa ${b.title}`}>
+                      <button type="button" onClick={() => deleteBroadcast(b)} className="p-1 touch:p-3 text-gray-500 hover:text-rose-300" aria-label={`Xóa ${b.title}`}>
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </li>

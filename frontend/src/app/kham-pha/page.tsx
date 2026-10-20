@@ -326,7 +326,7 @@ function ExplorePageContent() {
               <div className="flex items-center gap-1 p-1 rounded-lg bg-black/40 border border-white/[0.03]">
                 <button
                   onClick={() => setViewMode('grid')}
-                  className={`w-11 h-11 sm:w-auto sm:h-auto grid place-items-center sm:block p-1.5 rounded-md transition ${
+                  className={`w-11 h-11 sm:w-auto sm:h-auto touch:!w-11 touch:!h-11 touch:!grid grid place-items-center sm:block p-1.5 rounded-md transition ${
                     viewMode === 'grid'
                       ? 'bg-brand-600 text-snow shadow-sm'
                       : 'text-gray-400 hover:text-white'
@@ -337,7 +337,7 @@ function ExplorePageContent() {
                 </button>
                 <button
                   onClick={() => setViewMode('list')}
-                  className={`w-11 h-11 sm:w-auto sm:h-auto grid place-items-center sm:block p-1.5 rounded-md transition ${
+                  className={`w-11 h-11 sm:w-auto sm:h-auto touch:!w-11 touch:!h-11 touch:!grid grid place-items-center sm:block p-1.5 rounded-md transition ${
                     viewMode === 'list'
                       ? 'bg-brand-600 text-snow shadow-sm'
                       : 'text-gray-400 hover:text-white'

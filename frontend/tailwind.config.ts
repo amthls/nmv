@@ -147,7 +147,9 @@ const config: Config = {
     },
   },
   plugins: [
-    plugin(({ addBase }) => {
+    plugin(({ addBase, addVariant }) => {
+      // Touch screen without a mouse (iPad landscape >= 1024px uses the desktop layout): bigger hit areas
+      addVariant('touch', '@media (pointer: coarse)');
       addBase({
         ':root, .light': { ...paletteVars('light'), colorScheme: 'light' },
         '.dark': { ...paletteVars('dark'), colorScheme: 'dark' },
