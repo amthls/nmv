@@ -121,7 +121,7 @@ services:
   #     Workers connect to Postgres directly (long batches, advisory locks).
   # ============================================================================
   pgbouncer:
-    image: edoburu/pgbouncer:v1.26.0-p0
+    image: edoburu/pgbouncer:v1.26.1-p0
     container_name: novel_pgbouncer
     restart: unless-stopped
     environment:
@@ -546,7 +546,7 @@ services:
   # Create a tunnel in the Cloudflare dashboard pointing at http://gateway:8080 and put its token in .env.
   # ============================================================================
   cloudflared:
-    image: cloudflare/cloudflared:2026.10.0
+    image: cloudflare/cloudflared:2026.10.2
     container_name: novel_cloudflared
     restart: unless-stopped
     command: ["tunnel", "--no-autoupdate", "run"]
