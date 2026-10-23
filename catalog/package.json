@@ -34,7 +34,7 @@
     "rate-limit-redis": "^4",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2",
-    "sanitize-html": "^2.18.0",
+    "sanitize-html": "^2.18.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {
